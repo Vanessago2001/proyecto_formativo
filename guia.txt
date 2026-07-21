@@ -1,0 +1,730 @@
+================================================================================
+GUÍA: API REST ASÍNCRONA POR MÓDULOS 
+================================================================================
+Enfoque: Estructura por Dominios, SQL Nativo con SQLAlchemy 2.0, Validaciones 
+con Pydantic V2, Conexión Asíncrona (Lifespan) y Hash de Contraseñas Moderno.
+
+--------------------------------------------------------------------------------
+1. MAPA VISUAL DE LA RAÍZ DEL PROYECTO
+--------------------------------------------------------------------------------
+mi_proyecto_api/
+├── .env                  # Variables de entorno críticas
+├── requirements.txt      # Dependencias del proyecto (Sin Passlib)
+├── main.py               # Orquestador y Punto de entrada central de FastAPI
+│
+├── core/                 # Infraestructura compartida globalmente
+│   ├── __init__.py
+│   ├── config.py         # Carga dinámica y tipada del archivo .env
+│   ├── database.py       # Sesión asíncrona pura sin ORM (get_db)
+│   ├── logger.py         # Configuración del motor de logs
+│   └── security.py       # Utilidades criptográficas con bcrypt puro y PyJWT
+│
+└── modules/              # Módulos de dominio independientes (Features)
+    ├── __init__.py
+    │
+    ├── roles/
+    │   ├── __init__.py
+    │   ├── role_router.py
+    │   ├── role_schema.py
+    │   └── role_service.py
+    │
+    ├── users/
+    │   ├── __init__.py
+    │   ├── user_router.py
+    │   ├── user_schema.py
+    │   └── user_service.py
+    │
+    └── auth/
+        ├── __init__.py
+        ├── auth_router.py
+        └── auth_service.py
+
+--------------------------------------------------------------------------------
+2. CONFIGURACIÓN DEL ENTORNO (.env y requirements.txt)
+--------------------------------------------------------------------------------
+
+### ARCHIVO: .env
+DATABASE_URL=postgresql+asyncpg://postgres:mi_password_seguro@localhost:5432/db_aprendices
+SECRET_KEY=8f97b51b7a2d4c4f9e1a6b3c5d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+### ARCHIVO: requirements.txt
+"fastapi[standard]"  ok
+sqlalchemy>=2.0.28
+asyncpg>=0.29.0
+pydantic[email]>=2.6.4
+python-dotenv=1.0.1
+bcrypt>=4.1.0
+pyjwt>=2.8.0
+
+--------------------------------------------------------------------------------
+3. SCRIPT DDL DE LA BASE DE DATOS (PostgreSQL)
+--------------------------------------------------------------------------------
+CREATE TABLE roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    description VARCHAR(200) NULL
+);
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    role_id INTEGER NOT NULL,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
+);
+
+INSERT INTO roles (name, description) VALUES 
+('Administrador', 'Acceso total al sistema'),
+('Aprendiz', 'Acceso limitado a consultas y perfiles');
+
+--------------------------------------------------------------------------------
+4. CAPA CORE (Infraestructura Compartida)
+--------------------------------------------------------------------------------
+
+### ARCHIVO: core/config.py
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Settings:
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "fallback_secret_key_por_defecto")
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+
+    def __init__(self) -> None:
+        if not self.DATABASE_URL:
+            raise ValueError("CRÍTICO: La variable DATABASE_URL no está configurada en el .env")
+
+settings = Settings()
+
+### ARCHIVO: core/logger.py
+import logging
+import sys
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - [%(name)s] - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
+logger = logging.getLogger("API_RAIZ")
+
+### ARCHIVO: core/database.py
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from core.config import settings
+from core.logger import logger
+
+engine = create_async_engine(settings.DATABASE_URL, echo=True, pool_pre_ping=True)
+
+AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        except Exception as e:
+            logger.error(f"Error en la sesión de DB: {str(e)}")
+            await session.rollback()
+            raise e
+        finally:
+            await session.close()
+
+### ARCHIVO: core/security.py
+import bcrypt
+import jwt
+from datetime import datetime, timedelta, timezone
+from core.config import settings
+
+def hash_password(password: str) -> str:
+    \"\"\"Usa bcrypt nativo para convertir un texto plano en un hash binario y decodificarlo a string\"\"\"
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    \"\"\"Compara el texto plano con el hash almacenado en la base de datos transformando ambos a bytes\"\"\"
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+--------------------------------------------------------------------------------
+5. MÓDULO DE ROLES
+--------------------------------------------------------------------------------
+
+### ARCHIVO: modules/roles/role_schema.py
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional
+
+class RoleBase(BaseModel):
+    name: str = Field(..., min_length=3, max_length=50, description="Nombre del rol")
+    description: Optional[str] = Field(None, max_length=200)
+
+class RoleCreate(RoleBase):
+    pass
+
+class RoleResponse(RoleBase):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+### ARCHIVO: modules/roles/role_service.py
+from fastapi import HTTPException, status
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from modules.roles.role_schema import RoleCreate
+from core.logger import logger
+
+class RoleService:
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def get_all_roles(self) -> list[dict]:
+        logger.info("SQL Nativo: Consultando todos los roles.")
+        query = text("SELECT id, name, description FROM roles ORDER BY id ASC;")
+        result = await self.db.execute(query)
+        return [dict(row) for row in result.mappings().all()]
+
+    async def create_role(self, role_data: RoleCreate) -> dict:
+        logger.info(f"SQL Nativo: Insertando rol {role_data.name}")
+        
+        check = await self.db.execute(text("SELECT id FROM roles WHERE name = :name;"), {"name": role_data.name})
+        if check.first():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El rol ya existe.")
+
+        query = text("INSERT INTO roles (name, description) VALUES (:name, :description) RETURNING id, name, description;")
+        try:
+            result = await self.db.execute(query, {"name": role_data.name, "description": role_data.description})
+            await self.db.commit()
+            return dict(result.mappings().first())
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error al insertar rol: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error interno del servidor.")
+
+### ARCHIVO: modules/roles/role_router.py
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from core.database import get_db
+from modules.roles.role_schema import RoleCreate, RoleResponse
+from modules.roles.role_service import RoleService
+
+router = APIRouter(prefix="/roles", tags=["Roles"])
+
+@router.get("/", response_model=list[RoleResponse], status_code=status.HTTP_200_OK)
+async def read_roles(db: AsyncSession = Depends(get_db)):
+    service = RoleService(db)
+    return await service.get_all_roles()
+
+@router.post("/", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
+async def add_role(role_in: RoleCreate, db: AsyncSession = Depends(get_db)):
+    service = RoleService(db)
+    return await service.create_role(role_in)
+
+--------------------------------------------------------------------------------
+6. MÓDULO DE USUARIOS
+--------------------------------------------------------------------------------
+
+### ARCHIVO: modules/users/user_schema.py
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+
+class UserBase(BaseModel):
+    username: str = Field(..., min_length=4, max_length=50)
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=6, max_length=100)
+    role_id: int = Field(..., gt=0)
+
+class UserResponse(UserBase):
+    id: int
+    is_active: bool
+    role_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+### ARCHIVO: modules/users/user_service.py
+from fastapi import HTTPException, status
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from modules.users.user_schema import UserCreate
+from core.security import hash_password
+from core.logger import logger
+
+class UserService:
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def get_all_users(self) -> list[dict]:
+        logger.info("SQL Nativo: Consultando todos los usuarios.")
+        query = text("SELECT id, username, email, is_active, role_id FROM users ORDER BY id ASC;")
+        result = await self.db.execute(query)
+        return [dict(row) for row in result.mappings().all()]
+
+    async def create_user(self, user_data: UserCreate) -> dict:
+        logger.info(f"SQL Nativo: Registrando usuario {user_data.username}")
+        
+        dup = await self.db.execute(
+            text("SELECT id FROM users WHERE username = :username OR email = :email;"),
+            {"username": user_data.username, "email": user_data.email}
+        )
+        if dup.first():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario o correo ya existen.")
+
+        role_check = await self.db.execute(text("SELECT id FROM roles WHERE id = :role_id;"), {"role_id": user_data.role_id})
+        if not role_check.first():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El role_id proveído no existe.")
+
+        # Uso de la función bcrypt nativa
+        hashed_pwd = hash_password(user_data.password)
+        
+        query = text("INSERT INTO users (username, email, hashed_password, is_active, role_id) VALUES (:username, :email, :hashed_password, TRUE, :role_id) RETURNING id, username, email, is_active, role_id;")
+        try:
+            result = await self.db.execute(query, {
+                "username": user_data.username,
+                "email": user_data.email,
+                "hashed_password": hashed_pwd,
+                "role_id": user_data.role_id
+            })
+            await self.db.commit()
+            return dict(result.mappings().first())
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error al guardar usuario: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al crear el usuario.")
+
+### ARCHIVO: modules/users/user_router.py
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from core.database import get_db
+from modules.users.user_schema import UserCreate, UserResponse
+from modules.users.user_service import UserService
+
+router = APIRouter(prefix="/users", tags=["Usuarios"])
+
+@router.get("/", response_model=list[UserResponse], status_code=status.HTTP_200_OK)
+async def read_users(db: AsyncSession = Depends(get_db)):
+    service = UserService(db)
+    return await service.get_all_users()
+
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def add_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+    service = UserService(db)
+    return await service.create_user(user_in)
+
+--------------------------------------------------------------------------------
+7. MÓDULO DE AUTENTICACIÓN (JWT)
+--------------------------------------------------------------------------------
+
+### ARCHIVO: modules/auth/auth_service.py
+from fastapi import HTTPException, status
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from core.security import verify_password, create_access_token
+from core.logger import logger
+
+class AuthService:
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def login(self, username_in: str, password_in: str) -> str:
+        logger.info(f"SQL Nativo: Intento de login para: {username_in}")
+        
+        query = text("SELECT id, username, hashed_password, is_active, role_id FROM users WHERE username = :username;")
+        result = await self.db.execute(query, {"username": username_in})
+        user = result.mappings().first()
+
+        # Validación con la lógica de verificación directa de bytes de bcrypt
+        if not user or not verify_password(password_in, user["hashed_password"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Credenciales inválidas.",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+
+        if not user["is_active"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario inactivo.")
+
+        return create_access_token(data={"sub": user["username"], "user_id": user["id"], "role_id": user["role_id"]})
+
+### ARCHIVO: modules/auth/auth_router.py
+from fastapi import APIRouter, Depends, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.ext.asyncio import AsyncSession
+from core.database import get_db
+from modules.auth.auth_service import AuthService
+
+router = APIRouter(prefix="/auth", tags=["Autenticación"])
+
+@router.post("/login", status_code=status.HTTP_200_OK)
+async def sign_in(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+    service = AuthService(db)
+    token = await service.login(form_data.username, form_data.password)
+    return {"access_token": token, "token_type": "bearer"}
+
+--------------------------------------------------------------------------------
+8. PUNTO DE ENTRADA CENTRAL DE LA APLICACIÓN
+--------------------------------------------------------------------------------
+
+### ARCHIVO: main.py
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from modules.roles.role_router import router as role_router
+from modules.users.user_router import router as user_router
+from modules.auth.auth_router import router as auth_router
+from core.logger import logger
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("==========================================================")
+    logger.info("  ¡API Modular Inicializada en Raíz con Éxito (Lifespan)!")
+    logger.info("  Documentación interactiva: http://127.0.0.1:8000/docs")
+    logger.info("==========================================================")
+    yield
+    logger.info("Cerrando recursos de la API de forma segura.")
+
+app = FastAPI(
+    title="API FastAPI Modular sin SRC - SQL Puro",
+    version="3.1.0",
+    description="Estructura limpia basada en dominios directo en raíz sin Passlib",
+    lifespan=lifespan
+)
+
+# Inyección directa de rutas modulares verificadas sin prefijos redundantes
+app.include_router(auth_router)
+app.include_router(role_router)
+app.include_router(user_router)
+
+--------------------------------------------------------------------------------
+9. INSTRUCCIONES DE EJECUCIÓN Y PRUEBAS
+--------------------------------------------------------------------------------
+1. Coloca todos los archivos respetando estrictamente la estructura del punto 1.
+2. Crea tu entorno virtual de Python e instala los requerimientos actualizados:
+   pip install -r requirements.txt
+3. Asegúrate de configurar las credenciales correctas de PostgreSQL en el .env.
+4. Lanza el servidor directamente apuntando a la raíz del proyecto:
+   uvicorn main:app --reload
+================================================================================
+
+
+--------------------------------------------------------------------------------
+10. INCREMENTAR SEGURIDAD: DEPENDENCIA DE AUTENTICACIÓN CENTRALIZADA
+--------------------------------------------------------------------------------
+
+Para bloquear el acceso global a los endpoints de forma automática, añadiremos el 
+esquema estándar de FastAPI (OAuth2PasswordBearer) dentro del archivo de seguridad 
+de la infraestructura compartida. Esta función extraerá el JWT del encabezado HTTP,
+lo decodificará y consultará a la base de datos la información extendida del 
+usuario (incluido el nombre de su rol) mediante SQL puro.
+
+### MODIFICACIÓN AL ARCHIVO: core/security.py
+
+Añade este bloque al final del archivo original:
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from core.database import get_db
+import jwt
+
+# Define el endpoint donde los aprendices obtienen el token por primera vez
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme), 
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Dependencia reutilizable que valida el token JWT y extrae la 
+    identidad completa del usuario directamente desde la base de datos.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudo validar el token de acceso o ha expirado.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        # Decodificar el token firmado con nuestra firma del .env
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username: str = payload.get("sub")
+        user_id: int = payload.get("user_id")
+        
+        if username is None or user_id is None:
+            raise credentials_exception
+    except jwt.PyJWTError:
+        raise credentials_exception
+        
+    # Consulta SQL Nativa para traer el usuario activo junto con su ROL asignado
+    query = text("""
+        SELECT u.id, u.username, u.email, u.is_active, u.role_id, r.name as role_name 
+        FROM users u
+        INNER JOIN roles r ON u.role_id = r.id
+        WHERE u.id = :user_id AND u.is_active = TRUE;
+    """)
+    
+    result = await db.execute(query, {"user_id": user_id})
+    user_row = result.mappings().first()
+    
+    if not user_row:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Usuario inexistente o inhabilitado en el sistema."
+        )
+        
+    return dict(user_row)
+
+
+--------------------------------------------------------------------------------
+11. MÓDULO DE USUARIOS: ACTUALIZACIÓN DINÁMICA Y REGLAS DE ROLES
+--------------------------------------------------------------------------------
+
+Siguiendo la regla de oro, crearemos un esquema Pydantic para manejar las 
+solicitudes de edición parcial (Optional)  y dotaremos a la capa de servicios 
+con lógica de control de permisos.
+
+### ARCHIVO NUEVO/ACTUALIZADO: modules/users/user_schema.py
+
+Añade al final del archivo el esquema de actualización:
+
+from typing import Optional
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    password: Optional[str] = Field(None, min_length=6, max_length=100)
+    role_id: Optional[int] = Field(None, gt=0)
+    is_active: Optional[bool] = None
+
+
+### MODIFICACIÓN AL ARCHIVO: modules/users/user_service.py
+
+Agrega el siguiente método asíncrono dentro de la clase UserService:
+
+from modules.users.user_schema import UserUpdate
+
+    async def update_user(self, target_user_id: int, user_update: UserUpdate, current_user: dict) -> dict:
+        logger.info(f"Usuario '{current_user['username']}' intenta modificar el usuario ID: {target_user_id}")
+
+        # REGLA 1: Un 'Aprendiz' solo puede editarse a sí mismo
+        if current_user["role_name"] != "Administrador" and current_user["id"] != target_user_id:
+            logger.warning(f"Acceso denegado para '{current_user['username']}'")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Permiso denegado. No tienes autorización para modificar datos de otros usuarios."
+            )
+        
+        # REGLA 2: Un 'Aprendiz' NO puede auto-escalarse de rol ni cambiar su estado activo
+        if current_user["role_name"] != "Administrador":
+            if user_update.role_id is not None or user_update.is_active is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, 
+                    detail="Permiso denegado. Solo un Administrador puede alterar roles o estados."
+                )
+
+        # Verificar que el usuario objetivo realmente exista en PostgreSQL
+        check = await self.db.execute(text("SELECT id FROM users WHERE id = :id;"), {"id": target_user_id})
+        if not check.first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El usuario a modificar no existe.")
+
+        # Construcción dinámica de la sentencia UPDATE con SQL Puro
+        update_fields = []
+        params = {"id": target_user_id}
+
+        if user_update.email is not None:
+            # Validar duplicación de correo contra otros usuarios existentes
+            dup_email = await self.db.execute(
+                text("SELECT id FROM users WHERE email = :email AND id != :id;"), 
+                {"email": user_update.email, "id": target_user_id}
+            )
+            if dup_email.first():
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El correo ya está registrado.")
+            update_fields.append("email = :email")
+            params["email"] = user_update.email
+
+        if user_update.password is not None:
+            update_fields.append("hashed_password = :hashed_password")
+            params["hashed_password"] = hash_password(user_update.password)
+
+        if user_update.role_id is not None:
+            # Verificar existencia del nuevo rol
+            role_exist = await self.db.execute(text("SELECT id FROM roles WHERE id = :r_id;"), {"r_id": user_update.role_id})
+            if not role_exist.first():
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El rol asignado no existe.")
+            update_fields.append("role_id = :role_id")
+            params["role_id"] = user_update.role_id
+
+        if user_update.is_active is not None:
+            update_fields.append("is_active = :is_active")
+            params["is_active"] = user_update.is_active
+
+        if not update_fields:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se enviaron datos para actualizar.")
+
+        # Unificar campos en el string de SQL Nativo
+        query_str = f"""
+            UPDATE users 
+            SET {', '.join(update_fields)} 
+            WHERE id = :id 
+            RETURNING id, username, email, is_active, role_id;
+        """
+        
+        try:
+            result = await self.db.execute(text(query_str), params)
+            await self.db.commit()
+            return dict(result.mappings().first())
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error crítico en actualización SQL: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al procesar los datos.")
+
+
+--------------------------------------------------------------------------------
+12. CONFIGURACIÓN DE SEGURIDAD EN CAPA DE ROUTERS
+--------------------------------------------------------------------------------
+
+Modificamos las capas de presentación de Roles y Usuarios  inyectando la nueva 
+dependencia get_current_user. Aquí se aplican restricciones absolutas según las 
+jerarquías de rol de tu ecosistema.
+
+### ARCHIVO ACTUALIZADO: modules/roles/role_router.py
+
+Aplica protección estricta. Nadie puede ver ni crear roles a menos que sea un 
+Administrador.
+
+from fastapi import APIRouter, Depends, status, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from core.database import get_db
+from core.security import get_current_user  # Nueva importación
+from modules.roles.role_schema import RoleCreate, RoleResponse
+from modules.roles.role_service import RoleService
+
+router = APIRouter(prefix="/roles", tags=["Roles"])
+
+@router.get("/", response_model=list[RoleResponse], status_code=status.HTTP_200_OK)
+async def read_roles(
+    db: AsyncSession = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
+):
+    """Acceso restringido: Solo Administradores pueden listar roles."""
+    if current_user["role_name"] != "Administrador":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado. Rol insuficiente.")
+    service = RoleService(db)
+    return await service.get_all_roles()
+
+@router.post("/", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
+async def add_role(
+    role_in: RoleCreate, 
+    db: AsyncSession = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
+):
+    """Acceso restringido: Solo Administradores pueden registrar nuevos roles."""
+    if current_user["role_name"] != "Administrador":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado. Rol insuficiente.")
+    service = RoleService(db)
+    return await service.create_role(role_in)
+
+
+### ARCHIVO ACTUALIZADO: modules/users/user_router.py
+
+Se protegen los listados y se integra el endpoint seguro de actualización 
+parametrizada (PUT).
+
+
+from fastapi import APIRouter, Depends, status, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from core.database import get_db
+from core.security import get_current_user  # Nueva importación
+from modules.users.user_schema import UserCreate, UserUpdate, UserResponse
+from modules.users.user_service import UserService
+
+router = APIRouter(prefix="/users", tags=["Usuarios"])
+
+@router.get("/", response_model=list[UserResponse], status_code=status.HTTP_200_OK)
+async def read_users(
+    db: AsyncSession = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
+):
+    """Acceso restringido: Solo un Administrador puede ver el pool de usuarios completo."""
+    if current_user["role_name"] != "Administrador":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado. Rol insuficiente.")
+    service = UserService(db)
+    return await service.get_all_users()
+
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def add_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+    """Mantenido público intencionalmente para permitir el autoregistro inicial de aprendices."""
+    service = UserService(db)
+    return await service.create_user(user_in)
+
+@router.put("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
+async def update_existing_user(
+    user_id: int, 
+    user_data: UserUpdate, 
+    db: AsyncSession = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Endpoint Protegido por Token y RBAC:
+    - Admin: Modifica a cualquier usuario sin restricciones.
+    - Aprendiz: Solo puede modificarse a sí mismo (restringido en capa de servicios).
+    """
+    service = UserService(db)
+    return await service.update_user(user_id, user_data, current_user)
+
+
+Para tener en cuenta.
+--------------------------------------------------------------------------------
+Autenticación Perimetral (Router): Si una petición web carece de un token válido
+en la cabecera Authorization: Bearer <token>, el framework rechaza la solicitud 
+de inmediato antes de gastar recursos de conexión con la base de datos.
+
+Autorización basada en Contexto (Service Layer): La lógica de negocio determina de 
+manera granular qué operaciones de base de datos le pertenecen a un usuario o 
+recurso en particular comparando dinámicamente los IDs, previniendo vulnerabilidades
+críticas de control de acceso (como BOLA / IDOR).
+
+
+--------------------------------------------------------------------------------
+13. DESPLIEGUE EN RENDER
+--------------------------------------------------------------------------------
+
+a.  Generar el archivo requirements.txt.
+    Ejecute el siguiente comando para crear un archivo con todas las dependencias del
+    proyecto, incluyendo el nombre de cada librería y su versión instalada:
+
+    pip freeze > requirements.txt
+
+b.  Crear un repositorio en GitHub.
+    Cree un nuevo repositorio en GitHub y suba el proyecto completo, asegurándose de
+    incluir el archivo requirements.txt.
+
+c.  Crear un servicio en Render.
+    Cree una cuenta en Render, inicie sesión y seleccione la opción Web Service. Luego,
+    vincule el servicio con el repositorio de GitHub donde se encuentra el proyecto.
+    
+    Configurar el comando de inicio.
+    En el campo Start Command, ingrese el siguiente comando para iniciar la aplicación:
+
+    uvicorn main:app --host 0.0.0.0 --port $PORT
+
+d.  Configurar las variables de entorno.
+    En la sección Environment, registre todas las variables de entorno definidas en el
+    archivo .env de su proyecto. Cada variable debe crearse con su respectivo nombre y
+    valor para garantizar el correcto funcionamiento de la aplicación.
+
+    
+
+
+
