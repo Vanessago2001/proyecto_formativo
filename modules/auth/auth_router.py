@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, status
+﻿from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
@@ -8,7 +8,7 @@ router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 
 class LoginRequest(BaseModel):
-    correo: str = Field(..., min_length=3, description="Correo o usuario con el que se intenta ingresar")
+    correo: str = Field(..., min_length=3, description="Correo con el que se intenta ingresar")
     password: str = Field(..., min_length=1, description="Contraseña del usuario")
 
 

@@ -24,7 +24,7 @@ async def ensure_login_security_schema(session) -> None:
     """))
 
     await session.execute(text("""
-        CREATE TABLE IF NOT EXISTS usuarios (
+        CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             nit VARCHAR(20) UNIQUE,
             correo VARCHAR(255) UNIQUE NOT NULL,
@@ -36,16 +36,16 @@ async def ensure_login_security_schema(session) -> None:
         );
     """))
 
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nit VARCHAR(20) UNIQUE;"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS correo VARCHAR(255) UNIQUE;"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'Activo';"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intentos_fallidos INTEGER DEFAULT 0;"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS bloqueado_hasta TIMESTAMP WITH TIME ZONE;"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;"))
+    await session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS nit VARCHAR(20) UNIQUE;"))
+    await session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS correo VARCHAR(255) UNIQUE;"))
+    await session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"))
+    await session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'Activo';"))
+    await session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS intentos_fallidos INTEGER DEFAULT 0;"))
+    await session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bloqueado_hasta TIMESTAMP WITH TIME ZONE;"))
+    await session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;"))
 
     await session.execute(text("""
-        UPDATE usuarios
+        UPDATE users
         SET estado = CASE
             WHEN estado IS NULL THEN 'Activo'
             ELSE estado
@@ -54,7 +54,7 @@ async def ensure_login_security_schema(session) -> None:
     """))
 
     await session.execute(text("""
-        UPDATE usuarios
+        UPDATE users
         SET intentos_fallidos = COALESCE(intentos_fallidos, 0)
         WHERE intentos_fallidos IS NULL;
     """))

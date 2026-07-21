@@ -46,19 +46,19 @@ class AuthService:
         identifier = correo_in.strip().lower()
         logger.info("SQL Nativo: Intento de login para: %s", identifier)
 
-        table_name = "usuarios"
+        table_name = "users"
         query = text("""
             SELECT
                 id,
-                correo AS email,
+                email,
                 password_hash,
                 estado,
                 intentos_fallidos,
                 bloqueado_hasta,
-                TRUE AS is_active,
-                NULL AS role_id
-            FROM usuarios
-            WHERE LOWER(correo) = LOWER(:identifier)
+                is_active,
+                role_id
+            FROM users
+            WHERE LOWER(email) = LOWER(:identifier)
             LIMIT 1;
         """)
         try:
