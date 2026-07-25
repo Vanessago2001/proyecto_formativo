@@ -1,25 +1,27 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserBase(BaseModel):
-    username: str = Field(..., min_length=4, max_length=50)
-    email: EmailStr
+  nombre: str = Field(..., min_length=4, max_length=50)
+  correo: EmailStr
+
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, max_length=100)
-    role_id: int = Field(..., gt=0)
+  contrasena: str = Field(..., min_length=6, max_length=100)
+  rol: int = Field(..., gt=0)
+
 
 class UserResponse(UserBase):
-    id: int
-    is_active: bool
-    role_id: int
+  id: int
+  estado: str
+  rol: int
 
-    model_config = ConfigDict(from_attributes=True)
+  model_config = ConfigDict(from_attributes=True)
+
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    password: Optional[str] = Field(None, min_length=6, max_length=100)
-    role_id: Optional[int] = Field(None, gt=0)
-    is_active: Optional[bool] = None
-
+  correo: Optional[EmailStr] = None
+  contrasena: Optional[str] = Field(None, min_length=6, max_length=100)
+  rol: Optional[int] = Field(None, gt=0)
+  estado: Optional[str] = None
