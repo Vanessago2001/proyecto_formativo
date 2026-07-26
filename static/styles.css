@@ -1,0 +1,326 @@
+/* ===========================
+   FUENTE
+=========================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Montserrat',sans-serif;
+    background:#f5f7fa;
+    color:#333;
+}
+
+/* ===========================
+   ENCABEZADO
+=========================== */
+
+.login-header{
+    background:#3BAA01;
+    color:white;
+    padding:10px 45px;
+    box-shadow:0 4px 15px rgba(0,0,0,.15);
+}
+
+.header-content{
+    width:100%;
+    max-width:1300px;
+    margin:auto;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:28px;
+}
+
+.sena-blanco{
+    width:100px;
+    height:auto;
+    display:block;
+    filter:drop-shadow(0 2px 5px rgba(0,0,0,.20));
+}
+
+.header-left h1{
+    font-size:34px;
+    font-weight:700;
+    letter-spacing:1px;
+    margin:0;
+}
+
+.subtitle{
+    margin-top:5px;
+    font-size:14px;
+    font-weight:400;
+    opacity:.95;
+}
+
+.header-buttons{
+    display:flex;
+    gap:15px;
+}
+
+.header-buttons .btn-login{
+    width:auto;
+    padding:12px 30px;
+    background:white;
+    color:#3BAA01;
+    border:2px solid white;
+    border-radius:30px;
+    font-weight:600;
+    transition:.3s;
+}
+
+.header-buttons .btn-login:hover{
+    background:#2e8a01;
+    color:white;
+    transform:translateY(-2px);
+}
+
+/* ===========================
+   CONTENIDO
+=========================== */
+
+.login-container{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:70px 20px;
+}
+
+/* ===========================
+   TARJETA
+=========================== */
+
+.login-form{
+    width:470px;
+    background:white;
+    border-radius:18px;
+    padding:40px;
+    box-shadow:0 15px 40px rgba(0,0,0,.08);
+}
+
+.login-form h2{
+    text-align:center;
+    color:#2e8a01;
+    font-size:30px;
+    margin-bottom:35px;
+    font-weight:700;
+}
+
+/* ===========================
+   FORMULARIO
+=========================== */
+
+.form-group{
+    margin-bottom:22px;
+}
+
+.form-group label{
+    display:block;
+    margin-bottom:8px;
+    font-size:14px;
+    font-weight:600;
+    color:#444;
+}
+
+.form-group input{
+    width:100%;
+    padding:14px 15px;
+    border:1px solid #d5d5d5;
+    border-radius:10px;
+    font-size:15px;
+    transition:.3s;
+}
+
+.form-group input:focus{
+    outline:none;
+    border-color:#3BAA01;
+    box-shadow:0 0 10px rgba(59,170,1,.25);
+}
+
+.form-group select{
+    width:100%;
+    padding:14px 15px;
+    border:1px solid #d5d5d5;
+    border-radius:10px;
+    font-size:15px;
+    transition:.3s;
+    background:white;
+}
+
+.form-group select:focus{
+    outline:none;
+    border-color:#3BAA01;
+    box-shadow:0 0 10px rgba(59,170,1,.25);
+}
+
+.btn-login{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:10px;
+    background:#3BAA01;
+    color:white;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    transition:.3s;
+    text-decoration:none;
+    display:inline-block;
+    text-align:center;
+}
+
+.btn-login:hover{
+    background:#2e8a01;
+    transform:translateY(-2px);
+    box-shadow:0 10px 25px rgba(59,170,1,.30);
+}
+
+.resultado-container{
+    margin-top:25px;
+    padding-top:15px;
+}
+
+.error-message{
+    color:#d62828;
+    font-weight:600;
+}
+
+/* ===========================
+   FOOTER
+=========================== */
+
+.login-footer{
+    margin-top:40px;
+    text-align:center;
+    padding:20px;
+    color:#666;
+    font-size:14px;
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+
+/* ===========================
+   BOTÓN HAMBURGUESA
+=========================== */
+
+.hamburger-btn{
+    display:none;
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:8px;
+    z-index:100;
+}
+
+.hamburger-btn span{
+    display:block;
+    width:28px;
+    height:3px;
+    background:white;
+    margin:5px 0;
+    border-radius:3px;
+    transition:.3s;
+}
+
+.hamburger-btn.active span:nth-child(1){
+    transform:rotate(45deg) translate(5px,6px);
+}
+
+.hamburger-btn.active span:nth-child(2){
+    opacity:0;
+}
+
+.hamburger-btn.active span:nth-child(3){
+    transform:rotate(-45deg) translate(5px,-6px);
+}
+
+/* ===========================
+   MOBILE MENU
+=========================== */
+
+.mobile-menu{
+    display:none;
+}
+
+.mobile-menu.open{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    position:absolute;
+    top:100%;
+    left:0;
+    right:0;
+    background:#3BAA01;
+    padding:15px 20px;
+    box-shadow:0 10px 25px rgba(0,0,0,.15);
+    z-index:99;
+}
+
+.mobile-menu a{
+    width:100%;
+    padding:12px 20px;
+    background:white;
+    color:#3BAA01;
+    border:2px solid white;
+    border-radius:30px;
+    font-weight:600;
+    font-size:15px;
+    text-decoration:none;
+    text-align:center;
+    transition:.3s;
+}
+
+.mobile-menu a:hover{
+    background:#2e8a01;
+    color:white;
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+
+@media (max-width: 770px) {
+    .login-header{
+        padding:10px 20px;
+        position:relative;
+    }
+    .header-content{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    }
+    .header-left{
+        gap:12px;
+    }
+    .sena_blanco.png{
+        width:65px;
+    }
+    .header-left h1{
+        font-size:22px;
+    }
+    .header-buttons{
+        display:none;
+    }
+    .hamburger-btn{
+        display:block;
+    }
+    .login-form{
+        width:100%;
+        padding:30px;
+    }
+    .subtitle{
+        font-size:12px;
+    }
+}
