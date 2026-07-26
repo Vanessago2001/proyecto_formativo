@@ -35,7 +35,7 @@ class UserService:
       )
 
     role_check = await self.db.execute(
-        text('SELECT id FROM roles WHERE id = :rol;'), {'rol': user_data.rol}
+        text('SELECT id FROM rol WHERE id = :rol;'), {'rol': user_data.rol}
     )
     if not role_check.first():
       raise HTTPException(
@@ -99,7 +99,7 @@ class UserService:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
-                'Permiso denegado. Solo un Administrador puede alterar roles o'
+                'Permiso denegado. Solo un Administrador puede alterar rol o'
                 ' estados.'
             ),
         )
@@ -135,7 +135,7 @@ class UserService:
 
     if user_update.rol is not None:
       role_exist = await self.db.execute(
-          text('SELECT id FROM roles WHERE id = :r_id;'),
+          text('SELECT id FROM rol WHERE id = :r_id;'),
           {'r_id': user_update.rol},
       )
       if not role_exist.first():

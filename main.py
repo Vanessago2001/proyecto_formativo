@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from modules.roles.roles_router import router as role_router
 from modules.users.user_router import router as users_router
@@ -64,20 +66,20 @@ async def seed_initial_data() -> None:
         try:
             await ensure_login_security_schema(session)
 
-            default_roles = [
+            default_rol = [
                 ("Administrador", "Acceso total al sistema"),
                 ("Instructor", "Puede gestionar tareas y usuarios"),
                 ("Aprendiz", "Usuario estándar"),
             ]
 
-            for role_name, role_description in default_roles:
+            for role_name, role_description in default_rol:
                 existing_role = await session.execute(
-                    text("SELECT id FROM roles WHERE name = :name;"),
+                    text("SELECT id FROM rol WHERE name = :name;"),
                     {"name": role_name},
                 )
                 if existing_role.scalar_one_or_none() is None:
                     await session.execute(
-                        text("INSERT INTO roles (name, description) VALUES (:name, :description);"),
+                        text("INSERT INTO rol (name, description) VALUES (:name, :description);"),
                         {"name": role_name, "description": role_description},
                     )
 
@@ -87,7 +89,7 @@ async def seed_initial_data() -> None:
             )
             if existing_admin.scalar_one_or_none() is None:
                 role_result = await session.execute(
-                    text("SELECT id FROM roles WHERE name = :name;"),
+                    text("SELECT id FROM rol WHERE name = :name;"),
                     {"name": "Administrador"},
                 )
                 admin_role_id = role_result.scalar_one_or_none()
@@ -128,8 +130,100 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Montaje de archivos estáticos (CSS, JS, imágenes)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # Inyección directa de rutas modulares verificadas sin prefijos redundantes
 app.include_router(auth_router)
 app.include_router(role_router)
 app.include_router(users_router)
 app.include_router(tarea_router)
+
+
+# ============================================================
+# RUTAS DE INTERFAZ DE USUARIO
+# ============================================================
+
+@app.get("/", response_class=HTMLResponse)
+async def index_page(request: Request):
+    """Sirve la página principal de consulta de documentos."""
+    return FileResponse("static/index.html")
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Sirve la página de inicio de sesión desde archivos estáticos."""
+    return FileResponse("static/login.html")
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    """Sirve la página de registro de usuarios."""
+    return FileResponse("static/register.html")
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    """Página de inicio después de iniciar sesión (placeholder)."""
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>CertiSENA - Dashboard</title>
+      <link rel="stylesheet" href="/static/styles.css" />
+      <style>
+        .dashboard-header {
+          background-color: #3BAA01;
+          color: #ffffff;
+          padding: 20px;
+          text-align: center;
+        }
+        .dashboard-content {
+          background-color: #ffffff;
+          padding: 40px;
+          border-radius: 10px;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          max-width: 800px;
+          margin: 30px auto;
+        }
+        .dashboard-content h2 { color: #3BAA01; }
+        .logout-btn {
+          background-color: #3BAA01;
+          color: #ffffff;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+        }
+        .logout-btn:hover { background-color: #2e8a01; }
+      </style>
+    </head>
+    <body>
+      <header class="dashboard-header">
+        <h1>CertiSENA</h1>
+        <p>Panel principal</p>
+      </header>
+      <main class="login-container">
+        <div class="dashboard-content">
+          <h2>¡Bienvenido!</h2>
+          <p>Has iniciado sesión correctamente.</p>
+          <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </main>
+      <footer class="login-footer">
+        <p>&copy; 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
+      </footer>
+      <script>
+        function logout() {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('token_type');
+          window.location.href = '/';
+        }
+      </script>
+    </body>
+    </html>
+    """
+    return html_content

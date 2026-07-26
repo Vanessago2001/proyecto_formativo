@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from core.database import get_db
 from typing import Any
-
 import jwt
 
 def hash_password(password: str) -> str:
@@ -61,7 +60,7 @@ async def get_current_user(
     query = text("""
         SELECT u.id, u.username, u.email, u.is_active, u.role_id, r.name as role_name 
         FROM users u
-        INNER JOIN roles r ON u.role_id = r.id
+        INNER JOIN rol r ON u.role_id = r.id
         WHERE u.id = :user_id AND u.is_active = TRUE;
     """)
     

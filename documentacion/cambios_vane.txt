@@ -1,0 +1,186 @@
+================================================================================
+REGISTRO DE CAMBIOS - PROYECTO CERTISENA
+================================================================================
+Fecha: 25/07/2026
+Desarrollador: Vanessa
+================================================================================
+
+OBJETIVO:
+  Crear la interfaz web para el sistema CertiSENA, incluyendo la página de
+  login, la página principal de consulta de documentos y la página de
+  registro de usuarios. Utilizar el color institucional #3BAA01 (verde
+  SENA) en los encabezados y el color blanco en la mayoría del contenido.
+
+================================================================================
+CAMBIOS REALIZADOS
+================================================================================
+
+1. DIRECTORIO: static/ (NUEVO)
+   --------------------------------------------------------------------------------
+   Se creó el directorio `static/` en la raíz del proyecto para albergar
+   los archivos estáticos de la interfaz web.
+
+   Archivos creados:
+   - static/login.html       -> Página de inicio de sesión
+   - static/index.html       -> Página principal de consulta de documentos
+   - static/register.html    -> Página de registro de usuarios
+   - static/styles.css       -> Hoja de estilos global
+   - static/logoSena.png     -> Logo del SENA (copiado desde documentacion/)
+
+2. ARCHIVO: static/login.html (NUEVO)
+   --------------------------------------------------------------------------------
+   - Página HTML para el inicio de sesión de usuarios.
+   - Encabezado con color de fondo #3BAA01 (verde institucional SENA).
+   - Logo SENA (`logoSena.png`) en el encabezado.
+   - Formulario con campos: correo/usuario y contraseña.
+   - Botón "Entrar" con color #3BAA01.
+   - Conexión al endpoint `/auth/login` mediante fetch API (JSON).
+   - Almacenamiento del token JWT en localStorage.
+   - Redirección a `/dashboard` tras inicio de sesión exitoso.
+   - Mensaje de error en rojo (#d32f2f) para credenciales inválidas.
+   - Pie de página en blanco con texto gris.
+   - Diseño responsive para dispositivos móviles.
+   - Sin imágenes (excepto el logo SENA).
+
+3. ARCHIVO: static/index.html (NUEVO)
+   --------------------------------------------------------------------------------
+   - Página principal de consulta de documentos.
+   - Encabezado con color de fondo #3BAA01 y logo SENA.
+   - Sección de "Consulta de documentos" con:
+     * Campo de texto para el radicado del documento.
+     * Campo de texto para el NIT de la empresa.
+     * Botón "Consultar" con color #3BAA01.
+     * Área de resultados para mostrar los datos del documento.
+   - Sección de "Acceso de usuario" con:
+     * Botón "Registrarse" (enlace a /register).
+     * Botón "Iniciar sesión" (enlace a /login).
+   - Conexión al endpoint `/api/documentos/consultar` mediante fetch API.
+   - Pie de página en blanco.
+   - Diseño responsive.
+
+4. ARCHIVO: static/register.html (NUEVO)
+   --------------------------------------------------------------------------------
+   - Página de registro de nuevos usuarios.
+   - Encabezado con color de fondo #3BAA01 y logo SENA.
+   - Formulario con campos: nombre, correo, contraseña y rol.
+   - Botón "Registrarse" con color #3BAA01.
+   - Conexión al endpoint `/users/create-user` mediante fetch API (JSON).
+   - Enlace a la página de login para usuarios existentes.
+   - Pie de página en blanco.
+   - Diseño responsive.
+
+5. ARCHIVO: static/styles.css (NUEVO)
+   --------------------------------------------------------------------------------
+   - Hoja de estilos global para todas las páginas.
+   - Color #3BAA01 para: encabezado, botones, títulos de formulario,
+     enlaces y foco de inputs.
+   - Color #ffffff (blanco) para: contenedor del formulario y pie de página.
+   - Color #f0f2f5 para el fondo de la página.
+   - Estilos para inputs, labels, botones y mensajes de error.
+   - Diseño responsive con media queries para pantallas pequeñas.
+
+6. ARCHIVO: main.py (MODIFICADO)
+   --------------------------------------------------------------------------------
+   Cambios realizados:
+   - Agregadas importaciones:
+     * from fastapi import FastAPI, Request
+     * from fastapi.responses import HTMLResponse, FileResponse
+     * from fastapi.staticfiles import StaticFiles
+   - Montaje de archivos estáticos:
+     * app.mount("/static", StaticFiles(directory="static"), name="static")
+   - Nuevas rutas de interfaz de usuario:
+     * GET /           -> Sirve static/index.html (página principal)
+     * GET /login      -> Sirve static/login.html (página de login)
+     * GET /register   -> Sirve static/register.html (página de registro)
+     * GET /dashboard  -> Página de bienvenida tras iniciar sesión
+   - Se mantuvieron todas las rutas API existentes (auth, rol, users, tareas).
+
+7. ARCHIVO: documentacion/logoSena.png (COPIADO)
+   --------------------------------------------------------------------------------
+   - El logo SENA fue copiado desde documentacion/ a static/ para servirlo
+     como archivo estático en las páginas web.
+
+================================================================================
+ESTRUCTURA DE ARCHIVOS RESULTANTE
+================================================================================
+
+proyecto_formativo/
+├── .env
+├── guia.txt
+├── main.py                    [MODIFICADO]
+├── requirements.txt
+├── core/
+│   ├── config.py
+│   ├── database.py
+│   ├── logger.py
+│   └── security.py
+├── documentacion/
+│   ├── cambios_vane.txt       [NUEVO - este archivo]
+│   ├── Formato ieee 830.docx
+│   ├── Login_IA_prueba1.txt
+│   ├── logoSena.png
+│   ├── permisos.xlsx
+│   └── requisitos_no_funcionales_y_permisos.md
+├── modules/
+│   ├── auth/
+│   │   ├── auth_router.py
+│   │   └── auth_service.py
+│   ├── rol/
+│   │   ├── rol_router.py
+│   │   ├── rol_schema.py
+│   │   └── rol_service.py
+│   ├── tareas/
+│   │   ├── tarea_router.py
+│   │   ├── tarea_schema.py
+│   │   └── tarea_service.py
+│   └── users/
+│       ├── user_router.py
+│       ├── user_schema.py
+│       └── user_service.py
+└── static/                    [NUEVO]
+    ├── index.html             [NUEVO]
+    ├── login.html             [NUEVO]
+    ├── register.html          [NUEVO]
+    ├── styles.css             [NUEVO]
+    └── logoSena.png           [NUEVO - copiado]
+
+================================================================================
+RUTAS DISPONIBLES
+================================================================================
+
+Rutas de interfaz (HTML):
+  GET /              -> Página principal (consulta de documentos)
+  GET /login         -> Página de inicio de sesión
+  GET /register      -> Página de registro de usuarios
+  GET /dashboard     -> Panel de bienvenida (después de login)
+
+Rutas API (JSON):
+  POST /auth/login   -> Autenticación de usuarios (JWT)
+  GET  /rol/       -> Listar rol
+  POST /rol/       -> Crear rol
+  GET  /users/all-users -> Listar usuarios
+  POST /users/create-user -> Crear usuario
+  GET  /tareas/     -> Listar tareas
+  POST /tareas/     -> Crear tarea
+
+Archivos estáticos:
+  GET /static/styles.css
+  GET /static/logoSena.png
+
+================================================================================
+NOTAS ADICIONALES
+================================================================================
+
+- El color #3BAA01 es el color institucional oficial del SENA.
+- La mayoría del contenido visual (formularios, pie de página) utiliza
+  color blanco (#ffffff) para mantener una apariencia limpia y profesional.
+- No se utilizan imágenes decorativas; únicamente el logo oficial del SENA.
+- Todas las páginas están en lenguaje español.
+- El diseño es responsive y funciona en dispositivos móviles.
+- El error de la tabla "rol" en la base de datos es un problema
+  preexistente (la tabla no existe en la base de datos actual) y no está
+  relacionado con los cambios realizados en esta sesión.
+
+================================================================================
+FIN DEL REGISTRO DE CAMBIOS
+================================================================================

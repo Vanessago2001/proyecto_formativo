@@ -5,27 +5,27 @@ from modules.roles.roles_schema import RoleCreate
 from core.logger import logger
 from typing import List, Dict, Any, Optional
 
-class RoleService:
+class rolervice:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def get_all_roles(self) -> List[Dict[str, Any]]:
-        logger.info("SQL Nativo: Consultando todos los roles.")
-        query = text("SELECT id, name, description FROM roles ORDER BY id ASC;")
+    async def get_all_rol(self) -> List[Dict[str, Any]]:
+        logger.info("SQL Nativo: Consultando todos los rol.")
+        query = text("SELECT id, name, description FROM rol ORDER BY id ASC;")
         result = await self.db.execute(query)
         # Usamos row._asdict() o mapeo explícito para que Pylance reconozca el formato dict
         return [dict(row) for row in result.mappings().all()]
     
     async def get_role_by_name(self, el_nombre: str) -> List[Dict[str, Any]]:
         logger.info("SQL Nativo: Consultar un rol por su nombre.")
-        query = text("SELECT id, name, description FROM roles WHERE name LIKE :nombre;")
+        query = text("SELECT id, name, description FROM rol WHERE name LIKE :nombre;")
         el_nombre_param = f"%{el_nombre}%"
         result = await self.db.execute(query, {"nombre": el_nombre_param})
         return [dict(row) for row in result.mappings().all()]
 
     async def get_role_by_id(self, el_id: int) -> Optional[Dict[str, Any]]:
         logger.info("SQL Nativo: Consultar un id con su número.")
-        query = text("SELECT id, name, description FROM roles WHERE id = :identificacion;")
+        query = text("SELECT id, name, description FROM rol WHERE id = :identificacion;")
         result = await self.db.execute(query, {"identificacion": el_id})
         row = result.mappings().first()
         # Si existe el rol lo devuelve como dict, si no, devuelve None
@@ -34,11 +34,11 @@ class RoleService:
     async def create_role(self, role_data: RoleCreate) -> Dict[str, Any]:
         logger.info(f"SQL Nativo: Insertando rol {role_data.name}")
         
-        check = await self.db.execute(text("SELECT id FROM roles WHERE name = :name;"), {"name": role_data.name})
+        check = await self.db.execute(text("SELECT id FROM rol WHERE name = :name;"), {"name": role_data.name})
         if check.first():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El rol ya existe.")
 
-        query = text("INSERT INTO roles (name, description) VALUES (:name, :description) RETURNING id, name, description;")
+        query = text("INSERT INTO rol (name, description) VALUES (:name, :description) RETURNING id, name, description;")
         try:
             result = await self.db.execute(query, {"name": role_data.name, "description": role_data.description})
             await self.db.commit()
@@ -56,12 +56,12 @@ class RoleService:
 
     async def delete_role_by_id(self, el_id: int) -> Dict[str, str]:
         logger.info("SQL Nativo: Consultar un id con su número.")
-        query_check = text("SELECT id FROM roles WHERE id = :identificacion;")
+        query_check = text("SELECT id FROM rol WHERE id = :identificacion;")
         check = await self.db.execute(query_check, {"identificacion": el_id})
         if not check.first():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El rol no existe.")
         
-        query = text("DELETE FROM roles WHERE id = :identy;")
+        query = text("DELETE FROM rol WHERE id = :identy;")
         try:
             await self.db.execute(query, {"identy": el_id})
             await self.db.commit()
