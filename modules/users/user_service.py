@@ -12,12 +12,17 @@ class UserService:
     self.db = db
 
   async def get_all_users(self) -> list[dict]:
-    # Consulta directo a la tabla 'usuario' con sus campos en español
-    query = text(
-        'SELECT id, nombre, correo, estado, rol FROM usuario ORDER BY id ASC;'
-    )
+    # Consulta con JOIN a rol para obtener el nombre del rol
+    query = text("""
+        SELECT u.id, u.nombre, u.correo, u.estado, u.rol_id, u.tipo_doc, u.num_doc,
+               r.nombre AS rol_nombre
+        FROM usuario u
+        LEFT JOIN rol r ON u.rol_id = r.id_rol
+        ORDER BY u.id ASC;
+    """)
     result = await self.db.execute(query)
-    return [dict(row) for row in result.mappings().all()]
+    rows = result.mappings().all()
+    return [{k: v for k, v in row.items()} for row in rows]
 
   async def create_user(self, user_data: UserCreate) -> dict:
     logger.info(f'SQL Nativo: Registrando usuario {user_data.nombre}')
@@ -35,7 +40,7 @@ class UserService:
       )
 
     role_check = await self.db.execute(
-        text('SELECT id FROM rol WHERE id = :rol;'), {'rol': user_data.rol}
+        text('SELECT id_rol FROM rol WHERE id_rol = :rol;'), {'rol': user_data.rol}
     )
     if not role_check.first():
       raise HTTPException(
@@ -46,9 +51,9 @@ class UserService:
     hashed_pwd = hash_password(user_data.contrasena)
 
     query = text("""
-            INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol)
-            VALUES (:nombre, :correo, :contrasena, 'Activo', 0, :rol)
-            RETURNING id, nombre, correo, estado, rol;
+            INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
+            VALUES (:nombre, :correo, :contrasena, 'Activo', 0, :rol, :tipo_doc, :num_doc)
+            RETURNING id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
         """)
     try:
       result = await self.db.execute(
@@ -58,10 +63,13 @@ class UserService:
               'correo': user_data.correo,
               'contrasena': hashed_pwd,
               'rol': user_data.rol,
+              'tipo_doc': user_data.tipo_doc,
+              'num_doc': user_data.num_doc,
           },
       )
       await self.db.commit()
-      return dict(result.mappings().first())
+      row = result.mappings().first()
+      return {k: v for k, v in row.items()} if row else {}
     except Exception as e:
       await self.db.rollback()
       logger.error(f'Error al guardar usuario: {str(e)}')
@@ -71,7 +79,7 @@ class UserService:
       )
 
   async def update_user(
-      self, target_user_id: int, user_update: UserUpdate, current_user: dict
+      self, target_user_id: str, user_update: UserUpdate, current_user: dict
   ) -> dict:
     # Soporta tanto 'nombre' como 'username' para leer el usuario actual
     usuario_actual_nom = current_user.get(
@@ -113,8 +121,8 @@ class UserService:
           detail='El usuario a modificar no existe.',
       )
 
-    update_fields = []
-    params = {'id': target_user_id}
+    update_fields: list[str] = []
+    params: dict[str, object] = {'id': target_user_id}
 
     if user_update.correo is not None:
       dup_email = await self.db.execute(
@@ -135,7 +143,7 @@ class UserService:
 
     if user_update.rol is not None:
       role_exist = await self.db.execute(
-          text('SELECT id FROM rol WHERE id = :r_id;'),
+          text('SELECT id_rol FROM rol WHERE id_rol = :r_id;'),
           {'r_id': user_update.rol},
       )
       if not role_exist.first():
@@ -143,12 +151,20 @@ class UserService:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='El rol asignado no existe.',
         )
-      update_fields.append('rol = :rol')
+      update_fields.append('rol_id = :rol')
       params['rol'] = user_update.rol
 
     if user_update.estado is not None:
       update_fields.append('estado = :estado')
       params['estado'] = user_update.estado
+
+    if user_update.tipo_doc is not None:
+      update_fields.append('tipo_doc = :tipo_doc')
+      params['tipo_doc'] = user_update.tipo_doc
+
+    if user_update.num_doc is not None:
+      update_fields.append('num_doc = :num_doc')
+      params['num_doc'] = user_update.num_doc
 
     if not update_fields:
       raise HTTPException(
@@ -160,13 +176,14 @@ class UserService:
             UPDATE usuario 
             SET {', '.join(update_fields)} 
             WHERE id = :id 
-            RETURNING id, nombre, correo, estado, rol;
+            RETURNING id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
         """
 
     try:
       result = await self.db.execute(text(query_str), params)
       await self.db.commit()
-      return dict(result.mappings().first())
+      row = result.mappings().first()
+      return {k: v for k, v in row.items()} if row else {}
     except Exception as e:
       await self.db.rollback()
       logger.error(f'Error crítico en actualización SQL: {str(e)}')

@@ -7,36 +7,40 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/static/styles.css">
 </head>
+
 <body>
 
 <header class="login-header">
-  <div class="header-content">
+
+    <div class="header-content">
 
         <div class="header-left">
 
-    <img src="/static/sena_blanco.png"
-         alt="Logo SENA"
-         class="sena-blanco">
+            <img
+                src="/static/sena_blanco.png"
+                alt="Logo SENA"
+                class="sena-blanco">
 
-    <div>
+            <div class="header-text">
 
-        <h1>CertiSENA</h1>
+                <h1>CertiSENA</h1>
 
-        <p class="subtitle">
-            Plataforma de gestión y consulta de certificados
-        </p>
+                <p class="subtitle">
+                    Plataforma de gestión y consulta de certificados
+                </p>
 
-        <p style="font-size:12px;opacity:.85;margin-top:4px;">
-            Servicio Nacional de Aprendizaje • CertiSENA
-        </p>
+                <p class="small-text">
+                    Servicio Nacional de Aprendizaje • CertiSENA
+                </p>
 
-    </div>
+            </div>
 
-</div>
+        </div>
 
         <div class="header-buttons">
 
@@ -50,20 +54,33 @@
 
         </div>
 
-        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
+        <button
+            class="hamburger-btn"
+            id="hamburgerBtn"
+            aria-label="Abrir menú">
+
             <span></span>
             <span></span>
             <span></span>
+
         </button>
 
     </div>
 
-    <div class="mobile-menu" id="mobileMenu">
-        <a href="/login">Iniciar sesión</a>
-        <a href="/register">Registrarse</a>
-    </div>
+    <nav class="mobile-menu" id="mobileMenu">
+
+        <a href="/login">
+            Iniciar sesión
+        </a>
+
+        <a href="/register">
+            Registrarse
+        </a>
+
+    </nav>
 
 </header>
+
 
 <main class="login-container">
 
@@ -73,153 +90,57 @@
 
         <div class="form-group">
 
-            <label for="radicado">
-                Radicado del documento
-            </label>
+            <label>Radicado del documento</label>
 
             <input
                 type="text"
                 id="radicado"
-                name="radicado"
-                placeholder="Ingrese el radicado"
-                required>
+                placeholder="Ingrese el radicado">
 
         </div>
 
         <div class="form-group">
 
-            <label for="nit">
-                NIT de la empresa
-            </label>
+            <label>NIT de la empresa</label>
 
             <input
                 type="text"
                 id="nit"
-                name="nit"
-                placeholder="Ingrese el NIT"
-                required>
+                placeholder="Ingrese el NIT">
 
         </div>
 
         <button
-            type="button"
-            id="btnConsultar"
-            class="btn-login">
+            class="btn-login"
+            id="btnConsultar">
 
             Consultar
 
         </button>
 
-        <div id="resultadoConsulta"
-             class="resultado-container"></div>
+        <div id="resultadoConsulta" class="resultado-container"></div>
 
     </section>
 
 </main>
 
+
 <footer class="login-footer">
 
-    <p>
-        © 2026 CertiSENA - SENA. Todos los derechos reservados.
-    </p>
+    © 2026 CertiSENA - SENA. Todos los derechos reservados.
 
 </footer>
 
 <script>
 
-document.getElementById("btnConsultar").addEventListener("click", async function(){
+const hamburgerBtn=document.getElementById("hamburgerBtn");
+const mobileMenu=document.getElementById("mobileMenu");
 
-    const radicado = document.getElementById("radicado").value.trim();
+hamburgerBtn.addEventListener("click",()=>{
 
-    const nit = document.getElementById("nit").value.trim();
-
-    const resultado = document.getElementById("resultadoConsulta");
-
-    if(!radicado || !nit){
-
-        resultado.innerHTML =
-        '<p class="error-message">Por favor complete todos los campos.</p>';
-
-        return;
-
-    }
-
-    resultado.innerHTML =
-    "<p class='subtitle'>Consultando...</p>";
-
-    try{
-
-        const response = await fetch("/api/documentos/consultar",{
-
-            method:"POST",
-
-            headers:{
-                "Content-Type":"application/json"
-            },
-
-            body:JSON.stringify({
-                radicado,
-                nit
-            })
-
-        });
-
-        const data = await response.json();
-
-        if(!response.ok){
-
-            resultado.innerHTML=
-            `<p class="error-message">${data.detail || "Error al consultar."}</p>`;
-
-            return;
-
-        }
-
-        resultado.innerHTML=`
-
-            <div style="text-align:left;">
-
-                <h3 style="color:#3BAA01;">
-                    Documento encontrado
-                </h3>
-
-                <p><strong>Radicado:</strong> ${data.radicado || radicado}</p>
-
-                <p><strong>NIT:</strong> ${data.nit || nit}</p>
-
-                <p><strong>Estado:</strong> ${data.estado || "N/A"}</p>
-
-                <p><strong>Fecha:</strong> ${data.fecha || "N/A"}</p>
-
-            </div>
-
-        `;
-
-    }
-
-    catch(error){
-
-        resultado.innerHTML=
-        '<p class="error-message">Error de conexión con el servidor.</p>';
-
-    }
-
-});
-
-// Menú hamburguesa
-const hamburgerBtn = document.getElementById("hamburgerBtn");
-const mobileMenu = document.getElementById("mobileMenu");
-
-hamburgerBtn.addEventListener("click", function(){
-    this.classList.toggle("active");
+    hamburgerBtn.classList.toggle("active");
     mobileMenu.classList.toggle("open");
-});
 
-document.querySelectorAll(".mobile-menu a").forEach(link => {
-    link.addEventListener("click", function(){
-        hamburgerBtn.classList.remove("active");
-        mobileMenu.classList.remove("open");
-    });
 });
 
 </script>

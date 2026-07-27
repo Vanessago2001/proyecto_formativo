@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import text
 from modules.roles.roles_router import router as role_router
 from modules.users.user_router import router as users_router
@@ -13,10 +14,11 @@ from core.security import hash_password
 from modules.tareas.tarea_router import router as tarea_router
 
 async def ensure_login_security_schema(session) -> None:
+    # Tabla de logs de acceso (auxiliar, no está en el dump original)
     await session.execute(text("""
         CREATE TABLE IF NOT EXISTS logs_acceso (
             id SERIAL PRIMARY KEY,
-            usuario_id INTEGER,
+            usuario_id UUID,
             correo_intentado VARCHAR(255) NOT NULL,
             ip_origen VARCHAR(45) NOT NULL,
             exitoso BOOLEAN NOT NULL,
@@ -25,47 +27,12 @@ async def ensure_login_security_schema(session) -> None:
         );
     """))
 
-    await session.execute(text("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id SERIAL PRIMARY KEY,
-            nit VARCHAR(20) UNIQUE,
-            correo VARCHAR(255) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL,
-            estado VARCHAR(20) NOT NULL DEFAULT 'Activo',
-            intentos_fallidos INT DEFAULT 0,
-            bloqueado_hasta TIMESTAMP WITH TIME ZONE DEFAULT NULL,
-            creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-    """))
-
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nit VARCHAR(20) UNIQUE;"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS correo VARCHAR(255) UNIQUE;"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'Activo';"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intentos_fallidos INTEGER DEFAULT 0;"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS bloqueado_hasta TIMESTAMP WITH TIME ZONE;"))
-    await session.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;"))
-
-    await session.execute(text("""
-        UPDATE usuarios
-        SET estado = CASE
-            WHEN estado IS NULL THEN 'Activo'
-            ELSE estado
-        END
-        WHERE estado IS NULL;
-    """))
-
-    await session.execute(text("""
-        UPDATE usuarios
-        SET intentos_fallidos = COALESCE(intentos_fallidos, 0)
-        WHERE intentos_fallidos IS NULL;
-    """))
-
 async def seed_initial_data() -> None:
     async with AsyncSessionLocal() as session:
         try:
             await ensure_login_security_schema(session)
 
+            # Roles por defecto según la tabla rol (id_rol PK, nombre, descripcion)
             default_rol = [
                 ("Administrador", "Acceso total al sistema"),
                 ("Instructor", "Puede gestionar tareas y usuarios"),
@@ -74,36 +41,39 @@ async def seed_initial_data() -> None:
 
             for role_name, role_description in default_rol:
                 existing_role = await session.execute(
-                    text("SELECT id FROM rol WHERE name = :name;"),
-                    {"name": role_name},
+                    text("SELECT id_rol FROM rol WHERE nombre = :nombre;"),
+                    {"nombre": role_name},
                 )
                 if existing_role.scalar_one_or_none() is None:
                     await session.execute(
-                        text("INSERT INTO rol (name, description) VALUES (:name, :description);"),
-                        {"name": role_name, "description": role_description},
+                        text("INSERT INTO rol (nombre, descripcion) VALUES (:nombre, :descripcion);"),
+                        {"nombre": role_name, "descripcion": role_description},
                     )
 
+            # Verificar si existe el usuario admin en la tabla usuario (id UUID, nombre, correo, contrasena, estado BOOLEAN, rol_id)
             existing_admin = await session.execute(
-                text("SELECT id FROM users WHERE username = :username;"),
-                {"username": "admin"},
+                text("SELECT id FROM usuario WHERE nombre = :nombre;"),
+                {"nombre": "admin"},
             )
             if existing_admin.scalar_one_or_none() is None:
                 role_result = await session.execute(
-                    text("SELECT id FROM rol WHERE name = :name;"),
-                    {"name": "Administrador"},
+                    text("SELECT id_rol FROM rol WHERE nombre = :nombre;"),
+                    {"nombre": "Administrador"},
                 )
                 admin_role_id = role_result.scalar_one_or_none()
                 if admin_role_id is not None:
                     await session.execute(
                         text("""
-                            INSERT INTO users (username, email, hashed_password, is_active, role_id)
-                            VALUES (:username, :email, :hashed_password, TRUE, :role_id);
+                            INSERT INTO usuario (id, nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
+                            VALUES (gen_random_uuid(), :nombre, :correo, :contrasena, 'Activo', 0, :rol_id, :tipo_doc, :num_doc);
                         """),
                         {
-                            "username": "admin",
-                            "email": os.getenv("INITIAL_ADMIN_EMAIL", "admin@example.com"),
-                            "hashed_password": hash_password(os.getenv("INITIAL_ADMIN_PASSWORD", "admin123")),
-                            "role_id": admin_role_id,
+                            "nombre": "admin",
+                            "correo": os.getenv("INITIAL_ADMIN_EMAIL", "admin@example.com"),
+                            "contrasena": hash_password(os.getenv("INITIAL_ADMIN_PASSWORD", "admin123")),
+                            "rol_id": admin_role_id,
+                            "tipo_doc": "Cédula de Ciudadanía",
+                            "num_doc": "0000000000",
                         },
                     )
 
@@ -122,6 +92,8 @@ async def lifespan(app: FastAPI):
     await seed_initial_data()
     yield
     logger.info("Cerrando recursos de la API de forma segura.")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 app = FastAPI(
     title="API FastAPI Modular sin SRC - SQL Puro",

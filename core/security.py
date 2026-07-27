@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from core.database import get_db
 from typing import Any
+import uuid
 import jwt
 
 def hash_password(password: str) -> str:
@@ -23,6 +24,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
+    # Convertimos cualquier UUID a string para evitar errores de JSON serialization
+    for key, value in to_encode.items():
+        if isinstance(value, uuid.UUID):
+            to_encode[key] = str(value)
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -58,11 +63,20 @@ async def get_current_user(
         
     # Consulta SQL Nativa para traer el usuario activo junto con su ROL asignado
     query = text("""
-        SELECT u.id, u.username, u.email, u.is_active, u.role_id, r.name as role_name 
-        FROM users u
-        INNER JOIN rol r ON u.role_id = r.id
-        WHERE u.id = :user_id AND u.is_active = TRUE;
-    """)
+    SELECT
+        u.id,
+        u.nombre,
+        u.correo,
+        u.estado,
+        u.rol_id,
+        r.nombre AS role_name
+    FROM usuario u
+    LEFT JOIN rol r
+        ON u.rol_id = r.id_rol
+    WHERE
+        u.id = :user_id
+        AND u.estado = 'Activo';
+""")
     
     result = await db.execute(query, {"user_id": user_id})
     user_row = result.mappings().first()

@@ -97,9 +97,9 @@ class TareaService:
         t.fecha_vencimiento,
         t.estado,
         u.id AS responsable_id,
-        u.username AS responsable
+        u.nombre AS responsable
         FROM tareas t
-        INNER JOIN users u
+        INNER JOIN usuario u
         ON u.id = t.responsable_hizo
         ORDER BY t.id
             """)
@@ -113,7 +113,7 @@ class TareaService:
 
     async def listar_tareas_usuario(
         self,
-        user_id: int
+        user_id: str
     ):
 
         query = text("""

@@ -12,7 +12,7 @@ OBJETIVO:
   SENA) en los encabezados y el color blanco en la mayoría del contenido.
 
 ================================================================================
-CAMBIOS REALIZADOS
+CAMBIOS REALIZADOS - 25/07/2026
 ================================================================================
 
 1. DIRECTORIO: static/ (NUEVO)
@@ -101,7 +101,7 @@ CAMBIOS REALIZADOS
      como archivo estático en las páginas web.
 
 ================================================================================
-ESTRUCTURA DE ARCHIVOS RESULTANTE
+ESTRUCTURA DE ARCHIVOS RESULTANTE - 25/07/2026
 ================================================================================
 
 proyecto_formativo/
@@ -145,7 +145,7 @@ proyecto_formativo/
     └── logoSena.png           [NUEVO - copiado]
 
 ================================================================================
-RUTAS DISPONIBLES
+RUTAS DISPONIBLES - 25/07/2026
 ================================================================================
 
 Rutas de interfaz (HTML):
@@ -168,7 +168,7 @@ Archivos estáticos:
   GET /static/logoSena.png
 
 ================================================================================
-NOTAS ADICIONALES
+NOTAS ADICIONALES - 25/07/2026
 ================================================================================
 
 - El color #3BAA01 es el color institucional oficial del SENA.
@@ -180,6 +180,354 @@ NOTAS ADICIONALES
 - El error de la tabla "rol" en la base de datos es un problema
   preexistente (la tabla no existe en la base de datos actual) y no está
   relacionado con los cambios realizados en esta sesión.
+
+================================================================================
+================================================================================
+REGISTRO DE CAMBIOS - 26/07/2026
+================================================================================
+Fecha: 26/07/2026
+Desarrollador: Vanessa
+================================================================================
+
+OBJETIVO:
+  Alinear todos los SQL nativos del backend con la estructura real de la
+  base de datos definida en el archivo `documentacion/SGC_ACTUALIZADO2.sql`,
+  y mejorar la interfaz de usuario con menú hamburguesa responsive.
+
+================================================================================
+CAMBIOS REALIZADOS - 26/07/2026
+================================================================================
+
+1. ESTRUCTURA REAL DE LA BASE DE DATOS (SGC_ACTUALIZADO2.sql)
+   --------------------------------------------------------------------------------
+   Se analizó el dump de la base de datos `SGC_ACTUALIZADO2.sql` y se
+   identificaron las tablas y columnas reales del esquema `public`:
+
+   Tabla: usuario
+   - id              UUID          PK
+   - nombre          VARCHAR(80)
+   - correo          VARCHAR(100)  UNIQUE
+   - contrasena      VARCHAR(140)
+   - estado          BOOLEAN       TRUE=Activo, FALSE=Inactivo
+   - tipo_doc        VARCHAR(20)
+   - num_doc         VARCHAR(30)
+   - rol_id          INTEGER       FK -> rol.id_rol
+   - intentos_fallidos INTEGER     DEFAULT 0
+   - bloqueado_hasta TIMESTAMP
+
+   Tabla: rol
+   - id_rol          INTEGER       PK
+   - nombre          VARCHAR(20)
+   - descripcion     VARCHAR(100)
+
+   Tabla: empresa
+   - id_empresa      UUID          PK
+   - nombre          VARCHAR(70)
+   - nit             VARCHAR(40)
+   - ciudad          VARCHAR(30)
+   - direccion       VARCHAR(140)
+   - correo          VARCHAR(100)  UNIQUE
+
+   Tabla: solicitud
+   - id_solicitud    INTEGER       PK
+   - id_empresa      UUID          FK -> empresa.id_empresa
+   - estado          VARCHAR(20)
+   - fecha           DATE
+   - id_norma        INTEGER       FK -> norma.id_norma
+
+   Tabla: certificado
+   - id_certificado  INTEGER       PK
+   - codigo          CHAR(16)
+   - id_comite       INTEGER       FK -> comite_evaluacion.id_comite
+   - url_certificado VARCHAR(140)
+   - fecha_vencimiento DATE
+   - estado_certificado CHAR(1)
+
+   Tabla: log_acceso
+   - id_acceso       INTEGER       PK
+   - id_usuario      UUID          FK -> usuario.id
+   - ip              NUMERIC
+   - fecha_hora      TIME
+
+   Otras tablas: Evidencia, PQRS, acompanamiento, apelacion,
+   apelacion_auditor, aprendiz_acompanamiento, auditores_solicitud,
+   comite_evaluacion, contenido-PQRS, decision_apelacion,
+   evaluacion_variables, historial_estado, miembro_comite, norma,
+   notificacion, requisitos_solicitud, user_empresa, variables_norma
+
+2. ARCHIVO: modules/auth/auth_service.py (MODIFICADO)
+   --------------------------------------------------------------------------------
+   Cambios en SQL y lógica de autenticación:
+
+   a) Consulta de login (línea 64-77):
+      ANTES: SELECT ... FROM usuario WHERE ... (sin JOIN)
+      DESPUÉS: SELECT u.id, u.nombre, u.correo, u.contrasena AS password_hash,
+               u.estado, COALESCE(u.intentos_fallidos, 0) AS intentos_fallidos,
+               u.bloqueado_hasta, u.rol_id, r.nombre AS rol_nombre
+               FROM usuario u LEFT JOIN rol r ON u.rol_id = r.id_rol
+      - Se agregó LEFT JOIN con la tabla rol para obtener el nombre del rol.
+      - Se cambió el campo "rol" por "rol_id" (nombre real en la BD).
+
+   b) Validación de estado (línea 94-95):
+      ANTES: estado = user["estado"] or "Activo" / if estado == "Inactivo"
+      DESPUÉS: estado = user["estado"] / if estado is False
+      - El campo estado ahora es BOOLEAN (TRUE=Activo, FALSE=Inactivo).
+
+   c) Validación de bloqueo (línea 111-137):
+      ANTES: if estado == "Bloqueado": ... UPDATE SET estado = 'Activo'
+      DESPUÉS: Se verifica bloqueado_hasta directamente. Si ya pasó el tiempo
+               y estado es FALSE, se reactiva con UPDATE SET estado = TRUE.
+      - Se eliminó la lógica de estado "Bloqueado" como string.
+      - Ahora se usa bloqueado_hasta para determinar si está bloqueado.
+
+   d) Bloqueo por intentos fallidos (línea 148-158):
+      ANTES: UPDATE SET estado = 'Bloqueado'
+      DESPUÉS: UPDATE SET estado = FALSE
+      - El estado de bloqueado ahora se marca como FALSE (booleano).
+
+   e) Login exitoso (línea 197-204):
+      ANTES: UPDATE SET estado = 'Activo'
+      DESPUÉS: UPDATE SET estado = TRUE
+      - Se usa booleano TRUE en lugar del string 'Activo'.
+
+   f) Generación de JWT (línea 215-221):
+      ANTES: "role_id": user.get("rol")
+      DESPUÉS: "role_id": user.get("rol_id"), "role_name": user.get("rol_nombre")
+      - Se agregó el nombre del rol al token JWT para autorización.
+
+3. ARCHIVO: modules/users/user_service.py (MODIFICADO)
+   --------------------------------------------------------------------------------
+   Cambios en SQL y lógica de usuarios:
+
+   a) get_all_users (línea 14-24):
+      ANTES: SELECT id, nombre, correo, estado, rol FROM usuario
+      DESPUÉS: SELECT u.id, u.nombre, u.correo, u.estado, u.rol_id,
+               u.tipo_doc, u.num_doc, r.nombre AS rol_nombre
+               FROM usuario u LEFT JOIN rol r ON u.rol_id = r.id_rol
+      - Se agregaron campos tipo_doc, num_doc y JOIN con rol.
+      - Se cambió "rol" por "rol_id".
+
+   b) create_user (línea 41-48):
+      ANTES: SELECT id FROM rol WHERE id = :rol
+      DESPUÉS: SELECT id_rol FROM rol WHERE id_rol = :rol
+      - Se cambió el nombre de columna de "id" a "id_rol".
+
+   c) INSERT en create_user (línea 52-56):
+      ANTES: INSERT INTO usuario (...) VALUES (..., 'Activo', 0, :rol)
+      DESPUÉS: INSERT INTO usuario (...) VALUES (..., TRUE, 0, :rol)
+      - Se cambió "rol" por "rol_id" y "'Activo'" por "TRUE".
+
+   d) update_user (línea 141-152):
+      ANTES: SELECT id FROM rol WHERE id = :r_id / UPDATE SET rol = :rol
+      DESPUÉS: SELECT id_rol FROM rol WHERE id_rol = :r_id / UPDATE SET rol_id = :rol
+      - Se cambió "rol" por "rol_id" y "id" por "id_rol".
+
+   e) Correción de tipado Pylance:
+      - Se reemplazó dict(row) por {k: v for k, v in row.items()} para
+        evitar errores de tipado con RowMapping.
+      - Se agregó tipado explícito params: dict[str, object].
+
+4. ARCHIVO: modules/users/user_schema.py (MODIFICADO)
+   --------------------------------------------------------------------------------
+   Cambios en esquemas Pydantic:
+
+   a) UserResponse:
+      ANTES: estado: str / rol: int
+      DESPUÉS: estado: bool / rol_id: int
+      - El estado ahora es booleano y el campo de rol se llama rol_id.
+
+   b) UserUpdate:
+      ANTES: estado: Optional[str] = None
+      DESPUÉS: estado: Optional[bool] = None
+      - El estado ahora acepta valores booleanos.
+
+5. ARCHIVO: core/security.py (MODIFICADO)
+   --------------------------------------------------------------------------------
+   Cambios en la función get_current_user (línea 60-74):
+
+   ANTES:
+     SELECT u.id, u.nombre, u.correo, u.estado, u.rol
+     FROM usuario u INNER JOIN roles r ON u.rol = r.id
+     WHERE u.id = :user_id AND u.estado = 'Activo'
+
+   DESPUÉS:
+     SELECT u.id, u.nombre, u.correo, u.estado, u.rol_id, r.nombre AS rol_nombre
+     FROM usuario u LEFT JOIN rol r ON u.rol_id = r.id_rol
+     WHERE u.id = :user_id AND u.estado = TRUE
+
+   - Se cambió INNER JOIN a LEFT JOIN.
+   - Se cambió "roles" por "rol" y "r.id" por "r.id_rol".
+   - Se cambió "u.rol" por "u.rol_id".
+   - Se cambió "u.estado = 'Activo'" por "u.estado = TRUE".
+   - Se corrigió error de sintaxis "textquery = text("").
+
+6. ARCHIVO: main.py (MODIFICADO)
+   --------------------------------------------------------------------------------
+   Cambios en seed_initial_data y ensure_login_security_schema:
+
+   a) ensure_login_security_schema:
+      ANTES: Creaba tabla "usuarios" con columnas incorrectas (nit, password_hash,
+             estado VARCHAR, creado_en) y múltiples ALTER TABLE.
+      DESPUÉS: Solo crea la tabla auxiliar "logs_acceso" con usuario_id UUID.
+      - Se eliminó la creación de la tabla "usuarios" que no coincide con la BD real.
+
+   b) seed_initial_data - Roles:
+      ANTES: SELECT id FROM rol WHERE name = :name
+             INSERT INTO rol (name, description)
+      DESPUÉS: SELECT id_rol FROM rol WHERE nombre = :nombre
+               INSERT INTO rol (nombre, descripcion)
+      - Se cambiaron los nombres de columnas a español.
+
+   c) seed_initial_data - Admin:
+      ANTES: SELECT id FROM users WHERE username = :username
+             INSERT INTO users (username, email, hashed_password, is_active, role_id)
+      DESPUÉS: SELECT id FROM usuario WHERE nombre = :nombre
+               INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol_id)
+      - Se cambió la tabla "users" por "usuario" con columnas reales.
+      - Se cambió "username" por "nombre", "email" por "correo",
+        "hashed_password" por "contrasena", "is_active" por "estado = TRUE".
+
+7. ARCHIVO: modules/roles/roles_service.py (MODIFICADO)
+   --------------------------------------------------------------------------------
+   Cambios en SQL del servicio de roles:
+
+   a) get_all_rol:
+      ANTES: SELECT id, name, description FROM rol ORDER BY id ASC
+      DESPUÉS: SELECT id_rol, nombre, descripcion FROM rol ORDER BY id_rol ASC
+
+   b) get_role_by_name:
+      ANTES: SELECT id, name, description FROM rol WHERE name LIKE :nombre
+      DESPUÉS: SELECT id_rol, nombre, descripcion FROM rol WHERE nombre LIKE :nombre
+
+   c) get_role_by_id:
+      ANTES: SELECT id, name, description FROM rol WHERE id = :identificacion
+      DESPUÉS: SELECT id_rol, nombre, descripcion FROM rol WHERE id_rol = :identificacion
+
+   d) create_role:
+      ANTES: SELECT id FROM rol WHERE name = :name
+             INSERT INTO rol (name, description) RETURNING id, name, description
+      DESPUÉS: SELECT id_rol FROM rol WHERE nombre = :nombre
+               INSERT INTO rol (nombre, descripcion) RETURNING id_rol, nombre, descripcion
+
+   e) delete_role_by_id:
+      ANTES: SELECT id FROM rol WHERE id = :identificacion
+             DELETE FROM rol WHERE id = :identy
+      DESPUÉS: SELECT id_rol FROM rol WHERE id_rol = :identificacion
+               DELETE FROM rol WHERE id_rol = :identy
+
+8. ARCHIVO: modules/roles/roles_schema.py (MODIFICADO)
+   --------------------------------------------------------------------------------
+   Cambios en esquemas Pydantic de roles:
+
+   ANTES:
+     class RoleBase: name: str / description: Optional[str]
+     class RoleResponse: id: int
+
+   DESPUÉS:
+     class RoleBase: nombre: str / descripcion: Optional[str]
+     class RoleResponse: id_rol: int
+
+   - Se cambiaron los nombres de campos de inglés a español para coincidir
+     con la estructura real de la tabla "rol" en la BD.
+
+9. ARCHIVOS: static/index.html, static/login.html, static/register.html (MODIFICADOS)
+   --------------------------------------------------------------------------------
+   Cambios en la interfaz de usuario:
+
+   a) Logo:
+      - Se cambió la imagen del logo de "logoSena.png" a "sena_blanco.png"
+        en index.html y register.html (login.html ya lo usaba).
+
+   b) Menú hamburguesa responsive:
+      - Se agregó botón hamburguesa (3 líneas) en el header de las 3 vistas.
+      - Se agregó menú desplegable debajo del header con los botones de
+        navegación (Iniciar sesión / Registrarse).
+      - JavaScript para abrir/cerrar el menú al hacer clic.
+      - El menú se cierra automáticamente al hacer clic en un enlace.
+
+10. ARCHIVO: static/styles.css (MODIFICADO)
+    --------------------------------------------------------------------------------
+    Cambios en estilos:
+
+    a) Botón hamburguesa:
+       - Nueva clase .hamburger-btn (display:none por defecto).
+       - Estilos para las 3 líneas blancas con animación de giro (active).
+       - Al activarse, las líneas forman una X.
+
+    b) Menú móvil:
+       - Nueva clase .mobile-menu (display:none por defecto).
+       - Clase .mobile-menu.open para mostrar el menú desplegable.
+       - Posicionamiento absolute debajo del header.
+
+    c) Responsive a 770px:
+       - .header-buttons se oculta (display:none).
+       - .hamburger-btn se muestra (display:block).
+       - Logo se reduce a 65px, títulos se achican.
+       - .login-header obtiene position:relative para el menú.
+
+================================================================================
+ARCHIVOS MODIFICADOS - 26/07/2026
+================================================================================
+
+ 1. modules/auth/auth_service.py   - SQL alineado con BD real, estado booleano
+ 2. modules/users/user_service.py  - SQL alineado, rol_id, tipado corregido
+ 3. modules/users/user_schema.py   - estado: bool, rol_id: int
+ 4. core/security.py               - SQL alineado, LEFT JOIN rol, estado = TRUE
+ 5. main.py                        - Seed data con columnas reales de usuario
+ 6. modules/roles/roles_service.py - SQL con columnas en español
+ 7. modules/roles/roles_schema.py  - Campos en español (nombre, descripcion)
+ 8. static/index.html              - Logo sena_blanco.png, menú hamburguesa
+ 9. static/login.html              - Menú hamburguesa
+10. static/register.html           - Logo sena_blanco.png, menú hamburguesa
+11. static/styles.css              - Estilos hamburguesa, responsive 770px
+
+================================================================================
+RESUMEN DE CAMBIOS EN LA LÓGICA DE NEGOCIO
+================================================================================
+
+1. CAMPO "estado":
+   - Antes: VARCHAR con valores 'Activo', 'Inactivo', 'Bloqueado'
+   - Ahora: BOOLEAN (TRUE=Activo, FALSE=Inactivo)
+   - El bloqueo se determina por la columna "bloqueado_hasta" (TIMESTAMP)
+   - Si bloqueado_hasta > ahora -> cuenta bloqueada
+   - Si bloqueado_hasta <= ahora y estado=FALSE -> se reactiva automáticamente
+
+2. CAMPO "rol" -> "rol_id":
+   - La columna de relación con la tabla rol ahora se llama "rol_id"
+   - Se agregó LEFT JOIN con la tabla "rol" para obtener el nombre del rol
+
+3. TABLA "rol":
+   - Columnas en español: id_rol, nombre, descripcion
+   - Antes se usaban nombres en inglés: id, name, description
+
+4. TABLA "usuario":
+   - Columnas reales: id (UUID), nombre, correo, contrasena, estado (BOOLEAN),
+     tipo_doc, num_doc, rol_id, intentos_fallidos, bloqueado_hasta
+   - Antes se usaban nombres incorrectos: username, email, hashed_password,
+     is_active, role_id (de una tabla "users" que no existe)
+
+5. TOKEN JWT:
+   - Ahora incluye "role_name" (nombre del rol) además de "role_id"
+   - Esto permite autorización sin consultas adicionales a la BD
+
+6. INTERFAZ DE USUARIO:
+   - Logo cambiado a sena_blanco.png (versión blanca del logo SENA)
+   - Menú hamburguesa responsive para pantallas ≤ 770px
+   - Los botones de navegación se ocultan en móvil y aparecen en menú
+
+================================================================================
+NOTAS ADICIONALES - 26/07/2026
+================================================================================
+
+- El módulo de tareas (modules/tareas/) usa las tablas "tareas" y "users"
+  que NO existen en el dump SGC_ACTUALIZADO2.sql. Posiblemente pertenecen
+  a otro esquema o dump diferente. NO fueron modificadas.
+- La tabla "logs_acceso" en auth_service.py es una tabla auxiliar creada
+  automáticamente, no está en el dump original.
+- Todos los cambios de SQL nativo fueron validados contra la estructura
+  del archivo documentacion/SGC_ACTUALIZADO2.sql.
+- El menú hamburguesa funciona en las 3 vistas: index, login y register.
+- El punto de quiebre responsive es 770px (no 768px como antes).
 
 ================================================================================
 FIN DEL REGISTRO DE CAMBIOS

@@ -68,7 +68,40 @@
 
         <div class="form-group">
 
-            <label for="nombre">
+            <label for="tipo_doc">
+                Tipo de documento
+            </label>
+
+            <select id="tipo_doc" name="tipo_doc" required>
+                <option value="">Seleccione tipo de documento</option>
+                <option value="Cédula de Ciudadanía">Cédula de Ciudadanía</option>
+                <option value="Cédula de Extranjería">Cédula de Extranjería</option>
+                <option value="NIT">NIT</option>
+                <option value="Tarjeta de Identidad">Tarjeta de Identidad</option>
+                <option value="Pasaporte">Pasaporte</option>
+            </select>
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="num_doc">
+                Número de documento
+            </label>
+
+            <input
+                type="text"
+                id="num_doc"
+                name="num_doc"
+                placeholder="Ingrese su número de documento"
+                required
+                minlength="4">
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="nombre" id="nombreLabel">
                 Nombre completo
             </label>
 
@@ -148,9 +181,27 @@
 
 <script>
 
+// Cambiar el label de nombre según el tipo de documento
+document.getElementById("tipo_doc").addEventListener("change", function(){
+    const nombreLabel = document.getElementById("nombreLabel");
+    const nombreInput = document.getElementById("nombre");
+
+    if(this.value === "NIT"){
+        nombreLabel.textContent = "Razón social";
+        nombreInput.placeholder = "Ingrese la razón social";
+    } else {
+        nombreLabel.textContent = "Nombre completo";
+        nombreInput.placeholder = "Ingrese su nombre completo";
+    }
+});
+
 document.getElementById("btnRegister").addEventListener("click", async function(e){
 
     e.preventDefault();
+
+    const tipo_doc = document.getElementById("tipo_doc").value;
+
+    const num_doc = document.getElementById("num_doc").value.trim();
 
     const nombre = document.getElementById("nombre").value.trim();
 
@@ -164,7 +215,7 @@ document.getElementById("btnRegister").addEventListener("click", async function(
 
     errorMsg.textContent = "";
 
-    if(!nombre || !correo || !password || !rol){
+    if(!tipo_doc || !num_doc || !nombre || !correo || !password || !rol){
 
         errorMsg.textContent = "Por favor complete todos los campos.";
 
@@ -185,6 +236,8 @@ document.getElementById("btnRegister").addEventListener("click", async function(
             },
 
             body:JSON.stringify({
+                tipo_doc,
+                num_doc,
                 nombre,
                 correo,
                 contrasena: password,

@@ -16,7 +16,7 @@ class AuthService:
 
   async def _log_access(
       self,
-      user_id: int | None,
+      user_id: str | None,
       correo_intentado: str,
       ip_origen: str,
       exitoso: bool,
@@ -27,7 +27,7 @@ class AuthService:
           text("""
                 CREATE TABLE IF NOT EXISTS logs_acceso (
                     id SERIAL PRIMARY KEY,
-                    usuario_id INTEGER,
+                    usuario_id UUID,
                     correo_intentado VARCHAR(255) NOT NULL,
                     ip_origen VARCHAR(45) NOT NULL,
                     exitoso BOOLEAN NOT NULL,
@@ -36,13 +36,31 @@ class AuthService:
                 );
             """)
       )
+      # Si la tabla ya existía con usuario_id como entero, la alteramos a UUID.
+      # Esto es necesario porque CREATE TABLE IF NOT EXISTS no modifica tablas existentes.
+      # El try/except separado asegura que si la alteración falla (por ejemplo, si la
+      # columna ya es UUID o hay datos incompatibles), el INSERT siga funcionando.
+      try:
+        await self.db.execute(
+            text("""
+                ALTER TABLE logs_acceso
+                ALTER COLUMN usuario_id TYPE UUID USING usuario_id::TEXT::UUID;
+            """)
+        )
+        await self.db.commit()
+      except Exception as alter_exc:
+        logger.warning("No fue posible alterar usuario_id a UUID: %s", alter_exc)
+        await self.db.rollback()
+
+      # Convertimos el UUID a string para evitar problemas de serialización
+      usuario_id_str = str(user_id) if user_id is not None else None
       await self.db.execute(
           text("""
                 INSERT INTO logs_acceso (usuario_id, correo_intentado, ip_origen, exitoso, motivo_fallo)
                 VALUES (:usuario_id, :correo_intentado, :ip_origen, :exitoso, :motivo_fallo);
             """),
           {
-              "usuario_id": user_id,
+              "usuario_id": usuario_id_str,
               "correo_intentado": correo_intentado,
               "ip_origen": ip_origen or "unknown",
               "exitoso": exitoso,
@@ -63,16 +81,18 @@ class AuthService:
 
     query = text("""
             SELECT 
-                id, 
-                nombre, 
-                correo, 
-                contrasena AS password_hash, 
-                estado, 
-                COALESCE(intentos_fallidos, 0) AS intentos_fallidos, 
-                bloqueado_hasta, 
-                rol
-            FROM usuario 
-            WHERE LOWER(correo) = LOWER(:identifier) OR LOWER(nombre) = LOWER(:identifier)
+                u.id, 
+                u.nombre, 
+                u.correo, 
+                u.contrasena AS password_hash, 
+                u.estado, 
+                COALESCE(u.intentos_fallidos, 0) AS intentos_fallidos, 
+                u.bloqueado_hasta, 
+                u.rol_id,
+                r.nombre AS rol_nombre
+            FROM usuario u
+            LEFT JOIN rol r ON u.rol_id = r.id_rol
+            WHERE LOWER(u.correo) = LOWER(:identifier) OR LOWER(u.nombre) = LOWER(:identifier)
             LIMIT 1;
         """)
 
@@ -90,8 +110,8 @@ class AuthService:
           headers={"WWW-Authenticate": "Bearer"},
       )
 
-    # 2. Validación de estado Activo/Inactivo
-    estado = user["estado"] or "Activo"
+    # 2. Validación del estado textual definido por la base de datos.
+    estado = user["estado"]
     if estado == "Inactivo":
       await self._log_access(
           user["id"],
@@ -108,25 +128,26 @@ class AuthService:
       )
 
     # 3. Validación de Bloqueo
-    if estado == "Bloqueado":
-      bloqueado_hasta = user["bloqueado_hasta"]
-      if bloqueado_hasta and bloqueado_hasta > datetime.now(timezone.utc):
-        await self._log_access(
-            user["id"],
-            user.get("correo") or identifier,
-            client_ip,
-            False,
-            "Intento en cuenta bloqueada",
-        )
-        raise HTTPException(
-            status_code=status.HTTP_423_LOCKED,
-            detail=(
-                "Cuenta bloqueada por seguridad debido a múltiples intentos"
-                " fallidos."
-            ),
-        )
+    bloqueado_hasta = user["bloqueado_hasta"]
+    ahora_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    if bloqueado_hasta and bloqueado_hasta > ahora_utc:
+      await self._log_access(
+          user["id"],
+          user.get("correo") or identifier,
+          client_ip,
+          False,
+          "Intento en cuenta bloqueada",
+      )
+      raise HTTPException(
+          status_code=status.HTTP_423_LOCKED,
+          detail=(
+              "Cuenta bloqueada por seguridad debido a múltiples intentos"
+              " fallidos."
+          ),
+      )
 
-      # Si ya pasó el tiempo de bloqueo, lo reactivamos
+    # Si ya pasó el tiempo de bloqueo, lo reactivamos
+    if estado == "Bloqueado" and bloqueado_hasta and bloqueado_hasta <= ahora_utc:
       await self.db.execute(
           text(
               "UPDATE usuario SET estado = 'Activo', intentos_fallidos = 0,"
@@ -141,7 +162,7 @@ class AuthService:
       nuevos_intentos = int(user["intentos_fallidos"] or 0) + 1
 
       if nuevos_intentos >= INTENTOS_MAXIMOS:
-        tiempo_desbloqueo = datetime.now(timezone.utc) + timedelta(
+        tiempo_desbloqueo = datetime.utcnow() + timedelta(
             minutes=TIEMPO_BLOQUEO_MINUTOS
         )
         await self.db.execute(
@@ -211,11 +232,12 @@ class AuthService:
         "Autenticación exitosa",
     )
 
-    # Generación de JWT con los nombres de campos mapeados en español
+    # Generación de JWT
     return create_access_token(
         data={
             "sub": user.get("nombre") or user.get("correo") or identifier,
             "user_id": user["id"],
-            "role_id": user.get("rol"),
+            "role_id": user.get("rol_id"),
+            "role_name": user.get("rol_nombre"),
         }
     )
