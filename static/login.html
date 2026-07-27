@@ -158,14 +158,24 @@ document.getElementById("btnLogin").addEventListener("click", async function(e){
 
         const data = await response.json();
 
-        if(!response.ok){
+        if (!response.ok) {
 
-            errorMsg.textContent = data.detail || "Credenciales inválidas. Inténtalo de nuevo.";
+    // Contraseña expirada
+    if (data.detail === "Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión.") {
 
-            return;
+        // Guardamos el correo para no volver a escribirlo
+        localStorage.setItem("correo_expirado", correo);
 
-        }
+        // Redireccionar a la página de cambio de contraseña
+        window.location.href = "/static/cambiar_password.html";
 
+        return;
+    }
+
+    errorMsg.textContent = data.detail || "Credenciales inválidas. Inténtalo de nuevo.";
+
+    return;
+}
         localStorage.setItem("access_token", data.access_token);
 
         localStorage.setItem("token_type", data.token_type);

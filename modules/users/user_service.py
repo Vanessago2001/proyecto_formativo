@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.logger import logger
-from core.security import hash_password
+from core.security import hash_password, validar_password_segura
 from modules.users.user_schema import UserCreate, UserUpdate
 
 
@@ -48,7 +48,16 @@ class UserService:
           detail='El rol proveído no existe.',
       )
 
-    hashed_pwd = hash_password(user_data.contrasena)
+    password = user_data.contrasena
+
+    valida, mensaje = validar_password_segura(password)
+
+    if not valida:
+      raise HTTPException(
+          status_code=400,
+          detail=mensaje
+      )
+    hashed_pwd = hash_password(password)
 
     query = text("""
             INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
@@ -138,8 +147,17 @@ class UserService:
       params['correo'] = user_update.correo
 
     if user_update.contrasena is not None:
+      password = user_update.contrasena
+      
+      valida, mensaje = validar_password_segura(password)
+      
+      if not valida:
+        raise HTTPException(
+            status_code=400,
+            detail=mensaje
+          )
       update_fields.append('contrasena = :contrasena')
-      params['contrasena'] = hash_password(user_update.contrasena)
+      params['contrasena'] = hash_password(password)
 
     if user_update.rol is not None:
       role_exist = await self.db.execute(

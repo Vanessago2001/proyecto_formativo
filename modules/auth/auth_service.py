@@ -9,15 +9,17 @@ from core.logger import logger
 from core.security import (
     create_access_token,
     verify_password,
+    hash_password,
     hash_verification_code,
     verify_verification_code,
+    validar_password_segura,
 )
 
 from modules.auth.mail_service import MailService
 
-
 INTENTOS_MAXIMOS = 5
 TIEMPO_BLOQUEO_MINUTOS = 5
+DIAS_EXPIRACION = 0
 
 
 class AuthService:
@@ -27,9 +29,9 @@ class AuthService:
 
     def _ahora(self) -> datetime:
         """
-        Devuelve la fecha y hora actual en UTC.
+        Devuelve la fecha y hora actual en UTC (naive) para comparar con fechas de la BD.
         """
-        return datetime.now(timezone.utc)
+        return datetime.now(timezone.utc).replace(tzinfo=None)
 
     def _generar_codigo(self) -> str:
         """
@@ -48,10 +50,7 @@ class AuthService:
         """
         Registra todos los intentos de acceso al sistema.
         """
-
         try:
-            # Crear la tabla si aún no existe.
-            # usuario_id es UUID porque usuario.id es UUID en este proyecto.
             await self.db.execute(
                 text("""
                     CREATE TABLE IF NOT EXISTS logs_acceso (
@@ -66,7 +65,6 @@ class AuthService:
                 """)
             )
 
-            # Registrar el intento
             await self.db.execute(
                 text("""
                     INSERT INTO logs_acceso
@@ -152,12 +150,9 @@ class AuthService:
             codigo,
             usuario["codigo_verificacion"],
         ):
-
             intentos_codigo += 1
 
-            # Llegó al máximo de intentos del código
             if intentos_codigo >= 3:
-
                 nuevo_codigo = self._generar_codigo()
                 nuevo_codigo_hash = hash_verification_code(nuevo_codigo)
 
@@ -215,7 +210,6 @@ class AuthService:
                 detail=f"Código incorrecto. Intento {intentos_codigo} de 3.",
             )
 
-        # Código correcto
         await self.db.execute(
             text("""
                 UPDATE usuario
@@ -246,7 +240,6 @@ class AuthService:
         password_in: str,
         client_ip: str | None = None,
     ) -> str:
-
         client_ip = client_ip or "unknown"
         identifier = correo_in.strip().lower()
 
@@ -268,6 +261,7 @@ class AuthService:
                 u.codigo_expira,
                 u.bloqueado_hasta,
                 u.rol_id,
+                u.fecha_cambio_password,
                 r.nombre AS rol_nombre
             FROM usuario u
             LEFT JOIN rol r ON u.rol_id = r.id_rol
@@ -283,9 +277,7 @@ class AuthService:
 
         user = result.mappings().first()
 
-        # Usuario inexistente
         if not user:
-
             await self._log_access(
                 None,
                 identifier,
@@ -302,14 +294,11 @@ class AuthService:
                 },
             )
 
-        # ¿Existe un código pendiente?
         codigo = user.get("codigo_verificacion")
         expira = user.get("codigo_expira")
 
         if codigo and expira:
-
             if expira > self._ahora():
-
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=(
@@ -318,7 +307,6 @@ class AuthService:
                     ),
                 )
 
-            # Si expiró lo eliminamos
             await self.db.execute(
                 text("""
                     UPDATE usuario
@@ -335,10 +323,7 @@ class AuthService:
 
             await self.db.commit()
 
-        # Validar que la cuenta esté activa.
-        # 'estado' es texto (varchar), no booleano: comparamos el valor real.
         if user["estado"] and user["estado"].strip().lower() == "inactivo":
-
             await self._log_access(
                 user["id"],
                 user["correo"],
@@ -352,14 +337,12 @@ class AuthService:
                 detail="La cuenta se encuentra inactiva.",
             )
 
-        # Validar si existe un bloqueo temporal
         bloqueado_hasta = user.get("bloqueado_hasta")
 
         if (
             bloqueado_hasta is not None
             and bloqueado_hasta > self._ahora()
         ):
-
             await self._log_access(
                 user["id"],
                 user["correo"],
@@ -375,9 +358,7 @@ class AuthService:
                 ),
             )
 
-        # Si el bloqueo ya expiró, limpiar los datos
         if bloqueado_hasta is not None:
-
             await self.db.execute(
                 text("""
                     UPDATE usuario
@@ -394,14 +375,10 @@ class AuthService:
 
             await self.db.commit()
 
-        # ===== AQUÍ COMIENZA LA VERIFICACIÓN DE LA CONTRASEÑA =====
-
         if not verify_password(password_in, user["password_hash"] or ""):
-
             ahora = self._ahora()
             ultimo_intento = user.get("ultimo_intento")
 
-            # Reiniciar contador si pasaron más de 5 minutos
             if (
                 ultimo_intento is None
                 or (ahora - ultimo_intento).total_seconds() > 300
@@ -410,9 +387,7 @@ class AuthService:
             else:
                 nuevos_intentos = int(user["intentos_fallidos"] or 0) + 1
 
-            # Llegó al máximo de intentos
             if nuevos_intentos >= INTENTOS_MAXIMOS:
-
                 codigo = self._generar_codigo()
                 codigo_hash = hash_verification_code(codigo)
 
@@ -439,7 +414,6 @@ class AuthService:
 
                 await self.db.commit()
 
-                # Enviar código por correo
                 await MailService.enviar_codigo(
                     destinatario=user["correo"],
                     codigo=codigo,
@@ -461,7 +435,6 @@ class AuthService:
                     ),
                 )
 
-            # Guardar intento fallido
             await self.db.execute(
                 text("""
                     UPDATE usuario
@@ -500,7 +473,17 @@ class AuthService:
                 },
             )
 
-        # 5. Login exitoso (reseteamos fallos)
+        fecha_cambio = user.get("fecha_cambio_password")
+
+        if fecha_cambio is not None:
+            fecha_limite = fecha_cambio + timedelta(days=DIAS_EXPIRACION)
+
+            if self._ahora() > fecha_limite:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión."
+                )
+
         await self.db.execute(
             text("""
                 UPDATE usuario
@@ -529,8 +512,6 @@ class AuthService:
             "Autenticación exitosa",
         )
 
-        # Generación de JWT con los nombres de campos mapeados en español.
-        # user["id"] es UUID: se convierte a str para que sea serializable en el token.
         return create_access_token(
             data={
                 "sub": user.get("nombre") or user.get("correo") or identifier,
@@ -539,3 +520,144 @@ class AuthService:
                 "role_name": user.get("rol_nombre"),
             }
         )
+
+    async def cambiar_password(
+        self,
+        user_id: int,
+        password_actual: str,
+        password_nueva: str,
+    ):
+        query = text("""
+            SELECT contrasena
+            FROM usuario
+            WHERE id = :id
+        """)
+
+        result = await self.db.execute(
+            query,
+            {
+                "id": user_id,
+            },
+        )
+
+        usuario = result.mappings().first()
+
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado."
+            )
+
+        if not verify_password(
+            password_actual,
+            usuario["contrasena"],
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La contraseña actual es incorrecta."
+            )
+
+        if verify_password(
+            password_nueva,
+            usuario["contrasena"],
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La nueva contraseña debe ser diferente a la actual."
+            )
+
+        valida, mensaje = validar_password_segura(password_nueva)
+        
+        if not valida:
+            raise HTTPException(
+                status_code=400,
+                detail=mensaje
+            )
+        
+        nueva_password = hash_password(password_nueva)
+
+        await self.db.execute(
+            text("""
+                UPDATE usuario
+                SET
+                    contrasena = :password,
+                    fecha_cambio_password = CURRENT_TIMESTAMP
+                WHERE id = :id
+            """),
+            {
+                "password": nueva_password,
+                "id": user_id,
+            },
+        )
+
+        await self.db.commit()
+
+        return {
+            "mensaje": "Contraseña actualizada correctamente."
+        }
+
+    async def cambiar_password_expirada(
+        self,
+        correo: str,
+        password_actual: str,
+        password_nueva: str,
+    ):
+        query = text("""
+            SELECT id, contrasena
+            FROM usuario
+            WHERE LOWER(correo)=LOWER(:correo)
+        """)
+
+        result = await self.db.execute(
+            query,
+            {
+                "correo": correo,
+            },
+        )
+
+        usuario = result.mappings().first()
+
+        if not usuario:
+            raise HTTPException(
+                status_code=404,
+                detail="Usuario no encontrado."
+            )
+
+        if not verify_password(
+            password_actual,
+            usuario["contrasena"],
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="La contraseña actual es incorrecta."
+            )
+
+        valida, mensaje = validar_password_segura(password_nueva)
+
+        if not valida:
+            raise HTTPException(
+                status_code=400,
+                detail=mensaje
+            )   
+
+        nueva_password = hash_password(password_nueva)
+
+        await self.db.execute(
+            text("""
+                UPDATE usuario
+                SET
+                    contrasena = :password,
+                    fecha_cambio_password = CURRENT_TIMESTAMP
+                WHERE id = :id
+            """),
+            {
+                "password": nueva_password,
+                "id": usuario["id"],
+            },
+        )
+
+        await self.db.commit()
+
+        return {
+            "mensaje": "Contraseña actualizada correctamente."
+        }
