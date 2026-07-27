@@ -3,18 +3,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from modules.auth.auth_service import AuthService
 from modules.auth.mail_service import MailService
-<<<<<<< HEAD
 from modules.auth.auth_schema import (
     LoginRequest,
     CodigoRequest,
     CambiarPasswordRequest,
     CambiarPasswordExpiradaRequest,
+    ResetPasswordRequest,
+    ForgotPasswordRequest,
 )
 from core.security import get_current_user
-=======
-from modules.auth.auth_schema import LoginRequest, CodigoRequest
 from modules.auth.dependencies import require_admin_access
->>>>>>> 7a57d0a0b84edb6fdae895569d1fb8bf0d01495d
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -90,6 +88,29 @@ async def verificar_codigo(
     return await service.verificar_codigo(
         datos.correo,
         datos.codigo
+    )
+
+@router.post("/reset-password")
+async def reset_password(
+    datos: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    service = AuthService(db)
+
+    return await service.reset_password(
+        datos.token,
+        datos.nueva_password
+    )
+
+@router.post("/forgot-password")
+async def forgot_password(
+    datos: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    service = AuthService(db)
+
+    return await service.solicitar_reset_password(
+        datos.correo
     )
 
 @router.get("/historial-accesos")

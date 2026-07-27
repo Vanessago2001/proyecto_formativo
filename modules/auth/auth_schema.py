@@ -9,7 +9,6 @@ class LoginRequest(BaseModel):
 
 
 class CodigoRequest(BaseModel):
-<<<<<<< HEAD
     correo: str = Field(..., min_length=3, max_length=255)
     codigo: str = Field(..., min_length=6, max_length=6)
 
@@ -25,7 +24,16 @@ class CambiarPasswordExpiradaRequest(BaseModel):
     correo: EmailStr
     password_actual: str
     password_nueva: str
-=======
-    correo: str = Field(..., min_length=3)
-    codigo: str = Field(..., min_length=1, max_length=20)
->>>>>>> 7a57d0a0b84edb6fdae895569d1fb8bf0d01495d
+
+
+class ResetPasswordRequest(BaseModel):
+    """Esquema para restablecer la contraseña usando el token enviado al correo."""
+
+    token: str = Field(..., min_length=10)
+    nueva_password: str = Field(..., min_length=8, max_length=100)
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Esquema para solicitar el enlace de restablecimiento (¿olvidó su contraseña?)."""
+
+    correo: str = Field(..., min_length=3, max_length=255)
