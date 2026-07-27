@@ -8,4 +8,4 @@ class LoginRequest(BaseModel):
 
 class CodigoRequest(BaseModel):
     correo: str = Field(..., min_length=3)
-    codigo: str = Field(..., min_length=6, max_length=6)
+    codigo: str = Field(..., min_length=1, max_length=20)
