@@ -65,43 +65,88 @@
 
         <h2>Iniciar sesión</h2>
 
-        <div class="form-group">
+        <!-- ===== Formulario de login ===== -->
+        <div id="loginForm">
 
-            <label for="correo">
-                Correo o usuario
-            </label>
+            <div class="form-group">
 
-            <input
-                type="text"
-                id="correo"
-                name="correo"
-                placeholder="Ingrese su correo o nombre de usuario"
-                required
-                minlength="3">
+                <label for="correo">
+                    Correo o usuario
+                </label>
+
+                <input
+                    type="text"
+                    id="correo"
+                    name="correo"
+                    placeholder="Ingrese su correo o nombre de usuario"
+                    required
+                    minlength="3">
+
+            </div>
+
+            <div class="form-group">
+
+                <label for="password">
+                    Contraseña
+                </label>
+
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Ingrese su contraseña"
+                    required
+                    minlength="1">
+
+            </div>
+
+            <button type="submit" id="btnLogin" class="btn-login">
+                Entrar
+            </button>
 
         </div>
 
-        <div class="form-group">
+        <!-- ===== Formulario de verificación de código (oculto) ===== -->
+        <div id="codeForm" class="hidden-section">
 
-            <label for="password">
-                Contraseña
-            </label>
+            <h2>Verificación de código</h2>
 
-            <input
-                type="password"
-                id="password"
-                name="password"
-                placeholder="Ingrese su contraseña"
-                required
-                minlength="1">
+            <p class="code-info">
+                Se envió un código de verificación de 6 dígitos a su correo.<br>
+                Ingrese el código para continuar.
+            </p>
+
+            <div class="form-group">
+
+                <label for="codigo">
+                    Código de verificación
+                </label>
+
+                <input
+                    type="text"
+                    id="codigo"
+                    name="codigo"
+                    inputmode="numeric"
+                    placeholder="______"
+                    maxlength="6"
+                    pattern="[0-9]{6}"
+                    required>
+
+            </div>
+
+            <button type="button" id="btnVerificar" class="btn-login">
+                Verificar código
+            </button>
+
+            <button type="button" id="btnVolverLogin" class="btn-secondary">
+                Volver a iniciar sesión
+            </button>
 
         </div>
-
-        <button type="submit" id="btnLogin" class="btn-login">
-            Entrar
-        </button>
 
         <div id="errorMessage" class="error-message"></div>
+
+        <div id="successMessage" class="success-message"></div>
 
     </section>
 
@@ -117,24 +162,48 @@
 
 <script>
 
-document.getElementById("btnLogin").addEventListener("click", async function(e){
+// ===== Referencias a elementos =====
+const loginForm       = document.getElementById("loginForm");
+const codeForm        = document.getElementById("codeForm");
+const btnLogin        = document.getElementById("btnLogin");
+const btnVerificar    = document.getElementById("btnVerificar");
+const btnVolverLogin  = document.getElementById("btnVolverLogin");
+const errorMsg        = document.getElementById("errorMessage");
+const successMsg      = document.getElementById("successMessage");
+const inputCodigo     = document.getElementById("codigo");
+
+// ===== Mostrar formulario de código =====
+function mostrarFormularioCodigo(mensaje) {
+    loginForm.classList.add("hidden-section");
+    codeForm.classList.remove("hidden-section");
+    errorMsg.textContent = mensaje || "Se envió un código de verificación a su correo. Ingrese el código para continuar.";
+    inputCodigo.value = "";
+    inputCodigo.focus();
+}
+
+// ===== Mostrar formulario de login =====
+function mostrarFormularioLogin(mensaje) {
+    codeForm.classList.add("hidden-section");
+    loginForm.classList.remove("hidden-section");
+    errorMsg.textContent = "";
+    successMsg.textContent = mensaje || "";
+    document.getElementById("password").value = "";
+}
+
+// ===== Iniciar sesión =====
+btnLogin.addEventListener("click", async function(e){
 
     e.preventDefault();
 
     const correo = document.getElementById("correo").value.trim();
-
     const password = document.getElementById("password").value;
 
-    const errorMsg = document.getElementById("errorMessage");
-
     errorMsg.textContent = "";
+    successMsg.textContent = "";
 
     if(!correo || !password){
-
         errorMsg.textContent = "Por favor complete todos los campos.";
-
         return;
-
     }
 
     errorMsg.textContent = "Intentando iniciar sesión...";
@@ -142,24 +211,21 @@ document.getElementById("btnLogin").addEventListener("click", async function(e){
     try{
 
         const response = await fetch("/auth/login",{
-
             method:"POST",
-
             headers:{
                 "Content-Type":"application/json"
             },
-
             body:JSON.stringify({
                 correo,
                 password
             })
-
         });
 
         const data = await response.json();
 
         if (!response.ok) {
 
+<<<<<<< HEAD
     // Contraseña expirada
     if (data.detail === "Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión.") {
 
@@ -168,6 +234,17 @@ document.getElementById("btnLogin").addEventListener("click", async function(e){
 
         // Redireccionar a la página de cambio de contraseña
         window.location.href = "/static/cambiar_password.html";
+=======
+            // 403 → se envió código de verificación al correo
+            if(response.status === 403){
+                mostrarFormularioCodigo(data.detail || "Se envió un código de verificación a su correo.");
+            } else {
+                errorMsg.textContent = data.detail || "Credenciales inválidas. Inténtalo de nuevo.";
+            }
+
+            return;
+        }
+>>>>>>> 7a57d0a0b84edb6fdae895569d1fb8bf0d01495d
 
         return;
     }
@@ -177,7 +254,6 @@ document.getElementById("btnLogin").addEventListener("click", async function(e){
     return;
 }
         localStorage.setItem("access_token", data.access_token);
-
         localStorage.setItem("token_type", data.token_type);
 
         const payload = JSON.parse(atob(data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
@@ -187,14 +263,81 @@ document.getElementById("btnLogin").addEventListener("click", async function(e){
     }
 
     catch(error){
-
         errorMsg.textContent = "Error de conexión con el servidor.";
-
     }
 
 });
 
-// Menú hamburguesa
+// ===== Verificar código =====
+btnVerificar.addEventListener("click", async function(){
+
+    const correo = document.getElementById("correo").value.trim();
+    const codigo = inputCodigo.value.trim();
+
+    errorMsg.textContent = "";
+    successMsg.textContent = "";
+
+    if(!codigo || codigo.length !== 6){
+        errorMsg.textContent = "Por favor ingrese el código de 6 dígitos.";
+        return;
+    }
+
+    errorMsg.textContent = "Verificando código...";
+
+    try{
+
+        const response = await fetch("/auth/verificar-codigo",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                correo,
+                codigo
+            })
+        });
+
+        const data = await response.json();
+
+        if(!response.ok){
+
+            // 403 → se generó y envió un nuevo código (máximo de intentos del código)
+            if(response.status === 403){
+                errorMsg.textContent = data.detail || "Ha superado el número máximo de intentos del código. Se envió un nuevo código a su correo.";
+                inputCodigo.value = "";
+                inputCodigo.focus();
+            } else {
+                errorMsg.textContent = data.detail || "Error al verificar el código.";
+            }
+
+            return;
+        }
+
+        // Código verificado correctamente → volver al login con 5 intentos
+        mostrarFormularioLogin(
+            (data.mensaje || "Código verificado correctamente.") +
+            " Ya puede volver a iniciar sesión. Tenga 5 intentos más."
+        );
+
+    }
+
+    catch(error){
+        errorMsg.textContent = "Error de conexión con el servidor.";
+    }
+
+});
+
+// ===== Volver a iniciar sesión =====
+btnVolverLogin.addEventListener("click", function(){
+    mostrarFormularioLogin();
+});
+
+// ===== Permitir solo números en el campo de código =====
+inputCodigo.addEventListener("input", function(){
+    this.value = this.value.replace(/\D/g, "").slice(0, 6);
+});
+
+// ===== Menú hamburguesa =====
 const hamburgerBtn = document.getElementById("hamburgerBtn");
 const mobileMenu = document.getElementById("mobileMenu");
 
