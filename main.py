@@ -15,6 +15,10 @@ from modules.tareas.tarea_router import router as tarea_router
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
 
+from modules.Alejandra.router import router as alejandra_router
+
+
+
 async def ensure_login_security_schema(session) -> None:
     # Tabla de logs de acceso (auxiliar, no está en el dump original)
     await session.execute(text("""
@@ -117,7 +121,7 @@ app.include_router(users_router)
 app.include_router(tarea_router)
 app.include_router(security_router)
 app.include_router(empresas_router)
-
+app.include_router(alejandra_router)
 
 # ============================================================
 # RUTAS DE INTERFAZ DE USUARIO
