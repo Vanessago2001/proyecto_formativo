@@ -9,11 +9,8 @@ class LoginRequest(BaseModel):
 
 
 class CodigoRequest(BaseModel):
-<<<<<<< HEAD
     correo: str = Field(..., min_length=3, max_length=255)
     codigo: str = Field(..., min_length=6, max_length=6)
-
-
 
 
 class CambiarPasswordRequest(BaseModel):
@@ -25,7 +22,3 @@ class CambiarPasswordExpiradaRequest(BaseModel):
     correo: EmailStr
     password_actual: str
     password_nueva: str
-=======
-    correo: str = Field(..., min_length=3)
-    codigo: str = Field(..., min_length=1, max_length=20)
->>>>>>> 7a57d0a0b84edb6fdae895569d1fb8bf0d01495d
