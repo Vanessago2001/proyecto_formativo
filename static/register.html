@@ -154,9 +154,7 @@
 
             <select id="rol" name="rol" required>
                 <option value="">Seleccione un rol</option>
-                <option value="1">Administrador</option>
-                <option value="2">Instructor</option>
-                <option value="3">Aprendiz</option>
+                <option value="">Cargando opciones...</option>
             </select>
 
         </div>
@@ -227,7 +225,7 @@ document.getElementById("btnRegister").addEventListener("click", async function(
 
     try{
 
-        const response = await fetch("/users/create-user",{
+        const response = await fetch("/users/register",{
 
             method:"POST",
 
@@ -267,6 +265,23 @@ document.getElementById("btnRegister").addEventListener("click", async function(
     }
 
 });
+
+fetch("/users/public-roles")
+    .then(response => response.json())
+    .then(roles => {
+        const select = document.getElementById("rol");
+        select.innerHTML = '<option value="">Seleccione un perfil</option>';
+        const displayed = new Set();
+        roles.forEach(role => {
+            if (!displayed.has(role.nombre)) {
+                select.add(new Option(role.nombre, role.id_rol));
+                displayed.add(role.nombre);
+            }
+        });
+    })
+    .catch(() => {
+        document.getElementById("errorMessage").textContent = "No fue posible cargar los perfiles de registro.";
+    });
 
 // Menú hamburguesa
 const hamburgerBtn = document.getElementById("hamburgerBtn");

@@ -26,10 +26,6 @@ HEADER
     box-shadow:0 5px 15px rgba(0,0,0,.15);
     position:relative;
     height:90px;
-
-.header-content{
-    height:100%;
-}
 }
 
 .header-content{
@@ -42,6 +38,7 @@ HEADER
     align-items:center;
 
     padding:15px 40px;
+    height:100%;
 
 }
 
@@ -235,7 +232,7 @@ FORMULARIO
 
     padding:40px;
 
-    border-radius:18px;
+    border-radius:8px;
 
     box-shadow:0 10px 30px rgba(0,0,0,.08);
 
@@ -351,8 +348,39 @@ RESPONSIVE
 
     width:100%;
 
-    padding:300px;
+    padding:28px;
 
 }
 
+}
+
+.form-group select{
+    width:100%;
+    padding:14px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    background:#fff;
+    font:inherit;
+}
+
+.profile-icon{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#fff;
+    color:#3BAA01;
+    display:grid;
+    place-items:center;
+    text-decoration:none;
+    font-weight:700;
+}
+
+.primary-action{
+    padding:11px 14px;
+    border:0;
+    border-radius:4px;
+    background:#3BAA01;
+    color:#fff;
+    font:inherit;
+    font-weight:700;
 }

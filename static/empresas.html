@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA - Empresas</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .empresas-layout {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .empresas-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.08);
+        }
+        .empresas-card h2 {
+            color: #3BAA01;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        table th, table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        table th {
+            background: #3BAA01;
+            color: white;
+            font-size: 13px;
+        }
+        table tr:hover {
+            background: #f5f7fa;
+        }
+        .error-msg {
+            color: #d32f2f;
+            text-align: center;
+            padding: 15px;
+            background: #ffebee;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<header class="login-header">
+  <div class="header-content">
+
+    <div class="header-left">
+      <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+      <div>
+        <h1>CertiSENA</h1>
+        <p class="subtitle">Plataforma de gestión y consulta de certificados</p>
+        <p class="small-text">Servicio Nacional de Aprendizaje • CertiSENA</p>
+      </div>
+    </div>
+
+    <div class="header-buttons">
+      <a href="/dashboard" class="btn-login">Panel</a>
+      <a href="/empresas" class="btn-login">Empresas</a>
+      <a href="/profile" class="btn-login">Perfil</a>
+      <a href="/profile" class="profile-icon" id="profileIcon" title="Mi perfil">U</a>
+    </div>
+
+    <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+  </div>
+
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/empresas">Empresas</a>
+    <a href="/profile">Perfil</a>
+  </div>
+
+</header>
+
+<main class="empresas-layout">
+
+  <div class="empresas-card">
+
+    <h2>Empresas Registradas</h2>
+
+    <div class="error-msg" id="errorMessage"></div>
+
+    <table id="empresasTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>NIT</th>
+          <th>Ciudad</th>
+          <th>Dirección</th>
+          <th>Correo</th>
+        </tr>
+      </thead>
+      <tbody id="empresasBody">
+        <tr><td colspan="6" style="text-align:center;color:#999;">Cargando...</td></tr>
+      </tbody>
+    </table>
+
+  </div>
+
+</main>
+
+<footer class="login-footer">
+  <p>&copy; 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
+</footer>
+
+<script>
+// Menú hamburguesa
+const hamburgerBtn = document.getElementById("hamburgerBtn");
+const mobileMenu = document.getElementById("mobileMenu");
+
+hamburgerBtn.addEventListener("click", function(){
+    this.classList.toggle("active");
+    mobileMenu.classList.toggle("open");
+});
+
+document.querySelectorAll(".mobile-menu a").forEach(link => {
+    link.addEventListener("click", function(){
+        hamburgerBtn.classList.remove("active");
+        mobileMenu.classList.remove("open");
+    });
+});
+
+// Decodificar JWT
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return null;
+    }
+}
+
+// Cargar empresas
+async function loadEmpresas() {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+        window.location.href = "/login";
+        return;
+    }
+
+    const payload = parseJwt(token);
+    if (!payload) {
+        localStorage.clear();
+        window.location.href = "/login";
+        return;
+    }
+
+    const userName = payload.sub || "";
+    if (payload.role_name !== "Administrador") {
+        window.location.href = "/dashboard";
+        return;
+    }
+    document.getElementById("profileIcon").textContent = userName.charAt(0).toUpperCase();
+
+    try {
+        const response = await fetch("/empresas/all", {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const tbody = document.getElementById("empresasBody");
+
+        if (!response.ok) {
+            const data = await response.json();
+            document.getElementById("errorMessage").textContent = data.detail || "Error al cargar empresas";
+            document.getElementById("errorMessage").style.display = "block";
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No se pudieron cargar las empresas</td></tr>';
+            return;
+        }
+
+        const empresas = await response.json();
+        if (empresas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No hay empresas registradas</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = "";
+        empresas.forEach(emp => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${emp.id_empresa}</td>
+                <td>${emp.nombre || "--"}</td>
+                <td>${emp.nit || "--"}</td>
+                <td>${emp.ciudad || "--"}</td>
+                <td>${emp.direccion || "--"}</td>
+                <td>${emp.correo || "--"}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error("Error cargando empresas:", e);
+        document.getElementById("errorMessage").textContent = "Error de conexión con el servidor";
+        document.getElementById("errorMessage").style.display = "block";
+    }
+}
+
+// Inicializar
+loadEmpresas();
+</script>
+
+</body>
+</html>

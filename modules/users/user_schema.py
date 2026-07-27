@@ -19,6 +19,7 @@ class UserResponse(UserBase):
     id: UUID
     estado: Literal["Activo", "Inactivo", "Bloqueado"]
     rol_id: int
+    rol_nombre: Optional[str] = None
     # Estos campos pueden ser NULL en la base de datos
     tipo_doc: Optional[str] = None
     num_doc: Optional[str] = None
