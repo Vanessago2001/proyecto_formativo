@@ -176,7 +176,7 @@ class AuthService:
                     {
                         "codigo": nuevo_codigo_hash,
                         "expira": nueva_expiracion,
-                        "ahora": self._ahora(),
+                        "ahora": self._ahora().replace(tzinfo=None),
                         "id": usuario["id"],
                     },
                 )
@@ -539,3 +539,42 @@ class AuthService:
                 "role_name": user.get("rol_nombre"),
             }
         )
+
+    async def obtener_historial_accesos(
+        self,
+        limite: int = 100,
+        pagina: int = 1,
+    ):
+
+        offset = (pagina - 1) * limite
+
+        resultado = await self.db.execute(
+            text("""
+                SELECT
+                    l.id,
+                    l.usuario_id,
+                    l.correo_intentado,
+                    l.ip_origen,
+                    l.exitoso,
+                    l.motivo_fallo,
+                    l.fecha_hora,
+                    u.nombre,
+                    r.nombre AS rol
+                FROM logs_acceso l
+                LEFT JOIN usuario u
+                    ON u.id = l.usuario_id
+                LEFT JOIN rol r
+                    ON r.id_rol = u.rol_id
+                ORDER BY l.fecha_hora DESC
+                LIMIT :limite
+                OFFSET :offset
+            """),
+            {
+                "limite": limite,
+                "offset": offset,
+            },
+        )
+
+        registros = resultado.mappings().all()
+
+        return registros
