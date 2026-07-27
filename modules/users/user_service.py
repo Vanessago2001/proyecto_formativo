@@ -48,6 +48,8 @@ class UserService:
           detail='El rol proveído no existe.',
       )
 
+    password = user_data.contrasena
+
     valida, mensaje = validar_password_segura(password)
 
     if not valida:
@@ -56,7 +58,7 @@ class UserService:
           detail=mensaje
       )
 
-    hashed_pwd = hash_password(user_data.contrasena)
+    hashed_pwd = hash_password(password)
 
     query = text("""
             INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
