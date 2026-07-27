@@ -9,6 +9,7 @@ from core.database import AsyncSessionLocal
 from core.logger import logger
 from core.security import hash_password
 from modules.tareas.tarea_router import router as tarea_router
+from modules.security_policy.policy_router import router as security_router
 
 async def ensure_login_security_schema(session) -> None:
     await session.execute(text("""
@@ -133,3 +134,4 @@ app.include_router(auth_router)
 app.include_router(role_router)
 app.include_router(users_router)
 app.include_router(tarea_router)
+app.include_router(security_router)
