@@ -13,8 +13,6 @@ class CodigoRequest(BaseModel):
     codigo: str = Field(..., min_length=6, max_length=6)
 
 
-
-
 class CambiarPasswordRequest(BaseModel):
     password_actual: str = Field(..., min_length=8)
     password_nueva: str = Field(..., min_length=8)
