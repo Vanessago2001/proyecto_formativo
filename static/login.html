@@ -40,9 +40,8 @@
 
         <div class="header-buttons">
 
-            <a href="/register" class="btn-login">
-                Registrarse
-            </a>
+            <a href="/register" class="btn-login">Registrarse</a>
+
 
         </div>
 
@@ -171,7 +170,9 @@ document.getElementById("btnLogin").addEventListener("click", async function(e){
 
         localStorage.setItem("token_type", data.token_type);
 
-        window.location.href = "/dashboard";
+        const payload = JSON.parse(atob(data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const destination = payload.role_name === "Auditor" ? "/auditor" : payload.role_name === "Empresa" ? "/empresa" : "/dashboard";
+        window.location.href = destination;
 
     }
 
