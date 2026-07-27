@@ -8,10 +8,16 @@ from sqlalchemy import text
 from modules.roles.roles_router import router as role_router
 from modules.users.user_router import router as users_router
 from modules.auth.auth_router import router as auth_router
+# importamos password_reset_router para que sus rutas estén disponibles en la aplicación
+from modules.password_reset.password_reset_router import (
+    router as password_reset_router,
+)
 from core.database import AsyncSessionLocal
 from core.logger import logger
 from core.security import hash_password
 from modules.tareas.tarea_router import router as tarea_router
+
+
 
 async def ensure_login_security_schema(session) -> None:
     # Tabla de logs de acceso (auxiliar, no está en el dump original)
@@ -110,6 +116,7 @@ app.include_router(auth_router)
 app.include_router(role_router)
 app.include_router(users_router)
 app.include_router(tarea_router)
+app.include_router(password_reset_router)
 
 
 # ============================================================
