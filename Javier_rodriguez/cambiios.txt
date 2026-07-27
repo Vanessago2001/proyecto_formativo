@@ -1,0 +1,99 @@
+2# ANTES:
+return datetime.now(timezone.utc)
+
+# DESPUÉS:
+return datetime.now(timezone.utc).replace(tzinfo=None)
+
+3. Import faltante en auth_router.py - Línea 7
+# ANTES:
+from modules.auth.auth_schema import (
+    LoginRequest,
+    CodigoRequest,
+    CambiarPasswordRequest,
+)
+
+# DESPUÉS:
+from modules.auth.auth_schema import (
+    LoginRequest,
+    CodigoRequest,
+    CambiarPasswordRequest,
+    CambiarPasswordExpiradaRequest,  # ← AGREGADO
+)
+Motivo: La ruta /cambiar-password-expirada usaba CambiarPasswordExpiradaRequest pero no estaba importada, causando NameError.
+
+4. Import duplicado eliminado en auth_router.py - Línea 6
+# ANTES (duplicado):
+from modules.auth.auth_schema import LoginRequest, CodigoRequest  # línea 6
+from modules.auth.auth_schema import (                            # línea 7
+    LoginRequest,
+    CodigoRequest,
+    ...
+)
+
+# DESPUÉS (un solo bloque):
+from modules.auth.auth_schema import (
+    LoginRequest,
+    CodigoRequest,
+    CambiarPasswordRequest,
+    CambiarPasswordExpiradaRequest,
+)
+Motivo: LoginRequest y CodigoRequest estaban importados dos veces, lo cual es redundante y genera confusión.
+
+
+
+en auth_router agrege estos enpoints
+@router.put("/cambiar-password")
+async def cambiar_password(
+    data: CambiarPasswordRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+
+    service = AuthService(db)
+
+    return await service.cambiar_password(
+        current_user["id"],
+        data.password_actual,
+        data.password_nueva,
+    )
+
+@router.put("/cambiar-password-expirada")
+async def cambiar_password_expirada(
+    data: CambiarPasswordExpiradaRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(db)
+
+    return await service.cambiar_password_expirada(
+        data.correo,
+        data.password_actual,
+        data.password_nueva,
+    )
+
+
+
+en auth_schema agregue estas clases
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str = Field(..., min_length=8)
+    password_nueva: str = Field(..., min_length=8)
+
+
+class CambiarPasswordExpiradaRequest(BaseModel):
+    correo: EmailStr
+    password_actual: str
+    password_nueva: str
+
+
+
+
+#En el auth_service en asyn def login agregue al selec esto : u.fecha_cambio_password,
+
+agregue la verificacion para saber si la contraseña ya habia expirado
+if fecha_cambio is not None:
+            fecha_limite = fecha_cambio + timedelta(days=DIAS_EXPIRACION)
+
+            if self._ahora() > fecha_limite:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión."
+                )

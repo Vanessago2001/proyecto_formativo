@@ -49,7 +49,10 @@ async def seed_initial_data() -> None:
                     text("SELECT id_rol FROM rol WHERE nombre = :nombre;"),
                     {"nombre": role_name},
                 )
-                if existing_role.scalar_one_or_none() is None:
+                # if existing_role.scalar_one_or_none() is None: ANTES
+                # CAMBIO: Usamos .scalar() en lugar de .scalar_one_or_none() 
+                # para que retorne la primera coincidencia sin fallar si hay roles duplicados.
+                if existing_role.scalar() is None:
                     await session.execute(
                         text("INSERT INTO rol (nombre, descripcion) VALUES (:nombre, :descripcion);"),
                         {"nombre": role_name, "descripcion": role_description},
@@ -60,12 +63,17 @@ async def seed_initial_data() -> None:
                 text("SELECT id FROM usuario WHERE nombre = :nombre;"),
                 {"nombre": "admin"},
             )
-            if existing_admin.scalar_one_or_none() is None:
+            # if existing_admin.scalar_one_or_none() is None: ANTES
+            # CAMBIO: Se usa .scalar() para evitar la excepción MultipleResultsFound
+            # en caso de que existan múltiples registros con el nombre 'admin'.
+            if existing_admin.scalar() is None:
                 role_result = await session.execute(
                     text("SELECT id_rol FROM rol WHERE nombre = :nombre;"),
                     {"nombre": "Administrador"},
                 )
-                admin_role_id = role_result.scalar_one_or_none()
+                # admin_role_id = role_result.scalar_one_or_none() ANTES
+                # CAMBIO: Obtenemos el id_rol del primer registro retornado de la tabla rol.
+                admin_role_id = role_result.scalar()
                 if admin_role_id is not None:
                     await session.execute(
                         text("""
