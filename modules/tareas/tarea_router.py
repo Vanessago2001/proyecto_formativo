@@ -47,7 +47,7 @@ async def listar_tareas(
 
 @router.get("/usuario/{user_id}")
 async def listar_tareas_usuario(
-    user_id: int,
+    user_id: str,
     db: AsyncSession = Depends(get_db)
 ):
     service = TareaService(db)

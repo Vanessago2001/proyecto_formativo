@@ -14,7 +14,7 @@ class TareaCreate(BaseModel):
     nombre: str
     descripcion: str
     fecha_vencimiento: date
-    responsable_hizo: int
+    responsable_hizo: str
 
 
 class TareaEstadoUpdate(BaseModel):
@@ -26,5 +26,5 @@ class TareaResponse(BaseModel):
     nombre: str
     descripcion: str
     fecha_vencimiento: date
-    responsable_hizo: int
+    responsable_hizo: str
     estado: str

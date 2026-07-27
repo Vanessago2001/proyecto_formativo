@@ -1,0 +1,1 @@
+# Módulo de lógica de seguridad creado por [Alejandra]

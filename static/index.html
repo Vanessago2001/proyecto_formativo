@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA - Consulta de documentos</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+
+<header class="login-header">
+
+    <div class="header-content">
+
+        <div class="header-left">
+
+            <img
+                src="/static/sena_blanco.png"
+                alt="Logo SENA"
+                class="sena-blanco">
+
+            <div class="header-text">
+
+                <h1>CertiSENA</h1>
+
+                <p class="subtitle">
+                    Plataforma de gestión y consulta de certificados
+                </p>
+
+                <p class="small-text">
+                    Servicio Nacional de Aprendizaje • CertiSENA
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="header-buttons">
+
+            <a href="/login" class="btn-login">
+                Iniciar sesión
+            </a>
+
+            <a href="/register" class="btn-login">
+                Registrarse
+            </a>
+
+        </div>
+
+        <button
+            class="hamburger-btn"
+            id="hamburgerBtn"
+            aria-label="Abrir menú">
+
+            <span></span>
+            <span></span>
+            <span></span>
+
+        </button>
+
+    </div>
+
+    <nav class="mobile-menu" id="mobileMenu">
+
+        <a href="/login">
+            Iniciar sesión
+        </a>
+
+        <a href="/register">
+            Registrarse
+        </a>
+
+    </nav>
+
+</header>
+
+
+<main class="login-container">
+
+    <section class="login-form">
+
+        <h2>Consulta de documentos</h2>
+
+        <div class="form-group">
+
+            <label>Radicado del documento</label>
+
+            <input
+                type="text"
+                id="radicado"
+                placeholder="Ingrese el radicado">
+
+        </div>
+
+        <div class="form-group">
+
+            <label>NIT de la empresa</label>
+
+            <input
+                type="text"
+                id="nit"
+                placeholder="Ingrese el NIT">
+
+        </div>
+
+        <button
+            class="btn-login"
+            id="btnConsultar">
+
+            Consultar
+
+        </button>
+
+        <div id="resultadoConsulta" class="resultado-container"></div>
+
+    </section>
+
+</main>
+
+
+<footer class="login-footer">
+
+    © 2026 CertiSENA - SENA. Todos los derechos reservados.
+
+</footer>
+
+<script>
+
+const hamburgerBtn=document.getElementById("hamburgerBtn");
+const mobileMenu=document.getElementById("mobileMenu");
+
+hamburgerBtn.addEventListener("click",()=>{
+
+    hamburgerBtn.classList.toggle("active");
+    mobileMenu.classList.toggle("open");
+
+});
+
+</script>
+
+</body>
+</html>
