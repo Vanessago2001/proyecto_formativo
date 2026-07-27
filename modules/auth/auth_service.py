@@ -176,7 +176,7 @@ class AuthService:
                     {
                         "codigo": nuevo_codigo_hash,
                         "expira": nueva_expiracion,
-                        "ahora": self._ahora(),
+                        "ahora": self._ahora().replace(tzinfo=None),
                         "id": usuario["id"],
                     },
                 )
