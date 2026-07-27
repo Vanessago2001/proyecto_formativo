@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, status, Query  # <-- Agregado Query aquí
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from modules.auth.auth_service import AuthService
 from modules.auth.mail_service import MailService
 from modules.auth.auth_schema import LoginRequest, CodigoRequest
+from modules.auth.dependencies import require_admin_access
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -53,3 +54,32 @@ async def verificar_codigo(
         datos.correo,
         datos.codigo
     )
+
+@router.get("/historial-accesos")
+async def historial_accesos(
+    pagina: int = Query(
+        1,
+        ge=1,
+    ),
+    limite: int = Query(
+        50,
+        ge=1,
+        le=200,
+    ),
+    current_user=Depends(require_admin_access),
+    db: AsyncSession = Depends(get_db), # <-- Nota: Cambiado get_async_db a get_db para ser consistentes
+):
+
+    service = AuthService(db)
+
+    logs = await service.obtener_historial_accesos(
+        pagina=pagina,
+        limite=limite,
+    )
+
+    return {
+        "pagina": pagina,
+        "limite": limite,
+        "total": len(logs),
+        "registros": logs,
+    }

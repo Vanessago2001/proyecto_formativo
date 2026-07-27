@@ -17,7 +17,7 @@ class MailService:
             recipients=[destinatario],
 
             body=f"""
-Hola.
+Buen dia.
 
 Detectamos múltiples intentos fallidos de inicio de sesión.
 
