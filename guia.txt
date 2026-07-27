@@ -22,7 +22,7 @@ mi_proyecto_api/
 └── modules/              # Módulos de dominio independientes (Features)
     ├── __init__.py
     │
-    ├── roles/
+    ├── rol/
     │   ├── __init__.py
     │   ├── role_router.py
     │   ├── role_schema.py
@@ -61,7 +61,7 @@ pyjwt>=2.8.0
 --------------------------------------------------------------------------------
 3. SCRIPT DDL DE LA BASE DE DATOS (PostgreSQL)
 --------------------------------------------------------------------------------
-CREATE TABLE roles (
+CREATE TABLE rol (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL,
     description VARCHAR(200) NULL
@@ -74,10 +74,10 @@ CREATE TABLE users (
     hashed_password VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE NOT NULL,
     role_id INTEGER NOT NULL,
-    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
+    FOREIGN KEY (role_id) REFERENCES rol(id) ON DELETE RESTRICT
 );
 
-INSERT INTO roles (name, description) VALUES 
+INSERT INTO rol (name, description) VALUES 
 ('Administrador', 'Acceso total al sistema'),
 ('Aprendiz', 'Acceso limitado a consultas y perfiles');
 
@@ -160,10 +160,10 @@ def create_access_token(data: dict) -> str:
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 --------------------------------------------------------------------------------
-5. MÓDULO DE ROLES
+5. MÓDULO DE rol
 --------------------------------------------------------------------------------
 
-### ARCHIVO: modules/roles/role_schema.py
+### ARCHIVO: modules/rol/role_schema.py
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
@@ -179,31 +179,31 @@ class RoleResponse(RoleBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-### ARCHIVO: modules/roles/role_service.py
+### ARCHIVO: modules/rol/role_service.py
 from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from modules.roles.role_schema import RoleCreate
+from modules.rol.role_schema import RoleCreate
 from core.logger import logger
 
-class RoleService:
+class rolervice:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def get_all_roles(self) -> list[dict]:
-        logger.info("SQL Nativo: Consultando todos los roles.")
-        query = text("SELECT id, name, description FROM roles ORDER BY id ASC;")
+    async def get_all_rol(self) -> list[dict]:
+        logger.info("SQL Nativo: Consultando todos los rol.")
+        query = text("SELECT id, name, description FROM rol ORDER BY id ASC;")
         result = await self.db.execute(query)
         return [dict(row) for row in result.mappings().all()]
 
     async def create_role(self, role_data: RoleCreate) -> dict:
         logger.info(f"SQL Nativo: Insertando rol {role_data.name}")
         
-        check = await self.db.execute(text("SELECT id FROM roles WHERE name = :name;"), {"name": role_data.name})
+        check = await self.db.execute(text("SELECT id FROM rol WHERE name = :name;"), {"name": role_data.name})
         if check.first():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El rol ya existe.")
+            raise HTTPException(status_code=status.HTTP_400_BAD_, detail="El rol ya existe.")
 
-        query = text("INSERT INTO roles (name, description) VALUES (:name, :description) RETURNING id, name, description;")
+        query = text("INSERT INTO rol (name, description) VALUES (:name, :description) RETURNING id, name, description;")
         try:
             result = await self.db.execute(query, {"name": role_data.name, "description": role_data.description})
             await self.db.commit()
@@ -213,23 +213,23 @@ class RoleService:
             logger.error(f"Error al insertar rol: {str(e)}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error interno del servidor.")
 
-### ARCHIVO: modules/roles/role_router.py
+### ARCHIVO: modules/rol/role_router.py
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
-from modules.roles.role_schema import RoleCreate, RoleResponse
-from modules.roles.role_service import RoleService
+from modules.rol.role_schema import RoleCreate, RoleResponse
+from modules.rol.role_service import rolervice
 
-router = APIRouter(prefix="/roles", tags=["Roles"])
+router = APIRouter(prefix="/rol", tags=["rol"])
 
 @router.get("/", response_model=list[RoleResponse], status_code=status.HTTP_200_OK)
-async def read_roles(db: AsyncSession = Depends(get_db)):
-    service = RoleService(db)
-    return await service.get_all_roles()
+async def read_rol(db: AsyncSession = Depends(get_db)):
+    service = rolervice(db)
+    return await service.get_all_rol()
 
 @router.post("/", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
 async def add_role(role_in: RoleCreate, db: AsyncSession = Depends(get_db)):
-    service = RoleService(db)
+    service = rolervice(db)
     return await service.create_role(role_in)
 
 --------------------------------------------------------------------------------
@@ -282,7 +282,7 @@ class UserService:
         if dup.first():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario o correo ya existen.")
 
-        role_check = await self.db.execute(text("SELECT id FROM roles WHERE id = :role_id;"), {"role_id": user_data.role_id})
+        role_check = await self.db.execute(text("SELECT id FROM rol WHERE id = :role_id;"), {"role_id": user_data.role_id})
         if not role_check.first():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El role_id proveído no existe.")
 
@@ -380,7 +380,7 @@ async def sign_in(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSes
 ### ARCHIVO: main.py
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from modules.roles.role_router import router as role_router
+from modules.rol.role_router import router as role_router
 from modules.users.user_router import router as user_router
 from modules.auth.auth_router import router as auth_router
 from core.logger import logger
@@ -471,7 +471,7 @@ async def get_current_user(
     query = text("""
         SELECT u.id, u.username, u.email, u.is_active, u.role_id, r.name as role_name 
         FROM users u
-        INNER JOIN roles r ON u.role_id = r.id
+        INNER JOIN rol r ON u.role_id = r.id
         WHERE u.id = :user_id AND u.is_active = TRUE;
     """)
     
@@ -488,7 +488,7 @@ async def get_current_user(
 
 
 --------------------------------------------------------------------------------
-11. MÓDULO DE USUARIOS: ACTUALIZACIÓN DINÁMICA Y REGLAS DE ROLES
+11. MÓDULO DE USUARIOS: ACTUALIZACIÓN DINÁMICA Y REGLAS DE rol
 --------------------------------------------------------------------------------
 
 Siguiendo la regla de oro, crearemos un esquema Pydantic para manejar las 
@@ -530,7 +530,7 @@ from modules.users.user_schema import UserUpdate
             if user_update.role_id is not None or user_update.is_active is not None:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN, 
-                    detail="Permiso denegado. Solo un Administrador puede alterar roles o estados."
+                    detail="Permiso denegado. Solo un Administrador puede alterar rol o estados."
                 )
 
         # Verificar que el usuario objetivo realmente exista en PostgreSQL
@@ -559,7 +559,7 @@ from modules.users.user_schema import UserUpdate
 
         if user_update.role_id is not None:
             # Verificar existencia del nuevo rol
-            role_exist = await self.db.execute(text("SELECT id FROM roles WHERE id = :r_id;"), {"r_id": user_update.role_id})
+            role_exist = await self.db.execute(text("SELECT id FROM rol WHERE id = :r_id;"), {"r_id": user_update.role_id})
             if not role_exist.first():
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El rol asignado no existe.")
             update_fields.append("role_id = :role_id")
@@ -594,34 +594,34 @@ from modules.users.user_schema import UserUpdate
 12. CONFIGURACIÓN DE SEGURIDAD EN CAPA DE ROUTERS
 --------------------------------------------------------------------------------
 
-Modificamos las capas de presentación de Roles y Usuarios  inyectando la nueva 
+Modificamos las capas de presentación de rol y Usuarios  inyectando la nueva 
 dependencia get_current_user. Aquí se aplican restricciones absolutas según las 
 jerarquías de rol de tu ecosistema.
 
-### ARCHIVO ACTUALIZADO: modules/roles/role_router.py
+### ARCHIVO ACTUALIZADO: modules/rol/role_router.py
 
-Aplica protección estricta. Nadie puede ver ni crear roles a menos que sea un 
+Aplica protección estricta. Nadie puede ver ni crear rol a menos que sea un 
 Administrador.
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.security import get_current_user  # Nueva importación
-from modules.roles.role_schema import RoleCreate, RoleResponse
-from modules.roles.role_service import RoleService
+from modules.rol.role_schema import RoleCreate, RoleResponse
+from modules.rol.role_service import rolervice
 
-router = APIRouter(prefix="/roles", tags=["Roles"])
+router = APIRouter(prefix="/rol", tags=["rol"])
 
 @router.get("/", response_model=list[RoleResponse], status_code=status.HTTP_200_OK)
-async def read_roles(
+async def read_rol(
     db: AsyncSession = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
-    """Acceso restringido: Solo Administradores pueden listar roles."""
+    """Acceso restringido: Solo Administradores pueden listar rol."""
     if current_user["role_name"] != "Administrador":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado. Rol insuficiente.")
-    service = RoleService(db)
-    return await service.get_all_roles()
+    service = rolervice(db)
+    return await service.get_all_rol()
 
 @router.post("/", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
 async def add_role(
@@ -629,10 +629,10 @@ async def add_role(
     db: AsyncSession = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
-    """Acceso restringido: Solo Administradores pueden registrar nuevos roles."""
+    """Acceso restringido: Solo Administradores pueden registrar nuevos rol."""
     if current_user["role_name"] != "Administrador":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado. Rol insuficiente.")
-    service = RoleService(db)
+    service = rolervice(db)
     return await service.create_role(role_in)
 
 

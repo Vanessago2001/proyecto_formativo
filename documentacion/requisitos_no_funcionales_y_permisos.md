@@ -5,7 +5,7 @@ Proyecto: API modular con FastAPI, SQLAlchemy async y autenticación JWT
 
 ## 1. Objetivo del documento
 
-Este documento consolida lo que se ha implementado en el proyecto y lo organiza por requisitos no funcionales, incluyendo los permisos y roles que deben regir el acceso a la API.
+Este documento consolida lo que se ha implementado en el proyecto y lo organiza por requisitos no funcionales, incluyendo los permisos y rol que deben regir el acceso a la API.
 
 ---
 
@@ -19,7 +19,7 @@ Se ajustó la API para que quede alineada con la guía del proyecto y con la ló
 - Bloqueo temporal de cuentas tras múltiples accesos incorrectos.
 - Registro de trazabilidad de accesos en base de datos.
 - Compatibilidad con la estructura modular por dominios.
-- Preparación del proyecto para soportar roles y permisos de forma organizada.
+- Preparación del proyecto para soportar rol y permisos de forma organizada.
 
 ---
 
@@ -42,15 +42,15 @@ Se implementó una capa de seguridad básica para proteger el acceso a la API y 
 
 ---
 
-### RNF-02: Autorización y permisos por roles
+### RNF-02: Autorización y permisos por rol
 
 **Descripción**
 La API está preparada para trabajar con diferentes perfiles de usuario y permisos según su rol.
 
-**Roles definidos**
+**rol definidos**
 - Administrador
   - Acceso total al sistema.
-  - Puede gestionar usuarios, roles y tareas.
+  - Puede gestionar usuarios, rol y tareas.
 - Instructor
   - Puede gestionar tareas y usuarios de forma limitada.
 - Aprendiz
@@ -89,7 +89,7 @@ Se implementó un mecanismo de registro de accesos para auditar los intentos de 
 ### RNF-04: Integridad de datos
 
 **Descripción**
-Se trabajó para que los datos de usuarios y roles se mantengan consistentes dentro de la base de datos.
+Se trabajó para que los datos de usuarios y rol se mantengan consistentes dentro de la base de datos.
 
 **Acciones realizadas**
 - Se valida que el rol asignado a un usuario exista.
@@ -109,7 +109,7 @@ El proyecto se organizó por módulos para que sea más claro, escalable y fáci
 **Módulos incluidos**
 - auth: autenticación y login.
 - users: gestión de usuarios.
-- roles: gestión de roles.
+- rol: gestión de rol.
 - tareas: gestión de tareas.
 - core: configuración, base de datos, seguridad y logs.
 
@@ -125,7 +125,7 @@ El proyecto se organizó por módulos para que sea más claro, escalable y fáci
 Se incluyó una inicialización básica del sistema para preparar datos y tablas al arrancar la API.
 
 **Acciones realizadas**
-- Se creó un proceso de seed inicial para roles y usuario administrador.
+- Se creó un proceso de seed inicial para rol y usuario administrador.
 - Se habilitó la carga de datos iniciales al iniciar la aplicación.
 
 **Impacto**
@@ -137,9 +137,9 @@ Se incluyó una inicialización básica del sistema para preparar datos y tablas
 
 | Rol | Permisos previstos |
 |---|---|
-| Administrador | Crear, editar y eliminar usuarios, roles y tareas; ver reportes y logs; gestionar estados de cuentas |
+| Administrador | Crear, editar y eliminar usuarios, rol y tareas; ver reportes y logs; gestionar estados de cuentas |
 | Instructor | Gestionar tareas; administrar usuarios de forma limitada; consultar información general |
-| Aprendiz | Iniciar sesión; consultar su propio perfil; actualizar sus datos básicos sin modificar roles ni estados |
+| Aprendiz | Iniciar sesión; consultar su propio perfil; actualizar sus datos básicos sin modificar rol ni estados |
 
 ---
 

@@ -1,0 +1,358 @@
+/*=========================
+GENERAL
+==========================*/
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Montserrat',sans-serif;
+    background:#f5f7fa;
+    color:#333;
+}
+
+/*=========================
+HEADER
+==========================*/
+
+
+.login-header{
+
+    background:#3BAA01;
+    color:#fff;
+    box-shadow:0 5px 15px rgba(0,0,0,.15);
+    position:relative;
+    height:90px;
+
+.header-content{
+    height:100%;
+}
+}
+
+.header-content{
+
+    max-width:1500px;
+    margin:auto;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    padding:15px 40px;
+
+}
+
+/*=========================
+IZQUIERDA
+==========================*/
+
+.header-left{
+
+    display:flex;
+    align-items:center;
+    gap:18px;
+
+}
+
+.sena-blanco{
+
+    width:70px;
+    height:auto;
+
+}
+
+.header-text{
+
+    display:flex;
+    flex-direction:column;
+
+}
+
+.header-text h1{
+
+    font-size:30px;
+    color:white;
+
+}
+
+.subtitle{
+
+    font-size:14px;
+    margin-top:3px;
+
+}
+
+.small-text{
+
+    font-size:12px;
+    opacity:.9;
+
+}
+
+/*=========================
+BOTONES
+==========================*/
+
+.header-buttons{
+    display: flex;
+    gap: 15px;
+    margin-left: auto;
+}
+.btn-login{
+
+    padding:12px 25px;
+
+    background:#f5f7fa;
+    color:#3BAA01;
+
+    border-radius:30px;
+    border:2px solid white;
+
+    text-decoration:none;
+    font-weight:600;
+
+    transition:.3s;
+
+}
+
+.btn-login:hover{
+
+    background:#2e8a01;
+    color:white;
+
+}
+
+/*=========================
+MENU HAMBURGUESA
+==========================*/
+
+.hamburger-btn{
+
+    display:none;
+    background:none;
+    border:none;
+    cursor:pointer;
+
+}
+
+.hamburger-btn span{
+
+    display:block;
+    width:28px;
+    height:3px;
+    margin:5px;
+
+    background:white;
+
+    transition:.3s;
+
+}
+
+.hamburger-btn.active span:nth-child(1){
+
+    transform:rotate(45deg) translate(5px,6px);
+
+}
+
+.hamburger-btn.active span:nth-child(2){
+
+    opacity:0;
+
+}
+
+.hamburger-btn.active span:nth-child(3){
+
+    transform:rotate(-45deg) translate(5px,-6px);
+
+}
+
+/*=========================
+MENU MOBILE
+==========================*/
+
+.mobile-menu{
+
+    display:none;
+
+}
+
+.mobile-menu.open{
+
+    display:flex;
+    flex-direction:column;
+
+    gap:10px;
+
+    position:absolute;
+    top:100%;
+    left:0;
+    right:0;
+
+    padding:20px;
+
+    background:#3BAA01;
+
+}
+
+.mobile-menu a{
+
+    background:white;
+
+    color:#3BAA01;
+
+    text-decoration:none;
+
+    padding:12px;
+
+    border-radius:25px;
+
+    text-align:center;
+
+    font-weight:600;
+
+}
+
+/*=========================
+FORMULARIO
+==========================*/
+
+.login-container{
+
+    display:flex;
+    justify-content:center;
+    padding:60px 20px;
+
+}
+
+.login-form{
+
+    width:470px;
+
+    background:white;
+
+    padding:40px;
+
+    border-radius:18px;
+
+    box-shadow:0 10px 30px rgba(0,0,0,.08);
+
+}
+
+.login-form h2{
+
+    text-align:center;
+
+    color:#3BAA01;
+
+    margin-bottom:30px;
+
+}
+
+.form-group{
+
+    margin-bottom:20px;
+
+}
+
+.form-group label{
+
+    display:block;
+
+    margin-bottom:8px;
+
+    font-weight:600;
+
+}
+
+.form-group input{
+
+    width:100%;
+
+    padding:14px;
+
+    border:1px solid #ccc;
+
+    border-radius:10px;
+
+}
+
+.resultado-container{
+
+    margin-top:20px;
+
+}
+
+/*=========================
+FOOTER
+==========================*/
+
+.login-footer{
+
+    text-align:center;
+
+    padding:25px;
+
+    color:#666;
+
+}
+
+/*=========================
+RESPONSIVE
+==========================*/
+
+@media(max-width:770px){
+
+.header-content{
+
+    padding:15px 20px;
+
+}
+
+.header-buttons{
+
+    display:none;
+
+}
+
+.hamburger-btn{
+
+    display:block;
+
+}
+
+.sena-blanco{
+
+    width:50px;
+
+}
+
+.header-text h1{
+
+    font-size:22px;
+
+}
+
+.subtitle{
+
+    font-size:12px;
+
+}
+
+.small-text{
+
+    font-size:11px;
+
+}
+
+.login-form{
+
+    width:100%;
+
+    padding:300px;
+
+}
+
+}
