@@ -532,3 +532,33 @@ NOTAS ADICIONALES - 26/07/2026
 ================================================================================
 FIN DEL REGISTRO DE CAMBIOS
 ================================================================================
+REGISTRO DE CAMBIOS - 26/07/2026
+
+Panel de administrador implementado:
+- Se conecto la vista real de dashboard y se agregaron las rutas /empresas y /profile.
+- El administrador puede listar usuarios, crear cuentas auxiliares, cambiar roles y activar o inactivar cuentas.
+- Se creo GET /users/me y PUT /users/{user_id}; las rutas administrativas exigen token de Administrador.
+- Se creo GET /empresas/all, protegido para administradores, y su servicio SQL.
+- El dashboard incluye menu, resumen de cuentas y acceso al perfil mediante icono superior.
+- Se corrigieron estilos responsive del encabezado y formulario.
+- La ruta publica /register ahora redirige al inicio de sesion, pues la
+  creacion de cuentas queda disponible unicamente en el panel administrador.
+
+Archivos: main.py, modules/users/user_router.py, modules/empresas/empresas_router.py,
+modules/empresas/empresas_service.py, static/dashboard.html, static/empresas.html,
+static/profile.html y static/styles.css.
+
+REGISTRO Y PRIMERAS PANTALLAS POR ROL - 26/07/2026
+- Se restauro el boton Registrarse en la vista de inicio de sesion.
+- El registro publico consulta los roles disponibles y solo permite Auditor y
+  Empresa. La API POST /users/register valida la misma regla en el servidor.
+- Se agregaron los roles iniciales Auditor, Empresa y Auxiliar al proceso de
+  siembra de datos de la aplicacion.
+- El login dirige al Auditor a /auditor y a la Empresa a /empresa. Los demas
+  roles ingresan al panel principal.
+- Se crearon las primeras vistas static/auditor.html y static/empresa.html.
+  Incluyen sus menus y controles iniciales para seleccionar documentos.
+- No se implemento el almacenamiento real de archivos, solicitudes,
+  asignaciones, comites ni apelaciones, porque quedaron fuera de este alcance.
+- Los selectores de registro y creacion de cuentas eliminan roles repetidos
+  por nombre antes de mostrarlos en pantalla.
