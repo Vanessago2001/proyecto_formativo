@@ -1,17 +1,16 @@
 # Entorno virtual
-.venv/
+env/
+venv/
 
-# Archivos generados por Python
+# Caché de Python
 __pycache__/
-*.py[cod]
+*.pyc
 
 # Variables de entorno
 .env
-.env.*
 
 # Archivos de VS Code
 .vscode/
 
-# Archivos del sistema
-.DS_Store
-Thumbs.db
+# Logs
+*.log

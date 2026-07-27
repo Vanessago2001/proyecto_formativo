@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 import os
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import text
@@ -16,6 +16,8 @@ from core.database import AsyncSessionLocal
 from core.logger import logger
 from core.security import hash_password
 from modules.tareas.tarea_router import router as tarea_router
+from modules.security_policy.policy_router import router as security_router
+from modules.empresas.empresas_router import router as empresas_router
 
 
 
@@ -40,6 +42,9 @@ async def seed_initial_data() -> None:
 
             # Roles por defecto según la tabla rol (id_rol PK, nombre, descripcion)
             default_rol = [
+                ("Auditor", "Puede completar su registro y cargar documentos"),
+                ("Empresa", "Puede registrar documentos y solicitudes"),
+                ("Auxiliar", "Cuenta interna creada por el administrador"),
                 ("Administrador", "Acceso total al sistema"),
                 ("Instructor", "Puede gestionar tareas y usuarios"),
                 ("Aprendiz", "Usuario estándar"),
@@ -117,7 +122,8 @@ app.include_router(role_router)
 app.include_router(users_router)
 app.include_router(tarea_router)
 app.include_router(password_reset_router)
-
+app.include_router(security_router)
+app.include_router(empresas_router)
 
 # ============================================================
 # RUTAS DE INTERFAZ DE USUARIO
@@ -143,6 +149,8 @@ async def register_page(request: Request):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
+    return FileResponse("static/dashboard.html")
+    # La antigua plantilla se conserva debajo como referencia no ejecutable.
     """Página de inicio después de iniciar sesión (placeholder)."""
     html_content = """
     <!DOCTYPE html>
@@ -206,3 +214,23 @@ async def dashboard_page(request: Request):
     </html>
     """
     return html_content
+
+
+@app.get("/empresas", response_class=HTMLResponse)
+async def empresas_page(request: Request):
+    return FileResponse("static/empresas.html")
+
+
+@app.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request):
+    return FileResponse("static/profile.html")
+
+
+@app.get("/auditor", response_class=HTMLResponse)
+async def auditor_page(request: Request):
+    return FileResponse("static/auditor.html")
+
+
+@app.get("/empresa", response_class=HTMLResponse)
+async def empresa_page(request: Request):
+    return FileResponse("static/empresa.html")

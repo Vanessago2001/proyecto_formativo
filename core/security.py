@@ -1,6 +1,8 @@
 from fastapi import Depends, HTTPException, status
 import bcrypt
 import jwt
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from core.config import settings
 from fastapi.security import OAuth2PasswordBearer
@@ -10,6 +12,26 @@ from core.database import get_db
 from typing import Any
 import uuid
 import jwt
+
+def validar_password_segura(password: str) -> tuple[bool, str]:
+    """Verifica la creacion de contraseña segura"""
+
+    if len(password) < 8:
+        return False, "La contraseña debe tener mínimo 8 caracteres."
+
+    if not re.search(r"[A-Z]", password):
+        return False, "Debe contener al menos una letra mayúscula."
+
+    if not re.search(r"[a-z]", password):
+        return False, "Debe contener al menos una letra minúscula."
+
+    if not re.search(r"\d", password):
+        return False, "Debe contener al menos un número."
+
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-]", password):
+        return False, "Debe contener al menos un carácter especial."
+
+    return True, ""
 
 def hash_password(password: str) -> str:
     """Usa bcrypt nativo para convertir un texto plano en un hash binario y decodificarlo a string"""
@@ -21,6 +43,27 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     # \"\"\"Compara el texto plano con el hash almacenado en la base de datos transformando ambos a bytes\"\"\"
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+def hash_verification_code(codigo: str) -> str:
+    """
+    Convierte el código de verificación en un hash SHA-256.
+    """
+    return hashlib.sha256(codigo.encode("utf-8")).hexdigest()
+
+
+def verify_verification_code(
+    codigo_plano: str,
+    codigo_hash: str
+) -> bool:
+    """
+    Compara un código ingresado con el hash almacenado.
+    """
+    return secrets.compare_digest(
+        hashlib.sha256(
+            codigo_plano.encode("utf-8")
+        ).hexdigest(),
+        codigo_hash
+    )
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
