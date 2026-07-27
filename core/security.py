@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, status
 import bcrypt
 import jwt
 import hashlib
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from core.config import settings

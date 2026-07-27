@@ -22,6 +22,13 @@ class Settings:
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
     )
 
+    # URL base de la aplicación (usada para armar el enlace de restablecimiento
+    # de contraseña que se envía por correo).
+    APP_BASE_URL: str = os.getenv(
+        "APP_BASE_URL",
+        "http://127.0.0.1:8000"
+    )
+
     # ==========================
     # CONFIGURACIÓN DE MAILTRAP
     # ==========================

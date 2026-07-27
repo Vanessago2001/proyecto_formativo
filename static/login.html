@@ -104,6 +104,40 @@
                 Entrar
             </button>
 
+            <p style="margin-top:14px;text-align:center;">
+                <a href="#" id="linkOlvido">¿Olvidó su contraseña?</a>
+            </p>
+
+        </div>
+
+        <!-- ===== Formulario ¿Olvidó su contraseña? (oculto) ===== -->
+        <div id="forgotForm" class="hidden-section">
+
+            <h2>Restablecer contraseña</h2>
+
+            <p class="code-info">
+                Ingrese el correo con el que se registró.<br>
+                Le enviaremos un enlace para crear una nueva contraseña.
+            </p>
+
+            <div class="form-group">
+                <label for="correoOlvido">Correo registrado</label>
+                <input
+                    type="email"
+                    id="correoOlvido"
+                    name="correoOlvido"
+                    placeholder="Ingrese su correo"
+                    required>
+            </div>
+
+            <button type="button" id="btnEnviarEnlace" class="btn-login">
+                Enviar enlace
+            </button>
+
+            <button type="button" id="btnVolverDesdeOlvido" class="btn-secondary">
+                Volver a iniciar sesión
+            </button>
+
         </div>
 
         <!-- ===== Formulario de verificación de código (oculto) ===== -->
@@ -165,9 +199,14 @@
 // ===== Referencias a elementos =====
 const loginForm       = document.getElementById("loginForm");
 const codeForm        = document.getElementById("codeForm");
+const forgotForm      = document.getElementById("forgotForm");
 const btnLogin        = document.getElementById("btnLogin");
 const btnVerificar    = document.getElementById("btnVerificar");
 const btnVolverLogin  = document.getElementById("btnVolverLogin");
+const linkOlvido      = document.getElementById("linkOlvido");
+const btnEnviarEnlace = document.getElementById("btnEnviarEnlace");
+const btnVolverDesdeOlvido = document.getElementById("btnVolverDesdeOlvido");
+const inputCorreoOlvido    = document.getElementById("correoOlvido");
 const errorMsg        = document.getElementById("errorMessage");
 const successMsg      = document.getElementById("successMessage");
 const inputCodigo     = document.getElementById("codigo");
@@ -175,6 +214,7 @@ const inputCodigo     = document.getElementById("codigo");
 // ===== Mostrar formulario de código =====
 function mostrarFormularioCodigo(mensaje) {
     loginForm.classList.add("hidden-section");
+    forgotForm.classList.add("hidden-section");
     codeForm.classList.remove("hidden-section");
     errorMsg.textContent = mensaje || "Se envió un código de verificación a su correo. Ingrese el código para continuar.";
     inputCodigo.value = "";
@@ -184,10 +224,35 @@ function mostrarFormularioCodigo(mensaje) {
 // ===== Mostrar formulario de login =====
 function mostrarFormularioLogin(mensaje) {
     codeForm.classList.add("hidden-section");
+    forgotForm.classList.add("hidden-section");
     loginForm.classList.remove("hidden-section");
     errorMsg.textContent = "";
     successMsg.textContent = mensaje || "";
     document.getElementById("password").value = "";
+}
+
+// ===== Mostrar mensaje de restablecimiento de contraseña =====
+// Se llama cuando el usuario agota los intentos y el sistema envía un enlace
+// de restablecimiento a su correo. Se ocultan ambos formularios.
+function mostrarMensajeReset(mensaje) {
+    loginForm.classList.add("hidden-section");
+    codeForm.classList.add("hidden-section");
+    forgotForm.classList.add("hidden-section");
+    errorMsg.textContent = "";
+    successMsg.textContent =
+        mensaje ||
+        "Se envió un enlace a su correo para restablecer la contraseña. Revise su bandeja de entrada.";
+}
+
+// ===== Mostrar formulario ¿Olvidó su contraseña? =====
+function mostrarFormularioOlvido() {
+    loginForm.classList.add("hidden-section");
+    codeForm.classList.add("hidden-section");
+    forgotForm.classList.remove("hidden-section");
+    errorMsg.textContent = "";
+    successMsg.textContent = "";
+    inputCorreoOlvido.value = document.getElementById("correo").value.trim();
+    inputCorreoOlvido.focus();
 }
 
 // ===== Iniciar sesión =====
@@ -225,11 +290,21 @@ btnLogin.addEventListener("click", async function(e){
 
         if(!response.ok){
 
-            // 403 → se envió código de verificación al correo
-            if(response.status === 403){
-                mostrarFormularioCodigo(data.detail || "Se envió un código de verificación a su correo.");
+            const detail = data.detail;
+
+            // 403 con acción estructurada:
+            //   accion "codigo" → mostrar el formulario de verificación de código
+            //   accion "reset"  → se envió un enlace de restablecimiento al correo
+            if(response.status === 403 && detail && typeof detail === "object"){
+                if(detail.accion === "reset"){
+                    mostrarMensajeReset(detail.mensaje);
+                } else {
+                    mostrarFormularioCodigo(detail.mensaje);
+                }
             } else {
-                errorMsg.textContent = data.detail || "Credenciales inválidas. Inténtalo de nuevo.";
+                errorMsg.textContent =
+                    (typeof detail === "string" ? detail : (detail && detail.mensaje)) ||
+                    "Credenciales inválidas. Inténtalo de nuevo.";
             }
 
             return;
@@ -312,6 +387,62 @@ btnVerificar.addEventListener("click", async function(){
 // ===== Volver a iniciar sesión =====
 btnVolverLogin.addEventListener("click", function(){
     mostrarFormularioLogin();
+});
+
+// ===== Abrir formulario ¿Olvidó su contraseña? =====
+linkOlvido.addEventListener("click", function(e){
+    e.preventDefault();
+    mostrarFormularioOlvido();
+});
+
+// ===== Volver al login desde ¿Olvidó su contraseña? =====
+btnVolverDesdeOlvido.addEventListener("click", function(){
+    mostrarFormularioLogin();
+});
+
+// ===== Enviar enlace de restablecimiento al correo =====
+btnEnviarEnlace.addEventListener("click", async function(){
+
+    const correo = inputCorreoOlvido.value.trim();
+
+    errorMsg.textContent = "";
+    successMsg.textContent = "";
+
+    if(!correo){
+        errorMsg.textContent = "Por favor ingrese su correo.";
+        return;
+    }
+
+    errorMsg.textContent = "Enviando enlace...";
+
+    try{
+
+        const response = await fetch("/auth/forgot-password",{
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ correo })
+        });
+
+        const data = await response.json();
+
+        errorMsg.textContent = "";
+
+        if(!response.ok){
+            errorMsg.textContent =
+                (typeof data.detail === "string" ? data.detail : "No se pudo procesar la solicitud.");
+            return;
+        }
+
+        // Por seguridad el mensaje es genérico (exista o no el correo).
+        successMsg.textContent =
+            data.mensaje ||
+            "Si el correo está registrado, se enviará un enlace para restablecer la contraseña.";
+
+    }
+    catch(error){
+        errorMsg.textContent = "Error de conexión con el servidor.";
+    }
+
 });
 
 // ===== Permitir solo números en el campo de código =====
