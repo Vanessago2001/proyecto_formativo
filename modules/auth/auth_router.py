@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, status, Query  # <-- Agregado Query aquí
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from modules.auth.auth_service import AuthService
@@ -67,7 +67,7 @@ async def historial_accesos(
         le=200,
     ),
     current_user=Depends(require_admin_access),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db), # <-- Nota: Cambiado get_async_db a get_db para ser consistentes
 ):
 
     service = AuthService(db)
