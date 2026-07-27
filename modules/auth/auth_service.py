@@ -43,6 +43,18 @@ class AuthService:
         """
         return datetime.now(timezone.utc).replace(tzinfo=None)
 
+    def _a_naive_utc(self, valor: datetime) -> datetime:
+        """
+        Normaliza un datetime a UTC naive para poder compararlo con _ahora().
+
+        Las columnas TIMESTAMPTZ (p. ej. password_reset_tokens.fecha_expiracion)
+        devuelven datetimes *aware*; compararlos directamente con _ahora() (naive)
+        lanza TypeError. Este helper deja ambos lados en la misma forma.
+        """
+        if valor.tzinfo is not None:
+            return valor.astimezone(timezone.utc).replace(tzinfo=None)
+        return valor
+
     def _generar_codigo(self) -> str:
         """
         Genera un código aleatorio de seis dígitos.
@@ -148,7 +160,7 @@ class AuthService:
                 detail="No existe ningún código pendiente.",
             )
 
-        if usuario["codigo_expira"] < self._ahora():
+        if self._a_naive_utc(usuario["codigo_expira"]) < self._ahora():
             raise HTTPException(
                 status_code=400,
                 detail="El código expiró.",
@@ -309,7 +321,7 @@ class AuthService:
         expira = user.get("codigo_expira")
 
         if codigo and expira:
-            if expira > self._ahora():
+            if self._a_naive_utc(expira) > self._ahora():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail={
@@ -352,6 +364,8 @@ class AuthService:
             )
 
         bloqueado_hasta = user.get("bloqueado_hasta")
+        if bloqueado_hasta is not None:
+            bloqueado_hasta = self._a_naive_utc(bloqueado_hasta)
 
         if (
             bloqueado_hasta is not None
@@ -392,6 +406,8 @@ class AuthService:
         if not verify_password(password_in, user["password_hash"] or ""):
             ahora = self._ahora()
             ultimo_intento = user.get("ultimo_intento")
+            if ultimo_intento is not None:
+                ultimo_intento = self._a_naive_utc(ultimo_intento)
             ya_verifico = bool(user.get("codigo_verificado"))
 
             # Fase 1 (sin código verificado): 3 intentos -> se exige un código.
@@ -553,8 +569,8 @@ class AuthService:
 
         fecha_cambio = user.get("fecha_cambio_password")
 
-        if fecha_cambio is not None:
-            fecha_limite = fecha_cambio + timedelta(days=DIAS_EXPIRACION)
+        if DIAS_EXPIRACION > 0 and fecha_cambio is not None:
+            fecha_limite = self._a_naive_utc(fecha_cambio) + timedelta(days=DIAS_EXPIRACION)
 
             if self._ahora() > fecha_limite:
                 raise HTTPException(
@@ -718,7 +734,7 @@ class AuthService:
                 detail="Este enlace ya fue utilizado. Solicite uno nuevo.",
             )
 
-        if registro["fecha_expiracion"] < self._ahora():
+        if self._a_naive_utc(registro["fecha_expiracion"]) < self._ahora():
             raise HTTPException(
                 status_code=400,
                 detail="El enlace de restablecimiento expiró. Solicite uno nuevo.",
