@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA - Mi Perfil</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .profile-layout {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .profile-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.08);
+        }
+        .profile-card h2 {
+            color: #3BAA01;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .profile-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .profile-info .info-item {
+            padding: 12px;
+            background: #f5f7fa;
+            border-radius: 8px;
+        }
+        .profile-info .info-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .profile-info .info-value {
+            font-weight: 600;
+            color: #333;
+        }
+        .profile-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .profile-icon-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #3BAA01;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0 auto 20px;
+        }
+    </style>
+</head>
+<body>
+
+<header class="login-header">
+  <div class="header-content">
+
+    <div class="header-left">
+      <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+      <div>
+        <h1>CertiSENA</h1>
+        <p class="subtitle">Plataforma de gestión y consulta de certificados</p>
+        <p class="small-text">Servicio Nacional de Aprendizaje • CertiSENA</p>
+      </div>
+    </div>
+
+    <div class="header-buttons">
+      <a href="/dashboard" class="btn-login">Panel</a>
+      <a href="/profile" class="btn-login">Perfil</a>
+      <a href="/profile" class="profile-icon" id="profileIcon" title="Mi perfil">U</a>
+    </div>
+
+    <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+  </div>
+
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/profile">Perfil</a>
+  </div>
+
+</header>
+
+<main class="profile-layout">
+
+  <div class="profile-card">
+
+    <div class="profile-icon-large" id="profileIconLarge">U</div>
+
+    <h2>Mi Perfil</h2>
+
+    <div class="profile-info" id="profileInfo">
+      <div class="info-item">
+        <div class="info-label">Nombre</div>
+        <div class="info-value" id="profileNombre">--</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Correo</div>
+        <div class="info-value" id="profileCorreo">--</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">ID de usuario</div>
+        <div class="info-value" id="profileId">--</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Rol</div>
+        <div class="info-value" id="profileRol">--</div>
+      </div>
+    </div>
+
+    <div class="profile-actions">
+      <a href="/dashboard" class="btn-login">Volver al Dashboard</a>
+      <a href="/login" class="btn-login" id="logoutLink">Cerrar sesión</a>
+    </div>
+
+  </div>
+
+</main>
+
+<footer class="login-footer">
+  <p>&copy; 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
+</footer>
+
+<script>
+// Menú hamburguesa
+const hamburgerBtn = document.getElementById("hamburgerBtn");
+const mobileMenu = document.getElementById("mobileMenu");
+
+hamburgerBtn.addEventListener("click", function(){
+    this.classList.toggle("active");
+    mobileMenu.classList.toggle("open");
+});
+
+document.querySelectorAll(".mobile-menu a").forEach(link => {
+    link.addEventListener("click", function(){
+        hamburgerBtn.classList.remove("active");
+        mobileMenu.classList.remove("open");
+    });
+});
+
+// Decodificar JWT
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return null;
+    }
+}
+
+// Cargar perfil
+function loadProfile() {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+        window.location.href = "/login";
+        return;
+    }
+
+    const payload = parseJwt(token);
+    if (!payload) {
+        localStorage.clear();
+        window.location.href = "/login";
+        return;
+    }
+
+    const userName = payload.sub || "";
+    const userId = payload.user_id || "";
+    const roleName = payload.role_name || "";
+
+    document.getElementById("profileNombre").textContent = userName;
+    document.getElementById("profileCorreo").textContent = "Cargando...";
+    document.getElementById("profileId").textContent = userId;
+    document.getElementById("profileRol").textContent = roleName;
+    document.getElementById("profileIcon").textContent = userName.charAt(0).toUpperCase();
+    document.getElementById("profileIconLarge").textContent = userName.charAt(0).toUpperCase();
+
+    fetch("/users/me", { headers: { "Authorization": `Bearer ${token}` } })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (data) document.getElementById("profileCorreo").textContent = data.correo || "--"; });
+}
+
+// Cerrar sesión
+document.getElementById("logoutLink").addEventListener("click", function(e) {
+    e.preventDefault();
+    localStorage.clear();
+    window.location.href = "/login";
+});
+
+// Inicializar
+loadProfile();
+</script>
+
+</body>
+</html>

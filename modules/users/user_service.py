@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.logger import logger
-from core.security import hash_password
+from core.security import hash_password, validar_password_segura
 from modules.users.user_schema import UserCreate, UserUpdate
 
 
@@ -46,6 +46,14 @@ class UserService:
       raise HTTPException(
           status_code=status.HTTP_400_BAD_REQUEST,
           detail='El rol proveído no existe.',
+      )
+
+    valida, mensaje = validar_password_segura(password)
+
+    if not valida:
+      raise HTTPException(
+          status_code=400,
+          detail=mensaje
       )
 
     hashed_pwd = hash_password(user_data.contrasena)
