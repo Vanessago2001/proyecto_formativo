@@ -33,6 +33,24 @@ async def ensure_login_security_schema(session) -> None:
         );
     """))
 
+    # Tabla de tokens para restablecer la contraseña (enlace enviado por correo)
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id SERIAL PRIMARY KEY,
+            usuario_id UUID NOT NULL,
+            token VARCHAR(255) UNIQUE NOT NULL,
+            fecha_expiracion TIMESTAMP WITH TIME ZONE NOT NULL,
+            utilizado BOOLEAN NOT NULL DEFAULT FALSE,
+            creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+    """))
+
+    # Columna que marca si el usuario ya verificó un código (fase 2 del login).
+    await session.execute(text("""
+        ALTER TABLE usuario
+        ADD COLUMN IF NOT EXISTS codigo_verificado BOOLEAN DEFAULT FALSE;
+    """))
+
 async def seed_initial_data() -> None:
     async with AsyncSessionLocal() as session:
         try:
@@ -143,6 +161,12 @@ async def login_page(request: Request):
 async def register_page(request: Request):
     """Sirve la página de registro de usuarios."""
     return FileResponse("static/register.html")
+
+
+@app.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(request: Request):
+    """Sirve la página para crear una nueva contraseña (enlace del correo)."""
+    return FileResponse("static/reset-password.html")
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

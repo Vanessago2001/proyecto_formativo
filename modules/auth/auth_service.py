@@ -1,23 +1,34 @@
 from datetime import datetime, timedelta, timezone
 import random
+import secrets
 
 from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import settings
 from core.logger import logger
 from core.security import (
     create_access_token,
     verify_password,
+    hash_password,
     hash_verification_code,
     verify_verification_code,
+    validar_password_segura,
 )
 
 from modules.auth.mail_service import MailService
 
 
-INTENTOS_MAXIMOS = 5
-TIEMPO_BLOQUEO_MINUTOS = 5
+# Fase 1: tras 3 intentos fallidos se exige el código de verificación por correo.
+INTENTOS_ANTES_DE_CODIGO = 3
+# Fase 2: tras verificar el código, se dan 5 intentos más; al agotarlos se envía
+# un enlace de restablecimiento de contraseña.
+INTENTOS_ANTES_DE_RESET = 5
+# Tiempo que la cuenta queda bloqueada tras enviar el enlace de restablecimiento.
+TIEMPO_BLOQUEO_MINUTOS = 15
+# Vigencia del enlace de restablecimiento de contraseña.
+RESET_TOKEN_MINUTOS = 30
 
 
 class AuthService:
@@ -266,6 +277,7 @@ class AuthService:
                 u.ultimo_intento,
                 u.codigo_verificacion,
                 u.codigo_expira,
+                COALESCE(u.codigo_verificado, FALSE) AS codigo_verificado,
                 u.bloqueado_hasta,
                 u.rol_id,
                 r.nombre AS rol_nombre
@@ -312,10 +324,13 @@ class AuthService:
 
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=(
-                        "Debe ingresar el código de verificación "
-                        "que fue enviado a su correo."
-                    ),
+                    detail={
+                        "accion": "codigo",
+                        "mensaje": (
+                            "Debe ingresar el código de verificación "
+                            "que fue enviado a su correo."
+                        ),
+                    },
                 )
 
             # Si expiró lo eliminamos
@@ -400,6 +415,15 @@ class AuthService:
 
             ahora = self._ahora()
             ultimo_intento = user.get("ultimo_intento")
+            ya_verifico = bool(user.get("codigo_verificado"))
+
+            # Fase 1 (sin código verificado): 3 intentos -> se exige un código.
+            # Fase 2 (código ya verificado): 5 intentos -> se envía enlace de reset.
+            limite = (
+                INTENTOS_ANTES_DE_RESET
+                if ya_verifico
+                else INTENTOS_ANTES_DE_CODIGO
+            )
 
             # Reiniciar contador si pasaron más de 5 minutos
             if (
@@ -410,39 +434,83 @@ class AuthService:
             else:
                 nuevos_intentos = int(user["intentos_fallidos"] or 0) + 1
 
-            # Llegó al máximo de intentos
-            if nuevos_intentos >= INTENTOS_MAXIMOS:
+            # ¿Alcanzó el límite de la fase actual?
+            if nuevos_intentos >= limite:
 
-                codigo = self._generar_codigo()
-                codigo_hash = hash_verification_code(codigo)
+                if not ya_verifico:
+                    # ----- FASE 1: enviar código de verificación al correo -----
+                    codigo = self._generar_codigo()
+                    codigo_hash = hash_verification_code(codigo)
+                    expira = ahora + timedelta(minutes=5)
 
-                expira = ahora + timedelta(minutes=5)
+                    await self.db.execute(
+                        text("""
+                            UPDATE usuario
+                            SET
+                                intentos_fallidos = :intentos,
+                                ultimo_intento = :ultimo_intento,
+                                codigo_verificacion = :codigo,
+                                codigo_expira = :expira
+                            WHERE id = :id
+                        """),
+                        {
+                            "intentos": nuevos_intentos,
+                            "ultimo_intento": ahora,
+                            "codigo": codigo_hash,
+                            "expira": expira,
+                            "id": user["id"],
+                        },
+                    )
+                    await self.db.commit()
 
+                    await MailService.enviar_codigo(
+                        destinatario=user["correo"],
+                        codigo=codigo,
+                    )
+
+                    await self._log_access(
+                        user["id"],
+                        user["correo"],
+                        client_ip,
+                        False,
+                        "Código de verificación enviado",
+                    )
+
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail={
+                            "accion": "codigo",
+                            "mensaje": (
+                                "Ha superado los 3 intentos permitidos. "
+                                "Se envió un código de verificación a su correo."
+                            ),
+                        },
+                    )
+
+                # ----- FASE 2: enviar enlace de restablecimiento de contraseña -----
+                enlace = await self._crear_enlace_reset(user["id"], ahora)
+
+                # Bloquear la cuenta temporalmente y limpiar contadores de intentos.
+                bloqueo = ahora + timedelta(minutes=TIEMPO_BLOQUEO_MINUTOS)
                 await self.db.execute(
                     text("""
                         UPDATE usuario
                         SET
-                            intentos_fallidos = :intentos,
-                            ultimo_intento = :ultimo_intento,
-                            codigo_verificacion = :codigo,
-                            codigo_expira = :expira
+                            intentos_fallidos = 0,
+                            ultimo_intento = NULL,
+                            bloqueado_hasta = :bloqueo
                         WHERE id = :id
                     """),
                     {
-                        "intentos": nuevos_intentos,
-                        "ultimo_intento": ahora,
-                        "codigo": codigo_hash,
-                        "expira": expira,
+                        "bloqueo": bloqueo,
                         "id": user["id"],
                     },
                 )
-
                 await self.db.commit()
 
-                # Enviar código por correo
-                await MailService.enviar_codigo(
+                await MailService.enviar_enlace_reset(
                     destinatario=user["correo"],
-                    codigo=codigo,
+                    enlace=enlace,
                 )
 
                 await self._log_access(
@@ -450,18 +518,21 @@ class AuthService:
                     user["correo"],
                     client_ip,
                     False,
-                    "Código de verificación enviado",
+                    "Enlace de restablecimiento enviado",
                 )
 
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=(
-                        "Ha superado el número máximo de intentos. "
-                        "Se envió un código de verificación a su correo."
-                    ),
+                    detail={
+                        "accion": "reset",
+                        "mensaje": (
+                            "Ha superado el número máximo de intentos. "
+                            "Se envió un enlace a su correo para restablecer la contraseña."
+                        ),
+                    },
                 )
 
-            # Guardar intento fallido
+            # Guardar intento fallido (aún no alcanza el límite de la fase)
             await self.db.execute(
                 text("""
                     UPDATE usuario
@@ -476,7 +547,6 @@ class AuthService:
                     "id": user["id"],
                 },
             )
-
             await self.db.commit()
 
             await self._log_access(
@@ -487,13 +557,18 @@ class AuthService:
                 "Contraseña incorrecta",
             )
 
-            intentos_restantes = INTENTOS_MAXIMOS - nuevos_intentos
+            intentos_restantes = limite - nuevos_intentos
+            siguiente_paso = (
+                "tener que restablecer su contraseña"
+                if ya_verifico
+                else "requerir un código de verificación"
+            )
 
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=(
                     f"Credenciales inválidas. "
-                    f"Le quedan {intentos_restantes} intento(s) antes de requerir un código de verificación."
+                    f"Le quedan {intentos_restantes} intento(s) antes de {siguiente_paso}."
                 ),
                 headers={
                     "WWW-Authenticate": "Bearer"
@@ -511,6 +586,7 @@ class AuthService:
                     codigo_expira = NULL,
                     intentos_codigo = 0,
                     ultimo_envio_codigo = NULL,
+                    codigo_verificado = FALSE,
                     bloqueado_hasta = NULL
                 WHERE id = :id
             """),
@@ -578,3 +654,199 @@ class AuthService:
         registros = resultado.mappings().all()
 
         return registros
+
+    async def _ensure_reset_table(self) -> None:
+        """
+        Crea la tabla de tokens de restablecimiento si aún no existe.
+        usuario_id es UUID porque usuario.id es UUID en este proyecto.
+        """
+        await self.db.execute(
+            text("""
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id SERIAL PRIMARY KEY,
+                    usuario_id UUID NOT NULL,
+                    token VARCHAR(255) UNIQUE NOT NULL,
+                    fecha_expiracion TIMESTAMPTZ NOT NULL,
+                    utilizado BOOLEAN NOT NULL DEFAULT FALSE,
+                    creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+        )
+
+    async def _crear_enlace_reset(
+        self,
+        user_id,
+        ahora: datetime,
+    ) -> str:
+        """
+        Genera un token seguro de un solo uso, lo guarda en la base de datos y
+        devuelve el enlace completo que se enviará al correo del usuario.
+        """
+        await self._ensure_reset_table()
+
+        token = secrets.token_urlsafe(32)
+        expira = ahora + timedelta(minutes=RESET_TOKEN_MINUTOS)
+
+        await self.db.execute(
+            text("""
+                INSERT INTO password_reset_tokens
+                    (usuario_id, token, fecha_expiracion)
+                VALUES
+                    (:usuario_id, :token, :fecha_expiracion)
+            """),
+            {
+                "usuario_id": str(user_id),
+                "token": token,
+                "fecha_expiracion": expira,
+            },
+        )
+
+        base_url = settings.APP_BASE_URL.rstrip("/")
+        return f"{base_url}/reset-password?token={token}"
+
+    async def _validar_token_reset(self, token: str):
+        """
+        Valida que el token exista, no haya sido usado y no esté expirado.
+        Devuelve el registro del token.
+        """
+        await self._ensure_reset_table()
+
+        resultado = await self.db.execute(
+            text("""
+                SELECT id, usuario_id, fecha_expiracion, utilizado
+                FROM password_reset_tokens
+                WHERE token = :token
+            """),
+            {"token": token},
+        )
+
+        registro = resultado.mappings().first()
+
+        if not registro:
+            raise HTTPException(
+                status_code=400,
+                detail="El enlace de restablecimiento no es válido.",
+            )
+
+        if registro["utilizado"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Este enlace ya fue utilizado. Solicite uno nuevo.",
+            )
+
+        if registro["fecha_expiracion"] < self._ahora():
+            raise HTTPException(
+                status_code=400,
+                detail="El enlace de restablecimiento expiró. Solicite uno nuevo.",
+            )
+
+        return registro
+
+    async def reset_password(
+        self,
+        token: str,
+        nueva_password: str,
+    ):
+        """
+        Restablece la contraseña del usuario asociado a un token válido.
+        Aplica la política de contraseña segura, actualiza el hash y deja la
+        cuenta lista para iniciar sesión (limpia bloqueos y contadores).
+        """
+        registro = await self._validar_token_reset(token)
+
+        es_valida, mensaje = validar_password_segura(nueva_password)
+        if not es_valida:
+            raise HTTPException(
+                status_code=400,
+                detail=mensaje,
+            )
+
+        nuevo_hash = hash_password(nueva_password)
+
+        await self.db.execute(
+            text("""
+                UPDATE usuario
+                SET
+                    contrasena = :contrasena,
+                    intentos_fallidos = 0,
+                    ultimo_intento = NULL,
+                    codigo_verificacion = NULL,
+                    codigo_expira = NULL,
+                    intentos_codigo = 0,
+                    ultimo_envio_codigo = NULL,
+                    codigo_verificado = FALSE,
+                    bloqueado_hasta = NULL
+                WHERE id = :id
+            """),
+            {
+                "contrasena": nuevo_hash,
+                "id": registro["usuario_id"],
+            },
+        )
+
+        # Marcar el token como utilizado para que no pueda reusarse.
+        await self.db.execute(
+            text("""
+                UPDATE password_reset_tokens
+                SET utilizado = TRUE
+                WHERE id = :id
+            """),
+            {"id": registro["id"]},
+        )
+
+        await self.db.commit()
+
+        return {
+            "mensaje": (
+                "Contraseña restablecida correctamente. "
+                "Ya puede iniciar sesión con su nueva contraseña."
+            )
+        }
+
+    async def solicitar_reset_password(
+        self,
+        correo: str,
+    ):
+        """
+        Genera y envía un enlace de restablecimiento cuando el usuario usa la
+        opción "¿Olvidó su contraseña?".
+
+        Por seguridad, SIEMPRE responde con el mismo mensaje genérico, exista o no
+        el correo (evita revelar qué correos están registrados = anti-enumeración).
+        """
+        mensaje_generico = {
+            "mensaje": (
+                "Si el correo está registrado, se enviará un enlace para "
+                "restablecer la contraseña. Revise su bandeja de entrada."
+            )
+        }
+
+        identifier = correo.strip().lower()
+
+        resultado = await self.db.execute(
+            text("""
+                SELECT id, correo
+                FROM usuario
+                WHERE LOWER(correo) = LOWER(:correo)
+                LIMIT 1
+            """),
+            {"correo": identifier},
+        )
+
+        usuario = resultado.mappings().first()
+
+        # Si no existe, no revelamos nada: respondemos igual.
+        if not usuario:
+            return mensaje_generico
+
+        ahora = self._ahora()
+        enlace = await self._crear_enlace_reset(usuario["id"], ahora)
+
+        await self.db.commit()
+
+        await MailService.enviar_enlace_reset(
+            destinatario=usuario["correo"],
+            enlace=enlace,
+        )
+
+        return mensaje_generico
