@@ -1,206 +1,186 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CertiSENA - Iniciar sesión</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-
-<header class="login-header">
-  <div class="header-content">
-
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="login-header">
+      <div class="header-content">
         <div class="header-left">
+          <img
+            src="/static/sena_blanco.png"
+            alt="Logo SENA"
+            class="sena-blanco"
+          />
 
-    <img src="/static/sena_blanco.png"
-         alt="Logo SENA"
-         class="sena-blanco">
+          <div>
+            <h1>CertiSENA</h1>
 
-    <div>
+            <p class="subtitle">
+              Plataforma de gestión y consulta de certificados
+            </p>
 
-        <h1>CertiSENA</h1>
-
-        <p class="subtitle">
-            Plataforma de gestión y consulta de certificados
-        </p>
-
-        <p style="font-size:12px;opacity:.85;margin-top:4px;">
-            Servicio Nacional de Aprendizaje • CertiSENA
-        </p>
-
-    </div>
-
-</div>
+            <p style="font-size: 12px; opacity: 0.85; margin-top: 4px">
+              Servicio Nacional de Aprendizaje • CertiSENA
+            </p>
+          </div>
+        </div>
 
         <div class="header-buttons">
-
-            <a href="/register" class="btn-login">Registrarse</a>
-
-
+          <a href="/register" class="btn-login">Registrarse</a>
         </div>
 
         <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
-            <span></span>
-            <span></span>
-            <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
         </button>
+      </div>
 
-    </div>
-
-    <div class="mobile-menu" id="mobileMenu">
+      <div class="mobile-menu" id="mobileMenu">
         <a href="/register">Registrarse</a>
-    </div>
+      </div>
+    </header>
 
-</header>
-
-<main class="login-container">
-
-    <section class="login-form">
-
+    <main class="login-container">
+      <section class="login-form">
         <h2>Iniciar sesión</h2>
 
         <div class="form-group">
+          <label for="correo"> Correo o usuario </label>
 
-            <label for="correo">
-                Correo o usuario
-            </label>
-
-            <input
-                type="text"
-                id="correo"
-                name="correo"
-                placeholder="Ingrese su correo o nombre de usuario"
-                required
-                minlength="3">
-
+          <input
+            type="text"
+            id="correo"
+            name="correo"
+            placeholder="Ingrese su correo o nombre de usuario"
+            required
+            minlength="3"
+          />
         </div>
 
         <div class="form-group">
+          <label for="password"> Contraseña </label>
 
-            <label for="password">
-                Contraseña
-            </label>
-
-            <input
-                type="password"
-                id="password"
-                name="password"
-                placeholder="Ingrese su contraseña"
-                required
-                minlength="1">
-
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Ingrese su contraseña"
+            required
+            minlength="1"
+          />
         </div>
 
-        <button type="submit" id="btnLogin" class="btn-login">
-            Entrar
-        </button>
+        <button type="submit" id="btnLogin" class="btn-login">Entrar</button>
+
+        <div class="forgot-password">
+          <a href="/password-reset"> ¿Olvidó su contraseña? </a>
+        </div>
 
         <div id="errorMessage" class="error-message"></div>
+      </section>
+    </main>
 
-    </section>
+    <footer class="login-footer">
+      <p>© 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
+    </footer>
 
-</main>
+    <script>
+      document
+        .getElementById("btnLogin")
+        .addEventListener("click", async function (e) {
+          e.preventDefault();
 
-<footer class="login-footer">
+          const correo = document.getElementById("correo").value.trim();
 
-    <p>
-        © 2026 CertiSENA - SENA. Todos los derechos reservados.
-    </p>
+          const password = document.getElementById("password").value;
 
-</footer>
+          const errorMsg = document.getElementById("errorMessage");
 
-<script>
+          errorMsg.textContent = "";
 
-document.getElementById("btnLogin").addEventListener("click", async function(e){
-
-    e.preventDefault();
-
-    const correo = document.getElementById("correo").value.trim();
-
-    const password = document.getElementById("password").value;
-
-    const errorMsg = document.getElementById("errorMessage");
-
-    errorMsg.textContent = "";
-
-    if(!correo || !password){
-
-        errorMsg.textContent = "Por favor complete todos los campos.";
-
-        return;
-
-    }
-
-    errorMsg.textContent = "Intentando iniciar sesión...";
-
-    try{
-
-        const response = await fetch("/auth/login",{
-
-            method:"POST",
-
-            headers:{
-                "Content-Type":"application/json"
-            },
-
-            body:JSON.stringify({
-                correo,
-                password
-            })
-
-        });
-
-        const data = await response.json();
-
-        if(!response.ok){
-
-            errorMsg.textContent = data.detail || "Credenciales inválidas. Inténtalo de nuevo.";
+          if (!correo || !password) {
+            errorMsg.textContent = "Por favor complete todos los campos.";
 
             return;
+          }
 
-        }
+          errorMsg.textContent = "Intentando iniciar sesión...";
 
-        localStorage.setItem("access_token", data.access_token);
+          try {
+            const response = await fetch("/auth/login", {
+              method: "POST",
 
-        localStorage.setItem("token_type", data.token_type);
+              headers: {
+                "Content-Type": "application/json",
+              },
 
-        const payload = JSON.parse(atob(data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-        const destination = payload.role_name === "Auditor" ? "/auditor" : payload.role_name === "Empresa" ? "/empresa" : "/dashboard";
-        window.location.href = destination;
+              body: JSON.stringify({
+                correo,
+                password,
+              }),
+            });
 
-    }
+            const data = await response.json();
 
-    catch(error){
+            if (!response.ok) {
+              errorMsg.textContent =
+                data.detail || "Credenciales inválidas. Inténtalo de nuevo.";
 
-        errorMsg.textContent = "Error de conexión con el servidor.";
+              return;
+            }
 
-    }
+            localStorage.setItem("access_token", data.access_token);
 
-});
+            localStorage.setItem("token_type", data.token_type);
 
-// Menú hamburguesa
-const hamburgerBtn = document.getElementById("hamburgerBtn");
-const mobileMenu = document.getElementById("mobileMenu");
+            const payload = JSON.parse(
+              atob(
+                data.access_token
+                  .split(".")[1]
+                  .replace(/-/g, "+")
+                  .replace(/_/g, "/"),
+              ),
+            );
+            const destination =
+              payload.role_name === "Auditor"
+                ? "/auditor"
+                : payload.role_name === "Empresa"
+                  ? "/empresa"
+                  : "/dashboard";
+            window.location.href = destination;
+          } catch (error) {
+            errorMsg.textContent = "Error de conexión con el servidor.";
+          }
+        });
 
-hamburgerBtn.addEventListener("click", function(){
-    this.classList.toggle("active");
-    mobileMenu.classList.toggle("open");
-});
+      // Menú hamburguesa
+      const hamburgerBtn = document.getElementById("hamburgerBtn");
+      const mobileMenu = document.getElementById("mobileMenu");
 
-document.querySelectorAll(".mobile-menu a").forEach(link => {
-    link.addEventListener("click", function(){
-        hamburgerBtn.classList.remove("active");
-        mobileMenu.classList.remove("open");
-    });
-});
+      hamburgerBtn.addEventListener("click", function () {
+        this.classList.toggle("active");
+        mobileMenu.classList.toggle("open");
+      });
 
-</script>
-
-</body>
+      document.querySelectorAll(".mobile-menu a").forEach((link) => {
+        link.addEventListener("click", function () {
+          hamburgerBtn.classList.remove("active");
+          mobileMenu.classList.remove("open");
+        });
+      });
+    </script>
+  </body>
 </html>

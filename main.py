@@ -6,12 +6,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import text
 from modules.roles.roles_router import router as role_router
+
 from modules.users.user_router import router as users_router
 from modules.auth.auth_router import router as auth_router
 # importamos password_reset_router para que sus rutas estén disponibles en la aplicación
 from modules.password_reset.password_reset_router import (
     router as password_reset_router,
 )
+# importamos mfa_router para que sus rutas estén disponibles en la aplicación
+from modules.mfa.mfa_router import router as mfa_router
 from core.database import AsyncSessionLocal
 from core.logger import logger
 from core.security import hash_password
@@ -124,6 +127,7 @@ app.include_router(tarea_router)
 app.include_router(password_reset_router)
 app.include_router(security_router)
 app.include_router(empresas_router)
+app.include_router(mfa_router)
 
 # ============================================================
 # RUTAS DE INTERFAZ DE USUARIO
@@ -139,6 +143,18 @@ async def index_page(request: Request):
 async def login_page(request: Request):
     """Sirve la página de inicio de sesión desde archivos estáticos."""
     return FileResponse("static/login.html")
+# rutas de recuperación de contraseña y registro de usuarios
+@app.get("/password-reset", response_class=HTMLResponse)
+async def password_reset_page(request: Request):
+    return FileResponse("static/password-reset.html")
+# rutas de recuperación de contraseña y registro de usuarios
+@app.get("/password-reset/verify", response_class=HTMLResponse)
+async def password_reset_verify_page(request: Request):
+    return FileResponse("static/password-reset-verify.html")
+# nueva ruta para la página de cambio de contraseña
+@app.get("/password-reset/new", response_class=HTMLResponse)
+async def password_reset_new_page(request: Request):
+    return FileResponse("static/password-reset-new.html")
 
 
 @app.get("/register", response_class=HTMLResponse)

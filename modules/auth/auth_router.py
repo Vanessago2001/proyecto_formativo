@@ -1,15 +1,23 @@
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, Request, status, Query
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.database import get_db, get_async_db
+from core.database import get_db
 from modules.auth.auth_service import AuthService
 from modules.auth.mail_service import MailService
 from modules.auth.auth_schema import LoginRequest, CodigoRequest
 from modules.auth.dependencies import require_admin_access
 
-router = APIRouter(prefix="/auth", tags=["Autenticación"])
+
+router = APIRouter(
+    prefix="/auth",
+    tags=["Autenticación"]
+)
+
+
+# ============================================================
+# LOGIN
+# ============================================================
 
 @router.post("/login", status_code=status.HTTP_200_OK)
 async def sign_in(
@@ -35,9 +43,9 @@ async def sign_in(
 }
 
 
-# ===========================
+# ============================================================
 # SOLO PARA PRUEBAS
-# ===========================
+# ============================================================
 
 @router.get("/diagnostico-db")
 async def diagnostico_db(
@@ -61,16 +69,40 @@ async def diagnostico_db(
     for row in result.mappings().all()
 ]
 }
-    token = await service.login(
-        payload.correo,
-        payload.password,
-        client_ip=client_ip
-    )
+
+
+# ============================================================
+# DIAGNÓSTICO MFA
+# ============================================================
+
+@router.get("/prueba-mfa")
+async def diagnostico_mfa(
+    db: AsyncSession = Depends(get_db),
+):
+    query = text("""
+    SELECT
+    correo,
+    mfa_activado,
+    mfa_expira,
+    mfa_verificado,
+    mfa_codigo
+    FROM usuario
+    WHERE correo = 'admin@empresa.com';
+    """)
+
+    result = await db.execute(query)
 
     return {
-    "access_token": token,
-    "token_type": "bearer"
-    }
+"usuarios": [
+    dict(row)
+    for row in result.mappings().all()
+]
+}
+
+
+# ============================================================
+# PRUEBA DE CORREO
+# ============================================================
 
 @router.get("/test-mail")
 async def test_mail():
@@ -81,8 +113,13 @@ async def test_mail():
     )
 
     return {
-        "mensaje": "Correo enviado correctamente"
-    }
+"mensaje": "Correo enviado correctamente"
+}
+
+
+# ============================================================
+# VERIFICAR CÓDIGO MFA
+# ============================================================
 
 @router.post("/verificar-codigo")
 async def verificar_codigo(
@@ -92,9 +129,14 @@ async def verificar_codigo(
     service = AuthService(db)
 
     return await service.verificar_codigo(
-        datos.correo,
-        datos.codigo
-    )
+datos.correo,
+datos.codigo
+)
+
+
+# ============================================================
+# HISTORIAL DE ACCESOS
+# ============================================================
 
 @router.get("/historial-accesos")
 async def historial_accesos(
@@ -108,7 +150,7 @@ async def historial_accesos(
         le=200,
     ),
     current_user=Depends(require_admin_access),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
 ):
 
     service = AuthService(db)
@@ -119,9 +161,8 @@ async def historial_accesos(
     )
 
     return {
-        "pagina": pagina,
-        "limite": limite,
-        "total": len(logs),
-        "registros": logs,
-    }
-
+"pagina": pagina,
+"limite": limite,
+"total": len(logs),
+"registros": logs,
+}

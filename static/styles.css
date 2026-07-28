@@ -384,3 +384,46 @@ RESPONSIVE
     font:inherit;
     font-weight:700;
 }
+/* =====================================================
+   RECUPERAR CONTRASEÑA
+===================================================== */
+
+.forgot-password{
+    margin-top:18px;
+    text-align:center;
+}
+
+.forgot-password a{
+    color:#1c8d43;
+    text-decoration:none;
+    font-size:14px;
+    font-weight:600;
+    transition:.25s;
+}
+
+.forgot-password a:hover{
+    color:#146b33;
+    text-decoration:underline;
+}
+
+.error-message{
+    margin-top:18px;
+    text-align:center;
+    font-size:14px;
+    font-weight:500;
+    color:#d32f2f;
+    min-height:20px;
+}
+
+.success-message{
+    margin-top:18px;
+    text-align:center;
+    font-size:14px;
+    font-weight:500;
+    color:#2e7d32;
+}
+
+.btn-login:disabled{
+    opacity:.7;
+    cursor:not-allowed;
+}
