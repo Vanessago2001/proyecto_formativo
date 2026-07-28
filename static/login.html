@@ -271,7 +271,9 @@ btnLogin.addEventListener("click", async function(e){
         return;
     }
 
-    errorMsg.textContent = "Intentando iniciar sesión...";
+    const textoOriginalLogin = btnLogin.textContent;
+    btnLogin.disabled = true;
+    btnLogin.textContent = "Procesando...";
 
     try{
 
@@ -331,6 +333,11 @@ btnLogin.addEventListener("click", async function(e){
         errorMsg.textContent = "Error de conexión con el servidor.";
     }
 
+    finally{
+        btnLogin.disabled = false;
+        btnLogin.textContent = textoOriginalLogin;
+    }
+
 });
 
 // ===== Verificar código =====
@@ -347,7 +354,9 @@ btnVerificar.addEventListener("click", async function(){
         return;
     }
 
-    errorMsg.textContent = "Verificando código...";
+    const textoOriginalVerificar = btnVerificar.textContent;
+    btnVerificar.disabled = true;
+    btnVerificar.textContent = "Procesando...";
 
     try{
 
@@ -390,6 +399,11 @@ btnVerificar.addEventListener("click", async function(){
         errorMsg.textContent = "Error de conexión con el servidor.";
     }
 
+    finally{
+        btnVerificar.disabled = false;
+        btnVerificar.textContent = textoOriginalVerificar;
+    }
+
 });
 
 // ===== Volver a iniciar sesión =====
@@ -421,7 +435,9 @@ btnEnviarEnlace.addEventListener("click", async function(){
         return;
     }
 
-    errorMsg.textContent = "Enviando enlace...";
+    const textoOriginalEnlace = btnEnviarEnlace.textContent;
+    btnEnviarEnlace.disabled = true;
+    btnEnviarEnlace.textContent = "Procesando...";
 
     try{
 
@@ -449,6 +465,11 @@ btnEnviarEnlace.addEventListener("click", async function(){
     }
     catch(error){
         errorMsg.textContent = "Error de conexión con el servidor.";
+    }
+
+    finally{
+        btnEnviarEnlace.disabled = false;
+        btnEnviarEnlace.textContent = textoOriginalEnlace;
     }
 
 });

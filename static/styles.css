@@ -122,6 +122,21 @@ BOTONES
 
 }
 
+/* Botón mientras procesa una petición: atenuado y sin interacción */
+.btn-login:disabled{
+
+    opacity:.6;
+    cursor:not-allowed;
+
+}
+
+.btn-login:disabled:hover{
+
+    background:#f5f7fa;
+    color:#3BAA01;
+
+}
+
 /*=========================
 MENU HAMBURGUESA
 ==========================*/
@@ -416,6 +431,13 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     border-radius:8px;
     font-size:14px;
     text-align:center;
+}
+
+/* El recuadro de mensaje solo se muestra cuando tiene texto.
+   Mientras esté vacío (textContent = "") no ocupa espacio ni se ve el color. */
+.error-message:empty,
+.success-message:empty{
+    display:none;
 }
 
 /* Texto informativo del código */
