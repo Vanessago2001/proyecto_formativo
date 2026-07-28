@@ -48,6 +48,11 @@ class UserService:
           detail='El rol proveído no existe.',
       )
 
+<<<<<<< HEAD
+=======
+    password = user_data.contrasena
+
+>>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013
     valida, mensaje = validar_password_segura(password)
 
     if not valida:
@@ -55,8 +60,12 @@ class UserService:
           status_code=400,
           detail=mensaje
       )
+<<<<<<< HEAD
 
     hashed_pwd = hash_password(user_data.contrasena)
+=======
+    hashed_pwd = hash_password(password)
+>>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013
 
     query = text("""
             INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
@@ -146,8 +155,17 @@ class UserService:
       params['correo'] = user_update.correo
 
     if user_update.contrasena is not None:
+      password = user_update.contrasena
+      
+      valida, mensaje = validar_password_segura(password)
+      
+      if not valida:
+        raise HTTPException(
+            status_code=400,
+            detail=mensaje
+          )
       update_fields.append('contrasena = :contrasena')
-      params['contrasena'] = hash_password(user_update.contrasena)
+      params['contrasena'] = hash_password(password)
 
     if user_update.rol is not None:
       role_exist = await self.db.execute(

@@ -221,7 +221,10 @@ document.getElementById("btnRegister").addEventListener("click", async function(
 
     }
 
-    errorMsg.textContent = "Registrando...";
+    const btnRegister = this;
+    const textoOriginalRegister = btnRegister.textContent;
+    btnRegister.disabled = true;
+    btnRegister.textContent = "Procesando...";
 
     try{
 
@@ -261,6 +264,13 @@ document.getElementById("btnRegister").addEventListener("click", async function(
     catch(error){
 
         errorMsg.textContent = "Error de conexión con el servidor.";
+
+    }
+
+    finally{
+
+        btnRegister.disabled = false;
+        btnRegister.textContent = textoOriginalRegister;
 
     }
 

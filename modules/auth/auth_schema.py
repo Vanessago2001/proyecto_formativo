@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-
+from pydantic import BaseModel, EmailStr
 
 class LoginRequest(BaseModel):
     """Esquema para recibir credenciales de login vía JSON."""
@@ -11,3 +11,30 @@ class LoginRequest(BaseModel):
 class CodigoRequest(BaseModel):
     correo: str = Field(..., min_length=3, max_length=255)
     codigo: str = Field(..., min_length=6, max_length=6)
+<<<<<<< HEAD
+=======
+
+
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str = Field(..., min_length=8)
+    password_nueva: str = Field(..., min_length=8)
+
+
+class CambiarPasswordExpiradaRequest(BaseModel):
+    correo: EmailStr
+    password_actual: str
+    password_nueva: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """Esquema para restablecer la contraseña usando el token enviado al correo."""
+
+    token: str = Field(..., min_length=10)
+    nueva_password: str = Field(..., min_length=8, max_length=100)
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Esquema para solicitar el enlace de restablecimiento (¿olvidó su contraseña?)."""
+
+    correo: str = Field(..., min_length=3, max_length=255)
+>>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013

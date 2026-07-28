@@ -1,9 +1,25 @@
+<<<<<<< HEAD
 from fastapi import APIRouter, Depends, Request, status
+=======
+from fastapi import APIRouter, Depends, Request, status, Query  # <-- Agregado Query aquí
+>>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from modules.auth.auth_service import AuthService
 from modules.auth.mail_service import MailService
+<<<<<<< HEAD
 from modules.auth.auth_schema import LoginRequest, CodigoRequest
+=======
+from modules.auth.auth_schema import (
+    LoginRequest,
+    CodigoRequest,
+    CambiarPasswordRequest,
+    CambiarPasswordExpiradaRequest,
+    ResetPasswordRequest,
+    ForgotPasswordRequest,
+)
+from core.security import get_current_user
+>>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013
 from modules.auth.dependencies import require_admin_access
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -30,6 +46,33 @@ async def sign_in(
         "access_token": token,
         "token_type": "bearer"
     }
+@router.put("/cambiar-password")
+async def cambiar_password(
+    data: CambiarPasswordRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+
+    service = AuthService(db)
+
+    return await service.cambiar_password(
+        current_user["id"],
+        data.password_actual,
+        data.password_nueva,
+    )
+
+@router.put("/cambiar-password-expirada")
+async def cambiar_password_expirada(
+    data: CambiarPasswordExpiradaRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(db)
+
+    return await service.cambiar_password_expirada(
+        data.correo,
+        data.password_actual,
+        data.password_nueva,
+    )
 
 @router.get("/test-mail")
 async def test_mail():
@@ -55,6 +98,32 @@ async def verificar_codigo(
         datos.codigo
     )
 
+<<<<<<< HEAD
+=======
+@router.post("/reset-password")
+async def reset_password(
+    datos: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    service = AuthService(db)
+
+    return await service.reset_password(
+        datos.token,
+        datos.nueva_password
+    )
+
+@router.post("/forgot-password")
+async def forgot_password(
+    datos: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    service = AuthService(db)
+
+    return await service.solicitar_reset_password(
+        datos.correo
+    )
+
+>>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013
 @router.get("/historial-accesos")
 async def historial_accesos(
     pagina: int = Query(
@@ -67,7 +136,11 @@ async def historial_accesos(
         le=200,
     ),
     current_user=Depends(require_admin_access),
+<<<<<<< HEAD
     db: AsyncSession = Depends(get_async_db),
+=======
+    db: AsyncSession = Depends(get_db), # <-- Nota: Cambiado get_async_db a get_db para ser consistentes
+>>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013
 ):
 
     service = AuthService(db)
@@ -82,4 +155,8 @@ async def historial_accesos(
         "limite": limite,
         "total": len(logs),
         "registros": logs,
+<<<<<<< HEAD
     }
+=======
+    }
+>>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013
