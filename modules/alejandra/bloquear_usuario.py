@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-async def bloquear_usuario_temporalmente(user_id: int, db: AsyncSession, minutos: int = 15) -> bool:
+async def bloquear_usuario_temporalmente(user_id: str, db: AsyncSession, minutos: int = 15) -> bool:
     """
     Establece la fecha/hora UTC hasta la que el usuario estará bloqueado y cambia su estado.
     """

@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-async def desbloquear_usuario(user_id: int, db: AsyncSession) -> bool:
+async def desbloquear_usuario(user_id: str, db: AsyncSession) -> bool:
     """
     Limpia la fecha de bloqueo (NULL) y reactiva la cuenta del usuario.
     """

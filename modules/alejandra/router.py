@@ -11,7 +11,7 @@ router = APIRouter(prefix="/alejandra/seguridad", tags=["Seguridad - Alejandra"]
 
 @router.post("/cerrar-sesiones/{user_id}")
 async def endpoint_cerrar_sesiones(
-    user_id: int, 
+    user_id: str, 
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -22,7 +22,7 @@ async def endpoint_cerrar_sesiones(
 
 @router.post("/bloquear/{user_id}")
 async def endpoint_bloquear_usuario(
-    user_id: int, 
+    user_id: str, 
     minutos: int = 15, 
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -34,7 +34,7 @@ async def endpoint_bloquear_usuario(
 
 @router.post("/desbloquear/{user_id}")
 async def endpoint_desbloquear_usuario(
-    user_id: int, 
+    user_id: str, 
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):

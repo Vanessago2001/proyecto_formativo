@@ -577,14 +577,11 @@ class AuthService:
             fecha_limite = fecha_cambio + timedelta(days=DIAS_EXPIRACION)
         fecha_cambio = user.get("fecha_cambio_password")
 
-        if DIAS_EXPIRACION > 0 and fecha_cambio is not None:
-            fecha_limite = self._a_naive_utc(fecha_cambio) + timedelta(days=DIAS_EXPIRACION)
-
-            if self._ahora() > fecha_limite:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión."
-                )
+        if self._ahora() > fecha_limite:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión."
+            )
 
         await self.db.execute(
             text("""
@@ -754,13 +751,36 @@ class AuthService:
         self,
         token: str,
         nueva_password: str,
-    ):
+    ) -> dict:
+        """Restablece la contraseña del usuario asociado a un token válido,
+
+        verificando que la nueva contraseña no sea igual a la actual.
+        """
+        # 1. Validar el token y obtener los datos del usuario
+        registro = await self._validar_token_reset(token)
+        usuario_id = registro.get("usuario_id") or registro.get("user_id")
+
+        # 2. Consultar la contraseña actual almacenada en la base de datos
+        query_usuario = text("SELECT contrasena FROM usuario WHERE id = :usuario_id;")
+        result = await self.db.execute(query_usuario, {"usuario_id": usuario_id})
+        usuario = result.mappings().first()
+
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+        # 3. Validar que la nueva contraseña no sea igual a la contraseña actual
+        if verify_password(nueva_password, usuario["contrasena"]):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "La nueva contraseña no puede ser igual a la contraseña actual."
+                ),
+            )
         """
         Restablece la contraseña del usuario asociado a un token válido.
         Aplica la política de contraseña segura, actualiza el hash y deja la
         cuenta lista para iniciar sesión (limpia bloqueos y contadores).
         """
-        registro = await self._validar_token_reset(token)
 
         es_valida, mensaje = validar_password_segura(nueva_password)
         if not es_valida:

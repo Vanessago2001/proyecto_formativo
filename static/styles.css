@@ -399,11 +399,6 @@ RESPONSIVE
     font:inherit;
     font-weight:700;
 }
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
 
 /*=========================
 ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
@@ -438,8 +433,6 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     text-align:center;
 }
 
-<<<<<<< HEAD
-=======
 /* El recuadro de mensaje solo se muestra cuando tiene texto.
    Mientras esté vacío (textContent = "") no ocupa espacio ni se ve el color. */
 .error-message:empty,
@@ -447,7 +440,6 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     display:none;
 }
 
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
 /* Texto informativo del código */
 .code-info{
     text-align:center;
@@ -476,7 +468,3 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     background:#3BAA01;
     color:#fff;
 }
-<<<<<<< HEAD
-=======
->>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645

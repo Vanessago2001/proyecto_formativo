@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-async def cerrar_todas_las_sesiones(user_id: int, db: AsyncSession) -> bool:
+async def cerrar_todas_las_sesiones(user_id: str, db: AsyncSession) -> bool:
     """
     Incrementa 'token_version'. Cualquier token o sesión activa 
     con una versión previa quedará invalidada automáticamente.

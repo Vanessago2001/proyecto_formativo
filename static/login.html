@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v=2">
 </head>
 <body>
 
@@ -100,51 +100,15 @@
 
             </div>
 
-            <button type="submit" id="btnLogin" class="btn-login">
-                Entrar
-            </button>
-<<<<<<< HEAD
-
-        </div>
-
-        <!-- ===== Formulario de verificación de código (oculto) ===== -->
-        <div id="codeForm" class="hidden-section">
-
-            <h2>Verificación de código</h2>
-
-            <p class="code-info">
-                Se envió un código de verificación de 6 dígitos a su correo.<br>
-                Ingrese el código para continuar.
-            </p>
-
-            <div class="form-group">
-
-                <label for="codigo">
-                    Código de verificación
-                </label>
-
-                <input
-                    type="text"
-                    id="codigo"
-                    name="codigo"
-                    inputmode="numeric"
-                    placeholder="______"
-                    maxlength="6"
-                    pattern="[0-9]{6}"
-                    required>
-
-            </div>
-
-            <button type="button" id="btnVerificar" class="btn-login">
-                Verificar código
-            </button>
-
-            <button type="button" id="btnVolverLogin" class="btn-secondary">
-=======
-
-            <p style="margin-top:14px;text-align:center;">
+            <p class="forgot-link">
                 <a href="#" id="linkOlvido">¿Olvidó su contraseña?</a>
             </p>
+
+            <div class="login-actions">
+                <button type="submit" id="btnLogin" class="btn-login">
+                    Entrar
+                </button>
+            </div>
 
         </div>
 
@@ -173,14 +137,11 @@
             </button>
 
             <button type="button" id="btnVolverDesdeOlvido" class="btn-secondary">
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
                 Volver a iniciar sesión
             </button>
 
         </div>
 
-<<<<<<< HEAD
-=======
         <!-- ===== Formulario de verificación de código (oculto) ===== -->
         <div id="codeForm" class="hidden-section">
 
@@ -219,7 +180,6 @@
 
         </div>
 
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
         <div id="errorMessage" class="error-message"></div>
 
         <div id="successMessage" class="success-message"></div>
@@ -231,385 +191,311 @@
 <footer class="login-footer">
 
     <p>
-        © 2026 CertiSENA - SENA. Todos los derechos reservados.
+        ©️ 2026 CertiSENA - SENA. Todos los derechos reservados.
     </p>
 
 </footer>
 
 <script>
 
-// ===== Referencias a elementos =====
-const loginForm       = document.getElementById("loginForm");
-const codeForm        = document.getElementById("codeForm");
-<<<<<<< HEAD
-const btnLogin        = document.getElementById("btnLogin");
-const btnVerificar    = document.getElementById("btnVerificar");
-const btnVolverLogin  = document.getElementById("btnVolverLogin");
-=======
-const forgotForm      = document.getElementById("forgotForm");
-const btnLogin        = document.getElementById("btnLogin");
-const btnVerificar    = document.getElementById("btnVerificar");
-const btnVolverLogin  = document.getElementById("btnVolverLogin");
-const linkOlvido      = document.getElementById("linkOlvido");
-const btnEnviarEnlace = document.getElementById("btnEnviarEnlace");
-const btnVolverDesdeOlvido = document.getElementById("btnVolverDesdeOlvido");
-const inputCorreoOlvido    = document.getElementById("correoOlvido");
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-const errorMsg        = document.getElementById("errorMessage");
-const successMsg      = document.getElementById("successMessage");
-const inputCodigo     = document.getElementById("codigo");
+    // ===== Referencias a elementos =====
+    const loginForm       = document.getElementById("loginForm");
+    const codeForm        = document.getElementById("codeForm");
+    const forgotForm      = document.getElementById("forgotForm");
+    const btnLogin        = document.getElementById("btnLogin");
+    const btnVerificar    = document.getElementById("btnVerificar");
+    const btnVolverLogin  = document.getElementById("btnVolverLogin");
+    const linkOlvido      = document.getElementById("linkOlvido");
+    const btnEnviarEnlace = document.getElementById("btnEnviarEnlace");
+    const btnVolverDesdeOlvido = document.getElementById("btnVolverDesdeOlvido");
+    const inputCorreoOlvido    = document.getElementById("correoOlvido");
+    const errorMsg        = document.getElementById("errorMessage");
+    const successMsg      = document.getElementById("successMessage");
+    const inputCodigo     = document.getElementById("codigo");
 
-// ===== Mostrar formulario de código =====
-function mostrarFormularioCodigo(mensaje) {
-    loginForm.classList.add("hidden-section");
-<<<<<<< HEAD
-=======
-    forgotForm.classList.add("hidden-section");
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-    codeForm.classList.remove("hidden-section");
-    errorMsg.textContent = mensaje || "Se envió un código de verificación a su correo. Ingrese el código para continuar.";
-    inputCodigo.value = "";
-    inputCodigo.focus();
-}
-
-// ===== Mostrar formulario de login =====
-function mostrarFormularioLogin(mensaje) {
-    codeForm.classList.add("hidden-section");
-<<<<<<< HEAD
-=======
-    forgotForm.classList.add("hidden-section");
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-    loginForm.classList.remove("hidden-section");
-    errorMsg.textContent = "";
-    successMsg.textContent = mensaje || "";
-    document.getElementById("password").value = "";
-}
-
-<<<<<<< HEAD
-=======
-// ===== Mostrar mensaje de restablecimiento de contraseña =====
-// Se llama cuando el usuario agota los intentos y el sistema envía un enlace
-// de restablecimiento a su correo. Se ocultan ambos formularios.
-function mostrarMensajeReset(mensaje) {
-    loginForm.classList.add("hidden-section");
-    codeForm.classList.add("hidden-section");
-    forgotForm.classList.add("hidden-section");
-    errorMsg.textContent = "";
-    successMsg.textContent =
-        mensaje ||
-        "Se envió un enlace a su correo para restablecer la contraseña. Revise su bandeja de entrada.";
-}
-
-// ===== Mostrar formulario ¿Olvidó su contraseña? =====
-function mostrarFormularioOlvido() {
-    loginForm.classList.add("hidden-section");
-    codeForm.classList.add("hidden-section");
-    forgotForm.classList.remove("hidden-section");
-    errorMsg.textContent = "";
-    successMsg.textContent = "";
-    inputCorreoOlvido.value = document.getElementById("correo").value.trim();
-    inputCorreoOlvido.focus();
-}
-
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-// ===== Iniciar sesión =====
-btnLogin.addEventListener("click", async function(e){
-
-    e.preventDefault();
-
-    const correo = document.getElementById("correo").value.trim();
-    const password = document.getElementById("password").value;
-
-    errorMsg.textContent = "";
-    successMsg.textContent = "";
-
-    if(!correo || !password){
-        errorMsg.textContent = "Por favor complete todos los campos.";
-        return;
+    // ===== Mostrar formulario de código =====
+    function mostrarFormularioCodigo(mensaje) {
+        loginForm.classList.add("hidden-section");
+        forgotForm.classList.add("hidden-section");
+        codeForm.classList.remove("hidden-section");
+        errorMsg.textContent = mensaje || "Se envió un código de verificación a su correo. Ingrese el código para continuar.";
+        inputCodigo.value = "";
+        inputCodigo.focus();
     }
 
-    const textoOriginalLogin = btnLogin.textContent;
-    btnLogin.disabled = true;
-    btnLogin.textContent = "Procesando...";
+    // ===== Mostrar formulario de login =====
+    function mostrarFormularioLogin(mensaje) {
+        codeForm.classList.add("hidden-section");
+        forgotForm.classList.add("hidden-section");
+        loginForm.classList.remove("hidden-section");
+        errorMsg.textContent = "";
+        successMsg.textContent = mensaje || "";
+        document.getElementById("password").value = "";
+    }
 
-    try{
+    // ===== Mostrar mensaje de restablecimiento de contraseña =====
+    // Se llama cuando el usuario agota los intentos y el sistema envía un enlace
+    // de restablecimiento a su correo. Se ocultan ambos formularios.
+    function mostrarMensajeReset(mensaje) {
+        loginForm.classList.add("hidden-section");
+        codeForm.classList.add("hidden-section");
+        forgotForm.classList.add("hidden-section");
+        errorMsg.textContent = "";
+        successMsg.textContent =
+            mensaje ||
+            "Se envió un enlace a su correo para restablecer la contraseña. Revise su bandeja de entrada.";
+    }
 
-        const response = await fetch("/auth/login",{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({
-                correo,
-                password
-            })
-        });
+    // ===== Mostrar formulario ¿Olvidó su contraseña? =====
+    function mostrarFormularioOlvido() {
+        loginForm.classList.add("hidden-section");
+        codeForm.classList.add("hidden-section");
+        forgotForm.classList.remove("hidden-section");
+        errorMsg.textContent = "";
+        successMsg.textContent = "";
+        inputCorreoOlvido.value = document.getElementById("correo").value.trim();
+        inputCorreoOlvido.focus();
+    }
 
-        const data = await response.json();
+    // ===== Iniciar sesión =====
+    btnLogin.addEventListener("click", async function(e){
 
-        if (!response.ok) {
+        e.preventDefault();
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    // Contraseña expirada
-    if (data.detail === "Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión.") {
+        const correo = document.getElementById("correo").value.trim();
+        const password = document.getElementById("password").value;
 
-        // Guardamos el correo para no volver a escribirlo
-        localStorage.setItem("correo_expirado", correo);
+        errorMsg.textContent = "";
+        successMsg.textContent = "";
 
-        // Redireccionar a la página de cambio de contraseña
-        window.location.href = "/static/cambiar_password.html";
-=======
-            // 403 → se envió código de verificación al correo
-            if(response.status === 403){
-                mostrarFormularioCodigo(data.detail || "Se envió un código de verificación a su correo.");
-            } else {
-                errorMsg.textContent = data.detail || "Credenciales inválidas. Inténtalo de nuevo.";
-=======
-            const detail = data.detail;
+        if(!correo || !password){
+            errorMsg.textContent = "Por favor complete todos los campos.";
+            return;
+        }
 
-            // Contraseña expirada → ir a la página de cambio de contraseña
-            if (detail === "Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión.") {
-                // Guardamos el correo para no volver a escribirlo
-                localStorage.setItem("correo_expirado", correo);
-                // Redireccionar a la página de cambio de contraseña
-                window.location.href = "/static/cambiar_password.html";
+        const textoOriginalLogin = btnLogin.textContent;
+        btnLogin.disabled = true;
+        btnLogin.textContent = "Procesando...";
+
+        try{
+
+            const response = await fetch("/auth/login",{
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    correo,
+                    password
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+
+                const detail = data.detail;
+
+                // Contraseña expirada → ir a la página de cambio de contraseña
+                if (detail === "Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión.") {
+                    // Guardamos el correo para no volver a escribirlo
+                    localStorage.setItem("correo_expirado", correo);
+                    // Redireccionar a la página de cambio de contraseña
+                    window.location.href = "/static/cambiar_password.html";
+                    return;
+                }
+
+                // 403 con acción estructurada:
+                //   accion "codigo" → mostrar el formulario de verificación de código
+                //   accion "reset"  → se envió un enlace de restablecimiento al correo
+                if(response.status === 403 && detail && typeof detail === "object"){
+                    if(detail.accion === "reset"){
+                        mostrarMensajeReset(detail.mensaje);
+                    } else {
+                        mostrarFormularioCodigo(detail.mensaje);
+                    }
+                } else {
+                    errorMsg.textContent =
+                        (typeof detail === "string" ? detail : (detail && detail.mensaje)) ||
+                        "Credenciales inválidas. Inténtalo de nuevo.";
+                }
+
+                return;
+            }
+            localStorage.setItem("access_token", data.access_token);
+            localStorage.setItem("token_type", data.token_type);
+
+            const payload = JSON.parse(atob(data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            const destination = payload.role_name === "Auditor" ? "/auditor" : payload.role_name === "Empresa" ? "/empresa" : "/dashboard";
+            window.location.href = destination;
+
+        }
+
+        catch(error){
+            errorMsg.textContent = "Error de conexión con el servidor.";
+        }
+
+        finally{
+            btnLogin.disabled = false;
+            btnLogin.textContent = textoOriginalLogin;
+        }
+
+    });
+
+    // ===== Verificar código =====
+    btnVerificar.addEventListener("click", async function(){
+
+        const correo = document.getElementById("correo").value.trim();
+        const codigo = inputCodigo.value.trim();
+
+        errorMsg.textContent = "";
+        successMsg.textContent = "";
+
+        if(!codigo || codigo.length !== 6){
+            errorMsg.textContent = "Por favor ingrese el código de 6 dígitos.";
+            return;
+        }
+
+        const textoOriginalVerificar = btnVerificar.textContent;
+        btnVerificar.disabled = true;
+        btnVerificar.textContent = "Procesando...";
+
+        try{
+
+            const response = await fetch("/auth/verificar-codigo",{
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    correo,
+                    codigo
+                })
+            });
+
+            const data = await response.json();
+
+            if(!response.ok){
+
+                // 403 → se generó y envió un nuevo código (máximo de intentos del código)
+                if(response.status === 403){
+                    errorMsg.textContent = data.detail || "Ha superado el número máximo de intentos del código. Se envió un nuevo código a su correo.";
+                    inputCodigo.value = "";
+                    inputCodigo.focus();
+                } else {
+                    errorMsg.textContent = data.detail || "Error al verificar el código.";
+                }
+
                 return;
             }
 
-            // 403 con acción estructurada:
-            //   accion "codigo" → mostrar el formulario de verificación de código
-            //   accion "reset"  → se envió un enlace de restablecimiento al correo
-            if(response.status === 403 && detail && typeof detail === "object"){
-                if(detail.accion === "reset"){
-                    mostrarMensajeReset(detail.mensaje);
-                } else {
-                    mostrarFormularioCodigo(detail.mensaje);
-                }
-            } else {
-                errorMsg.textContent =
-                    (typeof detail === "string" ? detail : (detail && detail.mensaje)) ||
-                    "Credenciales inválidas. Inténtalo de nuevo.";
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-            }
+            // Código verificado correctamente → volver al login con 5 intentos
+            mostrarFormularioLogin(
+                (data.mensaje || "Código verificado correctamente.") +
+                " Ya puede volver a iniciar sesión. Tenga 5 intentos más."
+            );
 
-            return;
-        }
-<<<<<<< HEAD
->>>>>>> 7a57d0a0b84edb6fdae895569d1fb8bf0d01495d
-
-        return;
-    }
-
-    errorMsg.textContent = data.detail || "Credenciales inválidas. Inténtalo de nuevo.";
-
-    return;
-}
-=======
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("token_type", data.token_type);
-
-        const payload = JSON.parse(atob(data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-        const destination = payload.role_name === "Auditor" ? "/auditor" : payload.role_name === "Empresa" ? "/empresa" : "/dashboard";
-        window.location.href = destination;
-
-    }
-
-    catch(error){
-        errorMsg.textContent = "Error de conexión con el servidor.";
-<<<<<<< HEAD
-=======
-    }
-
-    finally{
-        btnLogin.disabled = false;
-        btnLogin.textContent = textoOriginalLogin;
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-    }
-
-});
-
-// ===== Verificar código =====
-btnVerificar.addEventListener("click", async function(){
-
-    const correo = document.getElementById("correo").value.trim();
-    const codigo = inputCodigo.value.trim();
-
-    errorMsg.textContent = "";
-    successMsg.textContent = "";
-
-    if(!codigo || codigo.length !== 6){
-        errorMsg.textContent = "Por favor ingrese el código de 6 dígitos.";
-        return;
-    }
-
-<<<<<<< HEAD
-    errorMsg.textContent = "Verificando código...";
-=======
-    const textoOriginalVerificar = btnVerificar.textContent;
-    btnVerificar.disabled = true;
-    btnVerificar.textContent = "Procesando...";
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-
-    try{
-
-        const response = await fetch("/auth/verificar-codigo",{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({
-                correo,
-                codigo
-            })
-        });
-
-        const data = await response.json();
-
-        if(!response.ok){
-
-            // 403 → se generó y envió un nuevo código (máximo de intentos del código)
-            if(response.status === 403){
-                errorMsg.textContent = data.detail || "Ha superado el número máximo de intentos del código. Se envió un nuevo código a su correo.";
-                inputCodigo.value = "";
-                inputCodigo.focus();
-            } else {
-                errorMsg.textContent = data.detail || "Error al verificar el código.";
-            }
-
-            return;
         }
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-        localStorage.setItem("access_token", data.access_token);
+        catch(error){
+            errorMsg.textContent = "Error de conexión con el servidor.";
+        }
 
-        localStorage.setItem("token_type", data.token_type);
+        finally{
+            btnVerificar.disabled = false;
+            btnVerificar.textContent = textoOriginalVerificar;
+        }
 
-        const payload = JSON.parse(atob(data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-        const destination = payload.role_name === "Auditor" ? "/auditor" : payload.role_name === "Empresa" ? "/empresa" : "/dashboard";
-        window.location.href = destination;
-=======
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-        // Código verificado correctamente → volver al login con 5 intentos
-        mostrarFormularioLogin(
-            (data.mensaje || "Código verificado correctamente.") +
-            " Ya puede volver a iniciar sesión. Tenga 5 intentos más."
-        );
-<<<<<<< HEAD
-=======
->>>>>>> 43a7313f7e25e7fdc5d80cf8fead7b759a02d013
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
+    });
 
-    }
+    // ===== Volver a iniciar sesión =====
+    btnVolverLogin.addEventListener("click", function(){
+        mostrarFormularioLogin();
+    });
 
-    catch(error){
-        errorMsg.textContent = "Error de conexión con el servidor.";
-    }
+    // ===== Abrir formulario ¿Olvidó su contraseña? =====
+    linkOlvido.addEventListener("click", function(e){
+        e.preventDefault();
+        mostrarFormularioOlvido();
+    });
 
-<<<<<<< HEAD
-=======
-    finally{
-        btnVerificar.disabled = false;
-        btnVerificar.textContent = textoOriginalVerificar;
-    }
+    // ===== Volver al login desde ¿Olvidó su contraseña? =====
+    btnVolverDesdeOlvido.addEventListener("click", function(){
+        mostrarFormularioLogin();
+    });
 
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-});
+    // ===== Enviar enlace de restablecimiento al correo =====
+    btnEnviarEnlace.addEventListener("click", async function(){
 
-// ===== Volver a iniciar sesión =====
-btnVolverLogin.addEventListener("click", function(){
-    mostrarFormularioLogin();
-});
-
-<<<<<<< HEAD
-=======
-// ===== Abrir formulario ¿Olvidó su contraseña? =====
-linkOlvido.addEventListener("click", function(e){
-    e.preventDefault();
-    mostrarFormularioOlvido();
-});
-
-// ===== Volver al login desde ¿Olvidó su contraseña? =====
-btnVolverDesdeOlvido.addEventListener("click", function(){
-    mostrarFormularioLogin();
-});
-
-// ===== Enviar enlace de restablecimiento al correo =====
-btnEnviarEnlace.addEventListener("click", async function(){
-
-    const correo = inputCorreoOlvido.value.trim();
-
-    errorMsg.textContent = "";
-    successMsg.textContent = "";
-
-    if(!correo){
-        errorMsg.textContent = "Por favor ingrese su correo.";
-        return;
-    }
-
-    const textoOriginalEnlace = btnEnviarEnlace.textContent;
-    btnEnviarEnlace.disabled = true;
-    btnEnviarEnlace.textContent = "Procesando...";
-
-    try{
-
-        const response = await fetch("/auth/forgot-password",{
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ correo })
-        });
-
-        const data = await response.json();
+        const correo = inputCorreoOlvido.value.trim();
 
         errorMsg.textContent = "";
+        successMsg.textContent = "";
 
-        if(!response.ok){
-            errorMsg.textContent =
-                (typeof data.detail === "string" ? data.detail : "No se pudo procesar la solicitud.");
+        if(!correo){
+            errorMsg.textContent = "Por favor ingrese su correo.";
             return;
         }
 
-        // Por seguridad el mensaje es genérico (exista o no el correo).
-        successMsg.textContent =
-            data.mensaje ||
-            "Si el correo está registrado, se enviará un enlace para restablecer la contraseña.";
+        const textoOriginalEnlace = btnEnviarEnlace.textContent;
+        btnEnviarEnlace.disabled = true;
+        btnEnviarEnlace.textContent = "Procesando...";
 
-    }
-    catch(error){
-        errorMsg.textContent = "Error de conexión con el servidor.";
-    }
+        try{
 
-    finally{
-        btnEnviarEnlace.disabled = false;
-        btnEnviarEnlace.textContent = textoOriginalEnlace;
-    }
+            const response = await fetch("/auth/forgot-password",{
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body: JSON.stringify({ correo })
+            });
 
-});
+            const data = await response.json();
 
->>>>>>> 0b7d8ef91b8abb35c50b69db2e712b9f7aa9d645
-// ===== Permitir solo números en el campo de código =====
-inputCodigo.addEventListener("input", function(){
-    this.value = this.value.replace(/\D/g, "").slice(0, 6);
-});
+            errorMsg.textContent = "";
 
-// ===== Menú hamburguesa =====
-const hamburgerBtn = document.getElementById("hamburgerBtn");
-const mobileMenu = document.getElementById("mobileMenu");
+            if(!response.ok){
+                errorMsg.textContent =
+                    (typeof data.detail === "string" ? data.detail : "No se pudo procesar la solicitud.");
+                return;
+            }
 
-hamburgerBtn.addEventListener("click", function(){
-    this.classList.toggle("active");
-    mobileMenu.classList.toggle("open");
-});
+            // Por seguridad el mensaje es genérico (exista o no el correo).
+            successMsg.textContent =
+                data.mensaje ||
+                "Si el correo está registrado, se enviará un enlace para restablecer la contraseña.";
 
-document.querySelectorAll(".mobile-menu a").forEach(link => {
-    link.addEventListener("click", function(){
-        hamburgerBtn.classList.remove("active");
-        mobileMenu.classList.remove("open");
+        }
+        catch(error){
+            errorMsg.textContent = "Error de conexión con el servidor.";
+        }
+
+        finally{
+            btnEnviarEnlace.disabled = false;
+            btnEnviarEnlace.textContent = textoOriginalEnlace;
+        }
+
     });
-});
+
+    // ===== Permitir solo números en el campo de código =====
+    inputCodigo.addEventListener("input", function(){
+        this.value = this.value.replace(/\D/g, "").slice(0, 6);
+    });
+
+    // ===== Menú hamburguesa =====
+    const hamburgerBtn = document.getElementById("hamburgerBtn");
+    const mobileMenu = document.getElementById("mobileMenu");
+
+    hamburgerBtn.addEventListener("click", function(){
+        this.classList.toggle("active");
+        mobileMenu.classList.toggle("open");
+    });
+
+    document.querySelectorAll(".mobile-menu a").forEach(link => {
+        link.addEventListener("click", function(){
+            hamburgerBtn.classList.remove("active");
+            mobileMenu.classList.remove("open");
+        });
+    });
 
 </script>
 
