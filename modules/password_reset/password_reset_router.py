@@ -13,7 +13,6 @@ from modules.password_reset.password_reset_service import (
     PasswordResetService,
 )
 
-
 router = APIRouter(
     prefix="/password-reset",
     tags=["Recuperación de contraseña"],
@@ -29,7 +28,6 @@ async def request_password_reset(
     data: PasswordResetRequest,
     db: AsyncSession = Depends(get_db),
 ):
-
     service = PasswordResetService(db)
 
     return await service.request_reset(
@@ -46,12 +44,11 @@ async def verify_password_code(
     data: PasswordResetVerify,
     db: AsyncSession = Depends(get_db),
 ):
-
     service = PasswordResetService(db)
 
     return await service.verify_code(
-data.correo,
-data.codigo,
+    data.correo,
+    data.codigo,
 )
 
 
@@ -64,7 +61,6 @@ async def reset_password(
     data: PasswordResetConfirm,
     db: AsyncSession = Depends(get_db),
 ):
-
     service = PasswordResetService(db)
 
     return await service.reset_password(
