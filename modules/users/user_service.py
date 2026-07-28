@@ -5,7 +5,6 @@ from core.logger import logger
 from core.security import hash_password, validar_password_segura
 from modules.users.user_schema import UserCreate, UserUpdate
 
-
 class UserService:
 
   def __init__(self, db: AsyncSession) -> None:
@@ -148,8 +147,17 @@ class UserService:
       params['correo'] = user_update.correo
 
     if user_update.contrasena is not None:
+      password = user_update.contrasena
+      
+      valida, mensaje = validar_password_segura(password)
+      
+      if not valida:
+        raise HTTPException(
+            status_code=400,
+            detail=mensaje
+          )
       update_fields.append('contrasena = :contrasena')
-      params['contrasena'] = hash_password(user_update.contrasena)
+      params['contrasena'] = hash_password(password)
 
     if user_update.rol is not None:
       role_exist = await self.db.execute(

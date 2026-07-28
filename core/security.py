@@ -1,7 +1,9 @@
+
 from fastapi import Depends, HTTPException, status
 import bcrypt
 import jwt
 import hashlib
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from core.config import settings
@@ -13,22 +15,24 @@ from typing import Any
 import uuid
 import jwt
 import re
+ 
 
 def validar_password_segura(password: str) -> tuple[bool, str]:
     """Verifica la creación de contraseña segura."""
     if not password:
         return False, "La contraseña es obligatoria."
     if len(password) < 8:
-        return False, "La contraseña debe tener mínimo 8 caracteres."
+        return False, "La contraseña contener 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial."
     if not re.search(r"[A-Z]", password):
-        return False, "Debe contener al menos una letra mayúscula."
+        return False, "La contraseña contener 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial."
     if not re.search(r"[a-z]", password):
-        return False, "Debe contener al menos una letra minúscula."
+        return False, "La contraseña contener 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial."
     if not re.search(r"\d", password):
-        return False, "Debe contener al menos un número."
+        return False, "La contraseña contener 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial."
     if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-]", password):
-        return False, "Debe contener al menos un carácter especial."
+        return False, "La contraseña contener 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial."
     return True, ""
+
 
 def hash_password(password: str) -> str:
     """Usa bcrypt nativo para convertir un texto plano en un hash binario y decodificarlo a string"""
