@@ -15,7 +15,7 @@ from modules.tareas.tarea_router import router as tarea_router
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
 
-from modules.Alejandra.router import router as alejandra_router
+from modules.alejandra.router import router as alejandra_router
 
 
 
@@ -31,6 +31,24 @@ async def ensure_login_security_schema(session) -> None:
             motivo_fallo VARCHAR(100),
             fecha_hora TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+    """))
+
+    # Tabla de tokens para restablecer la contraseña (enlace enviado por correo)
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id SERIAL PRIMARY KEY,
+            usuario_id UUID NOT NULL,
+            token VARCHAR(255) UNIQUE NOT NULL,
+            fecha_expiracion TIMESTAMP WITH TIME ZONE NOT NULL,
+            utilizado BOOLEAN NOT NULL DEFAULT FALSE,
+            creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+    """))
+
+    # Columna que marca si el usuario ya verificó un código (fase 2 del login).
+    await session.execute(text("""
+        ALTER TABLE usuario
+        ADD COLUMN IF NOT EXISTS codigo_verificado BOOLEAN DEFAULT FALSE;
     """))
 
 async def seed_initial_data() -> None:
@@ -130,6 +148,7 @@ app.include_router(tarea_router)
 app.include_router(security_router)
 app.include_router(empresas_router)
 app.include_router(alejandra_router)
+app.include_router(alejandra_router)
 
 # ============================================================
 # RUTAS DE INTERFAZ DE USUARIO
@@ -151,6 +170,12 @@ async def login_page(request: Request):
 async def register_page(request: Request):
     """Sirve la página de registro de usuarios."""
     return FileResponse("static/register.html")
+
+
+@app.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(request: Request):
+    """Sirve la página para crear una nueva contraseña (enlace del correo)."""
+    return FileResponse("static/reset-password.html")
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

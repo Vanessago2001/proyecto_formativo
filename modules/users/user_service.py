@@ -48,11 +48,10 @@ class UserService:
           detail='El rol proveído no existe.',
       )
 
-<<<<<<< HEAD
     password = user_data.contrasena
 
-=======
->>>>>>> 7a57d0a0b84edb6fdae895569d1fb8bf0d01495d
+    password = user_data.contrasena
+
     valida, mensaje = validar_password_segura(password)
 
     if not valida:
@@ -60,12 +59,11 @@ class UserService:
           status_code=400,
           detail=mensaje
       )
-<<<<<<< HEAD
-    hashed_pwd = hash_password(password)
-=======
 
     hashed_pwd = hash_password(user_data.contrasena)
->>>>>>> 7a57d0a0b84edb6fdae895569d1fb8bf0d01495d
+
+    hashed_pwd = hash_password(user_data.contrasena)
+    hashed_pwd = hash_password(password)
 
     query = text("""
             INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)

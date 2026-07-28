@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, status
 import bcrypt
 import jwt
 import hashlib
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from core.config import settings
@@ -32,25 +33,6 @@ def validar_password_segura(password: str) -> tuple[bool, str]:
         return False, "Debe contener al menos un carácter especial."
     return True, ""
 
-def validar_password_segura(password: str) -> tuple[bool, str]:
-    """Verifica la creacion de contraseña segura"""
-
-    if len(password) < 8:
-        return False, "La contraseña debe tener mínimo 8 caracteres."
-
-    if not re.search(r"[A-Z]", password):
-        return False, "Debe contener al menos una letra mayúscula."
-
-    if not re.search(r"[a-z]", password):
-        return False, "Debe contener al menos una letra minúscula."
-
-    if not re.search(r"\d", password):
-        return False, "Debe contener al menos un número."
-
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-]", password):
-        return False, "Debe contener al menos un carácter especial."
-
-    return True, ""
 
 def hash_password(password: str) -> str:
     """Usa bcrypt nativo para convertir un texto plano en un hash binario y decodificarlo a string"""
