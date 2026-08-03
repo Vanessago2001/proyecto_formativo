@@ -29,7 +29,12 @@ TIEMPO_BLOQUEO_MINUTOS = 15
 # Vigencia del enlace de restablecimiento de contraseña.
 RESET_TOKEN_MINUTOS = 30
 # Días de vigencia de la contraseña antes de exigir cambio (0 = sin expiración).
-DIAS_EXPIRACION = 90
+# Roles Auditor y Empresa: 60 días. Los demás: 90 días.
+DIAS_EXPIRACION_POR_ROL = {
+    "Auditor": 60,
+    "Empresa": 60,
+}
+DIAS_EXPIRACION_DEFAULT = 90
 
 
 class AuthService:
@@ -287,8 +292,6 @@ class AuthService:
                 u.bloqueado_hasta,
                 u.rol_id,
                 COALESCE(u.codigo_verificado, FALSE) AS codigo_verificado,
-                u.bloqueado_hasta,
-                u.rol_id,
                 u.fecha_cambio_password,
                 r.nombre AS rol_nombre
             FROM usuario u
