@@ -212,9 +212,10 @@ const inputCorreoOlvido    = document.getElementById("correoOlvido");
 const errorMsg        = document.getElementById("errorMessage");
 const successMsg      = document.getElementById("successMessage");
 const inputCodigo     = document.getElementById("codigo");
-
+let tipoVerificacion = "codigo";
 // ===== Mostrar formulario de código =====
-function mostrarFormularioCodigo(mensaje) {
+function mostrarFormularioCodigo(mensaje,tipo = "codigo") {
+    tipoVerificacion = tipo;
     loginForm.classList.add("hidden-section");
     forgotForm.classList.add("hidden-section");
     codeForm.classList.remove("hidden-section");
@@ -308,20 +309,51 @@ btnLogin.addEventListener("click", async function(e){
             // 403 con acción estructurada:
             //   accion "codigo" → mostrar el formulario de verificación de código
             //   accion "reset"  → se envió un enlace de restablecimiento al correo
+        //     if(response.status === 403 && detail && typeof detail === "object"){
+        //         if(detail.accion === "reset"){
+        //             mostrarMensajeReset(detail.mensaje);
+        //         } else {
+        //             mostrarFormularioCodigo(detail.mensaje);
+        //         }
+        //     } else {
+        //         errorMsg.textContent =
+        //             (typeof detail === "string" ? detail : (detail && detail.mensaje)) ||
+        //             "Credenciales inválidas. Inténtalo de nuevo.";
+        //     }
+
+        //     return;
+        // }
             if(response.status === 403 && detail && typeof detail === "object"){
-                if(detail.accion === "reset"){
-                    mostrarMensajeReset(detail.mensaje);
-                } else {
-                    mostrarFormularioCodigo(detail.mensaje);
-                }
-            } else {
-                errorMsg.textContent =
-                    (typeof detail === "string" ? detail : (detail && detail.mensaje)) ||
-                    "Credenciales inválidas. Inténtalo de nuevo.";
+
+            if(detail.accion === "reset"){
+
+                mostrarMensajeReset(detail.mensaje);
+
+            }else if(detail.accion === "codigo"){
+
+                mostrarFormularioCodigo(
+                    detail.mensaje,
+                    "codigo"
+                );
+
+            }else if(detail.accion === "mfa"){
+
+                mostrarFormularioCodigo(
+                    detail.mensaje,
+                    "mfa"
+                );
+
             }
 
             return;
         }
+         errorMsg.textContent =
+        typeof detail === "string"
+            ? detail
+            : detail?.mensaje || "Error.";
+
+    return;
+}
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("token_type", data.token_type);
 
@@ -343,7 +375,8 @@ btnLogin.addEventListener("click", async function(e){
 });
 
 // ===== Verificar código =====
-btnVerificar.addEventListener("click", async function(){
+// ===== Verificar código =====
+btnVerificar.addEventListener("click", async function () {
 
     const correo = document.getElementById("correo").value.trim();
     const codigo = inputCodigo.value.trim();
@@ -351,7 +384,7 @@ btnVerificar.addEventListener("click", async function(){
     errorMsg.textContent = "";
     successMsg.textContent = "";
 
-    if(!codigo || codigo.length !== 6){
+    if (!codigo || codigo.length !== 6) {
         errorMsg.textContent = "Por favor ingrese el código de 6 dígitos.";
         return;
     }
@@ -360,14 +393,26 @@ btnVerificar.addEventListener("click", async function(){
     btnVerificar.disabled = true;
     btnVerificar.textContent = "Procesando...";
 
-    try{
+    try {
 
-        const response = await fetch("/auth/verificar-codigo",{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
+        // =====================================
+        // Determinar qué endpoint usar
+        // =====================================
+        console.log("===============");
+        console.log("tipoVerificacion =", tipoVerificacion);
+        let endpoint = "/auth/verificar-codigo";
+
+        if (tipoVerificacion === "mfa") {
+            endpoint = "/auth/login-mfa";
+        }
+        console.log("endpoint =", endpoint);
+        console.log("===============");
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
             },
-            body:JSON.stringify({
+            body: JSON.stringify({
                 correo,
                 codigo
             })
@@ -375,35 +420,100 @@ btnVerificar.addEventListener("click", async function(){
 
         const data = await response.json();
 
-        if(!response.ok){
+        if (!response.ok) {
 
-            // 403 → se generó y envió un nuevo código (máximo de intentos del código)
-            if(response.status === 403){
-                errorMsg.textContent = data.detail || "Ha superado el número máximo de intentos del código. Se envió un nuevo código a su correo.";
-                inputCodigo.value = "";
-                inputCodigo.focus();
+            if (tipoVerificacion === "codigo") {
+
+                if (response.status === 403) {
+
+                    errorMsg.textContent =
+                        data.detail ||
+                        "Se generó un nuevo código y fue enviado al correo.";
+
+                    inputCodigo.value = "";
+                    inputCodigo.focus();
+
+                } else {
+
+                    errorMsg.textContent =
+                        data.detail ||
+                        "Error al verificar el código.";
+
+                }
+
             } else {
-                errorMsg.textContent = data.detail || "Error al verificar el código.";
+
+                errorMsg.textContent =
+                    data.detail ||
+                    "Código MFA incorrecto.";
+
             }
 
             return;
         }
 
-        // Código verificado correctamente → volver al login con 5 intentos
-        mostrarFormularioLogin(
-            (data.mensaje || "Código verificado correctamente.") +
-            " Ya puede volver a iniciar sesión. Tenga 5 intentos más."
+        // =====================================
+        // Verificación del código por intentos
+        // =====================================
+
+        if (tipoVerificacion === "codigo") {
+
+            mostrarFormularioLogin(
+
+                (data.mensaje ||
+                "Código verificado correctamente.") +
+
+                " Ya puede volver a iniciar sesión."
+
+            );
+
+            return;
+        }
+
+        // =====================================
+        // Verificación MFA correcta
+        // =====================================
+
+        localStorage.setItem(
+            "access_token",
+            data.access_token
         );
 
-    }
+        localStorage.setItem(
+            "token_type",
+            data.token_type
+        );
 
-    catch(error){
-        errorMsg.textContent = "Error de conexión con el servidor.";
-    }
+        const payload = JSON.parse(
+            atob(
+                data.access_token
+                    .split(".")[1]
+                    .replace(/-/g, "+")
+                    .replace(/_/g, "/")
+            )
+        );
 
-    finally{
+        const destination =
+            payload.role_name === "Auditor"
+                ? "/auditor"
+                : payload.role_name === "Empresa"
+                ? "/empresa"
+                : "/dashboard";
+
+        window.location.href = destination;
+
+    }
+    catch (error) {
+
+        errorMsg.textContent =
+            "Error de conexión con el servidor.";
+
+    }
+    finally {
+
         btnVerificar.disabled = false;
         btnVerificar.textContent = textoOriginalVerificar;
+
     }
 
 });

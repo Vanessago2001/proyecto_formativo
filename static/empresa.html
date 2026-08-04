@@ -1,20 +1,147 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CertiSENA | Portal empresa</title>
   <link rel="stylesheet" href="/static/styles.css">
   <style>
-    .portal{max-width:1120px;margin:0 auto;padding:28px;display:grid;grid-template-columns:230px 1fr;gap:24px}.side,.content{background:#fff;border:1px solid #dbe4d4;padding:20px}.side a{display:block;padding:11px;color:#334155;text-decoration:none;border-left:3px solid transparent}.side a.active{color:#256d00;background:#f1f8ed;border-left-color:#3baa01}.content h2{color:#256d00;font-size:23px;margin-bottom:8px}.content p{color:#64748b;line-height:1.5}.notice{margin:22px 0;padding:16px;background:#f1f8ed;border-left:4px solid #3baa01;color:#365314}.uploads{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:20px}.upload{border:1px dashed #93b987;padding:18px}.upload h3{font-size:15px;margin-bottom:7px}.upload input{margin-top:12px;width:100%}.profile-link{margin-left:auto;color:#fff;text-decoration:none;font-weight:600}@media(max-width:720px){.portal{grid-template-columns:1fr;padding:18px}.uploads{grid-template-columns:1fr}}
+    .portal {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 28px;
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      gap: 24px
+    }
+
+    .side,
+    .content {
+      background: #fff;
+      border: 1px solid #dbe4d4;
+      padding: 20px
+    }
+
+    .side a {
+      display: block;
+      padding: 11px;
+      color: #334155;
+      text-decoration: none;
+      border-left: 3px solid transparent
+    }
+
+    .side a.active {
+      color: #256d00;
+      background: #f1f8ed;
+      border-left-color: #3baa01
+    }
+
+    .content h2 {
+      color: #256d00;
+      font-size: 23px;
+      margin-bottom: 8px
+    }
+
+    .content p {
+      color: #64748b;
+      line-height: 1.5
+    }
+
+    .notice {
+      margin: 22px 0;
+      padding: 16px;
+      background: #f1f8ed;
+      border-left: 4px solid #3baa01;
+      color: #365314
+    }
+
+    .uploads {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-top: 20px
+    }
+
+    .upload {
+      border: 1px dashed #93b987;
+      padding: 18px
+    }
+
+    .upload h3 {
+      font-size: 15px;
+      margin-bottom: 7px
+    }
+
+    .upload input {
+      margin-top: 12px;
+      width: 100%
+    }
+
+    .profile-link {
+      margin-left: auto;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600
+    }
+
+    @media(max-width:720px) {
+      .portal {
+        grid-template-columns: 1fr;
+        padding: 18px
+      }
+
+      .uploads {
+        grid-template-columns: 1fr
+      }
+    }
   </style>
 </head>
+
 <body>
-  <header class="login-header"><div class="header-content"><div class="header-left"><img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco"><div><h1>CertiSENA</h1><p class="subtitle">Portal de empresa</p></div></div><a class="profile-link" href="/profile">Mi perfil</a></div></header>
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left"><img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Portal de empresa</p>
+        </div>
+      </div><a class="profile-link" href="/profile">Mi perfil</a>
+    </div>
+  </header>
   <main class="portal">
-    <nav class="side"><a class="active" href="/empresa">Datos de empresa</a><a href="#documentos">Documentos requeridos</a><a href="#solicitud">Nueva solicitud</a><a href="/profile">Mi perfil</a><a id="logout" href="/login">Cerrar sesion</a></nav>
-    <section class="content"><h2 id="title">Informacion inicial de empresa</h2><p>Registre los documentos solicitados. Cuando sean revisados, la empresa podra continuar con sus solicitudes de certificacion.</p><div class="notice">La creacion de solicitudes y el calculo de tiempos de auditoria se implementaran en un modulo posterior.</div><div id="documentos" class="uploads"><div class="upload"><h3>Documento de existencia</h3><p>Certificado de existencia o documento equivalente.</p><input type="file" accept=".pdf,.doc,.docx"></div><div class="upload"><h3>Registro tributario</h3><p>Soporte tributario vigente de la empresa.</p><input type="file" accept=".pdf,.doc,.docx"></div><div class="upload"><h3>Documentos del proceso</h3><p>Soportes iniciales requeridos para la certificacion.</p><input type="file" accept=".pdf,.doc,.docx"></div><div class="upload" id="solicitud"><h3>Preparar nueva solicitud</h3><p>La solicitud pedira sedes, procesos y datos de contacto.</p><button type="button" class="primary-action" disabled>Proximamente</button></div></div></section>
+    <nav class="side"><a class="active" href="/empresa">Datos de empresa</a><a href="#documentos">Documentos
+        requeridos</a><a href="#solicitud">Nueva solicitud</a><a href="/profile">Mi perfil</a><a id="logout"
+        href="/login">Cerrar sesion</a></nav>
+    <section class="content">
+      <h2 id="title">Informacion inicial de empresa</h2>
+      <p>Registre los documentos solicitados. Cuando sean revisados, la empresa podra continuar con sus solicitudes de
+        certificacion.</p>
+      <div class="notice">La creacion de solicitudes y el calculo de tiempos de auditoria se implementaran en un modulo
+        posterior.</div>
+      <div id="documentos" class="uploads">
+        <div class="upload">
+          <h3>Documento de existencia</h3>
+          <p>Certificado de existencia o documento equivalente.</p><input type="file" accept=".pdf,.doc,.docx">
+        </div>
+        <div class="upload">
+          <h3>Registro tributario</h3>
+          <p>Soporte tributario vigente de la empresa.</p><input type="file" accept=".pdf,.doc,.docx">
+        </div>
+        <div class="upload">
+          <h3>Documentos del proceso</h3>
+          <p>Soportes iniciales requeridos para la certificacion.</p><input type="file" accept=".pdf,.doc,.docx">
+        </div>
+        <div class="upload" id="solicitud">
+          <h3>Preparar nueva solicitud</h3>
+          <p>La solicitud pedira sedes, procesos y datos de contacto.</p><button type="button" class="primary-action"
+            disabled>Proximamente</button>
+        </div>
+      </div>
+    </section>
   </main>
-  <script>const token=localStorage.getItem('access_token');try{const p=JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(p.role_name!=='Empresa')location.href='/dashboard';else document.getElementById('title').textContent='Informacion inicial: '+p.sub;}catch(_){location.href='/login'}document.getElementById('logout').onclick=e=>{e.preventDefault();localStorage.clear();location.href='/login'};</script>
+  <script>const token = localStorage.getItem('access_token'); try { const p = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); if (p.role_name !== 'Empresa') location.href = '/dashboard'; else document.getElementById('title').textContent = 'Informacion inicial: ' + p.sub; } catch (_) { location.href = '/login' } document.getElementById('logout').onclick = e => { e.preventDefault(); localStorage.clear(); location.href = '/login' };</script>
+<script src="/static/session.js"></script>
 </body>
+
 </html>

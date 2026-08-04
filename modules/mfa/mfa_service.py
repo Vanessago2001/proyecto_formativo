@@ -48,61 +48,145 @@ class MFAService:
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Usuario no encontrado."
     )
+     # --------------------------------------------------------
+        # Generar código MFA de 6 dígitos
+        # --------------------------------------------------------
+    
+        codigo = str(randint(100000, 999999))
+    
+        # Código válido durante 10 minutos
+        # --------------------------------------------------------
+    
+        expira = (
+                datetime.now(timezone.utc)
+                + timedelta(minutes=10)
+            )
+    
+        # --------------------------------------------------------
+        # Guardar código y expiración en la base de datos
+        # --------------------------------------------------------
+    
+        await self.db.execute(
+                text("""
+                UPDATE usuario
+                SET
+                mfa_codigo = :codigo,
+                mfa_expira = :expira,
+                mfa_verificado = FALSE
+                WHERE id = :id
+                """),
+                {
+                    "codigo": codigo,
+                    "expira": expira,
+                    "id": usuario["id"],
+                },
+            )
+    
+        await self.db.commit()
+    
+        # --------------------------------------------------------
+        # Enviar código al correo
+        # --------------------------------------------------------
+    
+        await MailService.enviar_codigo(
+            destinatario=correo,
+            codigo=codigo,
+         )
+    
+        # --------------------------------------------------------
+        # IMPORTANTE:
+            # No devolver el código al frontend.
+            # --------------------------------------------------------
+    
+        return {
+            "message": "Código MFA enviado correctamente al correo."
+        }  
 
-    # --------------------------------------------------------
-    # Generar código MFA de 6 dígitos
-    # --------------------------------------------------------
+
+
+
+
+    # ============================================================
+    # LOGIN CON MFA
+    # Genera un código y lo envía al correo
+    # ============================================================
+
+    async def login_request(self, correo: str):
+
+        # --------------------------------------------------------
+        # Buscar usuario
+        # --------------------------------------------------------
+
+        result = await self.db.execute(
+            text("""
+            SELECT id
+            FROM usuario
+            WHERE LOWER(correo)=LOWER(:correo)
+            """),
+            {
+                "correo": correo
+            },
+        )
+
+        usuario = result.mappings().first()
+
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado."
+            )
+
+        # --------------------------------------------------------
+        # Generar código
+        # --------------------------------------------------------
 
         codigo = str(randint(100000, 999999))
 
-        # --------------------------------------------------------
-        # Código válido durante 10 minutos
-        # --------------------------------------------------------
-
         expira = (
             datetime.now(timezone.utc)
-            + timedelta(minutes=10)
+            + timedelta(minutes=5)
         )
 
-    # --------------------------------------------------------
-    # Guardar código y expiración en la base de datos
-    # --------------------------------------------------------
+        # --------------------------------------------------------
+        # Guardar código
+        # --------------------------------------------------------
 
         await self.db.execute(
             text("""
             UPDATE usuario
             SET
-            mfa_codigo = :codigo,
-            mfa_expira = :expira,
-            mfa_verificado = FALSE
-            WHERE id = :id
+                mfa_codigo=:codigo,
+                mfa_expira=:expira,
+                mfa_verificado=FALSE
+            WHERE id=:id
             """),
             {
                 "codigo": codigo,
                 "expira": expira,
-                "id": usuario["id"],
+                "id": usuario["id"]
             },
         )
 
         await self.db.commit()
 
-    # --------------------------------------------------------
-    # Enviar código al correo
-    # --------------------------------------------------------
-
-        await MailService.enviar_codigo(
-        destinatario=correo,
-        codigo=codigo,
-     )
-
-    # --------------------------------------------------------
-    # IMPORTANTE:
-        # No devolver el código al frontend.
+        # --------------------------------------------------------
+        # Enviar correo
         # --------------------------------------------------------
 
+        await MailService.enviar_codigo(
+            destinatario=correo,
+            codigo=codigo
+        )
+
         return {
-        "message": "Código MFA enviado correctamente al correo."
-    }
+            "message": "Código MFA enviado."
+        }
+
+    
+
+
+
+   
 
     # ============================================================
     # VERIFICAR CÓDIGO Y ACTIVAR MFA
