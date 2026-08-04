@@ -20,6 +20,10 @@ from modules.alejandra.router import router as alejandra_router
 
 from core.redis_client import redis_pool
 
+from modules.system.system_router import router as system_router
+
+
+
 
 
 async def ensure_login_security_schema(session) -> None:
@@ -153,6 +157,7 @@ app.include_router(empresas_router)
 app.include_router(alejandra_router)
 app.include_router(alejandra_router)
 app.include_router(mfa_router)
+app.include_router(system_router)
 
 # ============================================================
 # RUTAS DE INTERFAZ DE USUARIO

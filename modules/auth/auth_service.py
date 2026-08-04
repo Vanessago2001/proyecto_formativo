@@ -17,6 +17,7 @@ from core.security import (
     verify_verification_code,
     validar_password_segura,
 )
+from core.datetime_utils import system_now
 
 from modules.auth.mail_service import MailService
 
@@ -30,16 +31,12 @@ TIEMPO_BLOQUEO_MINUTOS = 15
 # Vigencia del enlace de restablecimiento de contraseña.
 RESET_TOKEN_MINUTOS = 30
 # Días de vigencia de la contraseña antes de exigir cambio (0 = sin expiración).
-<<<<<<< HEAD
-DIAS_EXPIRACION = 120
-=======
 # Roles Auditor y Empresa: 60 días. Los demás: 90 días.
 DIAS_EXPIRACION_POR_ROL = {
     "Auditor": 60,
     "Empresa": 60,
 }
 DIAS_EXPIRACION_DEFAULT = 120
->>>>>>> d8ec6d631f7d2e91ebad91973d4e2128ef4d1cdd
 
 
 class AuthService:
@@ -51,18 +48,15 @@ class AuthService:
         """
         Devuelve la fecha y hora actual en UTC (naive) para comparar con fechas de la BD.
         """
-        return datetime.now(timezone.utc).replace(tzinfo=None)
+        return system_now()
 
     def _a_naive_utc(self, valor: datetime) -> datetime:
         """
-        Normaliza un datetime a UTC naive para poder compararlo con _ahora().
-
-        Las columnas TIMESTAMPTZ (p. ej. password_reset_tokens.fecha_expiracion)
-        devuelven datetimes *aware*; compararlos directamente con _ahora() (naive)
-        lanza TypeError. Este helper deja ambos lados en la misma forma.
+        Convierte cualquier fecha a UTC sin zona horaria.
         """
         if valor.tzinfo is not None:
             return valor.astimezone(timezone.utc).replace(tzinfo=None)
+
         return valor
 
     def _generar_codigo(self) -> str:
@@ -592,7 +586,7 @@ class AuthService:
         if dias_expiracion > 0 and fecha_cambio is not None:
             fecha_limite = self._a_naive_utc(fecha_cambio) + timedelta(days=dias_expiracion)
 
-            if self._ahora() > fecha_limite:
+            if self._a_naive_utc(self._ahora()) > fecha_limite:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión."
@@ -722,7 +716,7 @@ class AuthService:
                     detail="El código MFA expiró."
                 )
     
-            if user["mfa_expira"] < datetime.now(timezone.utc):
+            if self._a_naive_utc(user["mfa_expira"]) < self._a_naive_utc(self._ahora()):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="El código MFA expiró."
