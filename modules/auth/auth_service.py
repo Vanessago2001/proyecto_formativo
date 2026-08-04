@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import random
 import secrets
 
+from modules.mfa.mfa_service import MFAService
 from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -292,7 +293,16 @@ class AuthService:
                 u.bloqueado_hasta,
                 u.rol_id,
                 COALESCE(u.codigo_verificado, FALSE) AS codigo_verificado,
+                u.mfa_activado,
+                u.mfa_codigo,
+                u.mfa_expira,
+                u.bloqueado_hasta,
+                u.rol_id,
                 u.fecha_cambio_password,
+                u.mfa_activado,
+                u.mfa_codigo,
+                u.mfa_expira,
+                u.mfa_verificado,
                 r.nombre AS rol_nombre
             FROM usuario u
             LEFT JOIN rol r ON u.rol_id = r.id_rol
@@ -607,6 +617,27 @@ class AuthService:
 
         await self.db.commit()
 
+        # =====================================================
+        # Verificar si el usuario tiene MFA activado Neider
+        # =====================================================
+
+        if user["mfa_activado"]:
+
+            mfa = MFAService(self.db)
+
+            await mfa.login_request(user["correo"])
+
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "accion": "mfa",
+                    "mensaje": (
+                        "Se envió un código de verificación a su correo."
+                    ),
+                    "correo": user["correo"]
+                }
+            )
+
         await self._log_access(
             user["id"],
             user["correo"],
@@ -614,6 +645,50 @@ class AuthService:
             True,
             "Autenticación exitosa",
         )
+
+        # nuevo Sneider SI EL USUARIO TIENE MFA ACTIVADO
+       
+
+        if user["mfa_activado"]:
+
+            codigo = str(random.randint(100000, 999999))
+
+            expira = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+            await self.db.execute(
+                text("""
+                    UPDATE usuario
+                    SET
+                        mfa_codigo = :codigo,
+                        mfa_expira = :expira,
+                        mfa_verificado = FALSE
+                    WHERE id = :id
+                """),
+                {
+                    "codigo": codigo,
+                    "expira": expira,
+                    "id": user["id"]
+                }
+            )
+
+            await self.db.commit()
+
+            await MailService.enviar_codigo(
+                destinatario=user["correo"],
+                codigo=codigo
+            )
+
+            return {
+                "mfa_required": True,
+                "correo": user["correo"],
+                "message": "Se envió un código de verificación a su correo."
+            }
+
+
+
+
+
+
 
         return create_access_token(
             data={
@@ -623,6 +698,206 @@ class AuthService:
                 "role_name": user.get("rol_nombre"),
             }
         )
+    # nuevo Sneider login MFA
+    async def login_mfa(self,correo: str,codigo: str,):
+         # --------------------------------------------------------
+    # Buscar usuario
+    # --------------------------------------------------------
+        result = await self.db.execute(
+            text("""
+            SELECT
+                u.id,
+                u.nombre,
+                u.correo,
+                u.rol_id,
+                u.mfa_codigo,
+                u.mfa_expira,
+                r.nombre AS rol_nombre
+            FROM usuario u
+            LEFT JOIN rol r
+                ON r.id_rol = u.rol_id
+            WHERE LOWER(u.correo)=LOWER(:correo)
+            LIMIT 1
+            """),
+            {
+                "correo": correo
+            }
+        )
+
+        user = result.mappings().first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado."
+            )
+
+        # --------------------------------------------------------
+        # Verificar que exista un código MFA pendiente
+
+
+        if user["mfa_codigo"] is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No existe un código MFA pendiente."
+            )
+
+        # --------------------------------------------------------
+        # Verificar expiración
+        # --------------------------------------------------------
+
+        if user["mfa_expira"] is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El código MFA expiró."
+            )
+
+        if user["mfa_expira"] < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El código MFA expiró."
+            )
+
+        # --------------------------------------------------------
+        # Verificar código
+        # --------------------------------------------------------
+
+        if user["mfa_codigo"] != codigo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Código MFA incorrecto."
+            )
+
+        # --------------------------------------------------------
+        # Limpiar el código MFA para que no pueda reutilizarse
+        # --------------------------------------------------------
+
+        await self.db.execute(
+            text("""
+                UPDATE usuario
+                SET
+                    mfa_codigo = NULL,
+                    mfa_expira = NULL,
+                    mfa_verificado = TRUE
+                WHERE id = :id
+            """),
+            {
+                "id": user["id"]
+            }
+        )
+
+        await self.db.commit()
+
+        # --------------------------------------------------------
+        # Generar JWT
+        # --------------------------------------------------------
+
+        token = create_access_token(
+            data={
+                "sub": user["nombre"],
+                "user_id": str(user["id"]),
+                "role_id": user["rol_id"],
+                "role_name": user["rol_nombre"],
+            }
+        )
+
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+        }
+
+
+
+
+
+
+
+        # --------------------------------------------------------
+        # Verificar que exista un código pendiente
+        # --------------------------------------------------------
+        if user["mfa_codigo"] is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No existe un código MFA pendiente."
+            )
+
+        # --------------------------------------------------------
+        # Verificar expiración
+        # --------------------------------------------------------
+        if user["mfa_expira"] is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El código expiró."
+            )
+
+        if self._a_naive_utc(user["mfa_expira"]) < self._ahora():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El código MFA expiró."
+            )
+
+        # --------------------------------------------------------
+        # Verificar código
+        # --------------------------------------------------------
+        if user["mfa_codigo"] != codigo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Código incorrecto."
+            )
+
+        # --------------------------------------------------------
+        # Limpiar código MFA
+        # --------------------------------------------------------
+        await self.db.execute(
+            text("""
+            UPDATE usuario
+            SET
+                mfa_codigo = NULL,
+                mfa_expira = NULL,
+                mfa_verificado = TRUE
+            WHERE id = :id
+            """),
+            {
+                "id": user["id"]
+            }
+        )
+
+        await self.db.commit()
+
+        # --------------------------------------------------------
+        # Registrar acceso exitoso
+        # --------------------------------------------------------
+        await self._log_access(
+            user["id"],
+            user["correo"],
+            "unknown",
+            True,
+            "Inicio de sesión mediante MFA"
+        )
+
+        # --------------------------------------------------------
+        # Generar JWT
+        # --------------------------------------------------------
+        token = create_access_token(
+            data={
+                "sub": user["nombre"],
+                "user_id": str(user["id"]),
+                "role_id": int(user["rol_id"])
+                if user["rol_id"] is not None
+                else None,
+                "role_name": user["rol_nombre"],
+            }
+        )
+
+        return {
+            "access_token": token,
+            "token_type": "bearer"
+        }
+
+
+
+
+
 
     async def obtener_historial_accesos(
         self,
