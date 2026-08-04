@@ -35,10 +35,3 @@ class ForgotPasswordRequest(BaseModel):
     """Esquema para solicitar el enlace de restablecimiento (¿olvidó su contraseña?)."""
 
     correo: str = Field(..., min_length=3, max_length=255)
-
-# nuevo Sneider
-class LoginMFARequest(BaseModel):
-    """Solicitud para finalizar el inicio de sesión mediante MFA."""
-
-    correo: str = Field(..., min_length=3, max_length=255)
-    codigo: str = Field(..., min_length=6, max_length=6)

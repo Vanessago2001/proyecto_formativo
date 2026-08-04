@@ -16,7 +16,7 @@ from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
 
 from modules.alejandra.router import router as alejandra_router
-from modules.mfa.mfa_router import router as mfa_router
+
 
 
 async def ensure_login_security_schema(session) -> None:
@@ -149,7 +149,6 @@ app.include_router(security_router)
 app.include_router(empresas_router)
 app.include_router(alejandra_router)
 app.include_router(alejandra_router)
-app.include_router(mfa_router)
 
 # ============================================================
 # RUTAS DE INTERFAZ DE USUARIO
