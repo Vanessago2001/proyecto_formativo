@@ -17,6 +17,8 @@ from modules.empresas.empresas_router import router as empresas_router
 
 from modules.alejandra.router import router as alejandra_router
 
+from core.redis_client import redis_pool
+
 
 
 async def ensure_login_security_schema(session) -> None:
@@ -265,3 +267,7 @@ async def auditor_page(request: Request):
 @app.get("/empresa", response_class=HTMLResponse)
 async def empresa_page(request: Request):
     return FileResponse("static/empresa.html")
+
+@app.on_event("shutdown")
+async def shutdown_redis_pool():
+    await redis_pool.disconnect()

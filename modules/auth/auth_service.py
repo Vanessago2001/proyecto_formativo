@@ -29,7 +29,7 @@ TIEMPO_BLOQUEO_MINUTOS = 15
 # Vigencia del enlace de restablecimiento de contraseña.
 RESET_TOKEN_MINUTOS = 30
 # Días de vigencia de la contraseña antes de exigir cambio (0 = sin expiración).
-DIAS_EXPIRACION = 0
+DIAS_EXPIRACION = 120
 
 
 class AuthService:
@@ -706,6 +706,12 @@ class AuthService:
             },
         )
 
+        # Escribir también en Redis, con TTL igual a la vigencia del token
+        from core.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        ttl_segundos = RESET_TOKEN_MINUTOS * 60
+        await redis_client.set(f"password_reset_token:{token}", str(user_id), ex=ttl_segundos)
+
         base_url = settings.APP_BASE_URL.rstrip("/")
         return f"{base_url}/reset-password?token={token}"
 
@@ -817,12 +823,17 @@ class AuthService:
             text("""
                 UPDATE password_reset_tokens
                 SET utilizado = TRUE
-                WHERE id = :id
+                WHERE token = :token
             """),
-            {"id": registro["id"]},
+            {"token": token},
         )
 
         await self.db.commit()
+
+        # Invalidar también en Redis (evita reutilización mientras dure el TTL)
+        from core.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        await redis_client.delete(f"password_reset_token:{token}")
 
         return {
             "mensaje": (
