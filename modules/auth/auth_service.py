@@ -34,7 +34,7 @@ DIAS_EXPIRACION_POR_ROL = {
     "Auditor": 60,
     "Empresa": 60,
 }
-DIAS_EXPIRACION_DEFAULT = 90
+DIAS_EXPIRACION_DEFAULT = 120
 
 
 class AuthService:
@@ -293,6 +293,7 @@ class AuthService:
                 u.rol_id,
                 COALESCE(u.codigo_verificado, FALSE) AS codigo_verificado,
                 u.fecha_cambio_password,
+                u.ultimo_inicio_sesion,
                 r.nombre AS rol_nombre
             FROM usuario u
             LEFT JOIN rol r ON u.rol_id = r.id_rol
@@ -574,17 +575,31 @@ class AuthService:
                     "WWW-Authenticate": "Bearer"
                 },
             )
+        # 5. Login exitoso (reseteamos fallos)
         fecha_cambio = user.get("fecha_cambio_password")
+        ultimo_inicio = user.get("ultimo_inicio_sesion")
+        rol_nombre = user.get("rol_nombre", "")
+        dias_expiracion = DIAS_EXPIRACION_POR_ROL.get(rol_nombre, DIAS_EXPIRACION_DEFAULT)
 
-        if fecha_cambio is not None:
-            fecha_limite = fecha_cambio + timedelta(days=DIAS_EXPIRACION)
-        fecha_cambio = user.get("fecha_cambio_password")
+        if dias_expiracion > 0 and fecha_cambio is not None:
+            fecha_limite = self._a_naive_utc(fecha_cambio) + timedelta(days=dias_expiracion)
 
-        if self._ahora() > fecha_limite:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión."
-            )
+            if self._ahora() > fecha_limite:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión."
+                )
+
+        # 5.1 Para roles que no son Auditor ni Empresa, verificar inactividad (90 días)
+        if rol_nombre not in ("Auditor", "Empresa") and ultimo_inicio is not None:
+            dias_inactividad = 90
+            fecha_limite_inactividad = self._a_naive_utc(ultimo_inicio) + timedelta(days=dias_inactividad)
+
+            if self._ahora() > fecha_limite_inactividad:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Su contraseña ha expirado por inactividad. Debe cambiarla antes de iniciar sesión."
+                )
 
         await self.db.execute(
             text("""
@@ -597,7 +612,8 @@ class AuthService:
                     intentos_codigo = 0,
                     ultimo_envio_codigo = NULL,
                     codigo_verificado = FALSE,
-                    bloqueado_hasta = NULL
+                    bloqueado_hasta = NULL,
+                    ultimo_inicio_sesion = NOW()
                 WHERE id = :id
             """),
             {
@@ -799,6 +815,7 @@ class AuthService:
                 UPDATE usuario
                 SET
                     contrasena = :contrasena,
+                    fecha_cambio_password = NOW(),
                     intentos_fallidos = 0,
                     ultimo_intento = NULL,
                     codigo_verificacion = NULL,
@@ -881,3 +898,85 @@ class AuthService:
         )
 
         return mensaje_generico
+
+    async def cambiar_password(
+        self,
+        user_id,
+        password_actual: str,
+        password_nueva: str,
+    ):
+        resultado = await self.db.execute(
+            text("SELECT id, contrasena FROM usuario WHERE id = :id"),
+            {"id": user_id},
+        )
+        usuario = resultado.mappings().first()
+
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+        if not verify_password(password_actual, usuario["contrasena"]):
+            raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta.")
+
+        es_valida, mensaje = validar_password_segura(password_nueva)
+        if not es_valida:
+            raise HTTPException(status_code=400, detail=mensaje)
+
+        nuevo_hash = hash_password(password_nueva)
+
+        await self.db.execute(
+            text("""
+                UPDATE usuario
+                SET contrasena = :contrasena, fecha_cambio_password = NOW()
+                WHERE id = :id
+            """),
+            {"contrasena": nuevo_hash, "id": user_id},
+        )
+        await self.db.commit()
+
+        return {"mensaje": "Contraseña cambiada correctamente."}
+
+    async def cambiar_password_expirada(
+        self,
+        correo: str,
+        password_actual: str,
+        password_nueva: str,
+    ):
+        resultado = await self.db.execute(
+            text("SELECT id, contrasena FROM usuario WHERE LOWER(correo) = LOWER(:correo)"),
+            {"correo": correo},
+        )
+        usuario = resultado.mappings().first()
+
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+        if not verify_password(password_actual, usuario["contrasena"]):
+            raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta.")
+
+        es_valida, mensaje = validar_password_segura(password_nueva)
+        if not es_valida:
+            raise HTTPException(status_code=400, detail=mensaje)
+
+        nuevo_hash = hash_password(password_nueva)
+
+        await self.db.execute(
+            text("""
+            UPDATE usuario
+            SET
+                contrasena = :contrasena,
+                fecha_cambio_password = NOW(),
+                intentos_fallidos = 0,
+                ultimo_intento = NULL,
+                codigo_verificacion = NULL,
+                codigo_expira = NULL,
+                intentos_codigo = 0,
+                ultimo_envio_codigo = NULL,
+                codigo_verificado = FALSE,
+                bloqueado_hasta = NULL
+            WHERE id = :id
+            """),
+            {"contrasena": nuevo_hash, "id": usuario["id"]},
+        )
+        await self.db.commit()
+
+        return {"mensaje": "Contraseña cambiada correctamente. Ya puede iniciar sesión."}
