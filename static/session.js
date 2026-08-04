@@ -3,8 +3,8 @@
 // 30 minutos
 // ======================================================
 
-const TIEMPO_INACTIVIDAD = 30 * 60 * 1000;
-// const TIEMPO_INACTIVIDAD = 15000;
+// const TIEMPO_INACTIVIDAD = 30 * 60 * 1000;
+const TIEMPO_INACTIVIDAD = 15000;
 let temporizadorInactividad = null;
 
 // ===========================================

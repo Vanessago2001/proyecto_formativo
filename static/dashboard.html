@@ -482,9 +482,9 @@
 
     // Mostrar modal de confirmación
     function mostrarConfirmacion(titulo, mensaje) {
-
+      console.log("Abriendo modal");
       return new Promise(resolve => {
-
+        console.log("Promise creada");
         confirmTitle.textContent = titulo;
 
         confirmText.textContent = mensaje;
@@ -492,9 +492,9 @@
         confirmModal.classList.remove("hidden");
 
         btnAceptar.onclick = () => {
-
+          console.log("ACEPTAR");
           confirmModal.classList.add("hidden");
-
+          console.log("CANCELAR");
           resolve(true);
 
         };
@@ -553,14 +553,14 @@
 
     }
     // Validar que el código ingresado sea numérico y de 6 dígitos
-    // console.log("mfaLink:", mfaLink);
-    // console.log("confirmModal:", confirmModal);
-    // console.log("btnAceptar:", btnAceptar);
-    // console.log("btnCancelar:", btnCancelar);
-    // console.log("codigoModal:", codigoModal);
-    // console.log("codigoInput:", codigoInput);
-    // console.log("btnCancelarCodigo:", btnCancelarCodigo);
-    // console.log("btnVerificarCodigo:", btnVerificarCodigo);
+    console.log("mfaLink:", mfaLink);
+    console.log("confirmModal:", confirmModal);
+    console.log("btnAceptar:", btnAceptar);
+    console.log("btnCancelar:", btnCancelar);
+    console.log("codigoModal:", codigoModal);
+    console.log("codigoInput:", codigoInput);
+    console.log("btnCancelarCodigo:", btnCancelarCodigo);
+    console.log("btnVerificarCodigo:", btnVerificarCodigo);
     codigoInput.addEventListener("input", () => {
 
       codigoInput.value = codigoInput.value
@@ -617,7 +617,7 @@
         // DESACTIVAR MFA Sneider
         // =====================================
         if (mfaLink.dataset.estado === "on") {
-
+          console.log("1. Entró al bloque DESACTIVAR");
           const confirmar = await mostrarConfirmacion(
 
             "Desactivar autenticación",
@@ -625,12 +625,13 @@
             "¿Está seguro de desactivar la autenticación en dos pasos?"
 
           );
-
+          console.log("2. Resultado del modal:", confirmar);
           if (!confirmar) {
 
             return;
 
           }
+           console.log("3. Va a llamar /mfa/disable");
 
           const response = await fetch("/mfa/disable", {
 
@@ -639,13 +640,14 @@
             headers: headers()
 
           });
-
+           console.log("4. Respuesta HTTP:", response.status);
           const data = await response.json();
-
+           console.log("5. Respuesta:", data);
           if (!response.ok) {
 
-            errorMessage.textContent =
-              data.detail || "No fue posible enviar el código.";
+            // errorMessage.textContent =
+            //   data.detail || "No fue posible enviar el código.";
+            alert(data.detail || "No fue posible enviar el código.");
 
             return;
 
@@ -681,8 +683,9 @@
 
           if (!verify.ok) {
 
-            errorMessage.textContent =
-              verifyData.detail || "Código incorrecto.";
+            // errorMessage.textContent =
+            //   verifyData.detail || "Código incorrecto.";
+            alert(data.detail || "No fue posible enviar el código.");
 
             return;
 

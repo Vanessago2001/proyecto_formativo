@@ -170,3 +170,14 @@ async def historial_accesos(
         "total": len(logs),
         "registros": logs,
     }
+@router.post("/login-mfa")
+async def login_mfa(
+    datos: CodigoRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    service = AuthService(db)
+
+    return await service.login_mfa(
+        datos.correo,
+        datos.codigo
+    )

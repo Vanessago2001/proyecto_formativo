@@ -166,8 +166,9 @@ class MFAService:
                 "id": usuario["id"]
             },
         )
-
+        print("UPDATE ejecutado")
         await self.db.commit()
+        print("COMMIT realizado")
 
         # --------------------------------------------------------
         # Enviar correo
@@ -342,6 +343,8 @@ class MFAService:
     # ============================================================
 
     async def disable(self, current_user: dict):
+        print("===== ENTRÓ A DISABLE =====")
+        print(current_user)
 
         # --------------------------------------------------------
         # Obtener correo del usuario autenticado
@@ -424,11 +427,12 @@ class MFAService:
         # --------------------------------------------------------
         # Enviar código al correo del usuario
         # --------------------------------------------------------
-
+        print("Generando correo para:", correo)
         await MailService.enviar_codigo(
             destinatario=correo,
             codigo=codigo,
         )
+        print("Correo enviado")
 
         return {
         "message": "Código para desactivar MFA enviado correctamente al correo."

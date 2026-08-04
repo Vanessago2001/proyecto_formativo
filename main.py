@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import text
+from modules.mfa.mfa_router import router as mfa_router
 from modules.roles.roles_router import router as role_router
 from modules.users.user_router import router as users_router
 from modules.auth.auth_router import router as auth_router
@@ -149,6 +150,7 @@ app.include_router(security_router)
 app.include_router(empresas_router)
 app.include_router(alejandra_router)
 app.include_router(alejandra_router)
+app.include_router(mfa_router)
 
 # ============================================================
 # RUTAS DE INTERFAZ DE USUARIO
