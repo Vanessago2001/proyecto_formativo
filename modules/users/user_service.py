@@ -5,7 +5,6 @@ from core.logger import logger
 from core.security import hash_password, validar_password_segura
 from modules.users.user_schema import UserCreate, UserUpdate
 
-
 class UserService:
 
   def __init__(self, db: AsyncSession) -> None:
@@ -50,8 +49,6 @@ class UserService:
 
     password = user_data.contrasena
 
-    password = user_data.contrasena
-
     valida, mensaje = validar_password_segura(password)
 
     if not valida:
@@ -60,9 +57,6 @@ class UserService:
           detail=mensaje
       )
 
-    hashed_pwd = hash_password(user_data.contrasena)
-
-    hashed_pwd = hash_password(user_data.contrasena)
     hashed_pwd = hash_password(password)
 
     query = text("""

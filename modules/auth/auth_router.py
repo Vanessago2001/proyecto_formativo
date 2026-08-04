@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, Request, status, Query  # <-- Agregado Query aquí
+from fastapi import APIRouter, Depends, Request, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
+from modules.auth.auth_schema import LoginMFARequest
 from modules.auth.auth_service import AuthService
 from modules.auth.mail_service import MailService
 from modules.auth.auth_schema import (
@@ -46,6 +47,26 @@ async def sign_in(
         "access_token": token,
         "token_type": "bearer"
     }
+
+
+# ==========================================================
+# LOGIN CON MFA sneider
+# ==========================================================
+
+@router.post("/login-mfa")
+async def login_mfa(
+    data: LoginMFARequest,
+    db: AsyncSession = Depends(get_db),
+):
+
+    service = AuthService(db)
+
+    return await service.login_mfa(
+        data.correo,
+        data.codigo
+    )
+
+
 @router.put("/cambiar-password")
 async def cambiar_password(
     data: CambiarPasswordRequest,
@@ -133,7 +154,7 @@ async def historial_accesos(
         le=200,
     ),
     current_user=Depends(require_admin_access),
-    db: AsyncSession = Depends(get_db), # <-- Nota: Cambiado get_async_db a get_db para ser consistentes
+    db: AsyncSession = Depends(get_db),
 ):
 
     service = AuthService(db)
@@ -149,3 +170,14 @@ async def historial_accesos(
         "total": len(logs),
         "registros": logs,
     }
+@router.post("/login-mfa")
+async def login_mfa(
+    datos: CodigoRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    service = AuthService(db)
+
+    return await service.login_mfa(
+        datos.correo,
+        datos.codigo
+    )
