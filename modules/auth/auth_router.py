@@ -10,6 +10,11 @@ from modules.auth.auth_schema import (
     CambiarPasswordRequest,
     CambiarPasswordExpiradaRequest,
 )
+from modules.auth.auth_schema import (
+    LoginRequest,
+    CodigoRequest,
+    LoginMFARequest,
+)
 from core.security import get_current_user
 from modules.auth.auth_schema import LoginRequest, CodigoRequest
 from modules.auth.auth_schema import (
@@ -172,7 +177,7 @@ async def historial_accesos(
     }
 @router.post("/login-mfa")
 async def login_mfa(
-    datos: CodigoRequest,
+    datos: LoginMFARequest,
     db: AsyncSession = Depends(get_db)
 ):
     service = AuthService(db)

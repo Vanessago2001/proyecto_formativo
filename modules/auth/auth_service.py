@@ -758,12 +758,14 @@ class AuthService:
     
             token = create_access_token(
                 data={
-                    "sub": user["nombre"],
+                    "sub": user.get("nombre"),
                     "user_id": str(user["id"]),
                     "role_id": user["rol_id"],
                     "role_name": user["rol_nombre"],
                 }
             )
+            print("LOGIN NORMAL - Generando token")
+            print(token)
     
             return {
                 "access_token": token,
