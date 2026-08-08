@@ -88,7 +88,7 @@ class MFAService:
         # Enviar código al correo
         # --------------------------------------------------------
     
-        await MailService.enviar_codigo(
+        await MailService.enviar_codigo_activar_mfa(
             destinatario=correo,
             codigo=codigo,
          )
@@ -174,7 +174,7 @@ class MFAService:
         # Enviar correo
         # --------------------------------------------------------
 
-        await MailService.enviar_codigo(
+        await MailService.enviar_codigo_login_mfa(
             destinatario=correo,
             codigo=codigo
         )
@@ -428,7 +428,7 @@ class MFAService:
         # Enviar código al correo del usuario
         # --------------------------------------------------------
         print("Generando correo para:", correo)
-        await MailService.enviar_codigo(
+        await MailService.enviar_codigo_desactivar_mfa(
             destinatario=correo,
             codigo=codigo,
         )
