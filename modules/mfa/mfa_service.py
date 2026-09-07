@@ -32,7 +32,7 @@ class MFAService:
 
         result = await self.db.execute(
             text("""
-            SELECT id
+            SELECT id_usuario
             FROM usuario
             WHERE LOWER(correo) = LOWER(:correo)
             """),
@@ -78,7 +78,7 @@ class MFAService:
                 {
                     "codigo": codigo,
                     "expira": expira,
-                    "id": usuario["id"],
+                    "id_usuario": usuario["id_usuario"],
                 },
             )
     
@@ -119,7 +119,7 @@ class MFAService:
 
         result = await self.db.execute(
             text("""
-            SELECT id
+            SELECT id_usuario
             FROM usuario
             WHERE LOWER(correo)=LOWER(:correo)
             """),
@@ -158,12 +158,12 @@ class MFAService:
                 mfa_codigo=:codigo,
                 mfa_expira=:expira,
                 mfa_verificado=FALSE
-            WHERE id=:id
+            WHERE id_usuario=:id_usuario
             """),
             {
                 "codigo": codigo,
                 "expira": expira,
-                "id": usuario["id"]
+                "id_usuario": usuario["id_usuario"]
             },
         )
         print("UPDATE ejecutado")
@@ -212,7 +212,7 @@ class MFAService:
         result = await self.db.execute(
             text("""
             SELECT
-            id,
+            id_usuario,
             mfa_codigo,
             mfa_expira,
             mfa_verificado
@@ -297,7 +297,7 @@ class MFAService:
             WHERE id_usuario = :id_usuario
             """),
             {
-                "id": usuario["id"]
+                "id_usuario": usuario["id_usuario"]
             },
         )
 
@@ -418,7 +418,7 @@ class MFAService:
             {
                 "codigo": codigo,
                 "expira": expira,
-                "id": usuario["id"],
+                "id_usuario": usuario["id_usuario"],
             },
         )
 
@@ -557,7 +557,7 @@ class MFAService:
             WHERE id_usuario = :id_usuario
             """),
             {
-                "id": usuario["id"]
+                "id_usuario": usuario["id_usuario"]
             },
         )
 

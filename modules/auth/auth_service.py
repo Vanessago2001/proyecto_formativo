@@ -139,7 +139,7 @@ class AuthService:
         resultado = await self.db.execute(
             text("""
                 SELECT
-                    id,
+                    id_usuario,
                     correo,
                     codigo_verificacion,
                     codigo_expira,
@@ -223,7 +223,7 @@ class AuthService:
                 text("""
                     UPDATE usuario
                     SET intentos_codigo=:intentos
-                    WHERE id=:id
+                    WHERE id_usuario=:id_usuario
                 """),
                 {
                     "intentos": intentos_codigo,
@@ -250,7 +250,7 @@ class AuthService:
                     intentos_codigo=0,
                     ultimo_envio_codigo=NULL,
                     codigo_verificado=TRUE
-                WHERE id=:id
+                WHERE id_usuario=:id_usuario
             """),
             {
                 "id": usuario["id"],
@@ -361,7 +361,7 @@ class AuthService:
             await self.db.commit()
         if user["estado"] and user["estado"].strip().lower() == "inactivo":
             await self._log_access(
-                user["id"],
+                user["id_usuario"],
                 user["correo"],
                 client_ip,
                 False,
@@ -382,7 +382,7 @@ class AuthService:
             and bloqueado_hasta > self._ahora()
         ):
             await self._log_access(
-                user["id"],
+               user["id_usuario"],
                 user["correo"],
                 client_ip,
                 False,
@@ -404,7 +404,7 @@ class AuthService:
                         bloqueado_hasta=NULL,
                         intentos_fallidos=0,
                         ultimo_intento=NULL
-                    WHERE id=:id
+                    id_usuario=:id_usuario
                 """),
                 {
                     "id_usuario": user["id_usuario"],
@@ -472,7 +472,7 @@ class AuthService:
                     )
 
                     await self._log_access(
-                        user["id"],
+                        user["id_usuario"],
                         user["correo"],
                         client_ip,
                         False,
@@ -491,7 +491,7 @@ class AuthService:
                     )
 
                 # ----- FASE 2: enviar enlace de restablecimiento de contraseña -----
-                enlace = await self._crear_enlace_reset(user["id"], ahora)
+                enlace = await self._crear_enlace_reset(user["id_usuario"], ahora)
 
                 # Bloquear la cuenta temporalmente y limpiar contadores de intentos.
                 bloqueo = ahora + timedelta(minutes=TIEMPO_BLOQUEO_MINUTOS)
@@ -517,7 +517,7 @@ class AuthService:
                 )
 
                 await self._log_access(
-                    user["id"],
+                    user["id_usuario"],
                     user["correo"],
                     client_ip,
                     False,
@@ -553,7 +553,7 @@ class AuthService:
             await self.db.commit()
 
             await self._log_access(
-                user["id"],
+                user["id_usuario"],
                 user["correo"],
                 client_ip,
                 False,
@@ -746,7 +746,7 @@ class AuthService:
                     WHERE id_usuario = :id_usuario
                 """),
                 {
-                    "id": user["id"]
+                    "id_usuario": user["id_usuario"]
                 }
             )
     
@@ -759,7 +759,7 @@ class AuthService:
             token = create_access_token(
                 data={
                     "sub": user.get("nombre"),
-                    "user_id": str(user["id"]),
+                    "user_id": str(user["id_usuario"]),
                     "role_id": user["rol_id"],
                     "role_name": user["rol_nombre"],
                 }
@@ -919,7 +919,7 @@ class AuthService:
         usuario_id = registro.get("usuario_id") or registro.get("user_id")
 
         # 2. Consultar la contraseña actual almacenada en la base de datos
-        query_usuario = text("SELECT contrasena FROM usuario WHERE id = :usuario_id;")
+        query_usuario = text("SELECT contrasena FROM usuario WHERE id_usuario = :usuario_id;")
         result = await self.db.execute(query_usuario, {"usuario_id": usuario_id})
         usuario = result.mappings().first()
 
@@ -967,7 +967,7 @@ class AuthService:
             """),
             {
                 "contrasena": nuevo_hash,
-                "id": registro["usuario_id"],
+                "id_usuario": registro["usuario_id"],
             },
         )
 
@@ -1017,7 +1017,7 @@ class AuthService:
 
         resultado = await self.db.execute(
             text("""
-                SELECT id, correo
+                SELECT id_usuario, correo
                 FROM usuario
                 WHERE LOWER(correo) = LOWER(:correo)
                 LIMIT 1
@@ -1032,7 +1032,7 @@ class AuthService:
             return mensaje_generico
 
         ahora = self._ahora()
-        enlace = await self._crear_enlace_reset(usuario["id"], ahora)
+        enlace = await self._crear_enlace_reset(usuario["id_usuario"], ahora)
 
         await self.db.commit()
 
