@@ -15,6 +15,7 @@ from core.security import hash_password
 from modules.tareas.tarea_router import router as tarea_router
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
+from modules.comite.comite_router import router as comite_router
 
 from modules.alejandra.router import router as alejandra_router
 
@@ -154,6 +155,7 @@ app.include_router(users_router)
 app.include_router(tarea_router)
 app.include_router(security_router)
 app.include_router(empresas_router)
+app.include_router(comite_router)
 app.include_router(alejandra_router)
 app.include_router(alejandra_router)
 app.include_router(mfa_router)
