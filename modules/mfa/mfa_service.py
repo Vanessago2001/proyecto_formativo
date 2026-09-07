@@ -73,7 +73,7 @@ class MFAService:
                 mfa_codigo = :codigo,
                 mfa_expira = :expira,
                 mfa_verificado = FALSE
-                WHERE id = :id
+                WHERE id_usuario = :id_usuario
                 """),
                 {
                     "codigo": codigo,
@@ -294,7 +294,7 @@ class MFAService:
             mfa_verificado = TRUE,
             mfa_codigo = NULL,
             mfa_expira = NULL
-            WHERE id = :id
+            WHERE id_usuario = :id_usuario
             """),
             {
                 "id": usuario["id"]
@@ -413,7 +413,7 @@ class MFAService:
             mfa_codigo = :codigo,
             mfa_expira = :expira,
             mfa_verificado = FALSE
-            WHERE id = :id
+            WHERE id_usuario = :id_usuario
             """),
             {
                 "codigo": codigo,
@@ -554,7 +554,7 @@ class MFAService:
             mfa_verificado = FALSE,
             mfa_codigo = NULL,
             mfa_expira = NULL
-            WHERE id = :id
+            WHERE id_usuario = :id_usuario
             """),
             {
                 "id": usuario["id"]

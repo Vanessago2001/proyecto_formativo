@@ -279,7 +279,7 @@ class AuthService:
 
         query = text("""
             SELECT
-                u.id,
+                u.id_usuario,
                 u.nombre,
                 u.correo,
                 u.contrasena AS password_hash,
@@ -351,10 +351,10 @@ class AuthService:
                         codigo_verificacion=NULL,
                         codigo_expira=NULL,
                         intentos_codigo=0
-                    WHERE id=:id
+                    WHERE id_usuario=:id_usuario
                 """),
                 {
-                    "id": user["id"],
+                    "id_usuario": user["id_usuario"],
                 },
             )
 
@@ -407,7 +407,7 @@ class AuthService:
                     WHERE id=:id
                 """),
                 {
-                    "id": user["id"],
+                    "id_usuario": user["id_usuario"],
                 },
             )
 
@@ -454,14 +454,14 @@ class AuthService:
                                 ultimo_intento = :ultimo_intento,
                                 codigo_verificacion = :codigo,
                                 codigo_expira = :expira
-                            WHERE id = :id
+                            WHERE id_usuario = :id_usuario
                         """),
                         {
                             "intentos": nuevos_intentos,
                             "ultimo_intento": ahora,
                             "codigo": codigo_hash,
                             "expira": expira,
-                            "id": user["id"],
+                            "id_usuario": user["id_usuario"],
                         },
                     )
                     await self.db.commit()
@@ -502,11 +502,11 @@ class AuthService:
                             intentos_fallidos = 0,
                             ultimo_intento = NULL,
                             bloqueado_hasta = :bloqueo
-                        WHERE id = :id
+                        WHERE id_usuario = :id_usuario
                     """),
                     {
                         "bloqueo": bloqueo,
-                        "id": user["id"],
+                        "id_usuario": user["id_usuario"],
                     },
                 )
                 await self.db.commit()
@@ -542,12 +542,12 @@ class AuthService:
                     SET
                         intentos_fallidos = :intentos,
                         ultimo_intento = :ultimo_intento
-                    WHERE id = :id
+                    WHERE id_usuario = :id_usuario
                 """),
                 {
                     "intentos": nuevos_intentos,
                     "ultimo_intento": ahora,
-                    "id": user["id"],
+                    "id_usuario": user["id_usuario"],
                 },
             )
             await self.db.commit()
@@ -604,24 +604,24 @@ class AuthService:
                 )
 
         await self.db.execute(
-            text("""
-                UPDATE usuario
-                SET
-                    intentos_fallidos = 0,
-                    ultimo_intento = NULL,
-                    codigo_verificacion = NULL,
-                    codigo_expira = NULL,
-                    intentos_codigo = 0,
-                    ultimo_envio_codigo = NULL,
-                    codigo_verificado = FALSE,
-                    bloqueado_hasta = NULL,
-                    ultimo_inicio_sesion = NOW()
-                WHERE id = :id
-            """),
-            {
-                "id": user["id"],
-            },
-        )
+    text("""
+        UPDATE usuario
+        SET
+            intentos_fallidos = 0,
+            ultimo_intento = NULL,
+            codigo_verificacion = NULL,
+            codigo_expira = NULL,
+            intentos_codigo = 0,
+            ultimo_envio_codigo = NULL,
+            codigo_verificado = FALSE,
+            bloqueado_hasta = NULL,
+            ultimo_inicio_sesion = NOW()
+        WHERE id_usuario = :id_usuario
+    """),
+    {
+        "id_usuario": user["id_usuario"]
+    }
+)
 
         await self.db.commit()
         # nuevo Sneider
@@ -640,7 +640,7 @@ class AuthService:
         )
 
         await self._log_access(
-            user["id"],
+            user["id_usuario"],
             user["correo"],
             client_ip,
             True,
@@ -650,7 +650,7 @@ class AuthService:
         return create_access_token(
             data={
                 "sub": user.get("nombre") or user.get("correo") or identifier,
-                "user_id": str(user["id"]),
+                "user_id": str(user["id_usuario"]),
                 "role_id": int(user["rol_id"]) if user.get("rol_id") is not None else None,
                 "role_name": user.get("rol_nombre"),
             }
@@ -666,7 +666,7 @@ class AuthService:
             result = await self.db.execute(
                 text("""
                 SELECT
-                    u.id,
+                    u.id_usuario,
                     u.nombre,
                     u.correo,
                     u.rol_id,
@@ -743,7 +743,7 @@ class AuthService:
                         mfa_codigo = NULL,
                         mfa_expira = NULL,
                         mfa_verificado = TRUE
-                    WHERE id = :id
+                    WHERE id_usuario = :id_usuario
                 """),
                 {
                     "id": user["id"]
@@ -795,7 +795,7 @@ class AuthService:
                     r.nombre AS rol
                 FROM logs_acceso l
                 LEFT JOIN usuario u
-                    ON u.id = l.usuario_id
+                    ON u.id_usuario = l.usuario_id
                 LEFT JOIN rol r
                     ON r.id_rol = u.rol_id
                 ORDER BY l.fecha_hora DESC
@@ -963,7 +963,7 @@ class AuthService:
                     ultimo_envio_codigo = NULL,
                     codigo_verificado = FALSE,
                     bloqueado_hasta = NULL
-                WHERE id = :id
+                WHERE id_usuario = :id_usuario
             """),
             {
                 "contrasena": nuevo_hash,
@@ -1050,7 +1050,7 @@ class AuthService:
         password_nueva: str,
     ):
         resultado = await self.db.execute(
-            text("SELECT id, contrasena FROM usuario WHERE id = :id"),
+            text("SELECT id, contrasena FROM usuario WHERE id_usuario = :id_usuario"),
             {"id": user_id},
         )
         usuario = resultado.mappings().first()
@@ -1071,7 +1071,7 @@ class AuthService:
             text("""
                 UPDATE usuario
                 SET contrasena = :contrasena, fecha_cambio_password = NOW()
-                WHERE id = :id
+                WHERE id_usuario = :id_usuario
             """),
             {"contrasena": nuevo_hash, "id": user_id},
         )
@@ -1107,7 +1107,7 @@ class AuthService:
             text("""
                 UPDATE usuario
                 SET contrasena = :contrasena, fecha_cambio_password = NOW()
-                WHERE id = :id
+                WHERE id_usuario = :id_usuario
             """),
             {"contrasena": nuevo_hash, "id": usuario["id"]},
         )

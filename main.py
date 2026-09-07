@@ -89,7 +89,7 @@ async def seed_initial_data() -> None:
 
             # Verificar si existe el usuario admin en la tabla usuario (id UUID, nombre, correo, contrasena, estado BOOLEAN, rol_id)
             existing_admin = await session.execute(
-                text("SELECT id FROM usuario WHERE nombre = :nombre;"),
+                text("SELECT id_usuario FROM usuario WHERE nombre = :nombre;"),
                 {"nombre": "admin"},
             )
             # if existing_admin.scalar_one_or_none() is None: ANTES

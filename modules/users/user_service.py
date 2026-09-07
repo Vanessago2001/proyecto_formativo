@@ -28,7 +28,7 @@ class UserService:
 
     dup = await self.db.execute(
         text(
-            'SELECT id FROM usuario WHERE nombre = :nombre OR correo = :correo;'
+            'SELECT id_usuario FROM usuario WHERE nombre = :nombre OR correo = :correo;'
         ),
         {'nombre': user_data.nombre, 'correo': user_data.correo},
     )
@@ -122,7 +122,7 @@ class UserService:
         )
 
     check = await self.db.execute(
-        text('SELECT id FROM usuario WHERE id = :id;'), {'id': target_user_id}
+        text('SELECT id_usuario FROM usuario WHERE id_usuario = :id_usuario;'), {'id': target_user_id}
     )
     if not check.first():
       raise HTTPException(
@@ -135,7 +135,7 @@ class UserService:
 
     if user_update.correo is not None:
       dup_email = await self.db.execute(
-          text('SELECT id FROM usuario WHERE correo = :correo AND id != :id;'),
+          text('SELECT id_usuario FROM usuario WHERE correo = :correo AND id != :id;'),
           {'correo': user_update.correo, 'id': target_user_id},
       )
       if dup_email.first():
@@ -193,7 +193,7 @@ class UserService:
     query_str = f"""
             UPDATE usuario 
             SET {', '.join(update_fields)} 
-            WHERE id = :id 
+            WHERE id_usuario = :id_usuario 
             RETURNING id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
         """
 

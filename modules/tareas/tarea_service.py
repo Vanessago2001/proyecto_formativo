@@ -64,7 +64,7 @@ class TareaService:
         query = text("""
             UPDATE tareas
             SET estado = :estado
-            WHERE id = :id
+            WHERE id_usuario = :id_usuario
         """)
 
         result = await self.db.execute(

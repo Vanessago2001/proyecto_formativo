@@ -108,7 +108,7 @@ async def get_current_user(
     # Consulta SQL Nativa para traer el usuario activo junto con su ROL asignado
     query = text("""
     SELECT
-        u.id,
+        u.id_usuario,
         u.nombre,
         u.correo,
         u.estado,

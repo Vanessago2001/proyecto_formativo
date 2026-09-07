@@ -534,7 +534,7 @@ from modules.users.user_schema import UserUpdate
                 )
 
         # Verificar que el usuario objetivo realmente exista en PostgreSQL
-        check = await self.db.execute(text("SELECT id FROM users WHERE id = :id;"), {"id": target_user_id})
+        check = await self.db.execute(text("SELECT id FROM users WHERE id_usuario = :id_usuario;"), {"id": target_user_id})
         if not check.first():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El usuario a modificar no existe.")
 
@@ -576,7 +576,7 @@ from modules.users.user_schema import UserUpdate
         query_str = f"""
             UPDATE users 
             SET {', '.join(update_fields)} 
-            WHERE id = :id 
+            WHERE id_usuario = :id_usuario 
             RETURNING id, username, email, is_active, role_id;
         """
         
