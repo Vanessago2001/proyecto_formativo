@@ -23,6 +23,13 @@ from core.redis_client import redis_pool
 
 from modules.system.system_router import router as system_router
 
+# ============================================================
+# M5 - GESTION DE SOLICITUDES
+# ============================================================
+from modules.solicitudes.solicitud_router import router as solicitud_router
+from modules.solicitudes.documento_router import router as documento_router
+from modules.solicitudes.solicitud_bootstrap import preparar_modulo_solicitudes
+
 
 
 
@@ -133,6 +140,7 @@ async def lifespan(app: FastAPI):
     logger.info("  Documentación interactiva: http://127.0.0.1:8000/docs")
     logger.info("==========================================================")
     await seed_initial_data()
+    await preparar_modulo_solicitudes()   # M5
     yield
     logger.info("Cerrando recursos de la API de forma segura.")
 
@@ -160,6 +168,10 @@ app.include_router(alejandra_router)
 app.include_router(alejandra_router)
 app.include_router(mfa_router)
 app.include_router(system_router)
+
+# M5 - Gestion de solicitudes
+app.include_router(solicitud_router)
+app.include_router(documento_router)
 
 # ============================================================
 # RUTAS DE INTERFAZ DE USUARIO

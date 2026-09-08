@@ -118,7 +118,7 @@ async def get_current_user(
     LEFT JOIN rol r
         ON u.rol_id = r.id_rol
     WHERE
-        u.id = :user_id
+        u.id_usuario = :user_id
         AND u.estado = 'Activo';
 """)
     

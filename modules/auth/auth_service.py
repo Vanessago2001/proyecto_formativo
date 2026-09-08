@@ -17,7 +17,7 @@ from core.security import (
     verify_verification_code,
     validar_password_segura,
 )
-from core.datetime_utils import system_now
+from core.datetime_utils import system_now_utc_naive
 
 from modules.auth.mail_service import MailService
 
@@ -47,8 +47,12 @@ class AuthService:
     def _ahora(self) -> datetime:
         """
         Devuelve la fecha y hora actual en UTC (naive) para comparar con fechas de la BD.
+
+        Debe ser naive: todas las fechas que salen de la base se normalizan
+        con `_a_naive_utc()` antes de compararlas, y Python no deja comparar
+        una fecha con zona horaria contra una sin ella.
         """
-        return system_now()
+        return system_now_utc_naive()
 
     def _a_naive_utc(self, valor: datetime) -> datetime:
         """
@@ -651,7 +655,7 @@ class AuthService:
             data={
                 "sub": user.get("nombre") or user.get("correo") or identifier,
                 "user_id": str(user["id_usuario"]),
-                "role_id": int(user["rol_id"]) if user.get("rol_id") is not None else None,
+                "role_id": str(user["rol_id"]) if user.get("rol_id") is not None else None,
                 "role_name": user.get("rol_nombre"),
             }
         )

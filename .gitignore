@@ -25,3 +25,5 @@ tmp_*
 # Sistema operativo
 .DS_Store
 Thumbs.db
+# Archivos que suben los usuarios (M5 - documentos de solicitud)
+storage/
