@@ -219,7 +219,7 @@
                     <dt>Radicado</dt><dd>${esc(radicado)}</dd>
                     <dt>Estado</dt><dd>${esc(estado)}</dd>
                 </dl>
-                <button type="button" class="cp-constancia" onclick="window.print()">Descargar constancia</button>
+                <button type="button" class="cp-constancia" data-nit="${esc(emp.nit)}">Descargar constancia</button>
             </article>`;
         }
 
@@ -258,11 +258,39 @@
                 conteo.classList.remove("hidden-section");
                 resultados.innerHTML = empresas.map(tarjeta).join("");
 
+                resultados.querySelectorAll("[data-nit]").forEach(b =>
+                    b.onclick = () => descargarConstancia(b.dataset.nit, b));
+
             } catch (error) {
                 console.error("Error en consulta:", error);
                 loader.classList.add("hidden-section");
                 btnConsultar.disabled = false;
                 mostrarError("Error de conexión con el servidor.");
+            }
+        }
+
+        async function descargarConstancia(nit, btn) {
+            const texto = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = "Generando PDF...";
+            try {
+                const r = await fetch(`/empresas/constancia/${encodeURIComponent(nit)}/pdf`);
+                if (!r.ok) throw new Error("No se pudo generar el PDF (" + r.status + ")");
+                const blob = await r.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "constancia-" + nit + ".pdf";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("Error descargando constancia:", error);
+                mostrarError("No se pudo descargar la constancia en PDF.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = texto;
             }
         }
 
