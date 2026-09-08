@@ -22,6 +22,12 @@ from core.redis_client import redis_pool
 
 from modules.system.system_router import router as system_router
 
+# Modulo heredado de otro proyecto: su tabla `tareas` no existe en esta base
+# de datos, asi que sus endpoints devolvian 500. El codigo se conserva en
+# modules/tareas/ por si se quiere reaprovechar; para reactivarlo hay que
+# crear la tabla y descomentar estas dos lineas (la de abajo tambien).
+# from modules.tareas.tarea_router import router as tarea_router
+
 # ============================================================
 # M5 - GESTION DE SOLICITUDES
 # ============================================================
@@ -166,6 +172,7 @@ app.include_router(alejandra_router)
 app.include_router(alejandra_router)
 app.include_router(mfa_router)
 app.include_router(system_router)
+# app.include_router(tarea_router)   # modulo heredado, ver nota arriba
 
 # M5 - Gestion de solicitudes
 app.include_router(solicitud_router)
