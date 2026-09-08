@@ -16,7 +16,10 @@ def mock_db_session():
 
 @pytest.fixture
 def mock_user():
-    return {"id_usuario": "1", "role_name": "Administrador"}
+    # Quien presenta una apelacion es la empresa o el auditor que no fue
+    # aceptado; el publico general presenta PQRS, no apelaciones. Un
+    # Administrador no puede registrarla, por eso el rol de prueba es Empresa.
+    return {"id_usuario": "1", "role_name": "Empresa"}
 
 
 @pytest.mark.asyncio

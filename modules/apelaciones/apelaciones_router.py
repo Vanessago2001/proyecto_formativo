@@ -61,7 +61,7 @@ class CancelarApelacionRequest(BaseModel):
 async def registrar_apelacion(
     data: ApelacionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "empresa"]))
+    current_user: dict = Depends(require_role(["superadmin", "empresa", "auditor"]))
 ):
     return await ApelacionesService(db).create_apelacion(data.model_dump())
 
@@ -71,7 +71,7 @@ async def adjuntar_evidencias(
     id: int,
     data: EvidenciaCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "empresa"]))
+    current_user: dict = Depends(require_role(["superadmin", "empresa", "auditor"]))
 ):
     updated = await ApelacionesService(db).add_evidence(id, data.model_dump())
     if not updated:
@@ -84,7 +84,7 @@ async def editar_apelacion(
     id: int,
     data: ApelacionUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "auditor"]))
+    current_user: dict = Depends(require_role(["superadmin", "empresa", "auditor"]))
 ):
     updated = await ApelacionesService(db).update_apelacion(id, data.model_dump(exclude_unset=True))
     if not updated:
@@ -117,7 +117,7 @@ async def cancelar_retirar_apelacion(
     id: int,
     data: Optional[CancelarApelacionRequest] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "auditor"]))
+    current_user: dict = Depends(require_role(["superadmin", "empresa", "auditor"]))
 ):
     estado = (data.estado if data else CancelarApelacionRequest()).estado
     updated = await ApelacionesService(db).cancelar_apelacion(id, estado)

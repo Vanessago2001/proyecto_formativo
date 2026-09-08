@@ -230,7 +230,7 @@
             btnConsultar.disabled = true;
 
             try {
-                const response = await fetch(`/empresas/buscar/${encodeURIComponent(nit)}`, {
+                const response = await fetch(`/api/empresas/buscar/${encodeURIComponent(nit)}`, {
                     method: "GET",
                     headers: { "Content-Type": "application/json" }
                 });
@@ -275,7 +275,7 @@
             btn.disabled = true;
             btn.textContent = "Generando PDF...";
             try {
-                const r = await fetch(`/empresas/constancia/${encodeURIComponent(nit)}/pdf`);
+                const r = await fetch(`/api/empresas/constancia/${encodeURIComponent(nit)}/pdf`);
                 if (!r.ok) throw new Error("No se pudo generar el PDF (" + r.status + ")");
                 const blob = await r.blob();
                 const url = URL.createObjectURL(blob);

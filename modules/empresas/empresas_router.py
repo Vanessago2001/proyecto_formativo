@@ -1,20 +1,12 @@
-<<<<<<< HEAD
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from core.database import get_db
-from core.security import get_current_user
-from modules.empresas.constancia_pdf import generar_pdf_constancia
-=======
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user, require_role
->>>>>>> 533fbb2 (Modulos empresa y apelaciones)
+from modules.empresas.constancia_pdf import generar_pdf_constancia
 from modules.empresas.empresas_service import EmpresasService
 
 router = APIRouter(prefix="/api/empresas", tags=["Empresas"])
@@ -71,6 +63,62 @@ async def create_empresa(
     current_user: dict = Depends(require_role(["superadmin", "admin", "auxiliar", "empresa"]))
 ):
     return await EmpresasService(db).create_empresa(data.model_dump())
+
+
+# ============================================================
+# CONSULTA PUBLICA (M11) - sin autenticacion
+# ============================================================
+# Estos tres endpoints se perdieron al integrar los modulos de empresa y
+# apelaciones; se restauran tal cual estaban en el commit 353ea89.
+#
+# OJO: el prefijo del router cambio de "/empresas" a "/api/empresas", asi que
+# ahora responden en /api/empresas/... El frontend que los llame debe usar la
+# ruta nueva.
+
+@router.get("/consulta-publica")
+async def consulta_publica(
+    codigo: str = "",
+    nit: str = "",
+    db: AsyncSession = Depends(get_db),
+):
+    return await EmpresasService(db).consulta_publica(codigo=codigo, nit=nit)
+
+
+@router.get("/buscar/{nit}")
+async def buscar_empresa_por_nit(
+    nit: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await EmpresasService(db).buscar_por_nit(nit)
+
+
+@router.get(
+    "/constancia/{nit}/pdf",
+    summary="Descargar constancia de la empresa en PDF (público)",
+    response_class=Response,
+)
+async def descargar_constancia_pdf(
+    nit: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve la constancia con los datos de la tarjeta como PDF descargable."""
+    empresas = await EmpresasService(db).buscar_por_nit(nit)
+    if not empresas:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No hay empresas registradas con ese NIT.",
+        )
+    empresa = empresas[0]
+    pdf = generar_pdf_constancia(empresa)
+    nombre_archivo = f"constancia-{empresa.get('nit') or 'empresa'}.pdf"
+
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{nombre_archivo}"',
+        },
+    )
 
 
 @router.get("/{id_empresa}")
