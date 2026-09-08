@@ -217,6 +217,7 @@
                 <div class="cp-note">Estado del trámite: ${esc(estado)}.</div>
                 <dl class="cp-rows">
                     <dt>Radicado</dt><dd>${esc(radicado)}</dd>
+                    <dt>Fecha de solicitud</dt><dd>${esc(sol && (sol.fecha_radicacion || sol.fecha))}</dd>
                     <dt>Estado</dt><dd>${esc(estado)}</dd>
                 </dl>
                 <button type="button" class="cp-constancia" data-nit="${esc(emp.nit)}">Descargar constancia</button>

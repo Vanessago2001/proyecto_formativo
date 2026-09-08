@@ -8,8 +8,9 @@ si está radicada, el número de radicado y si está verificada o en proceso.
 La mecánica del formato PDF vive en `core/pdf.py` (sin dependencias nuevas).
 """
 
-from datetime import date
+from datetime import datetime
 
+from core.datetime_utils import SYSTEM_TIMEZONE
 from core.pdf import construir_pdf
 
 
@@ -29,13 +30,20 @@ def generar_pdf_constancia(empresa: dict) -> bytes:
     nombre = empresa.get("nombre") or "No registrada"
     nit = empresa.get("nit") or "No registrado"
 
+    fecha_solicitud = sol.get("fecha_radicacion") or sol.get("fecha")
+
+    certs = empresa.get("certificados") or []
+    fecha_certificado = certs[0].get("fecha_emision") if certs else None
+
     campos = [
         ("Empresa", nombre),
         ("NIT", nit),
         ("Radicada", "Si" if radicado else "No"),
         ("Radicado", radicado or "Sin radicar"),
+        ("Fecha de solicitud del radicado", fecha_solicitud),
         ("Estado", estado),
-        ("Fecha de consulta", date.today()),
+        ("Fecha de emision del certificado", fecha_certificado),
+        ("Fecha de descarga de la constancia", datetime.now(SYSTEM_TIMEZONE)),
     ]
 
     return construir_pdf(
