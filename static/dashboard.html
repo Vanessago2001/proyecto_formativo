@@ -844,7 +844,7 @@
           ),
         );
         roleSelect.addEventListener("change", () =>
-          updateUser(u.id, { rol: Number(roleSelect.value) }),
+          updateUser(u.id, { rol: roleSelect.value }),
         );
         const state = document.createElement("select");
         state.className =
@@ -893,7 +893,7 @@
           contrasena: document.getElementById("contrasena").value,
           tipo_doc: document.getElementById("tipoDoc").value,
           num_doc: document.getElementById("numDoc").value.trim(),
-          rol: Number(document.getElementById("rol").value),
+          rol: document.getElementById("rol").value,
         };
         const res = await fetch("/users/create-user", {
           method: "POST",

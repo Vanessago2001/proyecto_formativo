@@ -48,9 +48,9 @@ class AuthService:
         """
         Devuelve la fecha y hora actual en UTC (naive) para comparar con fechas de la BD.
 
-        Debe ser naive: todas las fechas que salen de la base se normalizan
-        con `_a_naive_utc()` antes de compararlas, y Python no deja comparar
-        una fecha con zona horaria contra una sin ella.
+        Debe ser naive: todas las fechas que salen de la base se normalizan con
+        `_a_naive_utc()` antes de compararlas, y Python no deja comparar una
+        fecha con zona horaria contra una sin ella.
         """
         return system_now_utc_naive()
 
@@ -198,13 +198,13 @@ class AuthService:
                             codigo_expira=:expira,
                             intentos_codigo=0,
                             ultimo_envio_codigo=:ahora
-                        WHERE id=:id
+                        WHERE id_usuario=:id_usuario
                     """),
                     {
                         "codigo": nuevo_codigo_hash,
                         "expira": nueva_expiracion,
-                        "ahora": self._ahora().replace(tzinfo=None),
-                        "id": usuario["id"],
+                        "ahora": self._ahora(),
+                        "id_usuario": usuario["id_usuario"],
                     },
                 )
 
@@ -231,7 +231,7 @@ class AuthService:
                 """),
                 {
                     "intentos": intentos_codigo,
-                    "id": usuario["id"],
+                    "id_usuario": usuario["id_usuario"],
                 },
             )
 
@@ -257,7 +257,7 @@ class AuthService:
                 WHERE id_usuario=:id_usuario
             """),
             {
-                "id": usuario["id"],
+                "id_usuario": usuario["id_usuario"],
             },
         )
 
@@ -1054,8 +1054,8 @@ class AuthService:
         password_nueva: str,
     ):
         resultado = await self.db.execute(
-            text("SELECT id, contrasena FROM usuario WHERE id_usuario = :id_usuario"),
-            {"id": user_id},
+            text("SELECT id_usuario, contrasena FROM usuario WHERE id_usuario = :id_usuario"),
+            {"id_usuario": user_id},
         )
         usuario = resultado.mappings().first()
 
@@ -1077,7 +1077,7 @@ class AuthService:
                 SET contrasena = :contrasena, fecha_cambio_password = NOW()
                 WHERE id_usuario = :id_usuario
             """),
-            {"contrasena": nuevo_hash, "id": user_id},
+            {"contrasena": nuevo_hash, "id_usuario": user_id},
         )
         await self.db.commit()
 
@@ -1090,7 +1090,7 @@ class AuthService:
         password_nueva: str,
     ):
         resultado = await self.db.execute(
-            text("SELECT id, contrasena FROM usuario WHERE LOWER(correo) = LOWER(:correo)"),
+            text("SELECT id_usuario, contrasena FROM usuario WHERE LOWER(correo) = LOWER(:correo)"),
             {"correo": correo},
         )
         usuario = resultado.mappings().first()
@@ -1113,7 +1113,7 @@ class AuthService:
                 SET contrasena = :contrasena, fecha_cambio_password = NOW()
                 WHERE id_usuario = :id_usuario
             """),
-            {"contrasena": nuevo_hash, "id": usuario["id"]},
+            {"contrasena": nuevo_hash, "id_usuario": usuario["id_usuario"]},
         )
         await self.db.commit()
 

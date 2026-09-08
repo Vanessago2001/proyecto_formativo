@@ -12,7 +12,6 @@ from modules.auth.auth_router import router as auth_router
 from core.database import AsyncSessionLocal
 from core.logger import logger
 from core.security import hash_password
-from modules.tareas.tarea_router import router as tarea_router
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
 from modules.comite.comite_router import router as comite_router
@@ -77,7 +76,7 @@ async def seed_initial_data() -> None:
                 ("Empresa", "Puede registrar documentos y solicitudes"),
                 ("Auxiliar", "Cuenta interna creada por el administrador"),
                 ("Administrador", "Acceso total al sistema"),
-                ("Instructor", "Puede gestionar tareas y usuarios"),
+                ("Instructor", "Rol heredado; sin permisos en los modulos de certificacion"),
                 ("Aprendiz", "Usuario estándar"),
             ]
 
@@ -114,7 +113,7 @@ async def seed_initial_data() -> None:
                 if admin_role_id is not None:
                     await session.execute(
                         text("""
-                            INSERT INTO usuario (id, nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
+                            INSERT INTO usuario (id_usuario, nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
                             VALUES (gen_random_uuid(), :nombre, :correo, :contrasena, 'Activo', 0, :rol_id, :tipo_doc, :num_doc);
                         """),
                         {
@@ -160,7 +159,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(auth_router)
 app.include_router(role_router)
 app.include_router(users_router)
-app.include_router(tarea_router)
 app.include_router(security_router)
 app.include_router(empresas_router)
 app.include_router(comite_router)

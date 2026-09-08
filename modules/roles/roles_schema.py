@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
@@ -9,6 +11,7 @@ class RoleCreate(RoleBase):
     pass
 
 class RoleResponse(RoleBase):
-    id_rol: int
+    # id_rol es UUID en la tabla `rol`, no un entero.
+    id_rol: UUID
 
     model_config = ConfigDict(from_attributes=True)

@@ -12,13 +12,14 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     contrasena: str = Field(..., min_length=6, max_length=100)
-    rol: int = Field(..., gt=0)
+    # rol es el id_rol de la tabla `rol`, que es UUID.
+    rol: UUID
 
 
 class UserResponse(UserBase):
     id: UUID
     estado: Literal["Activo", "Inactivo", "Bloqueado"]
-    rol_id: int
+    rol_id: UUID
     rol_nombre: Optional[str] = None
     # Estos campos pueden ser NULL en la base de datos
     tipo_doc: Optional[str] = None
@@ -35,7 +36,7 @@ class UserResponse(UserBase):
 class UserUpdate(BaseModel):
     correo: Optional[EmailStr] = None
     contrasena: Optional[str] = Field(None, min_length=6, max_length=100)
-    rol: Optional[int] = Field(None, gt=0)
+    rol: Optional[UUID] = None
     estado: Optional[Literal["Activo", "Inactivo", "Bloqueado"]] = None
     tipo_doc: Optional[str] = Field(None, max_length=20)
     num_doc: Optional[str] = Field(None, max_length=30)

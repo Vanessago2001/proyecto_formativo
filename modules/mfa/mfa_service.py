@@ -359,7 +359,7 @@ class MFAService:
         result = await self.db.execute(
             text("""
             SELECT
-            id,
+            id_usuario,
             mfa_activado
             FROM usuario
             WHERE LOWER(correo) = LOWER(:correo)
@@ -461,7 +461,7 @@ class MFAService:
         result = await self.db.execute(
             text("""
             SELECT
-            id,
+            id_usuario,
             mfa_activado,
             mfa_codigo,
             mfa_expira,

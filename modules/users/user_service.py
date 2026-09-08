@@ -13,11 +13,11 @@ class UserService:
   async def get_all_users(self) -> list[dict]:
     # Consulta con JOIN a rol para obtener el nombre del rol
     query = text("""
-        SELECT u.id, u.nombre, u.correo, u.estado, u.rol_id, u.tipo_doc, u.num_doc,
+        SELECT u.id_usuario AS id, u.nombre, u.correo, u.estado, u.rol_id, u.tipo_doc, u.num_doc,
                r.nombre AS rol_nombre
         FROM usuario u
         LEFT JOIN rol r ON u.rol_id = r.id_rol
-        ORDER BY u.id ASC;
+        ORDER BY u.id_usuario ASC;
     """)
     result = await self.db.execute(query)
     rows = result.mappings().all()
@@ -62,7 +62,7 @@ class UserService:
     query = text("""
             INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
             VALUES (:nombre, :correo, :contrasena, 'Activo', 0, :rol, :tipo_doc, :num_doc)
-            RETURNING id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
+            RETURNING id_usuario AS id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
         """)
     try:
       result = await self.db.execute(
@@ -122,7 +122,8 @@ class UserService:
         )
 
     check = await self.db.execute(
-        text('SELECT id_usuario FROM usuario WHERE id_usuario = :id_usuario;'), {'id': target_user_id}
+        text('SELECT id_usuario FROM usuario WHERE id_usuario = :id_usuario;'),
+        {'id_usuario': target_user_id},
     )
     if not check.first():
       raise HTTPException(
@@ -131,12 +132,15 @@ class UserService:
       )
 
     update_fields: list[str] = []
-    params: dict[str, object] = {'id': target_user_id}
+    params: dict[str, object] = {'id_usuario': target_user_id}
 
     if user_update.correo is not None:
       dup_email = await self.db.execute(
-          text('SELECT id_usuario FROM usuario WHERE correo = :correo AND id != :id;'),
-          {'correo': user_update.correo, 'id': target_user_id},
+          text(
+              'SELECT id_usuario FROM usuario '
+              'WHERE correo = :correo AND id_usuario != :id_usuario;'
+          ),
+          {'correo': user_update.correo, 'id_usuario': target_user_id},
       )
       if dup_email.first():
         raise HTTPException(
@@ -194,7 +198,7 @@ class UserService:
             UPDATE usuario 
             SET {', '.join(update_fields)} 
             WHERE id_usuario = :id_usuario 
-            RETURNING id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
+            RETURNING id_usuario AS id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
         """
 
     try:

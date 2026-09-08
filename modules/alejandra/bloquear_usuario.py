@@ -12,7 +12,7 @@ async def bloquear_usuario_temporalmente(user_id: str, db: AsyncSession, minutos
         UPDATE usuario 
         SET bloqueado_hasta = :bloqueado_hasta, 
             estado = 'Inactivo' 
-        WHERE id = :user_id
+        WHERE id_usuario = :user_id
     """)
     result = await db.execute(query, {
         "bloqueado_hasta": tiempo_bloqueo, 

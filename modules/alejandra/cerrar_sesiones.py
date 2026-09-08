@@ -9,7 +9,7 @@ async def cerrar_todas_las_sesiones(user_id: str, db: AsyncSession) -> bool:
     query = text("""
         UPDATE usuario 
         SET token_version = COALESCE(token_version, 1) + 1 
-        WHERE id = :user_id
+        WHERE id_usuario = :user_id
     """)
     result = await db.execute(query, {"user_id": user_id})
     await db.commit()

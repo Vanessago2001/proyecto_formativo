@@ -82,7 +82,7 @@ async def cambiar_password(
     service = AuthService(db)
 
     return await service.cambiar_password(
-        current_user["id"],
+        current_user["id_usuario"],
         data.password_actual,
         data.password_nueva,
     )
@@ -103,7 +103,7 @@ async def cambiar_password_expirada(
 @router.get("/test-mail")
 async def test_mail():
 
-    await MailService.enviar_codigo(
+    await MailService.enviar_codigo_activar_mfa(
         destinatario="marlontaborda12@gmail.com",
         codigo="123456"
     )

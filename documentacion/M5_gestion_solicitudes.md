@@ -10,9 +10,10 @@ Documentación del módulo M5, correspondiente a la hoja
 | **Pendiente** | Bloques 2, 3, 5, 6 y 7 |
 | **Responsables** | Marlon y Vanessa — apoyo de Javier (hoja `responsables`) |
 
-> Esta rama toca **únicamente lo que M5 necesita**. Los demás módulos los
-> llevan otros integrantes y no se han modificado, salvo dos correcciones sin
-> las cuales nadie puede autenticarse; están detalladas en la sección 7.
+> Además de M5, esta rama corrige los fallos de **M1 (Seguridad)** y
+> **M2 (Usuarios)** que impedían autenticarse y usar el panel, y elimina el
+> módulo `tareas`, heredado de otro proyecto. **M11 (Consulta pública) no se
+> tocó**, porque lo lleva otro integrante. El detalle está en la sección 7.
 
 ---
 
@@ -266,33 +267,59 @@ resuelven al mismo, y `Aprobador` o `APR` resuelven a `Administrador`.
 
 ## 7. Lo que se tocó fuera de M5
 
-Solo **tres archivos**, con el cambio mínimo. Sin estas correcciones nadie
-puede autenticarse, así que M5 tampoco funcionaría.
+El módulo M5 es todo nuevo, pero para que funcione hubo que corregir fallos
+en código compartido. Están agrupados por criticidad.
 
-| Archivo | Cambio | Por qué es imprescindible |
+### 7.1 Imprescindibles: sin esto nadie puede autenticarse
+
+| Archivo | Cambio | Qué desbloquea |
 |---|---|---|
-| `main.py` | Importa y registra los dos routers, y llama al bootstrap. **Solo añade líneas, no modifica ninguna.** | Es como se enchufa el módulo |
-| `core/security.py` | `u.id` → `u.id_usuario` (1 línea) | La tabla `usuario` tiene como PK `id_usuario` y no existe columna `id`. `get_current_user` fallaba siempre, así que **todos** los endpoints autenticados devolvían 401 |
-| `modules/auth/auth_service.py` | `_ahora()` devuelve UTC naive; `int(rol_id)` → `str(rol_id)` | `_ahora()` devolvía hora de Bogotá con zona y se comparaba contra fechas sin zona: el login daba 500. Y `rol_id` es UUID, así que `int()` reventaba en cuanto un usuario tenía rol |
+| `main.py` | Importa y registra los routers de M5 y llama a su bootstrap | Es cómo se enchufa el módulo |
+| `core/security.py` | `u.id` → `u.id_usuario` | La tabla `usuario` tiene como PK `id_usuario` y no existe columna `id`. `get_current_user` fallaba siempre, así que **todos** los endpoints autenticados devolvían 401 |
+| `modules/auth/auth_service.py` | `_ahora()` devuelve UTC naive | Devolvía hora de Bogotá con zona y se comparaba contra fechas sin zona: el login daba **500** en cuanto el usuario tenía un código de verificación pendiente |
+| `modules/auth/auth_service.py` | `int(rol_id)` → `str(rol_id)` | `rol_id` es UUID; `int()` reventaba con cualquier usuario que tuviera rol asignado |
 
-Las tres se verificaron ejecutando las consultas contra la base de datos.
+### 7.2 Correcciones de M1 (Seguridad) y M2 (Usuarios)
 
-### Otros fallos detectados, **no corregidos aquí**
+Todas responden a lo mismo: la migración de la columna `id` a `id_usuario`
+quedó a medias, y varios esquemas declaran como `int` campos que en la base
+son `UUID`.
 
-Se encontraron al auditar, pero pertenecen a módulos de otros integrantes:
+| Archivo | Problema | Efecto |
+|---|---|---|
+| `modules/auth/auth_service.py` | `WHERE id=:id`, y tres `UPDATE` cuyo SQL usaba `:id_usuario` pero el diccionario pasaba `id` | Fallaba el reenvío de código y el cambio de contraseña |
+| `modules/auth/auth_router.py` | `current_user["id"]` | `KeyError` al cambiar contraseña |
+| `modules/alejandra/*.py` | `WHERE id = :user_id` en los tres archivos | SEG-009, SEG-010 y SEG-011 no funcionaban |
+| `modules/mfa/mfa_service.py` | `SELECT id` sobre `usuario` | Dos consultas de MFA fallaban |
+| `modules/users/user_service.py` | `SELECT u.id`, `RETURNING id`, y tres desajustes de parámetros en `update_user` | `GET /users/all-users` y `PUT /users/{id}` daban **500** |
+| `modules/users/user_schema.py` | `rol_id: int` y `rol: int` | `GET /users/all-users` daba **500** al validar la respuesta |
+| `modules/roles/roles_schema.py` | `id_rol: int` | `GET /rol/` daba **500** |
+| `modules/users/user_router.py` | `MIN(id_rol)` sobre una columna UUID | `GET /users/public-roles` daba **500** |
+| `static/register.html`, `static/dashboard.html` | `parseInt(uuid)` = `NaN` | No se podían crear usuarios ni cambiar roles desde la interfaz |
+| `main.py` | `INSERT INTO usuario (id, ...)` en la siembra del admin | La siembra inicial fallaba al arrancar |
 
-| Módulo | Problema |
-|---|---|
-| M1 / M2 (`auth`, `users`, `roles`, `mfa`, `alejandra`) | Más referencias a la columna inexistente `usuario.id`, y esquemas que declaran `rol_id: int` cuando en la base es `UUID` |
-| `modules/tareas/` | La tabla `tareas` no existe en esta base; sus endpoints dan 500. Parece código heredado de otro proyecto |
-| `static/register.html`, `static/dashboard.html` | Envían `parseInt(uuid)` = `NaN` al crear usuarios o cambiar roles |
-| `query_db.py` | **Usuario y contraseña de la base en texto plano**, ya en el historial de Git. Conviene rotar esas credenciales |
-| `requirements.txt` | Guardado en UTF-16: `pip install -r` falla |
-| `core/deps.py` | Importa `app.core.redis_client`, ruta que no existe |
-| `main.py` | Registra `alejandra_router` dos veces |
+### 7.3 Módulo eliminado
 
-El detalle de cada uno está en la rama `feature/M5-solicitudes-bloque1`, que
-los tiene corregidos por si el equipo quiere aprovecharlos.
+`modules/tareas/` se borró por completo. Su tabla `tareas` **no existe** en esta
+base de datos, así que sus cuatro endpoints devolvían 500. Es código heredado
+de otro proyecto, igual que los roles `Instructor` y `Aprendiz`.
+
+### 7.4 Lo que NO se tocó
+
+- **M11 — Consulta pública** (`static/index.html`): sigue sin conectar al
+  backend. Está implementado en la rama `feature/M5-solicitudes-bloque1` por si
+  a quien lleve ese módulo le sirve de punto de partida.
+- **`static/auditor.html`**: sigue siendo una maqueta, con cero llamadas al
+  backend y los `<input type="file">` sin manejador.
+- **`query_db.py`**: tiene **usuario y contraseña de la base de datos en texto
+  plano**, y ya están en el historial de Git. Conviene **rotar esas
+  credenciales**; no se hizo porque afecta a todo el equipo.
+- **`requirements.txt`**: está guardado en UTF-16, así que
+  `pip install -r requirements.txt` falla. Debe convertirse a UTF-8.
+- **`core/deps.py`**: importa `app.core.redis_client`, ruta que no existe.
+- **`main.py`**: registra `alejandra_router` dos veces.
+- **`ts -Recurseq`**: 16 KB de la ayuda del comando `less`, subidos por
+  accidente. Se puede borrar.
 
 ---
 
@@ -307,7 +334,7 @@ pip install pytest
 pytest tests/ -q
 ```
 
-### Qué cubren los 175 tests
+### Qué cubren los 195 tests
 
 | Grupo | Tests | Qué comprueba |
 |---|---|---|
@@ -316,6 +343,7 @@ pytest tests/ -q
 | Ciclo de vida | 18 | Estados, radicado consecutivo, borrado lógico, aislamiento entre empresas, historial y PDF |
 | Autorización Bloque 4 | 71 | 10 acciones × 7 roles |
 | Documentos | 7 | Reglas de formato y saneado del nombre de archivo |
+| Roles y dashboards | 20 | Que cada rol llegue a un dashboard que existe y responde |
 | *(del proyecto, ya existían)* | 2 | Comité de certificación |
 
 El test `test_la_matriz_del_codigo_coincide_con_el_excel` lee directamente
