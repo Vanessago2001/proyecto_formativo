@@ -132,6 +132,7 @@
 
     <div class="profile-actions">
       <a href="/dashboard" class="btn-login">Volver al Dashboard</a>
+      <a href="/empresa" class="btn-login" id="companyProfileLink" style="display: none;">Ir a mi empresa</a>
       <a href="/login" class="btn-login" id="logoutLink">Cerrar sesión</a>
     </div>
 
@@ -192,6 +193,7 @@ function loadProfile() {
     const userName = payload.sub || "";
     const userId = payload.user_id || "";
     const roleName = payload.role_name || "";
+    const isCompany = /empresa/i.test(roleName || "");
 
     document.getElementById("profileNombre").textContent = userName;
     document.getElementById("profileCorreo").textContent = "Cargando...";
@@ -199,6 +201,10 @@ function loadProfile() {
     document.getElementById("profileRol").textContent = roleName;
     document.getElementById("profileIcon").textContent = userName.charAt(0).toUpperCase();
     document.getElementById("profileIconLarge").textContent = userName.charAt(0).toUpperCase();
+    const companyProfileLink = document.getElementById("companyProfileLink");
+    if (companyProfileLink) {
+        companyProfileLink.style.display = isCompany ? "inline-block" : "none";
+    }
 
     fetch("/users/me", { headers: { "Authorization": `Bearer ${token}` } })
       .then(response => response.ok ? response.json() : null)

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from core.database import get_db
 from typing import Any
+from typing import Callable, List
 import uuid
 import jwt
 import re
@@ -132,3 +133,59 @@ async def get_current_user(
         )
         
     return dict(user_row)
+
+def _normalize_role_name(role_name: str) -> str:
+    if role_name is None:
+        return ""
+
+    normalized = role_name.strip().lower()
+    replacements = {
+        "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
+        "ü": "u", "ñ": "n",
+    }
+    for old, new in replacements.items():
+        normalized = normalized.replace(old, new)
+
+    normalized = re.sub(r"[\s_\-]+", "", normalized)
+
+    aliases = {
+        "superadmin": "superadmin",
+        "superadministrador": "superadmin",
+        "superadm": "superadmin",
+        "adm": "admin",
+        "administrador": "admin",
+        "admin": "admin",
+        "auxiliar": "auxiliar",
+        "aux": "auxiliar",
+        "empresa": "empresa",
+        "empresario": "empresa",
+        "auditor": "auditor",
+        "aud": "auditor",
+        "comite": "comite",
+        "instructor": "instructor",
+        "aprendiz": "aprendiz",
+        "usuario": "usuario",
+        "pub": "public",
+        "public": "public",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def require_role(allowed_roles: List[str]) -> Callable:
+    """
+    Fábrica de dependencias reutilizable.
+    Acepta variaciones de nombre de rol tanto en español como en inglés.
+    """
+    roles_lower = {_normalize_role_name(role) for role in allowed_roles}
+
+    async def role_dependency(current_user: dict = Depends(get_current_user)) -> dict:
+        rol = _normalize_role_name(current_user.get("role_name"))
+
+        if rol not in roles_lower:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No cuenta con los permisos necesarios para realizar esta acción.",
+            )
+        return current_user
+
+    return role_dependency

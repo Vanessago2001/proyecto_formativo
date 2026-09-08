@@ -15,6 +15,7 @@ from core.security import hash_password
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
 from modules.comite.comite_router import router as comite_router
+from modules.apelaciones.apelaciones_router import router as apelaciones_router
 
 from modules.alejandra.router import router as alejandra_router
 
@@ -71,10 +72,122 @@ async def ensure_login_security_schema(session) -> None:
         ADD COLUMN IF NOT EXISTS codigo_verificado BOOLEAN DEFAULT FALSE;
     """))
 
+
+async def ensure_apelaciones_schema(session) -> None:
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS apelacion (
+            id SERIAL PRIMARY KEY,
+            id_solicitud INTEGER NOT NULL,
+            estado VARCHAR(50) NOT NULL DEFAULT 'RADICADA',
+            fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            motivo TEXT NOT NULL,
+            fallo TEXT
+        );
+    """))
+
+    for column_sql in [
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS id_solicitud INTEGER;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS estado VARCHAR(50) DEFAULT 'RADICADA';",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS motivo TEXT;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS fallo TEXT;",
+    ]:
+        await session.execute(text(column_sql))
+
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS evidencia_apelacion (
+            id_evidencia SERIAL PRIMARY KEY,
+            id_apelacion INTEGER NOT NULL,
+            id_usuario INTEGER NOT NULL,
+            nombre_archivo VARCHAR(255) NOT NULL,
+            tipo_evidencia VARCHAR(100),
+            url_archivo TEXT NOT NULL,
+            descripcion TEXT,
+            fecha_subida TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_evidencia_apelacion FOREIGN KEY (id_apelacion) REFERENCES apelacion(id)
+        );
+    """))
+
+    for column_sql in [
+        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS id_apelacion INTEGER;",
+        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS id_usuario INTEGER;",
+        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS nombre_archivo VARCHAR(255);",
+        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS tipo_evidencia VARCHAR(100);",
+        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS url_archivo TEXT;",
+        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS descripcion TEXT;",
+        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS fecha_subida TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
+    ]:
+        await session.execute(text(column_sql))
+
+
+async def ensure_empresa_sedes_schema(session) -> None:
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS sede (
+            id_sede SERIAL PRIMARY KEY,
+            id_empresa INTEGER NOT NULL,
+            nombre_sede VARCHAR(200) NOT NULL,
+            direccion VARCHAR(255) NOT NULL,
+            ciudad VARCHAR(100) NOT NULL,
+            departamento VARCHAR(100),
+            pais VARCHAR(100),
+            es_principal BOOLEAN NOT NULL DEFAULT FALSE,
+            estado VARCHAR(50) NOT NULL DEFAULT 'Activo',
+            fecha_registro TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_sede_empresa FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
+        );
+    """))
+
+    await session.execute(text("""
+        ALTER TABLE sede
+        ADD COLUMN IF NOT EXISTS id_empresa INTEGER;
+    """))
+
+    await session.execute(text("""
+        ALTER TABLE sede
+        ADD COLUMN IF NOT EXISTS nombre_sede VARCHAR(200);
+    """))
+
+    await session.execute(text("""
+        ALTER TABLE sede
+        ADD COLUMN IF NOT EXISTS direccion VARCHAR(255);
+    """))
+
+    await session.execute(text("""
+        ALTER TABLE sede
+        ADD COLUMN IF NOT EXISTS ciudad VARCHAR(100);
+    """))
+
+    await session.execute(text("""
+        ALTER TABLE sede
+        ADD COLUMN IF NOT EXISTS departamento VARCHAR(100);
+    """))
+
+    await session.execute(text("""
+        ALTER TABLE sede
+        ADD COLUMN IF NOT EXISTS pais VARCHAR(100);
+    """))
+
+    await session.execute(text("""
+        ALTER TABLE sede
+        ADD COLUMN IF NOT EXISTS es_principal BOOLEAN DEFAULT FALSE;
+    """))
+
+    await session.execute(text("""
+        ALTER TABLE sede
+        ADD COLUMN IF NOT EXISTS estado VARCHAR(50) DEFAULT 'Activo';
+    """))
+
+    await session.execute(text("""
+        ALTER TABLE sede
+        ADD COLUMN IF NOT EXISTS fecha_registro TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+    """))
+
 async def seed_initial_data() -> None:
     async with AsyncSessionLocal() as session:
         try:
             await ensure_login_security_schema(session)
+            await ensure_apelaciones_schema(session)
+            await ensure_empresa_sedes_schema(session)
 
             # Roles por defecto según la tabla rol (id_rol PK, nombre, descripcion)
             default_rol = [
@@ -145,9 +258,17 @@ async def lifespan(app: FastAPI):
     logger.info("  Documentación interactiva: http://127.0.0.1:8000/docs")
     logger.info("==========================================================")
     await seed_initial_data()
+<<<<<<< HEAD
     await preparar_modulo_solicitudes()   # M5
     yield
     logger.info("Cerrando recursos de la API de forma segura.")
+=======
+    try:
+        yield
+    finally:
+        logger.info("Cerrando recursos de la API de forma segura.")
+        await redis_pool.disconnect()
+>>>>>>> 533fbb2 (Modulos empresa y apelaciones)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -168,7 +289,7 @@ app.include_router(users_router)
 app.include_router(security_router)
 app.include_router(empresas_router)
 app.include_router(comite_router)
-app.include_router(alejandra_router)
+app.include_router(apelaciones_router)
 app.include_router(alejandra_router)
 app.include_router(mfa_router)
 app.include_router(system_router)
@@ -294,6 +415,7 @@ async def auditor_page(request: Request):
 async def empresa_page(request: Request):
     return FileResponse("static/empresa.html")
 
+<<<<<<< HEAD
 
 @app.get("/buscar_empresa", response_class=HTMLResponse)
 async def buscar_empresa_page(request: Request):
@@ -302,3 +424,5 @@ async def buscar_empresa_page(request: Request):
 @app.on_event("shutdown")
 async def shutdown_redis_pool():
     await redis_pool.disconnect()
+=======
+>>>>>>> 533fbb2 (Modulos empresa y apelaciones)

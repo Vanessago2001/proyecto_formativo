@@ -247,8 +247,11 @@
           <p class="subtitle">Gestion de certificados</p>
         </div>
       </div>
-      <a class="profile-button" href="/profile" title="Ir a mi perfil"><span class="profile-label">Mi perfil</span><span
-          class="avatar" id="headerAvatar">U</span></a>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <a id="companyHeaderLink" class="profile-button" href="/empresa" title="Ir a mi empresa" style="display:none;"><span class="profile-label">Mi empresa</span><span class="avatar" id="companyAvatar">E</span></a>
+        <a class="profile-button" href="/profile" title="Ir a mi perfil"><span class="profile-label">Mi perfil</span><span
+            class="avatar" id="headerAvatar">U</span></a>
+      </div>
     </div>
   </header>
   <main class="app-shell">
@@ -337,8 +340,7 @@
         consultar los datos de tu sesion.
       </p>
       <p style="margin-top: 18px">
-        <a class="primary-action" style="display: inline-block; width: auto; text-decoration: none" href="/profile">Ir a
-          mi perfil</a>
+        <a id="companyLink" class="primary-action" style="display: inline-block; width: auto; text-decoration: none" href="/profile">Ir a mi perfil</a>
       </p>
     </section>
 
@@ -447,17 +449,30 @@
       location.href = "/login";
     }
     const isAdmin = user && user.role_name === "Administrador";
+    const isCompany = user && /empresa/i.test(user.role_name || "");
     document.getElementById("welcomeTitle").textContent =
       "Bienvenido, " + (user.sub || "usuario");
     document.getElementById("roleDescription").textContent = isAdmin
       ? "Administracion de cuentas, permisos y empresas"
-      : "Perfil de " + (user.role_name || "usuario");
+      : isCompany
+        ? "Gestion de la empresa asociada a tu cuenta"
+        : "Perfil de " + (user.role_name || "usuario");
     document.getElementById("headerAvatar").textContent = (user.sub || "U")
       .charAt(0)
       .toUpperCase();
+    const companyHeaderLink = document.getElementById("companyHeaderLink");
+    if (companyHeaderLink) {
+      companyHeaderLink.style.display = isCompany ? "flex" : "none";
+      document.getElementById("companyAvatar").textContent = "E";
+    }
     document.getElementById(
       isAdmin ? "adminView" : "regularView",
     ).style.display = isAdmin ? "grid" : "block";
+    const companyLink = document.getElementById("companyLink");
+    if (companyLink) {
+      companyLink.href = isCompany ? "/empresa" : "/profile";
+      companyLink.textContent = isCompany ? "Ir a mi empresa" : "Ir a mi perfil";
+    }
     function headers() {
       return {
         "Content-Type": "application/json",

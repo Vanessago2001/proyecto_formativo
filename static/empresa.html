@@ -6,44 +6,33 @@
   <title>CertiSENA | Portal empresa</title>
   <link rel="stylesheet" href="/static/styles.css">
   <style>
-    .portal{max-width:1120px;margin:0 auto;padding:28px;display:grid;grid-template-columns:230px 1fr;gap:24px}
-    .side,.content{background:#fff;border:1px solid #dbe4d4;padding:20px}
-    .side a{display:block;padding:11px;color:#334155;text-decoration:none;border-left:3px solid transparent;cursor:pointer}
-    .side a.active{color:#256d00;background:#f1f8ed;border-left-color:#3baa01}
-    .content h2{color:#256d00;font-size:23px;margin-bottom:8px}
-    .content p{color:#64748b;line-height:1.5}
-    .notice{margin:18px 0;padding:14px;background:#f1f8ed;border-left:4px solid #3baa01;color:#365314}
-    .notice.error{background:#fef2f2;border-left-color:#dc2626;color:#7f1d1d}
-    .profile-link{margin-left:auto;color:#fff;text-decoration:none;font-weight:600}
-    .panel{display:none}.panel.visible{display:block}
-    table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
-    th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #e6ede1}
-    th{background:#f7faf5;color:#365314;font-weight:600}
-    .chip{display:inline-block;padding:3px 9px;border-radius:11px;font-size:12px;font-weight:600}
-    .chip.Borrador{background:#e2e8f0;color:#334155}
-    .chip.Radicada{background:#dbeafe;color:#1e40af}
-    .chip.Cancelada{background:#fee2e2;color:#991b1b}
-    .chip.Pendiente{background:#fef3c7;color:#92400e}
-    .chip.Aprobado{background:#dcfce7;color:#166534}
-    .chip.Rechazado{background:#fee2e2;color:#991b1b}
-    .chip.Correccion{background:#ffedd5;color:#9a3412}
-    .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:16px}
-    .form-grid label{display:block;font-size:13px;color:#365314;font-weight:600;margin-bottom:5px}
-    .form-grid input,.form-grid select,.form-grid textarea{width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:5px;font-family:inherit;font-size:14px}
-    .form-grid .ancho{grid-column:1/-1}
-    button{background:#3baa01;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px}
-    button:hover{background:#2e8a01}
-    button[disabled]{background:#cbd5e1;cursor:not-allowed}
-    button.sec{background:#fff;color:#256d00;border:1px solid #93b987}
-    button.mini{padding:5px 10px;font-size:12px}
-    button.peligro{background:#dc2626}button.peligro:hover{background:#b91c1c}
-    .uploads{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:18px}
-    .upload{border:1px dashed #93b987;padding:16px}
-    .upload h3{font-size:15px;margin-bottom:6px;color:#365314}
-    .upload input{margin-top:10px;width:100%;font-size:13px}
-    .vacio{padding:24px;text-align:center;color:#94a3b8;border:1px dashed #cbd5e1;margin-top:14px}
-    .acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
-    @media(max-width:720px){.portal{grid-template-columns:1fr;padding:18px}.uploads,.form-grid{grid-template-columns:1fr}}
+    body { background: #f4f7f2; }
+    .portal { max-width: 1200px; margin: 0 auto; padding: 28px; display: grid; grid-template-columns: 220px 1fr; gap: 24px; }
+    .side, .content, .panel { background: #fff; border: 1px solid #dbe4d4; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+    .side a { display: block; padding: 11px 12px; color: #334155; text-decoration: none; border-left: 3px solid transparent; margin-bottom: 8px; }
+    .side a.active { color: #256d00; background: #f1f8ed; border-left-color: #3baa01; }
+    .content h2 { color: #256d00; font-size: 23px; margin-bottom: 8px; }
+    .content p { color: #64748b; line-height: 1.5; }
+    .notice { margin: 22px 0; padding: 16px; background: #f1f8ed; border-left: 4px solid #3baa01; color: #365314; border-radius: 8px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 16px; margin-top: 20px; }
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .field input, .field select { padding: 10px 12px; border: 1px solid #cdd9cc; border-radius: 8px; font-size: 14px; }
+    .field.full { grid-column: 1 / -1; }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    button { border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #3BAA01; color: white; }
+    .btn-secondary { background: #eef3ee; color: #1f3d12; }
+    .btn-danger { background: #e53935; color: white; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #e8edf2; text-align: left; }
+    th { background: #3BAA01; color: white; }
+    .status-ok { color: #257a00; font-weight: 600; }
+    .status-no { color: #b42318; font-weight: 600; }
+    .alert { padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; display: none; }
+    .alert.error { background: #fdecea; color: #7a1f1a; }
+    .alert.success { background: #eaf7ea; color: #185b2e; }
+    @media(max-width: 720px){ .portal { grid-template-columns: 1fr; padding: 18px; } .form-grid{ grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -121,312 +110,311 @@
   </main>
 
   <script>
-  (function () {
-    "use strict";
-
-    // ---------- sesion ----------
-    const token = localStorage.getItem("access_token");
-    let perfil;
-    try {
-      perfil = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    } catch (_) {
-      location.href = "/login";
-      return;
-    }
-    if (perfil.role_name !== "Empresa") { location.href = "/dashboard"; return; }
-    document.getElementById("title").textContent = "Portal de empresa: " + perfil.sub;
-    document.getElementById("logout").onclick = function (e) {
-      e.preventDefault(); localStorage.clear(); location.href = "/login";
-    };
-
-    // ---------- utilidades ----------
-    const $ = (id) => document.getElementById(id);
-    const aviso = $("aviso");
-    let solicitudActual = null;
-
-    function mostrar(mensaje, esError) {
-      aviso.textContent = mensaje;
-      aviso.className = "notice" + (esError ? " error" : "");
-      aviso.style.display = mensaje ? "block" : "none";
-      if (mensaje && !esError) setTimeout(() => { aviso.style.display = "none"; }, 5000);
-    }
-
-    function detalleError(cuerpo, respuesta) {
-      // La API devuelve el motivo en `detail`, a veces como objeto.
-      if (cuerpo && cuerpo.detail) {
-        if (typeof cuerpo.detail === "string") return cuerpo.detail;
-        if (Array.isArray(cuerpo.detail)) return cuerpo.detail.map(d => d.msg).join(" · ");
-        return JSON.stringify(cuerpo.detail);
-      }
-      return "Error " + respuesta.status;
-    }
-
-    async function api(ruta, opciones) {
-      opciones = opciones || {};
-      opciones.headers = Object.assign({ Authorization: "Bearer " + token }, opciones.headers || {});
-      const r = await fetch(ruta, opciones);
-      if (r.status === 401) { localStorage.clear(); location.href = "/login"; return null; }
-      const tipo = r.headers.get("content-type") || "";
-      const cuerpo = tipo.includes("json") ? await r.json().catch(() => null) : null;
-      if (!r.ok) throw new Error(detalleError(cuerpo, r));
-      return cuerpo;
-    }
-
-    const esc = (s) => String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    const fecha = (f) => f ? new Date(f).toLocaleDateString("es-CO") : "-";
-
-    // ---------- navegacion ----------
-    document.querySelectorAll(".side a[data-panel]").forEach((enlace) => {
-      enlace.onclick = function () {
-        document.querySelectorAll(".side a").forEach(a => a.classList.remove("active"));
-        enlace.classList.add("active");
-        document.querySelectorAll(".panel").forEach(p => p.classList.remove("visible"));
-        $("panel-" + enlace.dataset.panel).classList.add("visible");
-        if (enlace.dataset.panel === "solicitudes") cargarSolicitudes();
-        if (enlace.dataset.panel === "documentos") cargarDocumentos();
-      };
-    });
-    function irA(panel) {
-      document.querySelector('.side a[data-panel="' + panel + '"]').click();
-    }
-
-    // ---------- SOL-006: listar solicitudes ----------
-    async function cargarSolicitudes() {
-      const caja = $("lista-solicitudes");
-      caja.innerHTML = "<p>Cargando...</p>";
+    function parseJwt(token) {
       try {
-        const datos = await api("/solicitudes/");
-        if (!datos.length) {
-          caja.innerHTML = '<div class="vacio">Aun no tiene solicitudes. Use "Nueva solicitud" para crear la primera.</div>';
-          return;
-        }
-        caja.innerHTML =
-          '<table><thead><tr><th>Radicado</th><th>Estado</th><th>Alcance</th>' +
-          '<th>Sedes</th><th>Creada</th><th>Acciones</th></tr></thead><tbody>' +
-          datos.map(function (s) {
-            const esBorrador = s.estado === "Borrador";
-            return '<tr>' +
-              '<td>' + esc(s.numero_radicado || "(borrador)") + '</td>' +
-              '<td><span class="chip ' + esc(s.estado) + '">' + esc(s.estado) + '</span></td>' +
-              '<td>' + esc((s.alcance_certificacion || "").slice(0, 46)) + '</td>' +
-              '<td>' + esc(s.numero_sedes) + '</td>' +
-              '<td>' + fecha(s.fecha_creacion) + '</td>' +
-              '<td>' +
-                '<button class="mini sec" data-doc="' + s.id_solicitud + '">Documentos</button> ' +
-                (esBorrador ? '<button class="mini" data-radicar="' + s.id_solicitud + '">Radicar</button> ' : '') +
-                '<button class="mini sec" data-pdf="' + s.id_solicitud + '">PDF</button>' +
-              '</td></tr>';
-          }).join("") + '</tbody></table>';
-
-        caja.querySelectorAll("[data-doc]").forEach(b => b.onclick = () => {
-          solicitudActual = datos.find(s => s.id_solicitud === b.dataset.doc);
-          irA("documentos");
-        });
-        caja.querySelectorAll("[data-radicar]").forEach(b => b.onclick = () => radicar(b.dataset.radicar));
-        caja.querySelectorAll("[data-pdf]").forEach(b => b.onclick = () => descargarPdf(b.dataset.pdf));
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
       } catch (e) {
-        caja.innerHTML = "";
-        mostrar(e.message, true);
+        return null;
       }
     }
 
-    // ---------- SOL-005: radicar ----------
-    async function radicar(id) {
-      if (!confirm("Al radicar, la solicitud deja de poder editarse. Continuar?")) return;
-      try {
-        const s = await api("/solicitudes/" + id + "/radicar", { method: "POST" });
-        mostrar("Solicitud radicada con el numero " + s.numero_radicado, false);
-        cargarSolicitudes();
-      } catch (e) { mostrar(e.message, true); }
+    function showAlert(type, message) {
+      const el = document.getElementById('alertMessage');
+      el.className = `alert ${type}`;
+      el.textContent = message;
+      el.style.display = 'block';
     }
 
-    // ---------- SOL-007: PDF ----------
-    async function descargarPdf(id) {
-      try {
-        const r = await fetch("/solicitudes/" + id + "/pdf", { headers: { Authorization: "Bearer " + token } });
-        if (!r.ok) throw new Error("No se pudo generar el PDF (" + r.status + ")");
-        const blob = await r.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = "solicitud-" + id.slice(0, 8) + ".pdf";
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
-      } catch (e) { mostrar(e.message, true); }
-    }
-
-    // ---------- SOL-011: normas disponibles ----------
-    async function cargarNormas() {
-      const sel = $("norma");
-      try {
-        const normas = await api("/solicitudes/normas");
-        sel.innerHTML = '<option value="">Seleccione una norma</option>' +
-          normas.map(n => '<option value="' + n.id_norma + '">' +
-            esc([n.codigo, n.nombre, n.version].filter(Boolean).join(" ")) + '</option>').join("");
-      } catch (e) {
-        sel.innerHTML = '<option value="">No se pudieron cargar las normas</option>';
-      }
-    }
-
-    // ---------- SOL-001: crear borrador ----------
-    $("form-nueva").onsubmit = async function (e) {
-      e.preventDefault();
-      const cuerpo = {
-        id_norma: $("norma").value || null,
-        alcance_certificacion: $("alcance").value.trim(),
-        numero_empleados: Number($("empleados").value),
-        numero_sedes: Number($("sedes").value),
-        persona_contacto: $("contacto").value.trim() || null,
-        observaciones: $("observaciones").value.trim() || null
+    function apiHeaders() {
+      const token = localStorage.getItem('access_token');
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       };
-      try {
-        await api("/solicitudes/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cuerpo)
-        });
-        this.reset();
-        mostrar("Borrador guardado. Puede adjuntar documentos y radicarlo cuando este listo.", false);
-        irA("solicitudes");
-      } catch (err) { mostrar(err.message, true); }
-    };
-    $("cancelar-nueva").onclick = () => { $("form-nueva").reset(); irA("solicitudes"); };
+    }
 
-    // ---------- SOL-031..040: documentos ----------
-    async function cargarDocumentos() {
-      const cab = $("doc-cabecera");
-      const caja = $("doc-contenido");
-
-      if (!solicitudActual) {
-        cab.textContent = 'Seleccione primero una solicitud en "Mis solicitudes".';
-        caja.innerHTML = "";
+    async function loadEmpresasSelect() {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        window.location.href = '/login';
         return;
       }
-      cab.innerHTML = "Documentos de <strong>" +
-        esc(solicitudActual.numero_radicado || "borrador") + "</strong>. " +
-        "Los archivos quedan guardados: no hay que volver a subirlos.";
-      caja.innerHTML = "<p>Cargando...</p>";
+
+      const payload = parseJwt(token);
+      if (!payload) {
+        localStorage.clear();
+        window.location.href = '/login';
+        return;
+      }
+
+      const role = (payload.role_name || payload.rol || payload.roles || '').toLowerCase();
+      const isCompanyRole = role.includes('empresa') || role.includes('empresario');
+      const isAdminRole = role.includes('admin') || role.includes('superadmin') || role.includes('superadm');
+      if (!isCompanyRole && !isAdminRole) {
+        window.location.href = '/dashboard';
+        return;
+      }
 
       try {
-        const [reglas, docs] = await Promise.all([
-          api("/solicitudes/documentos/formatos-permitidos"),
-          api("/solicitudes/" + solicitudActual.id_solicitud + "/documentos")
-        ]);
+        const currentUserResponse = await fetch('/users/me', { headers: apiHeaders() });
+        const currentUser = currentUserResponse.ok ? await currentUserResponse.json() : {};
 
-        const subidos = {};
-        docs.forEach(d => { subidos[d.tipo_documento.toLowerCase()] = d; });
+        const res = await fetch('/api/empresas/', { headers: apiHeaders() });
+        if (!res.ok) {
+          throw new Error('No se pudieron cargar las empresas');
+        }
+        const empresas = await res.json();
+        const select = document.getElementById('empresaSelect');
+        select.innerHTML = '<option value="">Seleccione una empresa</option>';
 
-        const tabla = docs.length
-          ? '<table><thead><tr><th>Tipo</th><th>Archivo</th><th>Version</th>' +
-            '<th>Estado</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>' +
-            docs.map(d => '<tr>' +
-              '<td>' + esc(d.tipo_documento) + '</td>' +
-              '<td>' + esc(d.nombre_archivo) + '</td>' +
-              '<td>v' + esc(d.version) + '</td>' +
-              '<td><span class="chip ' + esc(d.estado) + '">' + esc(d.estado) + '</span></td>' +
-              '<td>' + esc(d.observaciones || "-") + '</td>' +
-              '<td>' +
-                '<button class="mini sec" data-ver="' + d.id_documento + '">Ver</button> ' +
-                '<button class="mini sec" data-bajar="' + d.id_documento + '">Descargar</button> ' +
-                (d.estado !== "Aprobado"
-                  ? '<button class="mini peligro" data-borrar="' + d.id_documento + '">Eliminar</button>'
-                  : '') +
-              '</td></tr>').join("") + '</tbody></table>'
-          : '<div class="vacio">Todavia no hay documentos adjuntos.</div>';
-
-        const formularios = reglas.tipos_documento_sugeridos.map(function (tipo) {
-          const ya = subidos[tipo.toLowerCase()];
-          const bloqueado = ya && ya.estado === "Aprobado";
-          return '<div class="upload">' +
-            '<h3>' + esc(tipo) + '</h3>' +
-            '<p>' + (ya
-              ? 'Cargado: <strong>' + esc(ya.nombre_archivo) + '</strong> (v' + esc(ya.version) + ', ' + esc(ya.estado) + ')'
-              : 'Sin cargar.') + '</p>' +
-            (bloqueado
-              ? '<p><em>Aprobado. Ya no se puede cambiar.</em></p>'
-              : '<input type="file" data-tipo="' + esc(tipo) + '"' +
-                (ya ? ' data-reemplazar="' + ya.id_documento + '"' : '') +
-                ' accept="' + reglas.extensiones_permitidas.join(",") + '">') +
-            '</div>';
-        }).join("");
-
-        caja.innerHTML = tabla +
-          '<div class="uploads">' + formularios + '</div>' +
-          '<p style="margin-top:14px;font-size:13px;color:#94a3b8">Formatos: ' +
-          esc(reglas.extensiones_permitidas.join(", ")) +
-          ' · Maximo ' + esc(reglas.tamano_maximo_mb) + ' MB por archivo.</p>';
-
-        caja.querySelectorAll("input[type=file]").forEach(inp => {
-          inp.onchange = () => enviarArchivo(inp);
+        empresas.forEach((emp) => {
+          const option = document.createElement('option');
+          option.value = emp.id_empresa;
+          option.textContent = `${emp.nombre} (${emp.nit})`;
+          select.appendChild(option);
         });
-        caja.querySelectorAll("[data-ver]").forEach(b => b.onclick = () => abrirArchivo(b.dataset.ver, "ver"));
-        caja.querySelectorAll("[data-bajar]").forEach(b => b.onclick = () => abrirArchivo(b.dataset.bajar, "descargar"));
-        caja.querySelectorAll("[data-borrar]").forEach(b => b.onclick = () => borrarDocumento(b.dataset.borrar));
-      } catch (e) {
-        caja.innerHTML = "";
-        mostrar(e.message, true);
+
+        if (!empresas.length) {
+          showAlert('success', 'Aún no hay una empresa registrada para este usuario. Puede crearla desde este formulario.');
+          document.getElementById('empresaForm').reset();
+          document.getElementById('empresaId').value = '';
+          return;
+        }
+
+        const userEmail = (currentUser.correo || payload.email || '').toLowerCase();
+        const emailMatch = empresas.find((emp) =>
+          (emp.correo || '').toLowerCase() === userEmail
+        );
+        const selectedEmpresa = emailMatch || empresas[0];
+
+        select.value = String(selectedEmpresa.id_empresa);
+        await loadEmpresaDetails(selectedEmpresa.id_empresa);
+        await loadSedes(selectedEmpresa.id_empresa);
+      } catch (error) {
+        showAlert('error', error.message || 'No se pudo cargar la información de empresas.');
       }
     }
 
-    // SOL-031 (subir) y SOL-032 (reemplazar)
-    async function enviarArchivo(input) {
-      const archivo = input.files[0];
-      if (!archivo) return;
-      input.disabled = true;
-      const base = "/solicitudes/" + solicitudActual.id_solicitud + "/documentos";
-      const cuerpo = new FormData();
-      cuerpo.append("archivo", archivo);
+    async function loadEmpresaDetails(idEmpresa) {
+      if (!idEmpresa) {
+        document.getElementById('empresaForm').reset();
+        document.getElementById('empresaId').value = '';
+        return;
+      }
 
       try {
-        if (input.dataset.reemplazar) {
-          await api(base + "/" + input.dataset.reemplazar, { method: "PUT", body: cuerpo });
-          mostrar("Documento reemplazado. La version anterior queda en el historial.", false);
-        } else {
-          cuerpo.append("tipo_documento", input.dataset.tipo);
-          await api(base, { method: "POST", body: cuerpo });
-          mostrar("Documento guardado correctamente.", false);
-        }
-        cargarDocumentos();
-      } catch (e) {
-        mostrar(e.message, true);
-        input.disabled = false;
-        input.value = "";
+        const res = await fetch(`/api/empresas/${idEmpresa}`, { headers: apiHeaders() });
+        if (!res.ok) throw new Error('Empresa no encontrada');
+        const empresa = await res.json();
+        document.getElementById('empresaId').value = empresa.id_empresa;
+        document.getElementById('empresaNombre').value = empresa.nombre || '';
+        document.getElementById('empresaNit').value = empresa.nit || '';
+        document.getElementById('empresaCiudad').value = empresa.ciudad || '';
+        document.getElementById('empresaDireccion').value = empresa.direccion || '';
+        document.getElementById('empresaCorreo').value = empresa.correo || '';
+        document.getElementById('title').textContent = `Datos de la empresa: ${empresa.nombre || 'Empresa'}`;
+      } catch (error) {
+        showAlert('error', error.message || 'No se pudo cargar la empresa.');
       }
     }
 
-    // SOL-034 / SOL-035
-    async function abrirArchivo(idDoc, modo) {
+    async function loadSedes(idEmpresa) {
+      if (!idEmpresa) {
+        document.getElementById('sedesBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">Seleccione una empresa</td></tr>';
+        return;
+      }
+
       try {
-        const r = await fetch(
-          "/solicitudes/" + solicitudActual.id_solicitud + "/documentos/" + idDoc + "/" + modo,
-          { headers: { Authorization: "Bearer " + token } });
-        if (!r.ok) throw new Error("No se pudo abrir el archivo (" + r.status + ")");
-        const url = URL.createObjectURL(await r.blob());
-        if (modo === "ver") { window.open(url, "_blank"); }
-        else {
-          const a = document.createElement("a");
-          a.href = url; a.download = "";
-          document.body.appendChild(a); a.click(); a.remove();
+        const res = await fetch(`/api/empresas/${idEmpresa}/sedes`, { headers: apiHeaders() });
+        if (!res.ok) throw new Error('No se pudieron cargar las sedes');
+        const sedes = await res.json();
+        const tbody = document.getElementById('sedesBody');
+
+        if (!sedes.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No hay sedes registradas</td></tr>';
+          return;
         }
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-      } catch (e) { mostrar(e.message, true); }
+
+        tbody.innerHTML = sedes.map((sede) => `
+          <tr>
+            <td>${sede.id_sede}</td>
+            <td>${sede.nombre_sede || '--'}</td>
+            <td>${sede.ciudad || '--'}</td>
+            <td>${sede.direccion || '--'}</td>
+            <td>${sede.es_principal ? '<span class=\'status-ok\'>Sí</span>' : '<span class=\'status-no\'>No</span>'}</td>
+            <td>${sede.estado || 'Activo'}</td>
+            <td>
+              <button type="button" class="btn-secondary" data-action="edit-sede" data-id="${sede.id_sede}">Editar</button>
+              <button type="button" class="btn-danger" data-action="delete-sede" data-id="${sede.id_sede}">Eliminar</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        showAlert('error', error.message || 'No se pudieron cargar las sedes.');
+      }
     }
 
-    // SOL-033
-    async function borrarDocumento(idDoc) {
-      if (!confirm("Eliminar este documento? Su historial se conserva.")) return;
+    async function saveEmpresa(event) {
+      event.preventDefault();
+      const idEmpresa = document.getElementById('empresaId').value;
+      const payload = {
+        nombre: document.getElementById('empresaNombre').value,
+        nit: document.getElementById('empresaNit').value,
+        ciudad: document.getElementById('empresaCiudad').value,
+        direccion: document.getElementById('empresaDireccion').value,
+        correo: document.getElementById('empresaCorreo').value
+      };
+
       try {
-        await api("/solicitudes/" + solicitudActual.id_solicitud + "/documentos/" + idDoc,
-                  { method: "DELETE" });
-        mostrar("Documento eliminado.", false);
-        cargarDocumentos();
-      } catch (e) { mostrar(e.message, true); }
+        const method = idEmpresa ? 'PUT' : 'POST';
+        const url = idEmpresa ? `/api/empresas/${idEmpresa}` : '/api/empresas/';
+        const res = await fetch(url, {
+          method,
+          headers: apiHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.detail || 'No se pudo guardar la empresa.');
+        }
+
+        const savedId = idEmpresa || data.id_empresa;
+        await loadEmpresasSelect();
+        document.getElementById('empresaSelect').value = savedId;
+        await loadEmpresaDetails(savedId);
+        await loadSedes(savedId);
+        showAlert('success', 'Empresa guardada correctamente.');
+        document.getElementById('empresaForm').reset();
+        document.getElementById('empresaId').value = savedId;
+      } catch (error) {
+        showAlert('error', error.message || 'No se pudo guardar la empresa.');
+      }
     }
 
-    // ---------- arranque ----------
-    cargarSolicitudes();
-    cargarNormas();
-  })();
+    async function saveSede(event) {
+      event.preventDefault();
+      const empresaId = document.getElementById('empresaSelect').value;
+      if (!empresaId) {
+        showAlert('error', 'Seleccione una empresa antes de guardar la sede.');
+        return;
+      }
+
+      const idSede = document.getElementById('sedeId').value;
+      const payload = {
+        nombre_sede: document.getElementById('sedeNombre').value,
+        direccion: document.getElementById('sedeDireccion').value,
+        ciudad: document.getElementById('sedeCiudad').value,
+        departamento: document.getElementById('sedeDepartamento').value,
+        pais: document.getElementById('sedePais').value,
+        es_principal: document.getElementById('sedePrincipal').value === 'true',
+        estado: document.getElementById('sedeEstado').value
+      };
+
+      try {
+        const method = idSede ? 'PUT' : 'POST';
+        const url = idSede ? `/api/empresas/${empresaId}/sedes/${idSede}` : `/api/empresas/${empresaId}/sedes`;
+        const res = await fetch(url, {
+          method,
+          headers: apiHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.detail || 'No se pudo guardar la sede.');
+        }
+
+        showAlert('success', 'Sede guardada correctamente.');
+        document.getElementById('sedeForm').reset();
+        document.getElementById('sedeId').value = '';
+        await loadSedes(empresaId);
+      } catch (error) {
+        showAlert('error', error.message || 'No se pudo guardar la sede.');
+      }
+    }
+
+    async function deleteSede(idSede) {
+      const empresaId = document.getElementById('empresaSelect').value;
+      if (!empresaId) return;
+
+      if (!confirm('¿Desea eliminar esta sede?')) return;
+
+      try {
+        const res = await fetch(`/api/empresas/${empresaId}/sedes/${idSede}`, {
+          method: 'DELETE',
+          headers: apiHeaders()
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.detail || 'No se pudo eliminar la sede.');
+        }
+
+        showAlert('success', 'Sede eliminada correctamente.');
+        await loadSedes(empresaId);
+      } catch (error) {
+        showAlert('error', error.message || 'No se pudo eliminar la sede.');
+      }
+    }
+
+    async function editSede(idSede) {
+      const empresaId = document.getElementById('empresaSelect').value;
+      if (!empresaId) return;
+
+      try {
+        const res = await fetch(`/api/empresas/${empresaId}/sedes/${idSede}`, { headers: apiHeaders() });
+        if (!res.ok) throw new Error('No se pudo cargar la sede');
+        const sede = await res.json();
+        document.getElementById('sedeId').value = sede.id_sede;
+        document.getElementById('sedeNombre').value = sede.nombre_sede || '';
+        document.getElementById('sedeDireccion').value = sede.direccion || '';
+        document.getElementById('sedeCiudad').value = sede.ciudad || '';
+        document.getElementById('sedeDepartamento').value = sede.departamento || '';
+        document.getElementById('sedePais').value = sede.pais || 'Colombia';
+        document.getElementById('sedePrincipal').value = String(Boolean(sede.es_principal));
+        document.getElementById('sedeEstado').value = sede.estado || 'Activo';
+        document.getElementById('sedeNombre').focus();
+      } catch (error) {
+        showAlert('error', error.message || 'No se pudo editar la sede.');
+      }
+    }
+
+    document.getElementById('empresaForm').addEventListener('submit', saveEmpresa);
+    document.getElementById('sedeForm').addEventListener('submit', saveSede);
+    document.getElementById('empresaSelect').addEventListener('change', (event) => {
+      const id = event.target.value;
+      loadEmpresaDetails(id);
+      loadSedes(id);
+    });
+    document.getElementById('resetEmpresaForm').addEventListener('click', () => {
+      document.getElementById('empresaForm').reset();
+      document.getElementById('empresaId').value = '';
+    });
+    document.getElementById('resetSedeForm').addEventListener('click', () => {
+      document.getElementById('sedeForm').reset();
+      document.getElementById('sedeId').value = '';
+    });
+    document.getElementById('sedesBody').addEventListener('click', (event) => {
+      const btn = event.target.closest('button');
+      if (!btn) return;
+      const { action, id } = btn.dataset;
+      if (action === 'edit-sede') editSede(id);
+      if (action === 'delete-sede') deleteSede(id);
+    });
+
+    document.getElementById('logout').addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.clear();
+      window.location.href = '/login';
+    });
+
+    loadEmpresasSelect();
   </script>
   <script src="/static/session.js"></script>
 </body>
