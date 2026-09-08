@@ -60,9 +60,9 @@ class UserService:
     hashed_pwd = hash_password(password)
 
     query = text("""
-            INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
-            VALUES (:nombre, :correo, :contrasena, 'Activo', 0, :rol, :tipo_doc, :num_doc)
-            RETURNING id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
+            INSERT INTO usuario (id_usuario, nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
+            VALUES (gen_random_uuid(), :nombre, :correo, :contrasena, 'Activo', 0, :rol, :tipo_doc, :num_doc)
+            RETURNING id_usuario, nombre, correo, estado, rol_id, tipo_doc, num_doc;
         """)
     try:
       result = await self.db.execute(

@@ -48,7 +48,7 @@ class AuthService:
         """
         Devuelve la fecha y hora actual en UTC (naive) para comparar con fechas de la BD.
         """
-        return system_now()
+        return datetime.now(timezone.utc).replace(tzinfo=None)
 
     def _a_naive_utc(self, valor: datetime) -> datetime:
         """

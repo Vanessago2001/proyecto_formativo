@@ -12,13 +12,13 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     contrasena: str = Field(..., min_length=6, max_length=100)
-    rol: int = Field(..., gt=0)
+    rol: str = Field(..., min_length=36, max_length=36)
 
 
 class UserResponse(UserBase):
-    id: UUID
+    id: UUID = Field(alias="id_usuario")
     estado: Literal["Activo", "Inactivo", "Bloqueado"]
-    rol_id: int
+    rol_id: UUID
     rol_nombre: Optional[str] = None
     # Estos campos pueden ser NULL en la base de datos
     tipo_doc: Optional[str] = None

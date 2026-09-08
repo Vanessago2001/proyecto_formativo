@@ -12,9 +12,8 @@ router = APIRouter(prefix="/users", tags=["Usuarios"])
 @router.get("/public-roles")
 async def read_public_roles(db: AsyncSession = Depends(get_db)):
     result = await db.execute(text("""
-        SELECT MIN(id_rol) AS id_rol, nombre FROM rol
+        SELECT id_rol, nombre FROM rol
         WHERE nombre IN ('Auditor', 'Empresa')
-        GROUP BY nombre
         ORDER BY nombre;
     """))
     return [dict(row) for row in result.mappings().all()]
