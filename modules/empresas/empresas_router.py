@@ -15,3 +15,19 @@ async def read_empresas(
     if current_user.get("role_name") != "Administrador":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso exclusivo para administradores.")
     return await EmpresasService(db).get_all_empresas()
+
+@router.get("/consulta-publica")
+async def consulta_publica(
+    codigo: str = "",
+    nit: str = "",
+    db: AsyncSession = Depends(get_db),
+):
+    return await EmpresasService(db).consulta_publica(codigo=codigo, nit=nit)
+
+
+@router.get("/buscar/{nit}")
+async def buscar_empresa_por_nit(
+    nit: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await EmpresasService(db).buscar_por_nit(nit)

@@ -294,6 +294,11 @@ async def auditor_page(request: Request):
 async def empresa_page(request: Request):
     return FileResponse("static/empresa.html")
 
+
+@app.get("/buscar_empresa", response_class=HTMLResponse)
+async def buscar_empresa_page(request: Request):
+    return FileResponse("static/buscar_e.html")
+
 @app.on_event("shutdown")
 async def shutdown_redis_pool():
     await redis_pool.disconnect()

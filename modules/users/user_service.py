@@ -13,7 +13,7 @@ class UserService:
   async def get_all_users(self) -> list[dict]:
     # Consulta con JOIN a rol para obtener el nombre del rol
     query = text("""
-        SELECT u.id_usuario AS id, u.nombre, u.correo, u.estado, u.rol_id, u.tipo_doc, u.num_doc,
+        SELECT u.id_usuario, u.nombre, u.correo, u.estado, u.rol_id, u.tipo_doc, u.num_doc,
                r.nombre AS rol_nombre
         FROM usuario u
         LEFT JOIN rol r ON u.rol_id = r.id_rol
@@ -60,9 +60,9 @@ class UserService:
     hashed_pwd = hash_password(password)
 
     query = text("""
-            INSERT INTO usuario (nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
-            VALUES (:nombre, :correo, :contrasena, 'Activo', 0, :rol, :tipo_doc, :num_doc)
-            RETURNING id_usuario AS id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
+            INSERT INTO usuario (id_usuario, nombre, correo, contrasena, estado, intentos_fallidos, rol_id, tipo_doc, num_doc)
+            VALUES (gen_random_uuid(), :nombre, :correo, :contrasena, 'Activo', 0, :rol, :tipo_doc, :num_doc)
+            RETURNING id_usuario, nombre, correo, estado, rol_id, tipo_doc, num_doc;
         """)
     try:
       result = await self.db.execute(
@@ -198,7 +198,7 @@ class UserService:
             UPDATE usuario 
             SET {', '.join(update_fields)} 
             WHERE id_usuario = :id_usuario 
-            RETURNING id_usuario AS id, nombre, correo, estado, rol_id, tipo_doc, num_doc;
+            RETURNING id_usuario, nombre, correo, estado, rol_id, tipo_doc, num_doc;
         """
 
     try:

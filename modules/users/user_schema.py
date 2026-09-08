@@ -12,12 +12,19 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     contrasena: str = Field(..., min_length=6, max_length=100)
-    # rol es el id_rol de la tabla `rol`, que es UUID.
+    # rol es el id_rol de la tabla `rol`, que es UUID. Se declara como UUID
+    # y no como str para que Pydantic valide que sea uno de verdad; por el
+    # cable viaja igual, como cadena.
     rol: UUID
 
 
 class UserResponse(UserBase):
-    id: UUID
+    # La columna de la base se llama id_usuario, pero hacia fuera el campo
+    # se sigue llamando "id", que es lo que espera el frontend.
+    # `alias` a secas cambiaria tambien la salida, porque FastAPI serializa
+    # los response_model con by_alias=True; `validation_alias` solo afecta
+    # a la entrada.
+    id: UUID = Field(validation_alias="id_usuario")
     estado: Literal["Activo", "Inactivo", "Bloqueado"]
     rol_id: UUID
     rol_nombre: Optional[str] = None
@@ -25,7 +32,14 @@ class UserResponse(UserBase):
     tipo_doc: Optional[str] = None
     num_doc: Optional[str] = None
 
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+    # populate_by_name deja que el modelo acepte tanto "id_usuario"
+    # (el nombre real de la columna) como "id", para que una consulta
+    # que use un alias no rompa la validacion de la respuesta.
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+        populate_by_name=True,
+    )
 
     @field_serializer("id")
     def serialize_id(self, value):
