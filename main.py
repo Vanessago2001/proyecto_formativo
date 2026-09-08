@@ -258,17 +258,11 @@ async def lifespan(app: FastAPI):
     logger.info("  Documentación interactiva: http://127.0.0.1:8000/docs")
     logger.info("==========================================================")
     await seed_initial_data()
-<<<<<<< HEAD
-    await preparar_modulo_solicitudes()   # M5
-    yield
-    logger.info("Cerrando recursos de la API de forma segura.")
-=======
     try:
         yield
     finally:
         logger.info("Cerrando recursos de la API de forma segura.")
         await redis_pool.disconnect()
->>>>>>> 533fbb2 (Modulos empresa y apelaciones)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -415,7 +409,6 @@ async def auditor_page(request: Request):
 async def empresa_page(request: Request):
     return FileResponse("static/empresa.html")
 
-<<<<<<< HEAD
 
 @app.get("/buscar_empresa", response_class=HTMLResponse)
 async def buscar_empresa_page(request: Request):
@@ -424,5 +417,3 @@ async def buscar_empresa_page(request: Request):
 @app.on_event("shutdown")
 async def shutdown_redis_pool():
     await redis_pool.disconnect()
-=======
->>>>>>> 533fbb2 (Modulos empresa y apelaciones)

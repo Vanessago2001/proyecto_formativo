@@ -63,52 +63,6 @@ async def get_empresas(
 ):
     return await EmpresasService(db).get_all_empresas()
 
-<<<<<<< HEAD
-@router.get("/consulta-publica")
-async def consulta_publica(
-    codigo: str = "",
-    nit: str = "",
-    db: AsyncSession = Depends(get_db),
-):
-    return await EmpresasService(db).consulta_publica(codigo=codigo, nit=nit)
-
-
-@router.get("/buscar/{nit}")
-async def buscar_empresa_por_nit(
-    nit: str,
-    db: AsyncSession = Depends(get_db),
-):
-    return await EmpresasService(db).buscar_por_nit(nit)
-
-
-@router.get(
-    "/constancia/{nit}/pdf",
-    summary="Descargar constancia de la empresa en PDF (público)",
-    response_class=Response,
-)
-async def descargar_constancia_pdf(
-    nit: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Devuelve la constancia con los datos de la tarjeta como PDF descargable."""
-    empresas = await EmpresasService(db).buscar_por_nit(nit)
-    if not empresas:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No hay empresas registradas con ese NIT.",
-        )
-    empresa = empresas[0]
-    pdf = generar_pdf_constancia(empresa)
-    nombre_archivo = f"constancia-{empresa.get('nit') or 'empresa'}.pdf"
-
-    return Response(
-        content=pdf,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="{nombre_archivo}"',
-        },
-    )
-=======
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_empresa(
@@ -222,4 +176,3 @@ async def get_documentos_empresa(
     current_user: dict = Depends(require_role(["superadmin", "admin", "auxiliar", "empresa"]))
 ):
     return await EmpresasService(db).get_documentos_by_empresa(id_empresa)
->>>>>>> 533fbb2 (Modulos empresa y apelaciones)
