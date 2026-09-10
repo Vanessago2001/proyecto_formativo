@@ -22,6 +22,8 @@ from modules.alejandra.router import router as alejandra_router
 from core.redis_client import redis_pool
 
 from modules.system.system_router import router as system_router
+from modules.asignacion_auditores.asignacion_router import router as asignacion_auditores_router
+
 
 # Modulo heredado de otro proyecto: su tabla `tareas` no existe en esta base
 # de datos, asi que sus endpoints devolvian 500. El codigo se conserva en
@@ -287,6 +289,7 @@ app.include_router(apelaciones_router)
 app.include_router(alejandra_router)
 app.include_router(mfa_router)
 app.include_router(system_router)
+app.include_router(asignacion_auditores_router)
 # app.include_router(tarea_router)   # modulo heredado, ver nota arriba
 
 # M5 - Gestion de solicitudes
@@ -319,6 +322,12 @@ async def register_page(request: Request):
 async def reset_password_page(request: Request):
     """Sirve la página para crear una nueva contraseña (enlace del correo)."""
     return FileResponse("static/reset-password.html")
+
+@app.get("/asignacion-auditores")
+async def asignacion_auditores_page():
+    return FileResponse(
+        "static/asignacion-auditores.html"
+    )
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
