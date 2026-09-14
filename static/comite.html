@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CertiSENA | Comité de certificación</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body class="comite-page">
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Comité de certificación</p>
+        </div>
+      </div>
+      <div class="comite-header-user">
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="comite-shell">
+    <div class="comite-layout">
+      <aside class="comite-sidebar" aria-label="Navegación del comité">
+        <div class="comite-sidebar-heading">
+          <span class="comite-kicker">Módulo M8</span>
+          <strong>Certificación</strong>
+        </div>
+        <nav>
+          <button class="comite-nav-link active" type="button" data-view="expedientes">Expedientes pendientes</button>
+          <button class="comite-nav-link" type="button" data-view="historico">Historial de Decisiones</button>
+        </nav>
+        <div class="comite-access-note">
+          <span id="roleLabel">Validando permisos...</span>
+          <small>Las acciones visibles dependen del rol autenticado.</small>
+        </div>
+      </aside>
+
+      <section class="comite-content">
+        <div class="comite-page-heading">
+          <div>
+            <span class="comite-kicker">Mesa de revisión</span>
+            <h2 id="viewTitle">Expedientes pendientes</h2>
+            <p id="viewDescription">Consulta los expedientes y revisa la información necesaria para emitir un dictamen.</p>
+          </div>
+          <button id="refreshButton" class="comite-button secondary" type="button">Actualizar</button>
+        </div>
+
+        <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
+
+        <section id="expedientesView">
+          <div class="comite-toolbar">
+            <form id="searchForm" class="comite-search-form">
+              <label for="searchInput">Buscar expediente</label>
+              <div class="comite-search-row">
+                <input id="searchInput" type="search" placeholder="NIT o código del expediente">
+                <button class="comite-button primary" type="submit">Buscar</button>
+              </div>
+            </form>
+            <div class="comite-filter-group">
+              <div>
+                <label for="normaFilter">Norma</label>
+                <select id="normaFilter">
+                  <option value="">Todas</option>
+                  <option value="ISO 9001">ISO 9001</option>
+                  <option value="ISO 14001">ISO 14001</option>
+                  <option value="ISO 45001">ISO 45001</option>
+                </select>
+              </div>
+              <div>
+                <label for="sectorFilter">Sector</label>
+                <input id="sectorFilter" type="text" placeholder="Todos los sectores">
+              </div>
+              <button id="filterButton" class="comite-button secondary" type="button">Filtrar</button>
+            </div>
+          </div>
+
+          <div class="comite-workspace">
+            <section class="comite-panel comite-list-panel">
+              <div class="comite-panel-heading">
+                <div>
+                  <h3>Cola de expedientes</h3>
+                  <p id="resultCount">Cargando expedientes...</p>
+                </div>
+              </div>
+              <div class="comite-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Empresa</th>
+                      <th>Norma</th>
+                      <th>Estado</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="expedientesBody"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section id="detailPanel" class="comite-panel comite-detail-panel" aria-live="polite">
+              <div class="comite-empty-state">
+                <span class="comite-empty-icon">+</span>
+                <h3>Selecciona un expediente</h3>
+                <p>El detalle, los hallazgos y las acciones aparecerán aquí.</p>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="historicoView" class="comite-panel comite-history-view comite-view-hidden" hidden>
+          <div class="comite-panel-heading">
+            <div>
+              <h3>Historial de decisiones</h3>
+              <p>Consulta el registro consolidado de decisiones del comité.</p>
+            </div>
+            <button id="exportButton" class="comite-button secondary" type="button">Exportar decisiones</button>
+          </div>
+          <div id="historyContent" class="comite-history-content">Cargando historial...</div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const payload = parseToken(token);
+      const role = String(payload && (payload.role_name || payload.rol || "") || "").trim().toLowerCase();
+      const roleLabel = payload && (payload.role_name || payload.rol) ? payload.role_name || payload.rol : "Usuario";
+      const canDecide = ["superadm", "superadmin", "superadministrador", "adm", "admin", "administrador", "comite", "comité"].includes(role);
+      const canConsult = ["superadm", "superadmin", "superadministrador", "adm", "admin", "administrador", "aux", "auxiliar", "comite", "comité"].includes(role);
+      const isSuperAdmin = ["superadm", "superadmin", "superadministrador"].includes(role);
+      const state = { selectedId: null, expedientes: [] };
+
+      const $ = (selector) => document.querySelector(selector);
+      const feedback = $("#feedback");
+      const userLabel = $("#userLabel");
+      const roleLabelElement = $("#roleLabel");
+      if (userLabel) userLabel.textContent = payload && payload.sub ? payload.sub : "Sesión activa";
+      if (roleLabelElement) roleLabelElement.textContent = "Rol: " + roleLabel;
+
+      if (!canConsult) {
+        showFeedback("Tu rol no tiene permisos de consulta para el módulo de Comité.", "error");
+        $("#refreshButton").disabled = true;
+      }
+
+      function parseToken(value) {
+        try {
+          const part = value.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+          return JSON.parse(decodeURIComponent(atob(part).split("").map((character) => "%" + ("00" + character.charCodeAt(0).toString(16)).slice(-2)).join("")));
+        } catch (_) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
+        }
+      }
+
+      async function api(path, options) {
+        const requestOptions = Object.assign({}, options || {}, {
+          headers: Object.assign({ Authorization: "Bearer " + token }, (options && options.headers) || {})
+        });
+        const response = await fetch(path, requestOptions);
+        const type = response.headers.get("content-type") || "";
+        const body = type.includes("json") ? await response.json().catch(() => null) : null;
+        if (response.status === 401) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
+        }
+        if (!response.ok) {
+          const detail = body && body.detail;
+          throw new Error(typeof detail === "string" ? detail : "No fue posible completar la solicitud.");
+        }
+        return body;
+      }
+
+      function showFeedback(message, type) {
+        feedback.textContent = message || "";
+        feedback.className = "comite-feedback" + (message ? " " + type : "");
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      }
+
+      function statusClass(value) {
+        const normalized = String(value || "").toLowerCase();
+        if (normalized.includes("aprob") || normalized.includes("certif")) return "approved";
+        if (normalized.includes("rechaz") || normalized.includes("negad")) return "rejected";
+        return "pending";
+      }
+
+      async function loadExpedientes() {
+        if (!canConsult) return;
+        $("#resultCount").textContent = "Cargando expedientes...";
+        try {
+          const response = await api("/comite/expedientes-pendientes");
+          state.expedientes = Array.isArray(response && response.expedientes) ? response.expedientes : [];
+          renderExpedientes(state.expedientes);
+          showFeedback("Expedientes actualizados.", "success");
+        } catch (error) {
+          renderExpedientes([]);
+          showFeedback(error.message, "error");
+        }
+      }
+
+      function renderExpedientes(items) {
+        const body = $("#expedientesBody");
+        $("#resultCount").textContent = items.length + (items.length === 1 ? " expediente" : " expedientes");
+        if (!items.length) {
+          body.innerHTML = '<tr><td colspan="5"><div class="comite-table-empty">No hay expedientes para mostrar con los filtros actuales.</div></td></tr>';
+          return;
+        }
+        body.innerHTML = items.map((item) => {
+          const id = item.id || item.expediente_id || item.codigo;
+          const company = item.empresa || item.solicitante || item.nombre_empresa || "Sin empresa";
+          const status = item.estado || "Pendiente";
+          return '<tr>' +
+            '<td><strong>' + escapeHtml(item.codigo || id) + '</strong></td>' +
+            '<td>' + escapeHtml(company) + '</td>' +
+            '<td>' + escapeHtml(item.norma || "Sin norma") + '</td>' +
+            '<td><span class="comite-status ' + statusClass(status) + '">' + escapeHtml(status) + '</span></td>' +
+            '<td><button class="comite-table-action" type="button" data-expediente="' + escapeHtml(id) + '">Revisar</button></td>' +
+            '</tr>';
+        }).join("");
+        body.querySelectorAll("[data-expediente]").forEach((button) => {
+          button.addEventListener("click", () => loadDetail(button.dataset.expediente));
+        });
+      }
+
+      async function loadDetail(id) {
+        state.selectedId = id;
+        const panel = $("#detailPanel");
+        panel.innerHTML = '<div class="comite-loading">Cargando expediente...</div>';
+        try {
+          const [detail, report, nonconformities, observations, auditor] = await Promise.all([
+            api("/comite/expediente-completo/" + encodeURIComponent(id)),
+            api("/comite/informe-auditor/" + encodeURIComponent(id)),
+            api("/comite/no-conformidades/" + encodeURIComponent(id)),
+            api("/comite/observaciones-tecnicos/" + encodeURIComponent(id)),
+            api("/comite/auditor-responsable/" + encodeURIComponent(id))
+          ]);
+          renderDetail(id, detail, report, nonconformities, observations, auditor);
+        } catch (error) {
+          panel.innerHTML = '<div class="comite-empty-state"><h3>No se pudo cargar el expediente</h3><p>' + escapeHtml(error.message) + '</p></div>';
+          showFeedback(error.message, "error");
+        }
+      }
+
+      function renderDetail(id, detail, report, nonconformities, observations, auditor) {
+        const expediente = detail && detail.expediente ? detail.expediente : {};
+        const nonconformityItems = nonconformities && nonconformities.no_conformidades || [];
+        const observationItems = observations && observations.observaciones || [];
+        const reportData = report && report.informe || {};
+        const decisionActions = canDecide ? '<div class="comite-decision-actions">' +
+          '<button class="comite-button secondary" data-decision="/comite/decision-borrador">Guardar borrador</button>' +
+          '<button class="comite-button danger" data-decision="/comite/rechazar">Rechazar</button>' +
+          '<button class="comite-button primary" data-decision="/comite/aprobar">Aprobar otorgamiento</button>' +
+          '</div>' : '<p class="comite-readonly-note">Tu rol tiene permisos de consulta. Las acciones de decisión están restringidas.</p>';
+
+        $("#detailPanel").innerHTML =
+          '<div class="comite-detail-heading"><div><span class="comite-kicker">Expediente seleccionado</span><h3>' + escapeHtml(expediente.id || id) + '</h3></div>' +
+          '<span class="comite-status ' + statusClass(expediente.estado) + '">' + escapeHtml(expediente.estado || "Pendiente") + '</span></div>' +
+          '<dl class="comite-facts">' +
+          fact("Solicitante", expediente.solicitante || "No informado") +
+          fact("Auditor", auditor && auditor.auditor || "No asignado") +
+          fact("Resultado auditor", reportData.resultado || "Pendiente") +
+          fact("Fecha informe", reportData.fecha || "No informado") +
+          '</dl>' +
+          '<div class="comite-detail-section"><h4>Documentos y evidencias</h4><div class="comite-detail-list">' +
+          '<button class="comite-resource" data-resource="/comite/expediente-descargar/' + escapeHtml(id) + '">Descargar expediente digital <span>COM-003</span></button>' +
+          '<button class="comite-resource" data-resource="/comite/evidencias-fisicas/' + escapeHtml(id) + '">Consultar evidencias físicas <span>COM-005</span></button>' +
+          '<button class="comite-resource" data-resource="/comite/acta-firmada/' + escapeHtml(id) + '">Descargar acta firmada <span>COM-026</span></button>' +
+          '</div></div>' +
+          '<div class="comite-detail-section"><h4>Consultas relacionadas</h4><div class="comite-detail-list">' +
+          '<button class="comite-resource" data-resource="/comite/empresa-evaluada/' + escapeHtml(id) + '">Consultar datos de la empresa <span>COM-023</span></button>' +
+          '<button class="comite-resource" data-resource="/comite/historial-por-empresa/' + escapeHtml(id) + '">Consultar historial por empresa <span>COM-021</span></button>' +
+          '<button class="comite-resource" data-resource="/comite/historial-solicitudes-previas/' + escapeHtml(id) + '">Consultar solicitudes previas <span>COM-007</span></button>' +
+          '</div></div>' +
+          '<div class="comite-detail-section"><h4>No conformidades (' + nonconformityItems.length + ')</h4>' + renderItems(nonconformityItems, "No hay no conformidades registradas.") + '</div>' +
+          '<div class="comite-detail-section"><h4>Observaciones técnicas</h4>' + renderItems(observationItems, "No hay observaciones registradas.") + '</div>' +
+          '<div class="comite-detail-section"><h4>Dictamen del comité</h4><label for="decisionComment">Comentario de la decisión</label><textarea id="decisionComment" rows="3" placeholder="Registra la justificación o las observaciones del comité"></textarea>' + decisionActions + '</div>' +
+          (canDecide ? '<div class="comite-detail-section"><h4>Acta y seguimiento</h4><div class="comite-decision-actions">' +
+            '<button class="comite-button secondary" data-decision="/comite/decisiones">Registrar decisión</button>' +
+            '<button class="comite-button secondary" data-decision="/comite/solicitar-info-adicional">Solicitar información</button>' +
+            '<button class="comite-button secondary" data-decision="/comite/observaciones-acta">Agregar observación al acta</button>' +
+            '<button class="comite-button secondary" data-decision="/comite/restricciones-alcance">Registrar restricción</button>' +
+            '<button class="comite-button secondary" data-decision="/comite/comentarios-debate">Comentar debate</button>' +
+            '<button class="comite-button secondary" data-decision="/comite/acta-definitiva">Generar acta definitiva</button>' +
+            '<button class="comite-button secondary" data-decision="/comite/firmar-acta">Firmar acta</button>' +
+            '<button class="comite-button danger" data-decision="/comite/cerrar-expediente">Cerrar expediente</button>' +
+            (isSuperAdmin ? '<button class="comite-button danger" data-decision="/comite/reabrir-dictamen">Reabrir dictamen</button>' : '') +
+            '</div></div>' : '');
+
+        $("#detailPanel").querySelectorAll("[data-decision]").forEach((button) => button.addEventListener("click", () => submitDecision(button.dataset.decision)));
+        $("#detailPanel").querySelectorAll("[data-resource]").forEach((button) => button.addEventListener("click", () => loadResource(button.dataset.resource)));
+      }
+
+      function fact(label, value) {
+        return '<div><dt>' + label + '</dt><dd>' + escapeHtml(value) + '</dd></div>';
+      }
+
+      function renderItems(items, emptyText) {
+        if (!items.length) return '<p class="comite-muted">' + emptyText + '</p>';
+        return '<ul class="comite-item-list">' + items.map((item) => '<li><strong>' + escapeHtml(item.codigo || item.tecnico || item.tipo || "Registro") + '</strong><span>' + escapeHtml(item.descripcion || item.comentario || item.ubicacion || item.estado || "Sin detalle") + '</span></li>').join("") + '</ul>';
+      }
+
+      async function loadResource(path) {
+        try {
+          const result = await api(path);
+          showFeedback(result && (result.permiso || "Consulta completada.") || "Consulta completada.", "success");
+        } catch (error) {
+          showFeedback(error.message, "error");
+        }
+      }
+
+      async function submitDecision(path) {
+        if (!state.selectedId) return;
+        const comment = $("#decisionComment").value.trim();
+        if (!comment) {
+          showFeedback("Escribe un comentario antes de registrar la decisión.", "error");
+          $("#decisionComment").focus();
+          return;
+        }
+        try {
+          await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expediente_id: state.selectedId, comentario: comment }) });
+          showFeedback("La acción del comité fue registrada.", "success");
+        } catch (error) {
+          showFeedback(error.message, "error");
+        }
+      }
+
+      async function loadHistory() {
+        $("#historyContent").textContent = "Cargando historial...";
+        try {
+          const response = await api("/comite/decisiones-historicas");
+          const decisions = response && response.decisiones || [];
+          $("#historyContent").innerHTML = decisions.length ? '<pre>' + escapeHtml(JSON.stringify(decisions, null, 2)) + '</pre>' : '<div class="comite-table-empty">Todavía no hay decisiones históricas para mostrar.</div>';
+        } catch (error) {
+          $("#historyContent").textContent = error.message;
+        }
+      }
+
+      async function searchExpediente(event) {
+        event.preventDefault();
+        const query = $("#searchInput").value.trim();
+        if (!query) return loadExpedientes();
+        try {
+          const response = await api("/comite/buscar-expediente?query=" + encodeURIComponent(query));
+          state.expedientes = response && response.resultados || [];
+          renderExpedientes(state.expedientes);
+        } catch (error) {
+          showFeedback(error.message, "error");
+        }
+      }
+
+      async function filterExpedientes() {
+        const params = new URLSearchParams();
+        if ($("#normaFilter").value) params.set("norma", $("#normaFilter").value);
+        if ($("#sectorFilter").value.trim()) params.set("sector", $("#sectorFilter").value.trim());
+        try {
+          const response = await api("/comite/filtrar-expedientes?" + params.toString());
+          state.expedientes = response && response.resultados || [];
+          renderExpedientes(state.expedientes);
+        } catch (error) {
+          showFeedback(error.message, "error");
+        }
+      }
+
+      function showView(viewName) {
+        const historical = viewName === "historico";
+        const expedientesView = $("#expedientesView");
+        const historicoView = $("#historicoView");
+        if (!expedientesView || !historicoView) return;
+
+        document.querySelectorAll(".comite-nav-link").forEach((item) => {
+          item.classList.toggle("active", item.dataset.view === viewName);
+        });
+        expedientesView.hidden = historical;
+        historicoView.hidden = !historical;
+        expedientesView.classList.toggle("comite-view-hidden", historical);
+        historicoView.classList.toggle("comite-view-hidden", !historical);
+        $("#viewTitle").textContent = historical ? "Historial de decisiones" : "Expedientes pendientes";
+        $("#viewDescription").textContent = historical ? "Consulta el registro consolidado de decisiones del comité." : "Consulta los expedientes y revisa la información necesaria para emitir un dictamen.";
+        if (historical) loadHistory();
+      }
+
+      document.querySelectorAll(".comite-nav-link").forEach((link) => link.addEventListener("click", () => showView(link.dataset.view)));
+
+      $("#searchForm").addEventListener("submit", searchExpediente);
+      $("#filterButton").addEventListener("click", filterExpedientes);
+      $("#refreshButton").addEventListener("click", loadExpedientes);
+      $("#exportButton").addEventListener("click", () => loadResource("/comite/exportar-decisiones"));
+      $("#logoutButton").addEventListener("click", () => { localStorage.clear(); window.location.href = "/login"; });
+      loadExpedientes();
+    })();
+  </script>
+</body>
+
+</html>

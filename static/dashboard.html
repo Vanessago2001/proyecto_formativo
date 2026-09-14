@@ -212,6 +212,21 @@
       display: none;
     }
 
+    .committee-access-note {
+      margin-top: 24px;
+      padding: 16px;
+      border-left: 4px solid #3baa01;
+      background: #f1f8ed;
+      color: #365314;
+      line-height: 1.5;
+    }
+
+    .committee-access-note strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #256d00;
+    }
+
     @media (max-width: 800px) {
       .app-shell {
         padding: 18px;
@@ -264,7 +279,7 @@
     <div id="adminView" class="admin-grid non-admin">
       <nav class="admin-nav">
         <a class="active" href="/dashboard">Resumen</a><a href="/empresas">Empresas registradas</a><a
-          href="#usuarios">Gestionar usuarios</a><a href="/asignacion-auditores">Asignación de auditores</a><a href="/profile">Mi perfil</a>
+          href="#usuarios">Gestionar usuarios</a><a href="/asignacion-auditores">Asignación de auditores</a><a href="/comite">Ir al Comité de certificación</a><a href="/profile">Mi perfil</a>
         <a href="#" id="mfaLink">Activar autenticación en dos pasos</a>
         <a href="/login" id="logoutLink">Cerrar sesion</a>
       </nav>
@@ -312,6 +327,10 @@
               </button>
             </div>
           </form>
+          <div class="committee-access-note">
+            <strong>¿Cómo habilitar a una persona para el Comité?</strong>
+            En el campo «Permiso o rol», selecciona <b>Comité</b> al crear la cuenta. Para un usuario existente, cambia su rol a <b>Comité</b> en la tabla «Control de usuarios». La persona debe quedar en estado <b>Activo</b>; después podrá iniciar sesión y será enviada automáticamente al módulo de Comité.
+          </div>
         </section>
         <section class="surface" style="margin-top: 24px">
           <h3>Control de usuarios</h3>

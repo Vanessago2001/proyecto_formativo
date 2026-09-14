@@ -347,11 +347,13 @@
                 console.log(payload);
 
                 const destination =
-                    payload.role_name === "Auditor"
-                        ? "/auditor"
-                        : payload.role_name === "Empresa"
-                            ? "/empresa"
-                            : "/dashboard";
+                    ["Comité", "Comite", "comité", "comite"].includes(payload.role_name)
+                        ? "/comite"
+                        : payload.role_name === "Auditor"
+                            ? "/auditor"
+                            : payload.role_name === "Empresa"
+                                ? "/empresa"
+                                : "/dashboard";
 
                 console.log("Destino:", destination);
 
@@ -443,11 +445,13 @@
                     console.log("Rol:", payload.role_name);
 
                     const destination =
-                        payload.role_name === "Auditor"
-                            ? "/auditor"
-                            : payload.role_name === "Empresa"
-                                ? "/empresa"
-                                : "/dashboard";
+                        ["Comité", "Comite", "comité", "comite"].includes(payload.role_name)
+                            ? "/comite"
+                            : payload.role_name === "Auditor"
+                                ? "/auditor"
+                                : payload.role_name === "Empresa"
+                                    ? "/empresa"
+                                    : "/dashboard";
 
                     console.log("Destino:", destination);
                     window.location.href = destination;

@@ -197,6 +197,7 @@ async def seed_initial_data() -> None:
                 ("Empresa", "Puede registrar documentos y solicitudes"),
                 ("Auxiliar", "Cuenta interna creada por el administrador"),
                 ("Administrador", "Acceso total al sistema"),
+                ("Comité", "Puede revisar expedientes y registrar decisiones de certificación"),
                 ("Instructor", "Rol heredado; sin permisos en los modulos de certificacion"),
                 ("Aprendiz", "Usuario estándar"),
             ]
@@ -328,6 +329,11 @@ async def asignacion_auditores_page():
     return FileResponse(
         "static/asignacion-auditores.html"
     )
+
+
+@app.get("/comite", response_class=HTMLResponse)
+async def comite_page(request: Request):
+    return FileResponse("static/comite.html")
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
