@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Responsables** | Marlon y Vanessa — apoyo de Javier |
-| **Implementado** | Bloque 1 (SOL-001 → 010) y Bloque 4 (SOL-031 → 040) |
-| **Pendiente** | Bloques 2, 3, 5, 6 y 7 |
-| **Tamaño** | 23 endpoints · ~2.600 líneas · 173 tests |
+| **Implementado** | Bloques 1 a 4 (SOL-001 → 040) |
+| **Pendiente** | Bloques 5, 6 y 7 |
+| **Tamaño** | 43 endpoints · 40 permisos · 366 tests |
 
 ---
 
@@ -25,8 +25,8 @@ Una empresa que quiere certificarse tiene que hacer dos cosas:
 M5 cubre esas dos cosas: **el trámite y sus papeles**.
 
 Lo que hace especial al módulo es que **cada acción está atada a un permiso
-del Excel de la institución**. No hay reglas de acceso improvisadas: los 20
-permisos de la hoja se transcriben a código, y un test verifica que sigan
+del Excel de la institución**. No hay reglas de acceso improvisadas: los 40
+permisos implementados se transcriben a código, y un test verifica que sigan
 coincidiendo.
 
 ---
@@ -203,7 +203,102 @@ escribir fuera de la carpeta. Hay un test que lo comprueba.
 
 ---
 
-## 5. Decisiones que tomé y por qué
+## 5. Información general y sedes (bloques 2 y 3)
+
+### Registrar no es lo mismo que editar
+
+En la hoja son permisos distintos (SOL-011 registrar norma / SOL-012 editarla),
+así que el código los separa igual que subir y reemplazar un documento:
+
+| Acción | Si el dato… | Respuesta |
+|---|---|---|
+| Registrar | ya existe | `409` indicando el permiso de edición |
+| Editar | todavía no existe | `409` indicando el permiso de registro |
+
+El número de sedes (SOL-019) solo tiene permiso de registro: si ya está, el
+`409` remite a editar el borrador (SOL-003).
+
+Los alcances y los procesos clave viven en `alcance_solicitud` y
+`proceso_solicitud`. La hoja no da permiso para borrarlos, así que se pasan a
+`Inactivo` con el permiso de edición. Dos procesos activos no pueden llamarse
+igual.
+
+`GET /solicitudes/{id}/informacion-general` (SOL-020) lo reúne todo: empresa,
+norma, alcances, procesos, sedes incluidas y **qué campos faltan para radicar**.
+
+### Las sedes son de la empresa, no de la solicitud
+
+```
+  empresa ──< sede_empresa >──< solicitud_sede >── solicitud
+                (la sede física)      (el vínculo y su estado)
+```
+
+Una sede se registra una vez y se reutiliza en varias solicitudes. De ahí
+salen las reglas:
+
+| Regla | Qué responde |
+|---|---|
+| Agregar una sede existente de **otra** empresa | `404` |
+| Agregar una sede `Inactiva` o ya incluida | `409` |
+| Quitar una sede (SOL-023) no la borra: el vínculo pasa a `Excluida` y se reactiva si se vuelve a agregar | `200` |
+| Inactivar una sede (SOL-023) la quita de la solicitud y la marca `Inactiva` en la empresa | `200` |
+| Cambiar o inactivar una sede que ya está en **otra solicitud radicada** | `409`: se alteraría un expediente presentado |
+
+### Registrar la sede y su ubicación
+
+- **SOL-021** incluye una sede que la empresa ya tiene registrada. El portal la
+  elige de `GET /solicitudes/{id}/sedes/disponibles` (sedes activas que aún no
+  están en la solicitud).
+- **SOL-024** tiene ruta propia, `POST /solicitudes/{id}/sedes/nueva`: registra
+  la sede con su dirección y la incluye. Verifica además SOL-021, SOL-026
+  (ciudad) y SOL-027 (departamento) con `exigir_permisos(...)`.
+- **Ciudad, departamento y país solo se indican al registrar la sede.** No hay
+  ninguna ruta para cambiarlos: si están mal, la sede se inactiva y se registra
+  otra. Así una sede nunca "se muda" dentro de un expediente.
+- **SOL-025** corrige la dirección y **SOL-022** el nombre y cuál es la
+  principal.
+
+### Validación de Administración (SOL-029)
+
+Solo sobre solicitudes ya radicadas. Cada sede queda `Validada` o
+`Con observaciones`, y se reportan las inconsistencias:
+
+- sedes sin dirección, ciudad o departamento, o ya inactivas en la empresa;
+- que no haya sedes, o que no coincidan con el número declarado (SOL-019);
+- que no haya exactamente una sede principal.
+
+### Exportación a Excel (SOL-030)
+
+El `.xlsx` se genera con la librería estándar, igual que el PDF: **ninguna
+dependencia nueva**. Todas las celdas son texto, así que un nombre de sede como
+`=HYPERLINK(...)` se muestra tal cual y nunca se ejecuta como fórmula.
+
+### Portal de empresa
+
+`/empresa` usa los mismos componentes que el portal del Comité (encabezado,
+menú lateral, paneles, tablas y estados de `styles.css`), para que todo el
+proyecto se vea igual. El menú tiene cinco vistas: **Mis solicitudes**,
+**Nueva solicitud**, **Información técnica** (bloque 2), **Sedes** (bloque 3) y
+**Documentos** (bloque 4). Si la solicitud ya no está en borrador, las vistas
+se muestran en solo lectura.
+
+### Revisión de Administración
+
+`/revision-solicitudes` (enlace *Revisión de solicitudes* en el panel del
+administrador) usa el mismo diseño. Muestra la cola de solicitudes radicadas,
+en revisión o todas; al revisar una se ven la empresa, la norma y sus sedes, y
+se puede **validar las sedes** (SOL-029), exportarlas a Excel y descargar el
+PDF. Solo entran Administrador, Auxiliar y Super Administrador.
+
+### Estados antiguos de la base
+
+La base tiene solicitudes con estados que M5 no usa (`APROBADO`, `EN_REVISION`,
+`RADICADO`). Antes el listado respondía `500` al encontrarlas; ahora se
+muestran tal cual y cualquier intento de modificarlas responde `409`.
+
+---
+
+## 6. Decisiones que tomé y por qué
 
 Esto es lo que probablemente pregunten.
 
@@ -211,7 +306,8 @@ Esto es lo que probablemente pregunten.
 
 El esquema ya existía. El módulo se escribió contra `solicitud`,
 `documento_solicitud`, `historial_documento_solicitud`, `historial_estado`,
-`user_empresa`, `empresa` y `norma`. **Cero tablas nuevas, cero columnas
+`user_empresa`, `empresa`, `norma`, `alcance_solicitud`, `proceso_solicitud`,
+`sede_empresa` y `solicitud_sede`. **Cero tablas nuevas, cero columnas
 alteradas.**
 
 Al arrancar solo se añade lo que faltaba: la secuencia del radicado, tres
@@ -244,16 +340,18 @@ iba dentro de la misma transacción y se habría perdido con el rollback.
 
 ---
 
-## 6. Los tests
+## 7. Los tests
 
-**173 tests propios del módulo**, y ninguno necesita base de datos: usan un
+**366 tests propios del módulo**, y ninguno necesita base de datos: usan un
 doble en memoria (`tests/fake_db.py`).
 
 | Grupo | Tests | Qué comprueba |
 |---|---|---|
-| Conformidad con el Excel | 7 | Que la matriz coincida con la hoja, celda por celda |
-| Autorización | 141 | Las 20 acciones × los 7 roles, más el caso sin token |
-| Ciclo de vida | 18 | Estados, radicado consecutivo, borrado lógico, aislamiento entre empresas, PDF |
+| Conformidad con el Excel | 9 | Que la matriz coincida con la hoja, celda por celda |
+| Autorización | 283 | Las 40 rutas × los 7 roles, el caso sin token y los permisos que verifica SOL-024 |
+| Ciclo de vida | 22 | Estados, radicado consecutivo, borrado lógico, aislamiento entre empresas, PDF, estados antiguos |
+| Información general | 19 | Registrar vs. editar, procesos sin nombres repetidos, estados antiguos, consulta general |
+| Sedes | 26 | Ubicación fija al crear, inactivar, sedes disponibles, expedientes radicados, validación, Excel |
 | Documentos | 7 | Reglas de formato y saneado del nombre de archivo |
 
 ```bash
@@ -263,7 +361,7 @@ pytest tests/ -q
 
 ---
 
-## 7. Guion para la demostración
+## 8. Guion para la demostración
 
 Entrar en `/login` con una cuenta de rol **Empresa**.
 
@@ -279,17 +377,30 @@ Entrar en `/login` con una cuenta de rol **Empresa**.
 Para enseñar los permisos: entrar con un **Auditor** y comprobar que ve la
 solicitud pero **no puede crear ninguna** (`403`).
 
+Bloques 2 y 3, sobre un borrador y desde el mismo portal:
+
+7. **Información técnica** → registrar un proceso "Compras" y otro con el mismo
+   nombre → el segundo se rechaza
+8. **Sedes** → *Registrar sede nueva* → el portal advierte que ciudad y
+   departamento no se podrán cambiar
+9. *Editar* la sede → la ciudad aparece bloqueada; *Inactivar* y registrar otra
+10. *Exportar a Excel* → descarga el `.xlsx`
+11. Radicar y entrar con un **Administrador** → *Revisión de solicitudes* →
+    *Revisar* → *Validar sedes*: cada sede queda `Validada` o
+    `Con observaciones`, con la lista de lo que falta
+
 ---
 
-## 8. Qué falta
+## 9. Qué falta
 
 | Bloque | Permisos | Tema |
 |---|---|---|
-| 2 | SOL-011 → 020 | Datos técnicos: norma, alcance, procesos |
-| 3 | SOL-021 → 030 | Sedes de la solicitud |
 | 5 | SOL-041 → 050 | Asignación de auditores (aparecen los primeros `REQ` y `SA`) |
 | 6 | SOL-051 → 060 | Trazabilidad, bitácora inmutable y cierre |
 | 7 | SOL-061 → 070 | Cálculo del tiempo de auditoría |
+
+Los bloques 1 a 4 tienen API y pantallas: el portal de empresa (`/empresa`) y
+la revisión de Administración (`/revision-solicitudes`).
 
 **Una decisión pendiente:** de dónde sale qué documentos exige cada norma ISO.
 Hoy la lista de tipos sugeridos está fija en el código; puede pasar a una tabla
@@ -302,7 +413,7 @@ texto de la observación. SOL-055 (bitácora inmutable) debería añadir
 
 ---
 
-## Anexo — Los 20 permisos implementados
+## Anexo — Los 40 permisos implementados
 
 ### Bloque 1 — Ciclo de vida
 
@@ -318,6 +429,36 @@ texto de la observación. SOL-055 (bitácora inmutable) debería añadir
 | SOL-008 | Duplicar solicitud | V | F | F | V | F | F | F | F |
 | SOL-009 | Cancelar antes de revisión | V | F | F | V | F | F | F | F |
 | SOL-010 | Consultar estado | V | V | V | V | V | V | V | F |
+
+### Bloque 2 — Información general
+
+| Código | Permiso | SUPERADM | ADM | AUX | EMP | AUD | COM | APR | PUB |
+|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| SOL-011 | Registrar norma ISO | V | F | F | V | F | F | F | F |
+| SOL-012 | Editar norma ISO | V | F | F | V | F | F | F | F |
+| SOL-013 | Registrar alcance técnico | V | F | F | V | F | F | F | F |
+| SOL-014 | Editar alcance | V | F | F | V | F | F | F | F |
+| SOL-015 | Registrar procesos clave | V | F | F | V | F | F | F | F |
+| SOL-016 | Editar procesos | V | F | F | V | F | F | F | F |
+| SOL-017 | Registrar número de empleados | V | F | F | V | F | F | F | F |
+| SOL-018 | Editar número de empleados | V | F | F | V | F | F | F | F |
+| SOL-019 | Registrar número de sedes | V | F | F | V | F | F | F | F |
+| SOL-020 | Consultar información general | V | V | V | V | V | V | V | F |
+
+### Bloque 3 — Sedes de la solicitud
+
+| Código | Permiso | SUPERADM | ADM | AUX | EMP | AUD | COM | APR | PUB |
+|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| SOL-021 | Agregar sede | V | F | F | V | F | F | F | F |
+| SOL-022 | Editar sede | V | F | F | V | F | F | F | F |
+| SOL-023 | Eliminar sede de la solicitud | V | F | F | V | F | F | F | F |
+| SOL-024 | Registrar dirección | V | F | F | V | F | F | F | F |
+| SOL-025 | Editar dirección | V | F | F | V | F | F | F | F |
+| SOL-026 | Registrar ciudad | V | F | F | V | F | F | F | F |
+| SOL-027 | Registrar departamento | V | F | F | V | F | F | F | F |
+| SOL-028 | Consultar sedes añadidas | V | V | V | V | V | V | V | F |
+| SOL-029 | Validar sedes | V | V | V | F | F | F | F | F |
+| SOL-030 | Exportar sedes a Excel | V | V | V | V | F | F | F | F |
 
 ### Bloque 4 — Documentos adjuntos
 
@@ -366,3 +507,23 @@ superior · `SA` exclusivo del SuperAdministrador.
 | `POST` | `/solicitudes/{id}/documentos/{doc}/rechazar` | SOL-037 |
 | `POST` | `/solicitudes/{id}/documentos/{doc}/solicitar-correccion` | SOL-039 |
 | `GET` | `/solicitudes/{id}/documentos/historial` | SOL-040 |
+| `POST` | `/solicitudes/{id}/norma` | SOL-011 |
+| `PATCH` | `/solicitudes/{id}/norma` | SOL-012 |
+| `POST` | `/solicitudes/{id}/alcances` | SOL-013 |
+| `PATCH` | `/solicitudes/{id}/alcances/{alcance}` | SOL-014 |
+| `POST` | `/solicitudes/{id}/procesos` | SOL-015 |
+| `PATCH` | `/solicitudes/{id}/procesos/{proceso}` | SOL-016 |
+| `POST` | `/solicitudes/{id}/numero-empleados` | SOL-017 |
+| `PATCH` | `/solicitudes/{id}/numero-empleados` | SOL-018 |
+| `POST` | `/solicitudes/{id}/numero-sedes` | SOL-019 |
+| `GET` | `/solicitudes/{id}/informacion-general` | SOL-020 |
+| `GET` | `/solicitudes/{id}/sedes/disponibles` | SOL-021 |
+| `POST` | `/solicitudes/{id}/sedes` | SOL-021 |
+| `POST` | `/solicitudes/{id}/sedes/nueva` | SOL-024 (+ SOL-021, 026, 027) |
+| `PATCH` | `/solicitudes/{id}/sedes/{sede}` | SOL-022 |
+| `DELETE` | `/solicitudes/{id}/sedes/{sede}` | SOL-023 (quitar) |
+| `POST` | `/solicitudes/{id}/sedes/{sede}/inactivar` | SOL-023 (inactivar) |
+| `PATCH` | `/solicitudes/{id}/sedes/{sede}/direccion` | SOL-025 |
+| `GET` | `/solicitudes/{id}/sedes` | SOL-028 |
+| `POST` | `/solicitudes/{id}/sedes/validar` | SOL-029 |
+| `GET` | `/solicitudes/{id}/sedes/excel` | SOL-030 |

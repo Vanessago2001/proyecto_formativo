@@ -1,422 +1,819 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CertiSENA | Portal empresa</title>
+  <title>CertiSENA | Portal de empresa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
-  <style>
-    body { background: #f4f7f2; }
-    .portal { max-width: 1200px; margin: 0 auto; padding: 28px; display: grid; grid-template-columns: 220px 1fr; gap: 24px; }
-    .side, .content, .panel { background: #fff; border: 1px solid #dbe4d4; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
-    .side a { display: block; padding: 11px 12px; color: #334155; text-decoration: none; border-left: 3px solid transparent; margin-bottom: 8px; }
-    .side a.active { color: #256d00; background: #f1f8ed; border-left-color: #3baa01; }
-    .content h2 { color: #256d00; font-size: 23px; margin-bottom: 8px; }
-    .content p { color: #64748b; line-height: 1.5; }
-    .notice { margin: 22px 0; padding: 16px; background: #f1f8ed; border-left: 4px solid #3baa01; color: #365314; border-radius: 8px; }
-    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 16px; margin-top: 20px; }
-    .field { display: flex; flex-direction: column; gap: 8px; }
-    .field input, .field select { padding: 10px 12px; border: 1px solid #cdd9cc; border-radius: 8px; font-size: 14px; }
-    .field.full { grid-column: 1 / -1; }
-    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
-    button { border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
-    .btn-primary { background: #3BAA01; color: white; }
-    .btn-secondary { background: #eef3ee; color: #1f3d12; }
-    .btn-danger { background: #e53935; color: white; }
-    .table-wrap { overflow: auto; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid #e8edf2; text-align: left; }
-    th { background: #3BAA01; color: white; }
-    .status-ok { color: #257a00; font-weight: 600; }
-    .status-no { color: #b42318; font-weight: 600; }
-    .alert { padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; display: none; }
-    .alert.error { background: #fdecea; color: #7a1f1a; }
-    .alert.success { background: #eaf7ea; color: #185b2e; }
-    @media(max-width: 720px){ .portal { grid-template-columns: 1fr; padding: 18px; } .form-grid{ grid-template-columns: 1fr; } }
-  </style>
 </head>
-<body>
+
+<body class="comite-page">
   <header class="login-header">
     <div class="header-content">
       <div class="header-left">
         <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
-        <div><h1>CertiSENA</h1><p class="subtitle">Portal de empresa</p></div>
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Portal de empresa</p>
+        </div>
       </div>
-      <a class="profile-link" href="/profile">Mi perfil</a>
+      <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+      </div>
     </div>
   </header>
 
-  <main class="portal">
-    <nav class="side">
-      <a class="active" data-panel="solicitudes">Mis solicitudes</a>
-      <a data-panel="nueva">Nueva solicitud</a>
-      <a data-panel="documentos">Documentos</a>
-      <a href="/profile">Mi perfil</a>
-      <a id="logout">Cerrar sesion</a>
-    </nav>
+  <main class="comite-shell">
+    <div class="comite-layout">
+      <aside class="comite-sidebar" aria-label="Navegación del portal de empresa">
+        <div class="comite-sidebar-heading">
+          <span class="comite-kicker">Empresa</span>
+          <strong>Solicitudes de certificación</strong>
+        </div>
+        <nav>
+          <button class="comite-nav-link active" type="button" data-view="solicitudes">Mis solicitudes</button>
+          <button class="comite-nav-link" type="button" data-view="nueva">Nueva solicitud</button>
+          <button class="comite-nav-link" type="button" data-view="informacion">Información técnica</button>
+          <button class="comite-nav-link" type="button" data-view="sedes">Sedes</button>
+          <button class="comite-nav-link" type="button" data-view="documentos">Documentos</button>
+          <a class="comite-nav-link" style="text-decoration:none" href="/empresas">Datos de mi empresa</a>
+        </nav>
+        <div class="comite-access-note">
+          <span id="roleLabel">Validando sesión...</span>
+          <small id="solicitudLabel">Ninguna solicitud seleccionada.</small>
+        </div>
+      </aside>
 
-    <section class="content">
-      <h2 id="title">Portal de empresa</h2>
-      <div id="aviso" class="notice" style="display:none"></div>
+      <section class="comite-content">
+        <div class="comite-page-heading">
+          <div>
+            <span class="comite-kicker">Gestión de solicitudes</span>
+            <h2 id="viewTitle">Mis solicitudes</h2>
+            <p id="viewDescription"></p>
+          </div>
+          <button id="refreshButton" class="comite-button secondary" type="button">Actualizar</button>
+        </div>
 
-      <!-- ---------- MIS SOLICITUDES ---------- -->
-      <div class="panel visible" id="panel-solicitudes">
-        <p>Solicitudes de certificacion de su empresa. Seleccione una para gestionar sus documentos.</p>
-        <div id="lista-solicitudes"></div>
-      </div>
+        <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
 
-      <!-- ---------- NUEVA SOLICITUD ---------- -->
-      <div class="panel" id="panel-nueva">
-        <p>Registre los datos de la solicitud. Puede guardarla como borrador y completarla despues; solo al radicarla se vuelve formal.</p>
-        <form id="form-nueva" class="form-grid">
-          <div>
-            <label for="norma">Norma ISO solicitada</label>
-            <select id="norma" required><option value="">Cargando...</option></select>
+        <div id="selectorBar" class="comite-toolbar comite-view-hidden">
+          <div class="comite-search-form">
+            <label for="solicitudSelect">Solicitud</label>
+            <select id="solicitudSelect"></select>
           </div>
-          <div>
-            <label for="contacto">Persona de contacto</label>
-            <input id="contacto" type="text" maxlength="150" placeholder="Nombre y apellido">
-          </div>
-          <div>
-            <label for="empleados">Numero de empleados</label>
-            <input id="empleados" type="number" min="0" required>
-          </div>
-          <div>
-            <label for="sedes">Numero de sedes</label>
-            <input id="sedes" type="number" min="0" required>
-          </div>
-          <div class="ancho">
-            <label for="alcance">Alcance de la certificacion</label>
-            <textarea id="alcance" rows="3" maxlength="2000" required
-              placeholder="Procesos y actividades que se quieren certificar"></textarea>
-          </div>
-          <div class="ancho">
-            <label for="observaciones">Observaciones (opcional)</label>
-            <textarea id="observaciones" rows="2" maxlength="2000"></textarea>
-          </div>
-          <div class="ancho acciones">
-            <button type="submit">Guardar borrador</button>
-            <button type="button" class="sec" id="cancelar-nueva">Cancelar</button>
-          </div>
-        </form>
-      </div>
+        </div>
 
-      <!-- ---------- DOCUMENTOS ---------- -->
-      <div class="panel" id="panel-documentos">
-        <p id="doc-cabecera">Seleccione primero una solicitud en "Mis solicitudes".</p>
-        <div id="doc-contenido"></div>
-      </div>
-    </section>
+        <section id="vista-solicitudes"></section>
+
+        <section id="vista-nueva" class="comite-view-hidden">
+          <div class="comite-panel">
+            <div class="comite-panel-heading">
+              <div>
+                <h3>Datos de la solicitud</h3>
+                <p>Se guarda como borrador. Después podrá completar la información técnica, las sedes y los documentos.</p>
+              </div>
+            </div>
+            <form id="formNueva" class="portal-form-grid">
+              <div>
+                <label for="nuevaNorma">Norma ISO solicitada</label>
+                <select id="nuevaNorma" required></select>
+              </div>
+              <div>
+                <label for="nuevaContacto">Persona de contacto</label>
+                <input id="nuevaContacto" type="text" maxlength="150" placeholder="Nombre y apellido">
+              </div>
+              <div>
+                <label for="nuevaEmpleados">Número de empleados</label>
+                <input id="nuevaEmpleados" type="number" min="1" required>
+              </div>
+              <div>
+                <label for="nuevaSedes">Número de sedes</label>
+                <input id="nuevaSedes" type="number" min="1" required>
+              </div>
+              <div class="full">
+                <label for="nuevaAlcance">Alcance de la certificación</label>
+                <textarea id="nuevaAlcance" rows="3" maxlength="2000" required placeholder="Procesos y actividades que se quieren certificar"></textarea>
+              </div>
+              <div class="full">
+                <label for="nuevaObservaciones">Observaciones (opcional)</label>
+                <textarea id="nuevaObservaciones" rows="2" maxlength="2000"></textarea>
+              </div>
+              <div class="full comite-decision-actions">
+                <button class="comite-button primary" type="submit">Guardar borrador</button>
+                <button class="comite-button secondary" type="reset">Limpiar</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section id="vista-informacion" class="comite-view-hidden"></section>
+        <section id="vista-sedes" class="comite-view-hidden"></section>
+        <section id="vista-documentos" class="comite-view-hidden"></section>
+      </section>
+    </div>
   </main>
 
   <script>
-  (function () {
-    "use strict";
+    (() => {
+      "use strict";
 
-    // ---------- sesion ----------
-    const token = localStorage.getItem("access_token");
-    let perfil;
-    try {
-      perfil = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    } catch (_) {
-      location.href = "/login";
-      return;
-    }
-    if (perfil.role_name !== "Empresa") { location.href = "/dashboard"; return; }
-    document.getElementById("title").textContent = "Portal de empresa: " + perfil.sub;
-    document.getElementById("logout").onclick = function (e) {
-      e.preventDefault(); localStorage.clear(); location.href = "/login";
-    };
-
-    // ---------- utilidades ----------
-    const $ = (id) => document.getElementById(id);
-    const aviso = $("aviso");
-    let solicitudActual = null;
-
-    function mostrar(mensaje, esError) {
-      aviso.textContent = mensaje;
-      aviso.className = "notice" + (esError ? " error" : "");
-      aviso.style.display = mensaje ? "block" : "none";
-      if (mensaje && !esError) setTimeout(() => { aviso.style.display = "none"; }, 5000);
-    }
-
-    function detalleError(cuerpo, respuesta) {
-      // La API devuelve el motivo en `detail`, a veces como objeto.
-      if (cuerpo && cuerpo.detail) {
-        if (typeof cuerpo.detail === "string") return cuerpo.detail;
-        if (Array.isArray(cuerpo.detail)) return cuerpo.detail.map(d => d.msg).join(" · ");
-        return JSON.stringify(cuerpo.detail);
-      }
-      return "Error " + respuesta.status;
-    }
-
-    async function api(ruta, opciones) {
-      opciones = opciones || {};
-      opciones.headers = Object.assign({ Authorization: "Bearer " + token }, opciones.headers || {});
-      const r = await fetch(ruta, opciones);
-      if (r.status === 401) { localStorage.clear(); location.href = "/login"; return null; }
-      const tipo = r.headers.get("content-type") || "";
-      const cuerpo = tipo.includes("json") ? await r.json().catch(() => null) : null;
-      if (!r.ok) throw new Error(detalleError(cuerpo, r));
-      return cuerpo;
-    }
-
-    const esc = (s) => String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    const fecha = (f) => f ? new Date(f).toLocaleDateString("es-CO") : "-";
-
-    // ---------- navegacion ----------
-    document.querySelectorAll(".side a[data-panel]").forEach((enlace) => {
-      enlace.onclick = function () {
-        document.querySelectorAll(".side a").forEach(a => a.classList.remove("active"));
-        enlace.classList.add("active");
-        document.querySelectorAll(".panel").forEach(p => p.classList.remove("visible"));
-        $("panel-" + enlace.dataset.panel).classList.add("visible");
-        if (enlace.dataset.panel === "solicitudes") cargarSolicitudes();
-        if (enlace.dataset.panel === "documentos") cargarDocumentos();
-      };
-    });
-    function irA(panel) {
-      document.querySelector('.side a[data-panel="' + panel + '"]').click();
-    }
-
-    // ---------- SOL-006: listar solicitudes ----------
-    async function cargarSolicitudes() {
-      const caja = $("lista-solicitudes");
-      caja.innerHTML = "<p>Cargando...</p>";
-      try {
-        const datos = await api("/solicitudes/");
-        if (!datos.length) {
-          caja.innerHTML = '<div class="vacio">Aun no tiene solicitudes. Use "Nueva solicitud" para crear la primera.</div>';
-          return;
-        }
-        caja.innerHTML =
-          '<table><thead><tr><th>Radicado</th><th>Estado</th><th>Alcance</th>' +
-          '<th>Sedes</th><th>Creada</th><th>Acciones</th></tr></thead><tbody>' +
-          datos.map(function (s) {
-            const esBorrador = s.estado === "Borrador";
-            return '<tr>' +
-              '<td>' + esc(s.numero_radicado || "(borrador)") + '</td>' +
-              '<td><span class="chip ' + esc(s.estado) + '">' + esc(s.estado) + '</span></td>' +
-              '<td>' + esc((s.alcance_certificacion || "").slice(0, 46)) + '</td>' +
-              '<td>' + esc(s.numero_sedes) + '</td>' +
-              '<td>' + fecha(s.fecha_creacion) + '</td>' +
-              '<td>' +
-                '<button class="mini sec" data-doc="' + s.id_solicitud + '">Documentos</button> ' +
-                (esBorrador ? '<button class="mini" data-radicar="' + s.id_solicitud + '">Radicar</button> ' : '') +
-                '<button class="mini sec" data-pdf="' + s.id_solicitud + '">PDF</button>' +
-              '</td></tr>';
-          }).join("") + '</tbody></table>';
-
-        caja.querySelectorAll("[data-doc]").forEach(b => b.onclick = () => {
-          solicitudActual = datos.find(s => s.id_solicitud === b.dataset.doc);
-          irA("documentos");
-        });
-        caja.querySelectorAll("[data-radicar]").forEach(b => b.onclick = () => radicar(b.dataset.radicar));
-        caja.querySelectorAll("[data-pdf]").forEach(b => b.onclick = () => descargarPdf(b.dataset.pdf));
-      } catch (e) {
-        caja.innerHTML = "";
-        mostrar(e.message, true);
-      }
-    }
-
-    // ---------- SOL-005: radicar ----------
-    async function radicar(id) {
-      if (!confirm("Al radicar, la solicitud deja de poder editarse. Continuar?")) return;
-      try {
-        const s = await api("/solicitudes/" + id + "/radicar", { method: "POST" });
-        mostrar("Solicitud radicada con el numero " + s.numero_radicado, false);
-        cargarSolicitudes();
-      } catch (e) { mostrar(e.message, true); }
-    }
-
-    // ---------- SOL-007: PDF ----------
-    async function descargarPdf(id) {
-      try {
-        const r = await fetch("/solicitudes/" + id + "/pdf", { headers: { Authorization: "Bearer " + token } });
-        if (!r.ok) throw new Error("No se pudo generar el PDF (" + r.status + ")");
-        const blob = await r.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = "solicitud-" + id.slice(0, 8) + ".pdf";
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
-      } catch (e) { mostrar(e.message, true); }
-    }
-
-    // ---------- SOL-011: normas disponibles ----------
-    async function cargarNormas() {
-      const sel = $("norma");
-      try {
-        const normas = await api("/solicitudes/normas");
-        sel.innerHTML = '<option value="">Seleccione una norma</option>' +
-          normas.map(n => '<option value="' + n.id_norma + '">' +
-            esc([n.codigo, n.nombre, n.version].filter(Boolean).join(" ")) + '</option>').join("");
-      } catch (e) {
-        sel.innerHTML = '<option value="">No se pudieron cargar las normas</option>';
-      }
-    }
-
-    // ---------- SOL-001: crear borrador ----------
-    $("form-nueva").onsubmit = async function (e) {
-      e.preventDefault();
-      const cuerpo = {
-        id_norma: $("norma").value || null,
-        alcance_certificacion: $("alcance").value.trim(),
-        numero_empleados: Number($("empleados").value),
-        numero_sedes: Number($("sedes").value),
-        persona_contacto: $("contacto").value.trim() || null,
-        observaciones: $("observaciones").value.trim() || null
-      };
-      try {
-        await api("/solicitudes/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cuerpo)
-        });
-        this.reset();
-        mostrar("Borrador guardado. Puede adjuntar documentos y radicarlo cuando este listo.", false);
-        irA("solicitudes");
-      } catch (err) { mostrar(err.message, true); }
-    };
-    $("cancelar-nueva").onclick = () => { $("form-nueva").reset(); irA("solicitudes"); };
-
-    // ---------- SOL-031..040: documentos ----------
-    async function cargarDocumentos() {
-      const cab = $("doc-cabecera");
-      const caja = $("doc-contenido");
-
-      if (!solicitudActual) {
-        cab.textContent = 'Seleccione primero una solicitud en "Mis solicitudes".';
-        caja.innerHTML = "";
+      // ---------------- sesión ----------------
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = "/login";
         return;
       }
-      cab.innerHTML = "Documentos de <strong>" +
-        esc(solicitudActual.numero_radicado || "borrador") + "</strong>. " +
-        "Los archivos quedan guardados: no hay que volver a subirlos.";
-      caja.innerHTML = "<p>Cargando...</p>";
 
-      try {
-        const [reglas, docs] = await Promise.all([
-          api("/solicitudes/documentos/formatos-permitidos"),
-          api("/solicitudes/" + solicitudActual.id_solicitud + "/documentos")
-        ]);
+      const perfil = leerToken(token);
+      if (!perfil) return;
+      if (!/empresa/i.test(perfil.role_name || "")) {
+        window.location.href = "/dashboard";
+        return;
+      }
 
-        const subidos = {};
-        docs.forEach(d => { subidos[d.tipo_documento.toLowerCase()] = d; });
+      const VISTAS = {
+        solicitudes: ["Mis solicitudes", "Solicitudes de certificación de su empresa. Seleccione una para completar su información, sus sedes y sus documentos."],
+        nueva: ["Nueva solicitud", "Registre los datos básicos. La solicitud solo se vuelve formal cuando la radica."],
+        informacion: ["Información técnica", "Norma ISO, tamaño de la empresa, alcance técnico y procesos clave."],
+        sedes: ["Sedes", "Sedes de la empresa que forman parte de la solicitud."],
+        documentos: ["Documentos", "Documentos que respaldan la solicitud. Cada archivo conserva sus versiones anteriores."]
+      };
+      const NECESITAN_SOLICITUD = ["informacion", "sedes", "documentos"];
+      const CAMPOS_RADICAR = {
+        id_norma: "Norma ISO",
+        alcance_certificacion: "Alcance",
+        numero_empleados: "Número de empleados",
+        numero_sedes: "Número de sedes"
+      };
 
-        const tabla = docs.length
-          ? '<table><thead><tr><th>Tipo</th><th>Archivo</th><th>Version</th>' +
-            '<th>Estado</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>' +
-            docs.map(d => '<tr>' +
-              '<td>' + esc(d.tipo_documento) + '</td>' +
-              '<td>' + esc(d.nombre_archivo) + '</td>' +
-              '<td>v' + esc(d.version) + '</td>' +
-              '<td><span class="chip ' + esc(d.estado) + '">' + esc(d.estado) + '</span></td>' +
-              '<td>' + esc(d.observaciones || "-") + '</td>' +
-              '<td>' +
-                '<button class="mini sec" data-ver="' + d.id_documento + '">Ver</button> ' +
-                '<button class="mini sec" data-bajar="' + d.id_documento + '">Descargar</button> ' +
-                (d.estado !== "Aprobado"
-                  ? '<button class="mini peligro" data-borrar="' + d.id_documento + '">Eliminar</button>'
-                  : '') +
-              '</td></tr>').join("") + '</tbody></table>'
-          : '<div class="vacio">Todavia no hay documentos adjuntos.</div>';
+      const estado = {
+        vista: "solicitudes",
+        solicitudes: [],
+        normas: [],
+        actual: null,
+        edicion: { alcance: null, proceso: null, sede: null }
+      };
 
-        const formularios = reglas.tipos_documento_sugeridos.map(function (tipo) {
-          const ya = subidos[tipo.toLowerCase()];
-          const bloqueado = ya && ya.estado === "Aprobado";
-          return '<div class="upload">' +
-            '<h3>' + esc(tipo) + '</h3>' +
-            '<p>' + (ya
-              ? 'Cargado: <strong>' + esc(ya.nombre_archivo) + '</strong> (v' + esc(ya.version) + ', ' + esc(ya.estado) + ')'
-              : 'Sin cargar.') + '</p>' +
-            (bloqueado
-              ? '<p><em>Aprobado. Ya no se puede cambiar.</em></p>'
-              : '<input type="file" data-tipo="' + esc(tipo) + '"' +
-                (ya ? ' data-reemplazar="' + ya.id_documento + '"' : '') +
-                ' accept="' + reglas.extensiones_permitidas.join(",") + '">') +
-            '</div>';
-        }).join("");
+      const $ = (selector) => document.querySelector(selector);
+      $("#roleLabel").textContent = "Usuario: " + (perfil.sub || "empresa");
 
-        caja.innerHTML = tabla +
-          '<div class="uploads">' + formularios + '</div>' +
-          '<p style="margin-top:14px;font-size:13px;color:#94a3b8">Formatos: ' +
-          esc(reglas.extensiones_permitidas.join(", ")) +
-          ' · Maximo ' + esc(reglas.tamano_maximo_mb) + ' MB por archivo.</p>';
+      function leerToken(valor) {
+        try {
+          const parte = valor.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+          return JSON.parse(decodeURIComponent(atob(parte).split("").map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")));
+        } catch (_) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
+        }
+      }
 
-        caja.querySelectorAll("input[type=file]").forEach(inp => {
-          inp.onchange = () => enviarArchivo(inp);
+      // ---------------- utilidades ----------------
+      async function api(ruta, opciones) {
+        const peticion = Object.assign({}, opciones || {}, {
+          headers: Object.assign({ Authorization: "Bearer " + token }, (opciones && opciones.headers) || {})
         });
-        caja.querySelectorAll("[data-ver]").forEach(b => b.onclick = () => abrirArchivo(b.dataset.ver, "ver"));
-        caja.querySelectorAll("[data-bajar]").forEach(b => b.onclick = () => abrirArchivo(b.dataset.bajar, "descargar"));
-        caja.querySelectorAll("[data-borrar]").forEach(b => b.onclick = () => borrarDocumento(b.dataset.borrar));
-      } catch (e) {
-        caja.innerHTML = "";
-        mostrar(e.message, true);
-      }
-    }
-
-    // SOL-031 (subir) y SOL-032 (reemplazar)
-    async function enviarArchivo(input) {
-      const archivo = input.files[0];
-      if (!archivo) return;
-      input.disabled = true;
-      const base = "/solicitudes/" + solicitudActual.id_solicitud + "/documentos";
-      const cuerpo = new FormData();
-      cuerpo.append("archivo", archivo);
-
-      try {
-        if (input.dataset.reemplazar) {
-          await api(base + "/" + input.dataset.reemplazar, { method: "PUT", body: cuerpo });
-          mostrar("Documento reemplazado. La version anterior queda en el historial.", false);
-        } else {
-          cuerpo.append("tipo_documento", input.dataset.tipo);
-          await api(base, { method: "POST", body: cuerpo });
-          mostrar("Documento guardado correctamente.", false);
+        const respuesta = await fetch(ruta, peticion);
+        if (respuesta.status === 401) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
         }
-        cargarDocumentos();
-      } catch (e) {
-        mostrar(e.message, true);
-        input.disabled = false;
-        input.value = "";
+        const tipo = respuesta.headers.get("content-type") || "";
+        const cuerpo = tipo.includes("json") ? await respuesta.json().catch(() => null) : null;
+        if (!respuesta.ok) throw new Error(detalleError(cuerpo, respuesta.status));
+        return cuerpo;
       }
-    }
 
-    // SOL-034 / SOL-035
-    async function abrirArchivo(idDoc, modo) {
-      try {
-        const r = await fetch(
-          "/solicitudes/" + solicitudActual.id_solicitud + "/documentos/" + idDoc + "/" + modo,
-          { headers: { Authorization: "Bearer " + token } });
-        if (!r.ok) throw new Error("No se pudo abrir el archivo (" + r.status + ")");
-        const url = URL.createObjectURL(await r.blob());
-        if (modo === "ver") { window.open(url, "_blank"); }
-        else {
-          const a = document.createElement("a");
-          a.href = url; a.download = "";
-          document.body.appendChild(a); a.click(); a.remove();
+      function enviar(ruta, metodo, cuerpo) {
+        return api(ruta, {
+          method: metodo,
+          headers: { "Content-Type": "application/json" },
+          body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo)
+        });
+      }
+
+      function detalleError(cuerpo, codigo) {
+        const detalle = cuerpo && cuerpo.detail;
+        if (typeof detalle === "string") return detalle;
+        if (Array.isArray(detalle)) return detalle.map((d) => (d.msg || "").replace(/^Value error, /, "")).join(" · ");
+        return "No fue posible completar la solicitud (" + codigo + ").";
+      }
+
+      async function descargar(ruta, nombre, abrir) {
+        try {
+          const respuesta = await fetch(ruta, { headers: { Authorization: "Bearer " + token } });
+          if (!respuesta.ok) {
+            const cuerpo = await respuesta.json().catch(() => null);
+            throw new Error(detalleError(cuerpo, respuesta.status));
+          }
+          const url = URL.createObjectURL(await respuesta.blob());
+          if (abrir) {
+            window.open(url, "_blank");
+          } else {
+            const enlace = document.createElement("a");
+            enlace.href = url;
+            enlace.download = nombre || "";
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+          }
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (error) {
+          mostrar(error.message, "error");
         }
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-      } catch (e) { mostrar(e.message, true); }
-    }
+      }
 
-    // SOL-033
-    async function borrarDocumento(idDoc) {
-      if (!confirm("Eliminar este documento? Su historial se conserva.")) return;
-      try {
-        await api("/solicitudes/" + solicitudActual.id_solicitud + "/documentos/" + idDoc,
-                  { method: "DELETE" });
-        mostrar("Documento eliminado.", false);
-        cargarDocumentos();
-      } catch (e) { mostrar(e.message, true); }
-    }
+      function mostrar(mensaje, tipo) {
+        const caja = $("#feedback");
+        caja.textContent = mensaje || "";
+        caja.className = "comite-feedback" + (mensaje ? " " + tipo : "");
+      }
 
-    // ---------- arranque ----------
-    cargarSolicitudes();
-    cargarNormas();
-  })();
+      const esc = (valor) => String(valor == null ? "" : valor)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      const fecha = (valor) => valor ? new Date(valor).toLocaleDateString("es-CO") : "-";
+      const valorONo = (valor) => valor === null || valor === undefined || valor === "" ? "No registrado" : valor;
+
+      function claseEstado(valor) {
+        const texto = String(valor || "").toLowerCase();
+        if (/(cancel|rechaz|inactiv|exclu|correcci)/.test(texto)) return "rejected";
+        if (/(radicad|aprobad|validad|^activ)/.test(texto)) return "approved";
+        return "pending";
+      }
+
+      const chip = (valor) => '<span class="comite-status ' + claseEstado(valor) + '">' + esc(valor || "-") + "</span>";
+      const panel = (contenido) => '<div class="comite-panel">' + contenido + "</div>";
+      const cargando = (texto) => panel('<div class="comite-loading">' + esc(texto) + "</div>");
+      const vacioTabla = (columnas, texto) => '<tr><td colspan="' + columnas + '"><div class="comite-table-empty">' + esc(texto) + "</div></td></tr>";
+      const accion = (nombre, texto, id) => '<button class="comite-table-action" type="button" data-accion="' + nombre + '" data-id="' + esc(id) + '">' + texto + "</button>";
+      const fact = (etiqueta, valor) => "<div><dt>" + esc(etiqueta) + "</dt><dd>" + esc(valor) + "</dd></div>";
+
+      function nombreNorma(idNorma) {
+        const norma = estado.normas.find((n) => n.id_norma === idNorma);
+        return norma ? [norma.codigo, norma.nombre, norma.version].filter(Boolean).join(" ") : "Sin norma";
+      }
+
+      function opcionesNormas(seleccionada) {
+        return '<option value="">Seleccione una norma</option>' + estado.normas.map((n) =>
+          '<option value="' + esc(n.id_norma) + '"' + (n.id_norma === seleccionada ? " selected" : "") + ">" +
+          esc([n.codigo, n.nombre, n.version].filter(Boolean).join(" ")) + "</option>").join("");
+      }
+
+      const solicitudActual = () => estado.solicitudes.find((s) => s.id_solicitud === estado.actual) || null;
+      const esBorrador = () => (solicitudActual() || {}).estado === "Borrador";
+      const base = () => "/solicitudes/" + estado.actual;
+
+      // ---------------- navegación ----------------
+      function mostrarVista(nombre) {
+        estado.vista = nombre;
+        estado.edicion = { alcance: null, proceso: null, sede: null };
+        document.querySelectorAll(".comite-nav-link").forEach((boton) => boton.classList.toggle("active", boton.dataset.view === nombre));
+        Object.keys(VISTAS).forEach((vista) => $("#vista-" + vista).classList.toggle("comite-view-hidden", vista !== nombre));
+        $("#viewTitle").textContent = VISTAS[nombre][0];
+        $("#viewDescription").textContent = VISTAS[nombre][1];
+        $("#selectorBar").classList.toggle("comite-view-hidden", !NECESITAN_SOLICITUD.includes(nombre));
+        mostrar("");
+        cargarVista();
+      }
+
+      function cargarVista() {
+        const vista = estado.vista;
+        if (vista === "solicitudes") return cargarSolicitudes();
+        if (vista === "nueva") return prepararNueva();
+        if (!estado.actual) return sinSolicitud(vista);
+        if (vista === "informacion") return cargarInformacion();
+        if (vista === "sedes") return cargarSedes();
+        if (vista === "documentos") return cargarDocumentos();
+      }
+
+      function sinSolicitud(vista) {
+        $("#vista-" + vista).innerHTML = panel(
+          '<div class="comite-empty-state"><span class="comite-empty-icon">+</span>' +
+          "<h3>Seleccione una solicitud</h3><p>Elíjala en el selector de arriba o desde Mis solicitudes.</p>" +
+          '<div class="comite-decision-actions" style="justify-content:center"><button class="comite-button primary" type="button" data-ir="solicitudes">Ir a mis solicitudes</button></div></div>'
+        );
+      }
+
+      function seleccionar(id) {
+        estado.actual = id || null;
+        $("#solicitudSelect").value = estado.actual || "";
+        const solicitud = solicitudActual();
+        $("#solicitudLabel").textContent = solicitud
+          ? "Solicitud: " + (solicitud.numero_radicado || "borrador del " + fecha(solicitud.fecha_creacion)) + " (" + solicitud.estado + ")"
+          : "Ninguna solicitud seleccionada.";
+      }
+
+      async function refrescarSolicitudes() {
+        estado.solicitudes = (await api("/solicitudes/")) || [];
+        $("#solicitudSelect").innerHTML = '<option value="">Seleccione una solicitud</option>' + estado.solicitudes.map((s) =>
+          '<option value="' + esc(s.id_solicitud) + '">' +
+          esc((s.numero_radicado || "Borrador del " + fecha(s.fecha_creacion)) + " · " + nombreNorma(s.id_norma) + " · " + s.estado) +
+          "</option>").join("");
+        seleccionar(solicitudActual() ? estado.actual : null);
+      }
+
+      // ---------------- SOL-006: mis solicitudes ----------------
+      async function cargarSolicitudes() {
+        const caja = $("#vista-solicitudes");
+        caja.innerHTML = cargando("Cargando solicitudes...");
+        try {
+          await refrescarSolicitudes();
+          const filas = estado.solicitudes.map((s) => {
+            const borrador = s.estado === "Borrador";
+            return "<tr>" +
+              "<td><strong>" + esc(s.numero_radicado || "Borrador") + "</strong></td>" +
+              "<td>" + esc(nombreNorma(s.id_norma)) + "</td>" +
+              "<td>" + chip(s.estado) + "</td>" +
+              "<td>" + esc((s.alcance_certificacion || "-").slice(0, 60)) + "</td>" +
+              "<td>" + fecha(s.fecha_creacion) + "</td>" +
+              '<td><div class="comite-decision-actions" style="margin-top:0">' +
+              accion("ir-informacion", "Información", s.id_solicitud) +
+              accion("ir-sedes", "Sedes", s.id_solicitud) +
+              accion("ir-documentos", "Documentos", s.id_solicitud) +
+              (borrador ? accion("radicar", "Radicar", s.id_solicitud) : "") +
+              accion("pdf", "PDF", s.id_solicitud) +
+              "</div></td></tr>";
+          }).join("");
+
+          caja.innerHTML = panel(
+            '<div class="comite-panel-heading"><div><h3>Solicitudes de la empresa</h3><p>' +
+            estado.solicitudes.length + (estado.solicitudes.length === 1 ? " solicitud" : " solicitudes") + "</p></div>" +
+            '<button class="comite-button primary" type="button" data-ir="nueva">Nueva solicitud</button></div>' +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Norma</th><th>Estado</th><th>Alcance</th><th>Creada</th><th>Acciones</th></tr></thead><tbody>' +
+            (filas || vacioTabla(6, 'Aún no tiene solicitudes. Use "Nueva solicitud" para crear la primera.')) +
+            "</tbody></table></div>"
+          );
+        } catch (error) {
+          caja.innerHTML = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      async function radicar(id) {
+        if (!confirm("Al radicar, la solicitud deja de poder editarse. ¿Desea continuar?")) return;
+        try {
+          const solicitud = await enviar("/solicitudes/" + id + "/radicar", "POST");
+          await cargarSolicitudes();
+          mostrar("Solicitud radicada con el número " + solicitud.numero_radicado + ".", "success");
+        } catch (error) {
+          mostrar(error.message, "error");
+        }
+      }
+
+      // ---------------- SOL-001: nueva solicitud ----------------
+      function prepararNueva() {
+        $("#nuevaNorma").innerHTML = opcionesNormas($("#nuevaNorma").value);
+      }
+
+      $("#formNueva").addEventListener("submit", async (evento) => {
+        evento.preventDefault();
+        const cuerpo = {
+          id_norma: $("#nuevaNorma").value || null,
+          alcance_certificacion: $("#nuevaAlcance").value.trim(),
+          numero_empleados: Number($("#nuevaEmpleados").value),
+          numero_sedes: Number($("#nuevaSedes").value),
+          persona_contacto: $("#nuevaContacto").value.trim() || null,
+          observaciones: $("#nuevaObservaciones").value.trim() || null
+        };
+        try {
+          const creada = await enviar("/solicitudes/", "POST", cuerpo);
+          evento.target.reset();
+          await refrescarSolicitudes();
+          seleccionar(creada.id_solicitud);
+          mostrarVista("sedes");
+          mostrar("Borrador guardado. Ahora agregue las sedes que forman parte de la solicitud.", "success");
+        } catch (error) {
+          mostrar(error.message, "error");
+        }
+      });
+
+      // ---------------- SOL-011..020: información técnica ----------------
+      async function cargarInformacion() {
+        const caja = $("#vista-informacion");
+        caja.innerHTML = cargando("Cargando información...");
+        try {
+          const info = await api(base() + "/informacion-general");
+          const editable = info.estado === "Borrador";
+          const pendientes = info.campos_pendientes.map((c) => CAMPOS_RADICAR[c] || c);
+
+          const resumen = panel(
+            '<div class="comite-detail-heading"><div><span class="comite-kicker">Solicitud seleccionada</span><h3>' +
+            esc(info.numero_radicado || "Borrador") + "</h3></div>" + chip(info.estado) + "</div>" +
+            '<dl class="comite-facts">' +
+            fact("Empresa", info.empresa_nombre ? info.empresa_nombre + (info.empresa_nit ? " (NIT " + info.empresa_nit + ")" : "") : "No registrada") +
+            fact("Norma ISO", info.norma_codigo ? [info.norma_codigo, info.norma_nombre, info.norma_version].filter(Boolean).join(" ") : "No registrada") +
+            fact("Número de empleados", valorONo(info.numero_empleados)) +
+            fact("Sedes declaradas / incluidas", valorONo(info.numero_sedes) + " / " + info.sedes_incluidas) +
+            fact("Persona de contacto", valorONo(info.persona_contacto)) +
+            fact("Pendiente para radicar", pendientes.length ? pendientes.join(", ") : "Nada, lista para radicar") +
+            "</dl>" +
+            (info.alcance_certificacion ? '<div class="comite-detail-section"><h4>Alcance de la certificación</h4><p class="comite-muted">' + esc(info.alcance_certificacion) + "</p></div>" : "")
+          );
+
+          const declarados = editable ? panel(
+            '<div class="comite-panel-heading"><div><h3>Datos declarados</h3><p>Norma y tamaño de la empresa.</p></div></div>' +
+            '<div class="portal-form-grid">' +
+            '<div class="full"><label for="infoNorma">Norma ISO solicitada</label><div class="comite-search-row">' +
+            '<select id="infoNorma">' + opcionesNormas(info.id_norma) + "</select>" +
+            '<button class="comite-button primary" type="button" data-accion="norma">' + (info.id_norma ? "Cambiar norma" : "Registrar norma") + "</button></div></div>" +
+            '<div><label for="infoEmpleados">Número de empleados</label><div class="comite-search-row">' +
+            '<input id="infoEmpleados" type="number" min="1" value="' + esc(info.numero_empleados == null ? "" : info.numero_empleados) + '">' +
+            '<button class="comite-button primary" type="button" data-accion="empleados">' + (info.numero_empleados == null ? "Registrar" : "Editar") + "</button></div></div>" +
+            '<div><label for="infoSedes">Número de sedes</label>' +
+            (info.numero_sedes == null
+              ? '<div class="comite-search-row"><input id="infoSedes" type="number" min="1"><button class="comite-button primary" type="button" data-accion="numero-sedes">Registrar</button></div>'
+              : '<input id="infoSedes" type="number" value="' + esc(info.numero_sedes) + '" disabled><p class="comite-muted">Ya registrado.</p>') +
+            "</div></div>"
+          ) : "";
+
+          const alcanceEditado = info.alcances.find((a) => a.id_alcance === estado.edicion.alcance);
+          const alcances = panel(
+            '<div class="comite-panel-heading"><div><h3>Alcance técnico</h3><p>Actividades concretas que cubre la certificación.</p></div></div>' +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Descripción</th><th>Estado</th>' + (editable ? "<th>Acciones</th>" : "") + "</tr></thead><tbody>" +
+            (info.alcances.map((a) => "<tr><td>" + esc(a.descripcion) + "</td><td>" + chip(a.estado) + "</td>" +
+              (editable ? '<td><div class="comite-decision-actions" style="margin-top:0">' + accion("editar-alcance", "Editar", a.id_alcance) +
+                accion("estado-alcance", a.estado === "Activo" ? "Desactivar" : "Activar", a.id_alcance) + "</div></td>" : "") +
+              "</tr>").join("") || vacioTabla(3, "No hay líneas de alcance registradas.")) +
+            "</tbody></table></div>" +
+            (editable ? '<div class="comite-detail-section"><h4>' + (alcanceEditado ? "Editar alcance" : "Registrar alcance técnico") + "</h4>" +
+              '<label for="alcanceTexto">Descripción</label><textarea id="alcanceTexto" rows="2" maxlength="2000">' + esc(alcanceEditado ? alcanceEditado.descripcion : "") + "</textarea>" +
+              '<div class="comite-decision-actions"><button class="comite-button primary" type="button" data-accion="guardar-alcance">' + (alcanceEditado ? "Guardar cambios" : "Registrar alcance") + "</button>" +
+              (alcanceEditado ? '<button class="comite-button secondary" type="button" data-accion="cancelar-alcance">Cancelar</button>' : "") + "</div></div>" : "")
+          );
+
+          const procesoEditado = info.procesos.find((p) => p.id_proceso === estado.edicion.proceso);
+          const procesos = panel(
+            '<div class="comite-panel-heading"><div><h3>Procesos clave</h3><p>Procesos de la empresa que entran en la auditoría.</p></div></div>' +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Proceso</th><th>Descripción</th><th>Estado</th>' + (editable ? "<th>Acciones</th>" : "") + "</tr></thead><tbody>" +
+            (info.procesos.map((p) => "<tr><td><strong>" + esc(p.nombre) + "</strong></td><td>" + esc(p.descripcion || "-") + "</td><td>" + chip(p.estado) + "</td>" +
+              (editable ? '<td><div class="comite-decision-actions" style="margin-top:0">' + accion("editar-proceso", "Editar", p.id_proceso) +
+                accion("estado-proceso", p.estado === "Activo" ? "Desactivar" : "Activar", p.id_proceso) + "</div></td>" : "") +
+              "</tr>").join("") || vacioTabla(4, "No hay procesos clave registrados.")) +
+            "</tbody></table></div>" +
+            (editable ? '<div class="comite-detail-section"><h4>' + (procesoEditado ? "Editar proceso" : "Registrar proceso clave") + "</h4>" +
+              '<div class="portal-form-grid"><div class="full"><label for="procesoNombre">Nombre del proceso</label>' +
+              '<input id="procesoNombre" type="text" maxlength="150" value="' + esc(procesoEditado ? procesoEditado.nombre : "") + '"></div>' +
+              '<div class="full"><label for="procesoDescripcion">Descripción (opcional)</label><textarea id="procesoDescripcion" rows="2" maxlength="2000">' +
+              esc(procesoEditado ? procesoEditado.descripcion || "" : "") + "</textarea></div></div>" +
+              '<div class="comite-decision-actions"><button class="comite-button primary" type="button" data-accion="guardar-proceso">' + (procesoEditado ? "Guardar cambios" : "Registrar proceso") + "</button>" +
+              (procesoEditado ? '<button class="comite-button secondary" type="button" data-accion="cancelar-proceso">Cancelar</button>' : "") + "</div></div>" : "")
+          );
+
+          const soloLectura = editable ? "" : '<p class="comite-readonly-note">La solicitud ya no está en borrador: su información se puede consultar pero no modificar.</p>';
+
+          estado.info = info;
+          caja.innerHTML = '<div class="portal-stack">' + resumen + soloLectura + declarados + alcances + procesos + "</div>";
+        } catch (error) {
+          caja.innerHTML = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      async function accionInformacion(nombre, id) {
+        const info = estado.info;
+        try {
+          if (nombre === "norma") {
+            const idNorma = $("#infoNorma").value;
+            if (!idNorma) throw new Error("Seleccione una norma.");
+            await enviar(base() + "/norma", info.id_norma ? "PATCH" : "POST", { id_norma: idNorma });
+            return terminarInformacion("Norma guardada.");
+          }
+          if (nombre === "empleados") {
+            await enviar(base() + "/numero-empleados", info.numero_empleados == null ? "POST" : "PATCH", { numero_empleados: Number($("#infoEmpleados").value) });
+            return terminarInformacion("Número de empleados guardado.");
+          }
+          if (nombre === "numero-sedes") {
+            await enviar(base() + "/numero-sedes", "POST", { numero_sedes: Number($("#infoSedes").value) });
+            return terminarInformacion("Número de sedes registrado.");
+          }
+          if (nombre === "editar-alcance") { estado.edicion.alcance = id; return cargarInformacion(); }
+          if (nombre === "cancelar-alcance") { estado.edicion.alcance = null; return cargarInformacion(); }
+          if (nombre === "estado-alcance") {
+            const alcance = info.alcances.find((a) => a.id_alcance === id);
+            await enviar(base() + "/alcances/" + id, "PATCH", { estado: alcance.estado === "Activo" ? "Inactivo" : "Activo" });
+            return terminarInformacion("Estado del alcance actualizado.");
+          }
+          if (nombre === "guardar-alcance") {
+            const descripcion = $("#alcanceTexto").value.trim();
+            if (estado.edicion.alcance) {
+              await enviar(base() + "/alcances/" + estado.edicion.alcance, "PATCH", { descripcion });
+            } else {
+              await enviar(base() + "/alcances", "POST", { descripcion });
+            }
+            estado.edicion.alcance = null;
+            return terminarInformacion("Alcance guardado.");
+          }
+          if (nombre === "editar-proceso") { estado.edicion.proceso = id; return cargarInformacion(); }
+          if (nombre === "cancelar-proceso") { estado.edicion.proceso = null; return cargarInformacion(); }
+          if (nombre === "estado-proceso") {
+            const proceso = info.procesos.find((p) => p.id_proceso === id);
+            await enviar(base() + "/procesos/" + id, "PATCH", { estado: proceso.estado === "Activo" ? "Inactivo" : "Activo" });
+            return terminarInformacion("Estado del proceso actualizado.");
+          }
+          if (nombre === "guardar-proceso") {
+            const cuerpo = { nombre: $("#procesoNombre").value.trim(), descripcion: $("#procesoDescripcion").value.trim() || null };
+            if (estado.edicion.proceso) {
+              await enviar(base() + "/procesos/" + estado.edicion.proceso, "PATCH", cuerpo);
+            } else {
+              await enviar(base() + "/procesos", "POST", cuerpo);
+            }
+            estado.edicion.proceso = null;
+            return terminarInformacion("Proceso guardado.");
+          }
+        } catch (error) {
+          mostrar(error.message, "error");
+        }
+      }
+
+      async function terminarInformacion(mensaje) {
+        await cargarInformacion();
+        refrescarSolicitudes().catch(() => {});
+        mostrar(mensaje, "success");
+      }
+
+      // ---------------- SOL-021..030: sedes ----------------
+      async function cargarSedes() {
+        const caja = $("#vista-sedes");
+        caja.innerHTML = cargando("Cargando sedes...");
+        try {
+          const editable = esBorrador();
+          const [sedes, disponibles] = await Promise.all([
+            api(base() + "/sedes"),
+            editable ? api(base() + "/sedes/disponibles") : Promise.resolve([])
+          ]);
+          estado.sedes = sedes;
+          const editada = sedes.find((s) => s.id_sede === estado.edicion.sede);
+
+          const incluidas = panel(
+            '<div class="comite-panel-heading"><div><h3>Sedes incluidas</h3><p>' + sedes.length + (sedes.length === 1 ? " sede" : " sedes") + " en la solicitud.</p></div>" +
+            '<button class="comite-button secondary" type="button" data-accion="excel">Exportar a Excel</button></div>' +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Sede</th><th>Dirección</th><th>Ciudad</th><th>Departamento</th><th>País</th><th>Principal</th><th>Estado</th>' +
+            (editable ? "<th>Acciones</th>" : "") + "</tr></thead><tbody>" +
+            (sedes.map((s) => "<tr><td><strong>" + esc(s.nombre_sede) + "</strong></td><td>" + esc(s.direccion) + "</td><td>" + esc(s.ciudad) + "</td>" +
+              "<td>" + esc(s.departamento || "-") + "</td><td>" + esc(s.pais || "-") + "</td><td>" + (s.es_principal ? "Sí" : "No") + "</td>" +
+              "<td>" + chip(s.estado_sede === "Inactiva" ? "Inactiva" : s.estado_en_solicitud) + "</td>" +
+              (editable ? '<td><div class="comite-decision-actions" style="margin-top:0">' + accion("editar-sede", "Editar", s.id_sede) +
+                accion("quitar-sede", "Quitar", s.id_sede) + accion("inactivar-sede", "Inactivar", s.id_sede) + "</div></td>" : "") +
+              "</tr>").join("") || vacioTabla(8, "La solicitud todavía no tiene sedes.")) +
+            "</tbody></table></div>" +
+            (editable ? "" : '<p class="comite-readonly-note">La solicitud ya no está en borrador: sus sedes no se pueden modificar.</p>')
+          );
+
+          const edicion = editable && editada ? panel(
+            '<div class="comite-detail-heading"><div><span class="comite-kicker">Editar sede</span><h3>' + esc(editada.nombre_sede) + "</h3></div></div>" +
+            '<dl class="comite-facts">' + fact("Ciudad", editada.ciudad) + fact("Departamento", editada.departamento || "-") + fact("País", editada.pais || "-") + "</dl>" +
+            '<p class="comite-readonly-note">Ciudad, departamento y país no se pueden cambiar. Si están mal, inactive la sede y registre una nueva.</p>' +
+            '<div class="portal-form-grid" style="margin-top:14px">' +
+            '<div><label for="editarNombre">Nombre de la sede</label><input id="editarNombre" type="text" maxlength="100" value="' + esc(editada.nombre_sede) + '"></div>' +
+            '<div><label for="editarPrincipal">Sede principal</label><select id="editarPrincipal"><option value="false">No</option><option value="true"' + (editada.es_principal ? " selected" : "") + ">Sí</option></select></div>" +
+            '<div class="full"><label for="editarDireccion">Dirección</label><input id="editarDireccion" type="text" maxlength="255" value="' + esc(editada.direccion) + '"></div></div>' +
+            '<div class="comite-decision-actions"><button class="comite-button primary" type="button" data-accion="guardar-sede">Guardar cambios</button>' +
+            '<button class="comite-button secondary" type="button" data-accion="cancelar-sede">Cancelar</button></div>'
+          ) : "";
+
+          const agregar = editable ? '<div class="comite-workspace">' +
+            panel(
+              '<div class="comite-panel-heading"><div><h3>Registrar sede nueva</h3><p>La sede queda registrada en la empresa y se incluye en esta solicitud.</p></div></div>' +
+              '<form id="formSedeNueva" class="portal-form-grid">' +
+              '<div class="full"><label for="sedeNombre">Nombre de la sede</label><input id="sedeNombre" type="text" maxlength="100" required></div>' +
+              '<div class="full"><label for="sedeDireccion">Dirección</label><input id="sedeDireccion" type="text" maxlength="255" required></div>' +
+              '<div><label for="sedeCiudad">Ciudad</label><input id="sedeCiudad" type="text" maxlength="100" required></div>' +
+              '<div><label for="sedeDepartamento">Departamento</label><input id="sedeDepartamento" type="text" maxlength="100" required></div>' +
+              '<div><label for="sedePais">País</label><input id="sedePais" type="text" maxlength="100" value="Colombia"></div>' +
+              '<div><label for="sedePrincipal">Sede principal</label><select id="sedePrincipal"><option value="false">No</option><option value="true">Sí</option></select></div>' +
+              '<p class="full comite-readonly-note" style="margin-top:0">Ciudad, departamento y país solo se indican ahora: después no se pueden cambiar.</p>' +
+              '<div class="full comite-decision-actions" style="margin-top:0"><button class="comite-button primary" type="submit">Registrar sede</button></div>' +
+              "</form>"
+            ) +
+            panel(
+              '<div class="comite-panel-heading"><div><h3>Incluir sede registrada</h3><p>Sedes activas de la empresa que aún no están en la solicitud.</p></div></div>' +
+              (disponibles.length
+                ? '<label for="sedeDisponible">Sede</label><select id="sedeDisponible">' + disponibles.map((s) =>
+                  '<option value="' + esc(s.id_sede) + '">' + esc(s.nombre_sede + " · " + s.ciudad + (s.departamento ? ", " + s.departamento : "")) + "</option>").join("") + "</select>" +
+                  '<div class="comite-decision-actions"><button class="comite-button primary" type="button" data-accion="incluir-sede">Agregar a la solicitud</button></div>'
+                : '<p class="comite-muted">No hay otras sedes activas registradas.</p>')
+            ) + "</div>" : "";
+
+          caja.innerHTML = '<div class="portal-stack">' + incluidas + edicion + agregar + "</div>";
+
+          const formulario = $("#formSedeNueva");
+          if (formulario) formulario.addEventListener("submit", registrarSede);
+        } catch (error) {
+          caja.innerHTML = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      async function registrarSede(evento) {
+        evento.preventDefault();
+        const cuerpo = {
+          nombre_sede: $("#sedeNombre").value.trim(),
+          direccion: $("#sedeDireccion").value.trim(),
+          ciudad: $("#sedeCiudad").value.trim(),
+          departamento: $("#sedeDepartamento").value.trim(),
+          pais: $("#sedePais").value.trim() || null,
+          es_principal: $("#sedePrincipal").value === "true"
+        };
+        const texto = "Ciudad: " + cuerpo.ciudad + "\nDepartamento: " + cuerpo.departamento + "\nPaís: " + (cuerpo.pais || "Colombia") +
+          "\n\nEstos datos no se podrán cambiar después. ¿Son correctos?";
+        if (!confirm(texto)) return;
+        try {
+          await enviar(base() + "/sedes/nueva", "POST", cuerpo);
+          await cargarSedes();
+          mostrar("Sede registrada e incluida en la solicitud.", "success");
+        } catch (error) {
+          mostrar(error.message, "error");
+        }
+      }
+
+      async function accionSedes(nombre, id) {
+        try {
+          if (nombre === "excel") {
+            const solicitud = solicitudActual();
+            return descargar(base() + "/sedes/excel", "sedes-" + ((solicitud && solicitud.numero_radicado) || "borrador") + ".xlsx");
+          }
+          if (nombre === "editar-sede") { estado.edicion.sede = id; return cargarSedes(); }
+          if (nombre === "cancelar-sede") { estado.edicion.sede = null; return cargarSedes(); }
+          if (nombre === "incluir-sede") {
+            await enviar(base() + "/sedes", "POST", { id_sede: $("#sedeDisponible").value });
+            await cargarSedes();
+            return mostrar("Sede agregada a la solicitud.", "success");
+          }
+          if (nombre === "quitar-sede") {
+            if (!confirm("¿Quitar la sede de esta solicitud? Seguirá registrada en la empresa.")) return;
+            await enviar(base() + "/sedes/" + id, "DELETE");
+            await cargarSedes();
+            return mostrar("Sede quitada de la solicitud.", "success");
+          }
+          if (nombre === "inactivar-sede") {
+            if (!confirm("¿Inactivar la sede? Se quitará de la solicitud y ya no podrá usarse. Para corregir la ciudad o el departamento, registre una nueva.")) return;
+            await enviar(base() + "/sedes/" + id + "/inactivar", "POST");
+            estado.edicion.sede = null;
+            await cargarSedes();
+            return mostrar("Sede inactivada.", "success");
+          }
+          if (nombre === "guardar-sede") {
+            const actual = estado.sedes.find((s) => s.id_sede === estado.edicion.sede);
+            const cambios = {};
+            const nombreSede = $("#editarNombre").value.trim();
+            const principal = $("#editarPrincipal").value === "true";
+            const direccion = $("#editarDireccion").value.trim();
+            if (nombreSede !== actual.nombre_sede) cambios.nombre_sede = nombreSede;
+            if (principal !== Boolean(actual.es_principal)) cambios.es_principal = principal;
+            if (!Object.keys(cambios).length && direccion === actual.direccion) throw new Error("No hay cambios para guardar.");
+            if (Object.keys(cambios).length) await enviar(base() + "/sedes/" + actual.id_sede, "PATCH", cambios);
+            if (direccion !== actual.direccion) await enviar(base() + "/sedes/" + actual.id_sede + "/direccion", "PATCH", { direccion });
+            estado.edicion.sede = null;
+            await cargarSedes();
+            return mostrar("Sede actualizada.", "success");
+          }
+        } catch (error) {
+          mostrar(error.message, "error");
+        }
+      }
+
+      // ---------------- SOL-031..040: documentos ----------------
+      async function cargarDocumentos() {
+        const caja = $("#vista-documentos");
+        caja.innerHTML = cargando("Cargando documentos...");
+        try {
+          const [reglas, documentos] = await Promise.all([
+            api("/solicitudes/documentos/formatos-permitidos"),
+            api(base() + "/documentos")
+          ]);
+          const subidos = {};
+          documentos.forEach((d) => { subidos[d.tipo_documento.toLowerCase()] = d; });
+
+          const adjuntos = panel(
+            '<div class="comite-panel-heading"><div><h3>Documentos adjuntos</h3><p>Estado de revisión de cada documento.</p></div></div>' +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Tipo</th><th>Archivo</th><th>Versión</th><th>Estado</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>' +
+            (documentos.map((d) => "<tr><td><strong>" + esc(d.tipo_documento) + "</strong></td><td>" + esc(d.nombre_archivo) + "</td><td>v" + esc(d.version) + "</td>" +
+              "<td>" + chip(d.estado) + "</td><td>" + esc(d.observaciones || "-") + "</td>" +
+              '<td><div class="comite-decision-actions" style="margin-top:0">' + accion("ver-doc", "Ver", d.id_documento) + accion("bajar-doc", "Descargar", d.id_documento) +
+              (d.estado !== "Aprobado" ? accion("borrar-doc", "Eliminar", d.id_documento) : "") + "</div></td></tr>").join("") ||
+              vacioTabla(6, "Todavía no hay documentos adjuntos.")) +
+            "</tbody></table></div>"
+          );
+
+          const carga = panel(
+            '<div class="comite-panel-heading"><div><h3>Cargar documentos</h3><p>Formatos: ' + esc(reglas.extensiones_permitidas.join(", ")) +
+            " · Máximo " + esc(reglas.tamano_maximo_mb) + " MB por archivo.</p></div></div>" +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Documento</th><th>Situación</th><th>Archivo</th></tr></thead><tbody>' +
+            reglas.tipos_documento_sugeridos.map((tipo) => {
+              const actual = subidos[tipo.toLowerCase()];
+              const bloqueado = actual && actual.estado === "Aprobado";
+              return "<tr><td><strong>" + esc(tipo) + "</strong></td><td>" +
+                (actual ? esc(actual.nombre_archivo) + " (v" + esc(actual.version) + ") " + chip(actual.estado) : "Sin cargar") + "</td><td>" +
+                (bloqueado ? '<span class="comite-muted">Aprobado: ya no se puede cambiar.</span>'
+                  : '<input type="file" data-tipo="' + esc(tipo) + '"' + (actual ? ' data-reemplazar="' + esc(actual.id_documento) + '"' : "") +
+                  ' accept="' + esc(reglas.extensiones_permitidas.join(",")) + '">') +
+                "</td></tr>";
+            }).join("") +
+            "</tbody></table></div>"
+          );
+
+          caja.innerHTML = '<div class="portal-stack">' + adjuntos + carga + "</div>";
+          caja.querySelectorAll("input[type=file]").forEach((entrada) => entrada.addEventListener("change", () => subirArchivo(entrada)));
+        } catch (error) {
+          caja.innerHTML = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      async function subirArchivo(entrada) {
+        const archivo = entrada.files[0];
+        if (!archivo) return;
+        entrada.disabled = true;
+        const datos = new FormData();
+        datos.append("archivo", archivo);
+        try {
+          if (entrada.dataset.reemplazar) {
+            await api(base() + "/documentos/" + entrada.dataset.reemplazar, { method: "PUT", body: datos });
+          } else {
+            datos.append("tipo_documento", entrada.dataset.tipo);
+            await api(base() + "/documentos", { method: "POST", body: datos });
+          }
+          await cargarDocumentos();
+          mostrar(entrada.dataset.reemplazar ? "Documento reemplazado. La versión anterior queda en el historial." : "Documento guardado.", "success");
+        } catch (error) {
+          entrada.disabled = false;
+          entrada.value = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      async function accionDocumentos(nombre, id) {
+        if (nombre === "ver-doc") return descargar(base() + "/documentos/" + id + "/ver", "", true);
+        if (nombre === "bajar-doc") return descargar(base() + "/documentos/" + id + "/descargar", "");
+        if (nombre === "borrar-doc") {
+          if (!confirm("¿Eliminar este documento? Su historial se conserva.")) return;
+          try {
+            await enviar(base() + "/documentos/" + id, "DELETE");
+            await cargarDocumentos();
+            mostrar("Documento eliminado.", "success");
+          } catch (error) {
+            mostrar(error.message, "error");
+          }
+        }
+      }
+
+      // ---------------- eventos ----------------
+      document.querySelectorAll(".comite-nav-link[data-view]").forEach((boton) => boton.addEventListener("click", () => mostrarVista(boton.dataset.view)));
+
+      $("#solicitudSelect").addEventListener("change", (evento) => {
+        seleccionar(evento.target.value);
+        mostrarVista(estado.vista);
+      });
+
+      document.querySelector(".comite-content").addEventListener("click", (evento) => {
+        const ir = evento.target.closest("[data-ir]");
+        if (ir) return mostrarVista(ir.dataset.ir);
+
+        const boton = evento.target.closest("button[data-accion]");
+        if (!boton) return;
+        const nombre = boton.dataset.accion;
+        const id = boton.dataset.id;
+
+        if (nombre.startsWith("ir-")) {
+          seleccionar(id);
+          return mostrarVista(nombre.slice(3));
+        }
+        if (nombre === "radicar") return radicar(id);
+        if (nombre === "pdf") return descargar("/solicitudes/" + id + "/pdf", "solicitud-" + id.slice(0, 8) + ".pdf");
+        if (estado.vista === "informacion") return accionInformacion(nombre, id);
+        if (estado.vista === "sedes") return accionSedes(nombre, id);
+        if (estado.vista === "documentos") return accionDocumentos(nombre, id);
+      });
+
+      $("#refreshButton").addEventListener("click", async () => {
+        if (estado.vista !== "solicitudes") await refrescarSolicitudes().catch(() => {});
+        cargarVista();
+      });
+
+      $("#logoutButton").addEventListener("click", () => {
+        localStorage.clear();
+        window.location.href = "/login";
+      });
+
+      // ---------------- arranque ----------------
+      (async () => {
+        try {
+          estado.normas = (await api("/solicitudes/normas")) || [];
+        } catch (_) {
+          estado.normas = [];
+        }
+        mostrarVista("solicitudes");
+      })();
+    })();
   </script>
   <script src="/static/session.js"></script>
 </body>
+
 </html>

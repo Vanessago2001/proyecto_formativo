@@ -1,8 +1,8 @@
 # M5 — Gestión de Solicitudes · Chuleta
 
 **Qué hice:** el módulo que gestiona la solicitud de certificación de una
-empresa y los documentos que debe adjuntar.
-**Números:** 23 endpoints · 20 permisos · 173 tests · 0 tablas nuevas.
+empresa: sus datos técnicos, sus sedes y los documentos que debe adjuntar.
+**Números:** 43 endpoints · 40 permisos · 366 tests · 0 tablas nuevas.
 
 ---
 
@@ -99,7 +99,31 @@ Un documento aprobado ya no se puede cambiar.
 
 ---
 
-## 6. Demo en vivo (5 min)
+## 6. Datos técnicos y sedes (3 min)
+
+**Registrar no es editar.** Son permisos distintos en la hoja: registrar la
+norma cuando ya hay una responde `409` y dice qué permiso usar (SOL-012).
+
+**Las sedes son de la empresa.** Se registran una vez y se reutilizan:
+
+```
+  sede_empresa ──< solicitud_sede >── solicitud
+```
+
+- **Ciudad, departamento y país solo se ponen al crear la sede.** Si están
+  mal, se inactiva y se registra otra: una sede nunca "se muda" dentro de un
+  expediente
+- Quitar una sede no la borra: el vínculo pasa a `Excluida`
+- **No se cambian los datos de una sede que ya está en otra solicitud
+  radicada**: se alteraría un expediente presentado
+- Administración valida (SOL-029): datos completos, número declarado igual al
+  incluido y una sola sede principal
+- Exportación a Excel **sin librerías nuevas**; las celdas son texto, así que
+  una "fórmula" escrita por un usuario nunca se ejecuta
+
+---
+
+## 7. Demo en vivo (5 min)
 
 Entrar en `/login` como **Empresa**:
 
@@ -113,13 +137,19 @@ Entrar en `/login` como **Empresa**:
 **Para enseñar los permisos:** entrar como **Auditor** → ve la solicitud pero
 **no puede crear ninguna** (`403`).
 
+**Sedes:** menú *Sedes* → registrar una sede nueva (avisa que la ciudad no se
+podrá cambiar) → *Editar*: la ciudad sale bloqueada → *Exportar a Excel*.
+
+**Validación:** radicar → entrar como **Administrador** → *Revisión de
+solicitudes* → *Revisar* → *Validar sedes*.
+
 ---
 
-## 7. Cierra así (30 s)
+## 8. Cierra así (30 s)
 
-> "Están hechos los bloques 1 y 4 de los siete. Faltan datos técnicos, sedes,
-> asignación de auditores, trazabilidad y cálculo de tiempos. La matriz ya
-> soporta los códigos `REQ` y `SA` que necesitan esos bloques."
+> "Están hechos los bloques 1 a 4 de los siete. Faltan asignación de auditores,
+> trazabilidad y cálculo de tiempos. La matriz ya soporta los códigos `REQ` y
+> `SA` que necesitan esos bloques."
 
 ---
 
@@ -138,8 +168,10 @@ no le quita permisos a nadie.
 M5 se prepara igual.
 
 **"¿Cuántos tests?"**
-→ 173, y ninguno necesita base de datos: usan un doble en memoria.
+→ 366, y ninguno necesita base de datos: usan un doble en memoria.
 
 **"¿Qué falta?"**
 → Decidir de dónde sale qué documentos exige cada norma ISO. Hoy la lista está
 fija en el código; puede pasar a una tabla para que la administración la edite.
+→ Los bloques 5, 6 y 7: asignación de auditores, trazabilidad y cálculo de
+tiempos.

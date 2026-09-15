@@ -78,6 +78,20 @@ class SolicitudService:
         """
         return normalizar_rol(usuario.get("role_name")) != ROL_EMP
 
+    @staticmethod
+    def _estado_de(solicitud: dict) -> EstadoSolicitud | None:
+        """
+        Estado del ciclo de M5, o None si la fila trae un estado antiguo.
+
+        En la base hay solicitudes con estados como 'APROBADO' o 'EN_REVISION'
+        que el enum no conoce. Convertirlos directamente lanzaba ValueError y la
+        API respondía 500; con None las reglas de estado responden 409.
+        """
+        try:
+            return EstadoSolicitud(solicitud["estado"])
+        except ValueError:
+            return None
+
     async def _empresas_del_usuario(self, usuario: dict) -> list[str]:
         """Empresas activas a las que está vinculado el usuario autenticado."""
         resultado = await self.db.execute(
@@ -185,6 +199,33 @@ class SolicitudService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo la empresa titular puede modificar esta solicitud.",
             )
+
+    async def _obtener_borrador_propio(
+        self,
+        id_solicitud: UUID,
+        usuario: dict,
+    ) -> dict:
+        """
+        Trae una solicitud que el usuario puede modificar: visible, de su
+        empresa y todavía en Borrador. La usan los bloques 2 y 3.
+
+        Compara el texto del estado en lugar de convertirlo a EstadoSolicitud:
+        en la base hay filas antiguas con estados que el enum no conoce
+        ('APROBADO', 'EN_REVISION'...) y la conversión terminaría en un 500.
+        """
+        solicitud = await self._obtener_accesible_o_404(id_solicitud, usuario)
+        await self._exigir_propiedad(solicitud, usuario)
+
+        if solicitud["estado"] != EstadoSolicitud.borrador.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Solo se puede modificar una solicitud en estado Borrador. "
+                    f"Estado actual: {solicitud['estado']}."
+                ),
+            )
+
+        return solicitud
 
     async def _resolver_empresa(
         self,
@@ -356,7 +397,7 @@ class SolicitudService:
     @staticmethod
     def _exigir_estado_editable(solicitud: dict) -> None:
         """Corta la operación si la solicitud dejó de ser un borrador."""
-        if EstadoSolicitud(solicitud["estado"]) not in ESTADOS_EDITABLES:
+        if SolicitudService._estado_de(solicitud) not in ESTADOS_EDITABLES:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
@@ -384,7 +425,7 @@ class SolicitudService:
         solicitud = await self._obtener_accesible_o_404(id_solicitud, usuario)
         await self._exigir_propiedad(solicitud, usuario)
 
-        if EstadoSolicitud(solicitud["estado"]) not in ESTADOS_EDITABLES:
+        if SolicitudService._estado_de(solicitud) not in ESTADOS_EDITABLES:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
@@ -436,7 +477,7 @@ class SolicitudService:
         solicitud = await self._obtener_accesible_o_404(id_solicitud, usuario)
         await self._exigir_propiedad(solicitud, usuario)
 
-        if EstadoSolicitud(solicitud["estado"]) is not EstadoSolicitud.borrador:
+        if SolicitudService._estado_de(solicitud) is not EstadoSolicitud.borrador:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
@@ -639,7 +680,7 @@ class SolicitudService:
         solicitud = await self._obtener_accesible_o_404(id_solicitud, usuario)
         await self._exigir_propiedad(solicitud, usuario)
 
-        if EstadoSolicitud(solicitud["estado"]) not in ESTADOS_CANCELABLES:
+        if SolicitudService._estado_de(solicitud) not in ESTADOS_CANCELABLES:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(

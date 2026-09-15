@@ -102,7 +102,10 @@ class SolicitudRespuesta(BaseModel):
 
     id_solicitud: UUID
     numero_radicado: str | None
-    estado: EstadoSolicitud
+    # Texto y no EstadoSolicitud: en la base hay solicitudes antiguas con
+    # estados que el ciclo de M5 no usa ('APROBADO', 'EN_REVISION'...) y el
+    # listado no puede fallar por ellas.
+    estado: str
     id_empresa: UUID | None
     id_norma: UUID | None
     alcance_certificacion: str | None
@@ -124,7 +127,7 @@ class SolicitudEstadoRespuesta(BaseModel):
 
     id_solicitud: UUID
     numero_radicado: str | None
-    estado: EstadoSolicitud
+    estado: str
     fecha_creacion: datetime | None
     fecha_radicacion: datetime | None
     fecha_cancelacion: datetime | None

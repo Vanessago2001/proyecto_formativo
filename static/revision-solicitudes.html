@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CertiSENA | Revisión de solicitudes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body class="comite-page">
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Revisión de solicitudes</p>
+        </div>
+      </div>
+      <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="comite-shell">
+    <div class="comite-layout">
+      <aside class="comite-sidebar" aria-label="Navegación de revisión de solicitudes">
+        <div class="comite-sidebar-heading">
+          <span class="comite-kicker">Administración</span>
+          <strong>Solicitudes de certificación</strong>
+        </div>
+        <nav>
+          <button class="comite-nav-link active" type="button" data-filtro="radicadas">Solicitudes radicadas</button>
+          <button class="comite-nav-link" type="button" data-filtro="revision">En revisión</button>
+          <button class="comite-nav-link" type="button" data-filtro="todas">Todas las solicitudes</button>
+        </nav>
+        <div class="comite-access-note">
+          <span id="roleLabel">Validando permisos...</span>
+          <small>Validar sedes está disponible para Administrador, Auxiliar y Super Administrador.</small>
+        </div>
+      </aside>
+
+      <section class="comite-content">
+        <div class="comite-page-heading">
+          <div>
+            <span class="comite-kicker">Mesa de revisión</span>
+            <h2 id="viewTitle">Solicitudes radicadas</h2>
+            <p id="viewDescription"></p>
+          </div>
+          <button id="refreshButton" class="comite-button secondary" type="button">Actualizar</button>
+        </div>
+
+        <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
+
+        <div class="comite-toolbar">
+          <form id="searchForm" class="comite-search-form">
+            <label for="searchInput">Buscar solicitud</label>
+            <div class="comite-search-row">
+              <input id="searchInput" type="search" placeholder="Radicado, empresa o NIT">
+              <button class="comite-button primary" type="submit">Buscar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="comite-workspace">
+          <section class="comite-panel">
+            <div class="comite-panel-heading">
+              <div>
+                <h3>Cola de solicitudes</h3>
+                <p id="resultCount">Cargando solicitudes...</p>
+              </div>
+            </div>
+            <div class="comite-table-wrap">
+              <table style="min-width:0">
+                <thead>
+                  <tr>
+                    <th>Radicado</th>
+                    <th>Empresa</th>
+                    <th>Norma</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="solicitudesBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="detailPanel" class="comite-panel" aria-live="polite">
+            <div class="comite-empty-state">
+              <span class="comite-empty-icon">+</span>
+              <h3>Selecciona una solicitud</h3>
+              <p>La información de la empresa, sus sedes y la validación aparecerán aquí.</p>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const payload = leerToken(token);
+      if (!payload) return;
+
+      // Roles con SOL-029 (validar sedes) en la matriz de M5.
+      const ROLES_PERMITIDOS = ["administrador", "admin", "adm", "auxiliar", "aux", "super administrador", "superadministrador", "superadmin", "superadm"];
+      const rol = String(payload.role_name || "").trim().toLowerCase();
+      if (!ROLES_PERMITIDOS.includes(rol)) {
+        window.location.href = "/dashboard";
+        return;
+      }
+
+      const FILTROS = {
+        radicadas: ["Solicitudes radicadas", "Solicitudes presentadas formalmente que esperan la revisión de sus sedes.", (e) => /radicad/i.test(e)],
+        revision: ["En revisión", "Solicitudes que la administración ya tomó.", (e) => /revisi/i.test(e.replace(/_/g, " "))],
+        todas: ["Todas las solicitudes", "Todas las solicitudes de las empresas, incluidos los borradores.", () => true]
+      };
+
+      const estado = {
+        filtro: "radicadas",
+        busqueda: "",
+        solicitudes: [],
+        empresas: {},
+        normas: {},
+        seleccionada: null
+      };
+
+      const $ = (selector) => document.querySelector(selector);
+      $("#roleLabel").textContent = "Rol: " + (payload.role_name || "Usuario");
+
+      function leerToken(valor) {
+        try {
+          const parte = valor.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+          return JSON.parse(decodeURIComponent(atob(parte).split("").map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")));
+        } catch (_) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
+        }
+      }
+
+      async function api(ruta, opciones) {
+        const peticion = Object.assign({}, opciones || {}, {
+          headers: Object.assign({ Authorization: "Bearer " + token }, (opciones && opciones.headers) || {})
+        });
+        const respuesta = await fetch(ruta, peticion);
+        if (respuesta.status === 401) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
+        }
+        const tipo = respuesta.headers.get("content-type") || "";
+        const cuerpo = tipo.includes("json") ? await respuesta.json().catch(() => null) : null;
+        if (!respuesta.ok) {
+          const detalle = cuerpo && cuerpo.detail;
+          throw new Error(typeof detalle === "string" ? detalle : "No fue posible completar la solicitud (" + respuesta.status + ").");
+        }
+        return cuerpo;
+      }
+
+      async function descargar(ruta, nombre) {
+        try {
+          const respuesta = await fetch(ruta, { headers: { Authorization: "Bearer " + token } });
+          if (!respuesta.ok) throw new Error("No se pudo descargar el archivo (" + respuesta.status + ").");
+          const url = URL.createObjectURL(await respuesta.blob());
+          const enlace = document.createElement("a");
+          enlace.href = url;
+          enlace.download = nombre;
+          document.body.appendChild(enlace);
+          enlace.click();
+          enlace.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (error) {
+          mostrar(error.message, "error");
+        }
+      }
+
+      function mostrar(mensaje, tipo) {
+        const caja = $("#feedback");
+        caja.textContent = mensaje || "";
+        caja.className = "comite-feedback" + (mensaje ? " " + tipo : "");
+      }
+
+      const esc = (valor) => String(valor == null ? "" : valor)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      const fecha = (valor) => valor ? new Date(valor).toLocaleDateString("es-CO") : "-";
+      const fact = (etiqueta, valor) => "<div><dt>" + esc(etiqueta) + "</dt><dd>" + esc(valor) + "</dd></div>";
+      const valorONo = (valor) => valor === null || valor === undefined || valor === "" ? "No registrado" : valor;
+
+      function claseEstado(valor) {
+        const texto = String(valor || "").toLowerCase();
+        if (/(cancel|rechaz|inactiv|exclu)/.test(texto)) return "rejected";
+        if (/(radicad|aprobad|validad|^activ)/.test(texto)) return "approved";
+        return "pending";
+      }
+      const chip = (valor) => '<span class="comite-status ' + claseEstado(valor) + '">' + esc(valor || "-") + "</span>";
+
+      function nombreEmpresa(solicitud) {
+        const empresa = estado.empresas[solicitud.id_empresa];
+        return empresa ? empresa.nombre : "Sin empresa";
+      }
+
+      function codigoNorma(solicitud) {
+        const norma = estado.normas[solicitud.id_norma];
+        return norma ? norma.codigo || norma.nombre : "Sin norma";
+      }
+
+      // ---------------- cola de solicitudes ----------------
+      async function cargar() {
+        $("#resultCount").textContent = "Cargando solicitudes...";
+        try {
+          const [solicitudes, normas, empresas] = await Promise.all([
+            api("/solicitudes/?limite=200"),
+            api("/solicitudes/normas").catch(() => []),
+            api("/api/empresas/").catch(() => [])
+          ]);
+          estado.solicitudes = solicitudes || [];
+          estado.normas = Object.fromEntries((normas || []).map((n) => [n.id_norma, n]));
+          estado.empresas = Object.fromEntries((empresas || []).map((e) => [String(e.id_empresa), e]));
+          renderizarCola();
+        } catch (error) {
+          estado.solicitudes = [];
+          renderizarCola();
+          mostrar(error.message, "error");
+        }
+      }
+
+      function renderizarCola() {
+        const [, , coincide] = FILTROS[estado.filtro];
+        const texto = estado.busqueda.toLowerCase();
+        const visibles = estado.solicitudes.filter((s) => {
+          if (!coincide(s.estado || "")) return false;
+          if (!texto) return true;
+          const empresa = estado.empresas[s.id_empresa] || {};
+          return [s.numero_radicado, empresa.nombre, empresa.nit].some((v) => String(v || "").toLowerCase().includes(texto));
+        });
+
+        $("#resultCount").textContent = visibles.length + (visibles.length === 1 ? " solicitud" : " solicitudes");
+        $("#solicitudesBody").innerHTML = visibles.length
+          ? visibles.map((s) => "<tr>" +
+            "<td><strong>" + esc(s.numero_radicado || "Borrador") + "</strong><br><span class=\"comite-muted\">" + fecha(s.fecha_radicacion) + "</span></td>" +
+            "<td>" + esc(nombreEmpresa(s)) + "</td>" +
+            "<td>" + esc(codigoNorma(s)) + "</td>" +
+            "<td>" + chip(s.estado) + "</td>" +
+            '<td><button class="comite-table-action" type="button" data-revisar="' + esc(s.id_solicitud) + '">Revisar</button></td>' +
+            "</tr>").join("")
+          : '<tr><td colspan="5"><div class="comite-table-empty">No hay solicitudes para mostrar con los filtros actuales.</div></td></tr>';
+      }
+
+      // ---------------- detalle y validación ----------------
+      async function cargarDetalle(id) {
+        estado.seleccionada = id;
+        $("#detailPanel").innerHTML = '<div class="comite-loading">Cargando solicitud...</div>';
+        try {
+          const [info, sedes] = await Promise.all([
+            api("/solicitudes/" + id + "/informacion-general"),
+            api("/solicitudes/" + id + "/sedes")
+          ]);
+          renderizarDetalle(info, sedes, null);
+        } catch (error) {
+          $("#detailPanel").innerHTML = '<div class="comite-empty-state"><h3>No se pudo cargar la solicitud</h3><p>' + esc(error.message) + "</p></div>";
+          mostrar(error.message, "error");
+        }
+      }
+
+      function renderizarDetalle(info, sedes, validacion) {
+        estado.info = info;
+        const validable = !["Borrador", "Cancelada"].includes(info.estado);
+
+        const listaSedes = sedes.length
+          ? '<ul class="comite-item-list">' + sedes.map((s) =>
+            "<li><strong>" + esc(s.nombre_sede) + (s.es_principal ? " (principal)" : "") + "</strong>" +
+            "<span>" + esc([s.ciudad, s.departamento].filter(Boolean).join(", ") || "Sin ubicación") + " " +
+            chip(s.estado_sede === "Inactiva" ? "Inactiva" : s.estado_en_solicitud) + "</span></li>").join("") + "</ul>"
+          : '<p class="comite-muted">La solicitud no tiene sedes incluidas.</p>';
+
+        let resultado = "";
+        if (validacion) {
+          resultado = '<div class="comite-detail-section"><h4>Resultado de la validación</h4>' +
+            (validacion.valida
+              ? '<p class="comite-readonly-note">Todas las sedes están completas y coinciden con lo declarado.</p>'
+              : '<ul class="comite-item-list">' + validacion.inconsistencias.map((i) => "<li><span>" + esc(i) + "</span></li>").join("") + "</ul>") +
+            "</div>";
+        }
+
+        $("#detailPanel").innerHTML =
+          '<div class="comite-detail-heading"><div><span class="comite-kicker">Solicitud seleccionada</span><h3>' +
+          esc(info.numero_radicado || "Borrador") + "</h3></div>" + chip(info.estado) + "</div>" +
+          '<dl class="comite-facts">' +
+          fact("Empresa", info.empresa_nombre || "No registrada") +
+          fact("NIT", info.empresa_nit || "No registrado") +
+          fact("Norma", info.norma_codigo ? [info.norma_codigo, info.norma_version].filter(Boolean).join(" ") : "No registrada") +
+          fact("Contacto", valorONo(info.persona_contacto)) +
+          fact("Empleados", valorONo(info.numero_empleados)) +
+          fact("Sedes declaradas / incluidas", valorONo(info.numero_sedes) + " / " + info.sedes_incluidas) +
+          "</dl>" +
+          '<div class="comite-detail-section"><h4>Sedes incluidas (' + sedes.length + ")</h4>" + listaSedes + "</div>" +
+          resultado +
+          '<div class="comite-detail-section"><h4>Acciones</h4>' +
+          (validable ? "" : '<p class="comite-readonly-note">Solo se validan las sedes de solicitudes radicadas.</p>') +
+          '<div class="comite-decision-actions">' +
+          '<button id="validarButton" class="comite-button primary" type="button"' + (validable ? "" : " disabled") + ">Validar sedes</button>" +
+          '<button class="comite-button secondary" type="button" data-descargar="excel">Exportar sedes a Excel</button>' +
+          '<button class="comite-button secondary" type="button" data-descargar="pdf">Descargar PDF</button>' +
+          "</div></div>";
+      }
+
+      async function validar() {
+        const id = estado.seleccionada;
+        if (!id) return;
+        try {
+          const validacion = await api("/solicitudes/" + id + "/sedes/validar", { method: "POST" });
+          const sedes = await api("/solicitudes/" + id + "/sedes");
+          renderizarDetalle(estado.info, sedes, validacion);
+          const total = validacion.inconsistencias.length;
+          mostrar(
+            validacion.valida
+              ? "Sedes validadas sin observaciones."
+              : "Validación registrada con " + total + (total === 1 ? " observación." : " observaciones."),
+            validacion.valida ? "success" : "error"
+          );
+        } catch (error) {
+          mostrar(error.message, "error");
+        }
+      }
+
+      function cambiarFiltro(filtro) {
+        estado.filtro = filtro;
+        document.querySelectorAll(".comite-nav-link").forEach((boton) => boton.classList.toggle("active", boton.dataset.filtro === filtro));
+        $("#viewTitle").textContent = FILTROS[filtro][0];
+        $("#viewDescription").textContent = FILTROS[filtro][1];
+        renderizarCola();
+      }
+
+      // ---------------- eventos ----------------
+      document.querySelectorAll(".comite-nav-link").forEach((boton) => boton.addEventListener("click", () => cambiarFiltro(boton.dataset.filtro)));
+
+      $("#searchForm").addEventListener("submit", (evento) => {
+        evento.preventDefault();
+        estado.busqueda = $("#searchInput").value.trim();
+        renderizarCola();
+      });
+
+      $("#solicitudesBody").addEventListener("click", (evento) => {
+        const boton = evento.target.closest("[data-revisar]");
+        if (boton) cargarDetalle(boton.dataset.revisar);
+      });
+
+      $("#detailPanel").addEventListener("click", (evento) => {
+        if (evento.target.closest("#validarButton")) return validar();
+        const boton = evento.target.closest("[data-descargar]");
+        if (!boton || !estado.seleccionada) return;
+        const radicado = (estado.info && estado.info.numero_radicado) || "borrador";
+        if (boton.dataset.descargar === "excel") {
+          descargar("/solicitudes/" + estado.seleccionada + "/sedes/excel", "sedes-" + radicado + ".xlsx");
+        } else {
+          descargar("/solicitudes/" + estado.seleccionada + "/pdf", radicado + ".pdf");
+        }
+      });
+
+      $("#refreshButton").addEventListener("click", async () => {
+        await cargar();
+        if (estado.seleccionada) cargarDetalle(estado.seleccionada);
+      });
+
+      $("#logoutButton").addEventListener("click", () => {
+        localStorage.clear();
+        window.location.href = "/login";
+      });
+
+      cambiarFiltro("radicadas");
+      cargar();
+    })();
+  </script>
+  <script src="/static/session.js"></script>
+</body>
+
+</html>

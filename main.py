@@ -14,6 +14,8 @@ from core.logger import logger
 from core.security import hash_password
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
+from modules.aprobaciones.aprobacion_router import router as aprobaciones_router
+from modules.aprobaciones.aprobacion_bootstrap import preparar_aprobaciones
 from modules.comite.comite_router import router as comite_router
 from modules.apelaciones.apelaciones_router import router as apelaciones_router
 
@@ -36,7 +38,10 @@ from modules.auditores.auditor_router import router as auditor_router
 # ============================================================
 from modules.solicitudes.solicitud_router import router as solicitud_router
 from modules.solicitudes.documento_router import router as documento_router
+from modules.solicitudes.informacion_router import router as informacion_router
+from modules.solicitudes.sede_router import router as sede_router
 from modules.solicitudes.solicitud_bootstrap import preparar_modulo_solicitudes
+from modules.empresas.empresas_bootstrap import preparar_modulo_empresas
 
 
 
@@ -122,74 +127,15 @@ async def ensure_apelaciones_schema(session) -> None:
         await session.execute(text(column_sql))
 
 
-async def ensure_empresa_sedes_schema(session) -> None:
-    await session.execute(text("""
-        CREATE TABLE IF NOT EXISTS sede (
-            id_sede SERIAL PRIMARY KEY,
-            id_empresa INTEGER NOT NULL,
-            nombre_sede VARCHAR(200) NOT NULL,
-            direccion VARCHAR(255) NOT NULL,
-            ciudad VARCHAR(100) NOT NULL,
-            departamento VARCHAR(100),
-            pais VARCHAR(100),
-            es_principal BOOLEAN NOT NULL DEFAULT FALSE,
-            estado VARCHAR(50) NOT NULL DEFAULT 'Activo',
-            fecha_registro TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT fk_sede_empresa FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
-        );
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS id_empresa INTEGER;
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS nombre_sede VARCHAR(200);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS direccion VARCHAR(255);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS ciudad VARCHAR(100);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS departamento VARCHAR(100);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS pais VARCHAR(100);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS es_principal BOOLEAN DEFAULT FALSE;
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS estado VARCHAR(50) DEFAULT 'Activo';
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS fecha_registro TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
-    """))
+# Las sedes de las empresas viven en la tabla `sede_empresa`, que ya existe en
+# la base. Antes aqui se intentaba crear una tabla `sede` con id_empresa
+# INTEGER, incompatible con empresa.id_empresa (UUID).
 
 async def seed_initial_data() -> None:
     async with AsyncSessionLocal() as session:
         try:
             await ensure_login_security_schema(session)
             await ensure_apelaciones_schema(session)
-            await ensure_empresa_sedes_schema(session)
 
             # Roles por defecto según la tabla rol (id_rol PK, nombre, descripcion)
             default_rol = [
@@ -261,6 +207,10 @@ async def lifespan(app: FastAPI):
     logger.info("  Documentación interactiva: http://127.0.0.1:8000/docs")
     logger.info("==========================================================")
     await seed_initial_data()
+    # Cada modulo prepara su parte de la base con su propia sesion.
+    await preparar_modulo_solicitudes()
+    await preparar_modulo_empresas()
+    await preparar_aprobaciones()
     try:
         yield
     finally:
@@ -285,6 +235,7 @@ app.include_router(role_router)
 app.include_router(users_router)
 app.include_router(security_router)
 app.include_router(empresas_router)
+app.include_router(aprobaciones_router)
 app.include_router(comite_router)
 app.include_router(apelaciones_router)
 app.include_router(alejandra_router)
@@ -297,6 +248,8 @@ app.include_router(auditor_router)
 # M5 - Gestion de solicitudes
 app.include_router(solicitud_router)
 app.include_router(documento_router)
+app.include_router(informacion_router)
+app.include_router(sede_router)
 
 # ============================================================
 # RUTAS DE INTERFAZ DE USUARIO
@@ -424,6 +377,12 @@ async def auditor_page(request: Request):
 @app.get("/empresa", response_class=HTMLResponse)
 async def empresa_page(request: Request):
     return FileResponse("static/empresa.html")
+
+
+@app.get("/revision-solicitudes", response_class=HTMLResponse)
+async def revision_solicitudes_page(request: Request):
+    """M5: Administración revisa las solicitudes radicadas y valida sus sedes."""
+    return FileResponse("static/revision-solicitudes.html")
 
 
 @app.get("/buscar_empresa", response_class=HTMLResponse)
