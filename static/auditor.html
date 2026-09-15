@@ -1,11 +1,14 @@
 <!DOCTYPE html>
+
 <html lang="es">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CertiSENA | Portal auditor</title>
+
   <link rel="stylesheet" href="/static/styles.css">
+
   <style>
     .portal {
       max-width: 1120px;
@@ -13,14 +16,14 @@
       padding: 28px;
       display: grid;
       grid-template-columns: 230px 1fr;
-      gap: 24px
+      gap: 24px;
     }
 
     .side,
     .content {
       background: #fff;
       border: 1px solid #dbe4d4;
-      padding: 20px
+      padding: 20px;
     }
 
     .side a {
@@ -28,24 +31,24 @@
       padding: 11px;
       color: #334155;
       text-decoration: none;
-      border-left: 3px solid transparent
+      border-left: 3px solid transparent;
     }
 
     .side a.active {
       color: #256d00;
       background: #f1f8ed;
-      border-left-color: #3baa01
+      border-left-color: #3baa01;
     }
 
     .content h2 {
       color: #256d00;
       font-size: 23px;
-      margin-bottom: 8px
+      margin-bottom: 8px;
     }
 
     .content p {
       color: #64748b;
-      line-height: 1.5
+      line-height: 1.5;
     }
 
     .notice {
@@ -53,93 +56,2782 @@
       padding: 16px;
       background: #f1f8ed;
       border-left: 4px solid #3baa01;
-      color: #365314
+      color: #365314;
     }
 
-    .uploads {
+    .form-section {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .form-section h3 {
+      font-size: 16px;
+      color: #1e293b;
+      margin-bottom: 14px;
+    }
+
+    .form-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 16px;
-      margin-top: 20px
     }
 
-    .upload {
-      border: 1px dashed #93b987;
-      padding: 18px
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
-    .upload h3 {
+    .form-group.full-width {
+      grid-column: span 2;
+    }
+
+    .form-group.checkbox-group {
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .form-group label span {
+      color: #dc2626;
+    }
+
+    .form-control {
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #0f172a;
+      outline: none;
+      background: #fff;
+    }
+
+    .form-control:focus {
+      border-color: #3baa01;
+      box-shadow: 0 0 0 2px rgba(59, 170, 1, 0.15);
+    }
+
+    .form-control[readonly] {
+      background: #f1f5f9;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    .form-control:disabled {
+      background: #f1f5f9;
+      color: #64748b;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .btn-save-section {
+      margin-top: 14px;
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-save-section:hover {
+      background: #0369a1;
+    }
+
+    .btn-save-section:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .btn-edit-section {
+      margin-top: 14px;
+      margin-left: 8px;
+      background: #64748b;
+      color: #fff;
+      border: none;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-edit-section:hover {
+      background: #475569;
+    }
+
+    .btn-edit-section:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .btn-submit {
+      margin-top: 28px;
+      background: #256d00;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
       font-size: 15px;
-      margin-bottom: 7px
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
     }
 
-    .upload input {
-      margin-top: 12px;
-      width: 100%
+    .btn-submit:hover {
+      background: #1e5800;
+    }
+
+    .btn-submit:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
     }
 
     .profile-link {
       margin-left: auto;
       color: #fff;
       text-decoration: none;
-      font-weight: 600
+      font-weight: 600;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .readonly-info {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 12px;
+      border-radius: 4px;
+    }
+
+    .status-postulante {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 4px 9px;
+      border-radius: 12px;
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 12px;
+      font-weight: 600;
     }
 
     @media(max-width:720px) {
       .portal {
         grid-template-columns: 1fr;
-        padding: 18px
+        padding: 18px;
       }
 
-      .uploads {
-        grid-template-columns: 1fr
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group.full-width {
+        grid-column: span 1;
       }
     }
   </style>
+
 </head>
 
 <body>
+
   <header class="login-header">
     <div class="header-content">
-      <div class="header-left"><img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+
+
+      <div class="header-left">
+
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+
         <div>
           <h1>CertiSENA</h1>
-          <p class="subtitle">Portal de auditoria</p>
+          <p class="subtitle">Portal de auditoría</p>
         </div>
-      </div><a class="profile-link" href="/profile">Mi perfil</a>
-    </div>
-  </header>
-  <main class="portal">
-    <nav class="side"><a class="active" href="/auditor">Mi registro</a><a href="#documentos">Documentos</a><a
-        href="#impedimentos">Conflictos de interes</a><a href="/profile">Mi perfil</a><a id="logout"
-        href="/login">Cerrar sesion</a></nav>
-    <section class="content">
-      <h2 id="title">Registro previo de auditor</h2>
-      <p>Complete la informacion que permite al administrador verificar su competencia tecnica antes de considerarlo
-        para una asignacion.</p>
-      <div class="notice">La asignacion de auditores y la validacion de conflictos de interes se realizan de forma
-        manual por el administrador.</div>
-      <div id="documentos" class="uploads">
-        <div class="upload">
-          <h3>Experiencia laboral</h3>
-          <p>Soportes que acrediten su experiencia profesional.</p><input type="file" accept=".pdf,.doc,.docx">
-        </div>
-        <div class="upload">
-          <h3>Estudios formales</h3>
-          <p>Diplomas, actas o certificaciones academicas.</p><input type="file" accept=".pdf,.doc,.docx">
-        </div>
-        <div class="upload">
-          <h3>Estudios complementarios</h3>
-          <p>Cursos y formacion relacionada con la auditoria.</p><input type="file" accept=".pdf,.doc,.docx">
-        </div>
-        <div class="upload" id="impedimentos">
-          <h3>Declaracion de impedimentos</h3>
-          <p>Indique empresas con las que tenga conflicto de interes.</p><input type="file" accept=".pdf,.doc,.docx">
-        </div>
+
       </div>
+
+      <a class="profile-link" href="/profile">
+        Mi perfil
+      </a>
+
+    </div>
+
+
+  </header>
+
+  <main class="portal">
+
+
+    <!-- =====================================================
+     MENU LATERAL
+====================================================== -->
+
+    <nav class="side">
+
+      <a class="active" href="/auditor">
+        Mi registro
+      </a>
+
+      <a href="#datos-personales">
+        Datos personales
+      </a>
+
+      <a href="#perfil">
+        Perfil Auditor
+      </a>
+
+      <a href="#competencias">
+        Competencias
+      </a>
+
+      <a href="#conflictos">
+        Conflictos de Interés
+      </a>
+
+      <a id="logout" href="/login">
+        Cerrar sesión
+      </a>
+
+    </nav>
+
+
+    <section class="content">
+
+      <h2 id="title">
+        Registro previo de auditor
+      </h2>
+
+      <p>
+        Diligencie cada sección y guarde la información de manera independiente.
+        Cuando complete el registro podrá enviarlo al Banco de Auditores.
+      </p>
+
+
+      <!-- =====================================================
+       ESTADO
+  ====================================================== -->
+
+      <div class="notice" id="estado-alerta">
+        Cargando estado del registro...
+      </div>
+
+
+      <!-- =====================================================
+       SECCIÓN 1 - DATOS PERSONALES
+  ====================================================== -->
+
+      <form id="formDatosPersonales" class="form-section">
+
+        <h3 id="datos-personales">
+          1. Datos personales
+        </h3>
+
+        <div class="form-grid">
+
+          <div class="form-group">
+
+            <label for="nombre">
+              Nombre completo <span>*</span>
+            </label>
+
+            <input type="text" id="nombre" class="form-control" readonly>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label for="correo">
+              Correo electrónico <span>*</span>
+            </label>
+
+            <input type="email" id="correo" class="form-control" readonly>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label for="tipo_doc">
+              Tipo de documento <span>*</span>
+            </label>
+
+            <input type="text" id="tipo_doc" class="form-control" readonly>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label for="num_doc">
+              Número de documento <span>*</span>
+            </label>
+
+            <input type="text" id="num_doc" class="form-control" readonly>
+
+          </div>
+
+        </div>
+
+      </form>
+
+
+      <!-- =====================================================
+       SECCIÓN 2 - PERFIL
+  ====================================================== -->
+
+      <form id="formPerfil" class="form-section">
+
+        <h3 id="perfil">
+          2. Perfil del Auditor
+        </h3>
+
+        <div class="form-grid">
+
+          <div class="form-group">
+
+            <label for="ciudad_residencia">
+              Ciudad de residencia <span>*</span>
+            </label>
+
+            <input type="text" id="ciudad_residencia" name="ciudad_residencia" class="form-control" required>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label for="departamento_residencia">
+              Departamento <span>*</span>
+            </label>
+
+            <input type="text" id="departamento_residencia" name="departamento_residencia" class="form-control"
+              required>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label for="modalidad_preferida">
+              Modalidad preferida <span>*</span>
+            </label>
+
+            <select id="modalidad_preferida" name="modalidad_preferida" class="form-control" required>
+
+              <option value="">
+                Seleccione...
+              </option>
+
+              <option value="Presencial">
+                Presencial
+              </option>
+
+              <option value="Remota">
+                Remota
+              </option>
+
+              <option value="Híbrida">
+                Híbrida
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label for="foto_url">
+              URL Foto Profesional
+            </label>
+
+            <input type="url" id="foto_url" name="foto_url" class="form-control" placeholder="https://...">
+
+          </div>
+
+
+          <div class="form-group full-width">
+
+            <label for="resumen_profesional">
+              Resumen profesional <span>*</span>
+            </label>
+
+            <textarea id="resumen_profesional" name="resumen_profesional" class="form-control"
+              placeholder="Describa su trayectoria técnica..." required></textarea>
+
+          </div>
+
+        </div>
+
+
+        <button type="submit" id="btnGuardarPerfil" class="btn-save-section">
+          Guardar Perfil
+        </button>
+
+        <button type="button" id="btnEditarPerfil" class="btn-edit-section" style="display:none;">
+          Editar borrador
+        </button>
+
+      </form>
+
+
+      <!-- =====================================================
+       SECCIÓN 3 - COMPETENCIAS
+  ====================================================== -->
+
+      <form id="formCompetencias" class="form-section">
+
+        <h3 id="competencias">
+          3. Agregar Competencia Técnica
+        </h3>
+
+        <div class="form-grid">
+
+
+          <!-- TIPO DE COMPETENCIA -->
+
+          <div class="form-group">
+
+            <label for="tipo_competencia">
+              Tipo Competencia <span>*</span>
+            </label>
+
+            <select id="tipo_competencia" name="tipo_competencia" class="form-control" required>
+
+              <option value="">
+                Seleccione un tipo de competencia
+              </option>
+
+              <option value="Norma ISO">
+                Norma ISO
+              </option>
+
+              <option value="Sector IAF">
+                Sector IAF
+              </option>
+
+              <option value="Experiencia Laboral">
+                Experiencia Laboral
+              </option>
+
+              <option value="Estudio">
+                Estudio
+              </option>
+
+              <option value="Curso">
+                Curso
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <!-- NORMA -->
+
+          <div class="form-group">
+
+            <label for="id_norma">
+              Norma <span>*</span>
+            </label>
+
+            <select id="id_norma" name="id_norma" class="form-control" required>
+
+              <option value="">
+                Cargando normas...
+              </option>
+
+            </select>
+
+            <span class="help-text">
+              Las normas se cargan directamente desde el sistema.
+            </span>
+
+          </div>
+
+
+          <!-- CÓDIGO IAF -->
+
+          <div class="form-group">
+
+            <label for="codigo_sector_iaf">
+              Código Sector IAF <span>*</span>
+            </label>
+
+            <input type="text" id="codigo_sector_iaf" name="codigo_sector_iaf" class="form-control"
+              placeholder="Ej: IAF 19" required>
+
+          </div>
+
+
+          <!-- TÍTULO -->
+
+          <div class="form-group">
+
+            <label for="titulo_institucion">
+              Título e Institución <span>*</span>
+            </label>
+
+            <input type="text" id="titulo_institucion" name="titulo_institucion" class="form-control"
+              placeholder="Ej: Ing. Sistemas - Universidad X" required>
+
+          </div>
+
+
+          <!-- FECHA INICIO -->
+
+          <div class="form-group">
+
+            <label for="fecha_inicio_comp">
+              Fecha Inicio <span>*</span>
+            </label>
+
+            <input type="date" id="fecha_inicio_comp" name="fecha_inicio" class="form-control" required>
+
+          </div>
+
+
+          <!-- FECHA FIN -->
+
+          <div class="form-group">
+
+            <label for="fecha_fin_comp">
+              Fecha Fin <span>*</span>
+            </label>
+
+            <input type="date" id="fecha_fin_comp" name="fecha_fin" class="form-control" required>
+
+          </div>
+
+
+          <!-- DESCRIPCIÓN -->
+
+          <div class="form-group full-width">
+
+            <label for="descripcion_comp">
+              Descripción de la Competencia <span>*</span>
+            </label>
+
+            <textarea id="descripcion_comp" name="descripcion" class="form-control"
+              placeholder="Describa la experiencia o competencia adquirida..." required></textarea>
+
+          </div>
+
+
+          <!-- VIGENCIA -->
+
+          <div class="form-group full-width checkbox-group">
+
+            <input type="checkbox" id="es_vigente" checked style="width: auto;">
+
+            <label for="es_vigente">
+              Esta competencia se encuentra vigente.
+            </label>
+
+          </div>
+
+        </div>
+
+
+        <button type="submit" id="btnGuardarCompetencia" class="btn-save-section">
+          Registrar Competencia
+        </button>
+
+        <button type="button" id="btnEditarCompetencia" class="btn-edit-section" style="display:none;">
+          Editar borrador
+        </button>
+
+      </form>
+
+
+      <!-- =====================================================
+       SECCIÓN 4 - CONFLICTOS
+  ====================================================== -->
+
+      <form id="formConflictos" class="form-section">
+
+        <h3 id="conflictos">
+          4. Declaración de Conflictos de Interés
+        </h3>
+
+        <div class="form-grid">
+
+
+          <!-- TIPO -->
+
+          <div class="form-group">
+
+            <label for="tipo_conflicto">
+              Tipo de conflicto <span>*</span>
+            </label>
+
+            <select id="tipo_conflicto" name="tipo_conflicto" class="form-control" required>
+
+              <option value="">
+                Seleccione un tipo de conflicto
+              </option>
+
+              <option value="Exempleado">
+                Exempleado
+              </option>
+
+              <option value="Asesoría Previa">
+                Asesoría Previa
+              </option>
+
+              <option value="Parentesco">
+                Parentesco
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <!-- EMPRESA -->
+
+          <div class="form-group">
+
+            <label for="id_empresa">
+              Empresa relacionada <span>*</span>
+            </label>
+
+            <select id="id_empresa" name="id_empresa" class="form-control" required>
+
+              <option value="">
+                Cargando empresas...
+              </option>
+
+            </select>
+
+            <span class="help-text">
+              Identificador de la empresa con la que existe el conflicto.
+            </span>
+
+          </div>
+
+
+          <!-- DESCRIPCIÓN -->
+
+          <div class="form-group full-width">
+
+            <label for="descripcion_conf">
+              Descripción <span>*</span>
+            </label>
+
+            <textarea id="descripcion_conf" name="descripcion" class="form-control"
+              placeholder="Describa el conflicto de interés..." required></textarea>
+
+          </div>
+
+
+          <!-- BLOQUEA -->
+
+          <div class="form-group full-width checkbox-group">
+
+            <input type="checkbox" id="bloquea_asignacion" name="bloquea_asignacion" checked style="width: auto;">
+
+            <label for="bloquea_asignacion">
+              Este conflicto bloquea la asignación del auditor a esta empresa.
+            </label>
+
+          </div>
+
+        </div>
+
+
+        <!-- =================================================
+         DECLARACIONES
+    ================================================== -->
+
+        <div class="form-section" style="margin-top: 28px;">
+
+          <h3>
+            Declaraciones obligatorias
+          </h3>
+
+          <div class="form-grid">
+
+
+            <!-- IMPARCIALIDAD -->
+
+            <div class="form-group full-width checkbox-group">
+
+              <input type="checkbox" id="acepta_imparcialidad" name="acepta_imparcialidad" required
+                style="width: auto;">
+
+              <label for="acepta_imparcialidad">
+
+                Acepto y declaro total
+                <strong>Imparcialidad</strong>
+                en el desempeño de mis funciones de auditoría.
+
+                <span>*</span>
+
+              </label>
+
+            </div>
+
+
+            <!-- CONFIDENCIALIDAD -->
+
+            <div class="form-group full-width checkbox-group">
+
+              <input type="checkbox" id="acepta_confidencialidad" name="acepta_confidencialidad" required
+                style="width: auto;">
+
+              <label for="acepta_confidencialidad">
+
+                Acepto el acuerdo de
+                <strong>Confidencialidad</strong>
+                sobre la información institucional y empresarial evaluada.
+
+                <span>*</span>
+
+              </label>
+
+            </div>
+
+
+            <!-- DOCUMENTOS -->
+
+            <div class="form-group full-width">
+
+              <label for="documento_url_soporte">
+
+                URL Documentos Soporte
+                (Hoja de vida, Cédula, Certificados en PDF/Drive)
+
+                <span>*</span>
+
+              </label>
+
+              <input type="url" id="documento_url_soporte" name="documento_url_soporte" class="form-control"
+                placeholder="https://drive.google.com/..." required>
+
+              <span class="help-text">
+                Esta dirección será utilizada como soporte documental
+                de la inscripción.
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- =================================================
+         BOTONES
+    ================================================== -->
+
+        <button type="submit" id="btnGuardarConflicto" class="btn-save-section">
+          Registrar Conflicto
+        </button>
+
+        <button type="button" id="btnEditarConflicto" class="btn-edit-section" style="display:none;">
+          Editar borrador
+        </button>
+
+
+        <button type="button" id="btnEnviarGeneral" class="btn-submit">
+          Enviar Formulario al Banco de Auditores
+        </button>
+
+      </form>
+
     </section>
+
+
   </main>
-  <script>const token = localStorage.getItem('access_token'); try { const p = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); if (p.role_name !== 'Auditor') location.href = '/dashboard'; else document.getElementById('title').textContent = 'Registro previo de auditor: ' + p.sub; } catch (_) { location.href = '/login' } document.getElementById('logout').onclick = e => { e.preventDefault(); localStorage.clear(); location.href = '/login' };</script>
+
+  <script>
+
+    /* =====================================================
+       VARIABLES
+    ====================================================== */
+
+    let userId = null;
+
+    const token = localStorage.getItem('access_token');
+
+    const STORAGE_PREFIX = 'certisena_auditor_';
+
+
+    /* =====================================================
+       OBTENER USUARIO DESDE JWT
+    ====================================================== */
+
+    try {
+
+      if (!token) {
+        throw new Error("No existe token");
+      }
+
+      const payload = JSON.parse(
+        atob(
+          token
+            .split('.')[1]
+            .replace(/-/g, '+')
+            .replace(/_/g, '/')
+        )
+      );
+
+
+      if (
+        payload.role_name &&
+        payload.role_name.toLowerCase() !== 'auditor'
+      ) {
+
+        location.href = '/dashboard';
+
+      }
+
+
+      userId =
+        payload.user_id ||
+        payload.id_usuario ||
+        payload.sub;
+
+
+      if (!userId) {
+        throw new Error("No se encontró el ID del usuario");
+      }
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      location.href = '/login';
+
+    }
+
+
+    /* =====================================================
+       LOGOUT
+    ====================================================== */
+
+    document.getElementById('logout').onclick = (e) => {
+
+      e.preventDefault();
+
+      localStorage.clear();
+
+      location.href = '/login';
+
+    };
+
+
+    /* =====================================================
+       STORAGE
+    ====================================================== */
+
+    function storageKey(nombre) {
+      return `${STORAGE_PREFIX}${userId}_${nombre}`;
+    }
+
+
+    function guardarLocal(nombre, valor) {
+
+      try {
+        localStorage.setItem(
+          storageKey(nombre),
+          JSON.stringify(valor)
+        );
+      } catch (error) {
+        console.warn(
+          'No fue posible guardar información local:',
+          error
+        );
+      }
+
+    }
+
+
+    function obtenerLocal(nombre, valorDefault = null) {
+
+      try {
+
+        const valor =
+          localStorage.getItem(
+            storageKey(nombre)
+          );
+
+        if (valor === null) {
+          return valorDefault;
+        }
+
+        return JSON.parse(valor);
+
+      } catch (error) {
+
+        console.warn(
+          'No fue posible recuperar información local:',
+          error
+        );
+
+        return valorDefault;
+
+      }
+
+    }
+
+
+    /* =====================================================
+       HELPERS
+    ====================================================== */
+
+    function setValue(id, value) {
+
+      const elemento =
+        document.getElementById(id);
+
+      if (!elemento) {
+
+        console.warn(
+          `⚠️ No existe el elemento #${id}`
+        );
+
+        return;
+
+      }
+
+      elemento.value =
+        value ?? '';
+
+    }
+
+
+    function setChecked(id, value) {
+
+      const elemento =
+        document.getElementById(id);
+
+      if (!elemento) {
+
+        console.warn(
+          `⚠️ No existe el checkbox #${id}`
+        );
+
+        return;
+
+      }
+
+      elemento.checked =
+        value === true;
+
+    }
+
+
+    function obtenerControlesFormulario(form) {
+
+      return form.querySelectorAll(
+        'input:not([type="hidden"]), select, textarea'
+      );
+
+    }
+
+
+    /* =====================================================
+       BLOQUEAR SECCIÓN
+    ====================================================== */
+
+    function bloquearSeccion(formId) {
+
+      const form =
+        document.getElementById(formId);
+
+      if (!form) {
+        return;
+      }
+
+
+      obtenerControlesFormulario(form)
+        .forEach((elemento) => {
+
+          /*
+           * Los datos personales ya son readonly
+           * y no se modifican.
+           */
+          if (elemento.id !== 'nombre' &&
+            elemento.id !== 'correo' &&
+            elemento.id !== 'tipo_doc' &&
+            elemento.id !== 'num_doc') {
+
+            elemento.disabled = true;
+
+          }
+
+        });
+
+
+      const botonesGuardar =
+        form.querySelectorAll(
+          '.btn-save-section'
+        );
+
+      botonesGuardar.forEach((boton) => {
+        boton.disabled = true;
+      });
+
+
+      const botonEditar =
+        form.querySelector(
+          '.btn-edit-section'
+        );
+
+      if (botonEditar) {
+
+        botonEditar.style.display =
+          'inline-block';
+
+        botonEditar.disabled = false;
+
+      }
+
+    }
+
+
+    /* =====================================================
+       HABILITAR SECCIÓN
+    ====================================================== */
+
+    function habilitarSeccion(formId) {
+
+      const form =
+        document.getElementById(formId);
+
+      if (!form) {
+        return;
+      }
+
+
+      obtenerControlesFormulario(form)
+        .forEach((elemento) => {
+
+          if (elemento.id !== 'nombre' &&
+            elemento.id !== 'correo' &&
+            elemento.id !== 'tipo_doc' &&
+            elemento.id !== 'num_doc') {
+
+            elemento.disabled = false;
+
+          }
+
+        });
+
+
+      const botonesGuardar =
+        form.querySelectorAll(
+          '.btn-save-section'
+        );
+
+      botonesGuardar.forEach((boton) => {
+        boton.disabled = false;
+      });
+
+
+      const botonEditar =
+        form.querySelector(
+          '.btn-edit-section'
+        );
+
+      if (botonEditar) {
+        botonEditar.style.display =
+          'none';
+      }
+
+    }
+
+
+    /* =====================================================
+       EDITAR SECCIÓN
+    ====================================================== */
+
+    function editarSeccion(formId, nombreSeccion) {
+
+      const confirmado =
+        confirm(
+          `⚠️ EDITAR BORRADOR\n\n` +
+          `Está a punto de modificar la sección "${nombreSeccion}".\n\n` +
+          `La información actualmente guardada se habilitará nuevamente para edición.\n\n` +
+          `Después de realizar los cambios deberá volver a guardar la sección.\n\n` +
+          `¿Desea continuar?`
+        );
+
+
+      if (!confirmado) {
+        return;
+      }
+
+
+      habilitarSeccion(formId);
+
+    }
+
+
+    /* =====================================================
+       CARGAR EMPRESAS
+    ====================================================== */
+
+    async function cargarEmpresas() {
+
+      const select =
+        document.getElementById(
+          'id_empresa'
+        );
+
+
+      console.log(
+        '🔵 Iniciando carga de empresas...'
+      );
+
+
+      try {
+
+        const response =
+          await fetch(
+            '/auditores/catalogos/empresas'
+          );
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            `HTTP ${response.status}: ${response.statusText}`
+          );
+
+        }
+
+
+        const empresas =
+          await response.json();
+
+
+        select.innerHTML = `
+          <option value="">
+            Seleccione una empresa
+          </option>
+        `;
+
+
+        if (
+          !Array.isArray(empresas) ||
+          empresas.length === 0
+        ) {
+
+          select.innerHTML = `
+            <option value="">
+              No hay empresas registradas
+            </option>
+          `;
+
+          return;
+
+        }
+
+
+        empresas.forEach(
+          (empresa) => {
+
+            const option =
+              document.createElement(
+                'option'
+              );
+
+
+            option.value =
+              empresa.id_empresa;
+
+
+            option.textContent =
+              empresa.nit
+                ? `${empresa.nombre} - NIT ${empresa.nit}`
+                : empresa.nombre;
+
+
+            select.appendChild(
+              option
+            );
+
+          }
+        );
+
+
+        console.log(
+          `🟢 Se cargaron ${empresas.length} empresas.`
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          '🔴 Error cargando empresas:',
+          error
+        );
+
+
+        select.innerHTML = `
+          <option value="">
+            Error al cargar empresas
+          </option>
+        `;
+
+      }
+
+    }
+
+
+    /* =====================================================
+       CARGAR NORMAS
+    ====================================================== */
+
+    async function cargarNormas() {
+
+      const select =
+        document.getElementById(
+          'id_norma'
+        );
+
+
+      console.log(
+        '🔵 Iniciando carga de normas...'
+      );
+
+
+      try {
+
+        const controller =
+          new AbortController();
+
+
+        const timeout =
+          setTimeout(
+            () => controller.abort(),
+            10000
+          );
+
+
+        const response =
+          await fetch(
+            '/auditores/catalogos/normas',
+            {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json'
+              },
+              signal: controller.signal
+            }
+          );
+
+
+        clearTimeout(timeout);
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            `HTTP ${response.status}: ${response.statusText}`
+          );
+
+        }
+
+
+        const normas =
+          await response.json();
+
+
+        if (!Array.isArray(normas)) {
+
+          throw new Error(
+            'La respuesta del servidor no es una lista de normas.'
+          );
+
+        }
+
+
+        select.innerHTML = `
+          <option value="">
+            Seleccione una norma
+          </option>
+        `;
+
+
+        if (normas.length === 0) {
+
+          select.innerHTML = `
+            <option value="">
+              No hay normas registradas
+            </option>
+          `;
+
+          return;
+
+        }
+
+
+        normas.forEach(
+          (norma) => {
+
+            const option =
+              document.createElement(
+                'option'
+              );
+
+
+            option.value =
+              norma.id_norma;
+
+
+            option.textContent =
+              `${norma.nombre} - Versión ${norma.version}`;
+
+
+            select.appendChild(
+              option
+            );
+
+          }
+        );
+
+
+        console.log(
+          `🟢 Se cargaron ${normas.length} normas.`
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          '🔴 Error cargando normas:',
+          error
+        );
+
+
+        select.innerHTML = `
+          <option value="">
+            Error al cargar normas
+          </option>
+        `;
+
+      }
+
+    }
+
+
+    /* =====================================================
+       CARGAR BORRADOR
+    ====================================================== */
+
+    async function cargarBorrador() {
+
+      try {
+
+        const res =
+          await fetch(
+            `/auditores/registro/${userId}`,
+            {
+              headers: {
+                'Authorization':
+                  `Bearer ${token}`
+              }
+            }
+          );
+
+
+        if (!res.ok) {
+
+          throw new Error(
+            `Error ${res.status} al cargar el registro`
+          );
+
+        }
+
+
+        const data =
+          await res.json();
+
+
+        console.log(
+          '🔵 Borrador recibido:',
+          data
+        );
+
+
+        /* =================================================
+           TÍTULO
+        ================================================== */
+
+        const title =
+          document.getElementById(
+            'title'
+          );
+
+
+        if (title) {
+
+          title.textContent =
+            `Registro de auditor: ${data.nombre}`;
+
+        }
+
+
+        /* =================================================
+           ESTADO
+        ================================================== */
+
+        const alerta =
+          document.getElementById(
+            'estado-alerta'
+          );
+
+
+        if (alerta) {
+
+          alerta.innerHTML = `
+            Estado del usuario:
+            <strong>${data.estado}</strong>
+            |
+            Estado del auditor:
+            <strong>${data.estado_auditor}</strong>
+          `;
+
+        }
+
+
+        /* =================================================
+           DATOS PERSONALES
+        ================================================== */
+
+        setValue(
+          'nombre',
+          data.nombre
+        );
+
+        setValue(
+          'correo',
+          data.correo
+        );
+
+        setValue(
+          'tipo_doc',
+          data.tipo_doc
+        );
+
+        setValue(
+          'num_doc',
+          data.num_doc
+        );
+
+
+        /* =================================================
+           PERFIL
+        ================================================== */
+
+        if (data.perfil) {
+
+          setValue(
+            'ciudad_residencia',
+            data.perfil.ciudad_residencia
+          );
+
+          setValue(
+            'departamento_residencia',
+            data.perfil.departamento_residencia
+          );
+
+          setValue(
+            'modalidad_preferida',
+            data.perfil.modalidad_preferida
+          );
+
+          setValue(
+            'foto_url',
+            data.perfil.foto_url
+          );
+
+          setValue(
+            'resumen_profesional',
+            data.perfil.resumen_profesional
+          );
+
+
+          bloquearSeccion(
+            'formPerfil'
+          );
+
+        } else {
+
+          habilitarSeccion(
+            'formPerfil'
+          );
+
+        }
+
+
+        /* =================================================
+           COMPETENCIA
+        ================================================== */
+
+        if (
+          data.competencias &&
+          data.competencias.length > 0
+        ) {
+
+          const competencia =
+            data.competencias[0];
+
+
+          console.log(
+            '🟢 Competencia recuperada:',
+            competencia
+          );
+
+
+          setValue(
+            'tipo_competencia',
+            competencia.tipo_competencia
+          );
+
+          setValue(
+            'id_norma',
+            competencia.id_norma
+          );
+
+          setValue(
+            'codigo_sector_iaf',
+            competencia.codigo_sector_iaf
+          );
+
+          setValue(
+            'titulo_institucion',
+            competencia.titulo_institucion
+          );
+
+          setValue(
+            'fecha_inicio_comp',
+            competencia.fecha_inicio
+          );
+
+          setValue(
+            'fecha_fin_comp',
+            competencia.fecha_fin
+          );
+
+          setValue(
+            'descripcion_comp',
+            competencia.descripcion
+          );
+
+          setChecked(
+            'es_vigente',
+            competencia.es_vigente
+          );
+
+
+          /*
+           * Guardamos localmente una copia para poder
+           * saber que ya existe un borrador.
+           */
+          guardarLocal(
+            'competencia',
+            competencia
+          );
+
+
+          bloquearSeccion(
+            'formCompetencias'
+          );
+
+        } else {
+
+          habilitarSeccion(
+            'formCompetencias'
+          );
+
+        }
+
+
+        /* =================================================
+           CONFLICTO
+        ================================================== */
+
+        if (
+          data.conflictos &&
+          data.conflictos.length > 0
+        ) {
+
+          const conflicto =
+            data.conflictos[0];
+
+
+          console.log(
+            '🟢 Conflicto recuperado:',
+            conflicto
+          );
+
+
+          setValue(
+            'id_empresa',
+            conflicto.id_empresa
+          );
+
+          setValue(
+            'tipo_conflicto',
+            conflicto.tipo_conflicto
+          );
+
+          setValue(
+            'descripcion_conf',
+            conflicto.descripcion
+          );
+
+          setChecked(
+            'bloquea_asignacion',
+            conflicto.bloquea_asignacion
+          );
+
+
+          guardarLocal(
+            'conflicto',
+            conflicto
+          );
+
+        }
+
+
+        /* =================================================
+           DOCUMENTO SOPORTE
+        ================================================== */
+
+        const documentoGuardado =
+          obtenerLocal(
+            'documento_url_soporte',
+            ''
+          );
+
+
+        if (documentoGuardado) {
+
+          setValue(
+            'documento_url_soporte',
+            documentoGuardado
+          );
+
+        }
+
+
+        /* =================================================
+           DECLARACIONES
+        ================================================== */
+
+        const declaraciones =
+          obtenerLocal(
+            'declaraciones',
+            null
+          );
+
+
+        if (declaraciones) {
+
+          setChecked(
+            'acepta_imparcialidad',
+            declaraciones.acepta_imparcialidad
+          );
+
+          setChecked(
+            'acepta_confidencialidad',
+            declaraciones.acepta_confidencialidad
+          );
+
+        }
+
+
+        /* =================================================
+           BLOQUEAR SECCIÓN 4 SI EXISTE CONFLICTO
+        ================================================== */
+
+        if (
+          data.conflictos &&
+          data.conflictos.length > 0
+        ) {
+
+          bloquearSeccion(
+            'formConflictos'
+          );
+
+        } else {
+
+          habilitarSeccion(
+            'formConflictos'
+          );
+
+        }
+
+
+        /* =================================================
+           ESTADO FINAL DEL REGISTRO
+        ================================================== */
+
+        const estadosBloqueados = [
+          'Pendiente',
+          'APROBADO',
+          'Aprobado'
+        ];
+
+
+        if (
+          estadosBloqueados.includes(
+            data.estado_auditor
+          )
+        ) {
+
+          bloquearRegistroCompleto();
+
+
+          if (alerta) {
+
+            alerta.innerHTML += `
+              <br><br>
+              <strong>
+                El formulario se encuentra bloqueado
+                porque está en proceso de revisión o ya fue aprobado.
+              </strong>
+            `;
+
+          }
+
+        }
+
+
+      } catch (err) {
+
+        console.error(
+          '❌ Error cargando borrador:',
+          err
+        );
+
+      }
+
+    }
+
+
+    /* =====================================================
+       BLOQUEAR REGISTRO COMPLETO
+    ====================================================== */
+
+    function bloquearRegistroCompleto() {
+
+      document
+        .querySelectorAll(
+          '#formPerfil input, #formPerfil select, #formPerfil textarea,' +
+          '#formCompetencias input, #formCompetencias select, #formCompetencias textarea,' +
+          '#formConflictos input, #formConflictos select, #formConflictos textarea'
+        )
+        .forEach(
+          (elemento) => {
+            elemento.disabled = true;
+          }
+        );
+
+
+      document
+        .querySelectorAll(
+          '.btn-save-section, .btn-edit-section, #btnEnviarGeneral'
+        )
+        .forEach(
+          (boton) => {
+            boton.disabled = true;
+          }
+        );
+
+    }
+
+
+    /* =====================================================
+       EDITAR PERFIL
+    ====================================================== */
+
+    document
+      .getElementById(
+        'btnEditarPerfil'
+      )
+      .addEventListener(
+        'click',
+        () => {
+
+          editarSeccion(
+            'formPerfil',
+            'Perfil del Auditor'
+          );
+
+        }
+      );
+
+
+    /* =====================================================
+       EDITAR COMPETENCIA
+    ====================================================== */
+
+    document
+      .getElementById(
+        'btnEditarCompetencia'
+      )
+      .addEventListener(
+        'click',
+        () => {
+
+          editarSeccion(
+            'formCompetencias',
+            'Competencia Técnica'
+          );
+
+        }
+      );
+
+
+    /* =====================================================
+       EDITAR CONFLICTO
+    ====================================================== */
+
+    document
+      .getElementById(
+        'btnEditarConflicto'
+      )
+      .addEventListener(
+        'click',
+        () => {
+
+          editarSeccion(
+            'formConflictos',
+            'Conflictos de Interés'
+          );
+
+        }
+      );
+
+
+    /* =====================================================
+       GUARDAR PERFIL
+    ====================================================== */
+
+    document
+      .getElementById(
+        'formPerfil'
+      )
+      .addEventListener(
+        'submit',
+        async (e) => {
+
+          e.preventDefault();
+
+
+          const payload = {
+
+            ciudad_residencia:
+              document.getElementById(
+                'ciudad_residencia'
+              ).value.trim(),
+
+            departamento_residencia:
+              document.getElementById(
+                'departamento_residencia'
+              ).value.trim(),
+
+            modalidad_preferida:
+              document.getElementById(
+                'modalidad_preferida'
+              ).value,
+
+            foto_url:
+              document.getElementById(
+                'foto_url'
+              ).value.trim(),
+
+            resumen_profesional:
+              document.getElementById(
+                'resumen_profesional'
+              ).value.trim()
+
+          };
+
+
+          try {
+
+            const res =
+              await fetch(
+                `/auditores/registro/${userId}/perfil`,
+                {
+
+                  method: 'PUT',
+
+                  headers: {
+
+                    'Content-Type':
+                      'application/json',
+
+                    'Authorization':
+                      `Bearer ${token}`
+
+                  },
+
+                  body:
+                    JSON.stringify(
+                      payload
+                    )
+
+                }
+              );
+
+
+            const data =
+              await res.json();
+
+
+            if (res.ok) {
+
+              alert(
+                data.mensaje ||
+                'Perfil guardado correctamente.'
+              );
+             
+
+              bloquearSeccion(
+                'formPerfil'
+              );
+
+
+              await cargarBorrador();
+
+
+            } else {
+
+              alert(
+                `Error: ${JSON.stringify(
+                  data.detail
+                )
+                }`
+              );
+
+            }
+
+
+          } catch (error) {
+
+            console.error(
+              error
+            );
+
+
+            alert(
+              'No fue posible guardar el perfil.'
+            );
+
+          }
+
+        }
+      );
+
+
+    /* =====================================================
+       GUARDAR COMPETENCIA
+    ====================================================== */
+
+    document
+      .getElementById(
+        'formCompetencias'
+      )
+      .addEventListener(
+        'submit',
+        async (e) => {
+
+          e.preventDefault();
+
+
+          const idNorma =
+            document.getElementById(
+              'id_norma'
+            ).value;
+
+
+          if (!idNorma) {
+
+            alert(
+              'Debe seleccionar una norma.'
+            );
+
+            return;
+
+          }
+
+
+          const selectTipo =
+            document.getElementById(
+              'tipo_competencia'
+            );
+
+
+          const tipoCompetencia =
+            selectTipo.options[
+              selectTipo.selectedIndex
+            ].text;
+
+
+          const payload = {
+
+            id_norma:
+              idNorma,
+
+            tipo_competencia:
+              tipoCompetencia,
+
+            codigo_sector_iaf:
+              document.getElementById(
+                'codigo_sector_iaf'
+              ).value.trim(),
+
+            titulo_institucion:
+              document.getElementById(
+                'titulo_institucion'
+              ).value.trim(),
+
+            fecha_inicio:
+              document.getElementById(
+                'fecha_inicio_comp'
+              ).value,
+
+            fecha_fin:
+              document.getElementById(
+                'fecha_fin_comp'
+              ).value,
+
+            descripcion:
+              document.getElementById(
+                'descripcion_comp'
+              ).value.trim(),
+
+            es_vigente:
+              document.getElementById(
+                'es_vigente'
+              ).checked
+
+          };
+
+
+          try {
+
+            const res =
+              await fetch(
+                `/auditores/registro/${userId}/competencias`,
+                {
+
+                  method: 'POST',
+
+                  headers: {
+
+                    'Content-Type':
+                      'application/json',
+
+                    'Authorization':
+                      `Bearer ${token}`
+
+                  },
+
+                  body:
+                    JSON.stringify(
+                      payload
+                    )
+
+                }
+              );
+
+
+            const data =
+              await res.json();
+
+
+            if (res.ok) {
+
+              alert(
+                data.mensaje ||
+                'Competencia registrada correctamente.'
+              );
+
+
+              bloquearSeccion(
+                'formCompetencias'
+              );
+
+
+              await cargarBorrador();
+
+
+            } else {
+
+              alert(
+                `Error: ${JSON.stringify(
+                  data.detail
+                )
+                }`
+              );
+
+            }
+
+
+          } catch (error) {
+
+            console.error(
+              error
+            );
+
+
+            alert(
+              'No fue posible registrar la competencia.'
+            );
+
+          }
+
+        }
+      );
+
+
+    /* =====================================================
+       GUARDAR CONFLICTO
+    ====================================================== */
+
+    document
+      .getElementById(
+        'formConflictos'
+      )
+      .addEventListener(
+        'submit',
+        async (e) => {
+
+          e.preventDefault();
+
+
+          const empId =
+            document.getElementById(
+              'id_empresa'
+            ).value.trim();
+
+
+          if (!empId) {
+
+            alert(
+              'Debe indicar la empresa relacionada con el conflicto.'
+            );
+
+            return;
+
+          }
+
+
+          const tipoConflicto =
+            document.getElementById(
+              'tipo_conflicto'
+            ).value;
+
+
+          if (!tipoConflicto) {
+
+            alert(
+              'Debe seleccionar el tipo de conflicto.'
+            );
+
+            return;
+
+          }
+
+
+          const descripcion =
+            document.getElementById(
+              'descripcion_conf'
+            ).value.trim();
+
+
+          if (!descripcion) {
+
+            alert(
+              'Debe ingresar la descripción del conflicto.'
+            );
+
+            return;
+
+          }
+
+
+          const documentoUrl =
+            document.getElementById(
+              'documento_url_soporte'
+            ).value.trim();
+
+
+          if (!documentoUrl) {
+
+            alert(
+              'Debe ingresar la URL de los documentos soporte.'
+            );
+
+            return;
+
+          }
+
+
+          const aceptaImp =
+            document.getElementById(
+              'acepta_imparcialidad'
+            ).checked;
+
+
+          const aceptaConf =
+            document.getElementById(
+              'acepta_confidencialidad'
+            ).checked;
+
+
+          if (!aceptaImp || !aceptaConf) {
+
+            alert(
+              'Debe aceptar las declaraciones de Imparcialidad y Confidencialidad.'
+            );
+
+            return;
+
+          }
+
+
+          const payload = {
+
+            id_empresa:
+              empId,
+
+            tipo_conflicto:
+              tipoConflicto,
+
+            descripcion:
+              descripcion,
+
+            bloquea_asignacion:
+              document.getElementById(
+                'bloquea_asignacion'
+              ).checked
+
+          };
+
+
+          try {
+
+            const res =
+              await fetch(
+                `/auditores/registro/${userId}/conflictos`,
+                {
+
+                  method: 'POST',
+
+                  headers: {
+
+                    'Content-Type':
+                      'application/json',
+
+                    'Authorization':
+                      `Bearer ${token}`
+
+                  },
+
+                  body:
+                    JSON.stringify(
+                      payload
+                    )
+
+                }
+              );
+
+
+            const data =
+              await res.json();
+
+
+            if (res.ok) {
+
+              /*
+               * Guardamos temporalmente la URL y
+               * declaraciones porque actualmente
+               * documento_auditor necesita id_postulacion.
+               */
+              guardarLocal(
+                'documento_url_soporte',
+                documentoUrl
+              );
+
+
+              guardarLocal(
+                'declaraciones',
+                {
+                  acepta_imparcialidad:
+                    aceptaImp,
+
+                  acepta_confidencialidad:
+                    aceptaConf
+                }
+              );
+
+
+              alert(
+                data.mensaje ||
+                'Conflicto registrado correctamente.'
+              );
+
+
+              bloquearSeccion(
+                'formConflictos'
+              );
+
+
+              await cargarBorrador();
+
+
+            } else {
+
+              alert(
+                `Error: ${JSON.stringify(
+                  data.detail
+                )
+                }`
+              );
+
+            }
+
+
+          } catch (error) {
+
+            console.error(
+              error
+            );
+
+
+            alert(
+              'No fue posible registrar el conflicto.'
+            );
+
+          }
+
+        }
+      );
+
+
+    /* =====================================================
+       GUARDAR URL Y DECLARACIONES AL CAMBIAR
+    ====================================================== */
+
+    document
+      .getElementById(
+        'documento_url_soporte'
+      )
+      .addEventListener(
+        'input',
+        function () {
+
+          guardarLocal(
+            'documento_url_soporte',
+            this.value.trim()
+          );
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        'acepta_imparcialidad'
+      )
+      .addEventListener(
+        'change',
+        guardarDeclaracionesLocales
+      );
+
+
+    document
+      .getElementById(
+        'acepta_confidencialidad'
+      )
+      .addEventListener(
+        'change',
+        guardarDeclaracionesLocales
+      );
+
+
+    function guardarDeclaracionesLocales() {
+
+      guardarLocal(
+        'declaraciones',
+        {
+
+          acepta_imparcialidad:
+            document.getElementById(
+              'acepta_imparcialidad'
+            ).checked,
+
+          acepta_confidencialidad:
+            document.getElementById(
+              'acepta_confidencialidad'
+            ).checked
+
+        }
+      );
+
+    }
+
+
+    /* =====================================================
+       ENVÍO DEFINITIVO
+    ====================================================== */
+
+    document
+      .getElementById(
+        'btnEnviarGeneral'
+      )
+      .addEventListener(
+        'click',
+        async () => {
+
+
+          const perfilCompleto =
+            document.getElementById(
+              'ciudad_residencia'
+            ).value.trim() &&
+            document.getElementById(
+              'departamento_residencia'
+            ).value.trim() &&
+            document.getElementById(
+              'modalidad_preferida'
+            ).value &&
+            document.getElementById(
+              'resumen_profesional'
+            ).value.trim();
+
+
+          if (!perfilCompleto) {
+
+            alert(
+              'Debe completar y guardar el Perfil del Auditor antes de enviar la inscripción.'
+            );
+
+            return;
+
+          }
+
+
+          const tipoCompetencia =
+            document.getElementById(
+              'tipo_competencia'
+            ).value;
+
+
+          const idNorma =
+            document.getElementById(
+              'id_norma'
+            ).value;
+
+
+          if (!tipoCompetencia || !idNorma) {
+
+            alert(
+              'Debe registrar al menos una competencia técnica antes de enviar la inscripción.'
+            );
+
+            return;
+
+          }
+
+
+          const tipoConflicto =
+            document.getElementById(
+              'tipo_conflicto'
+            ).value;
+
+
+          const empresa =
+            document.getElementById(
+              'id_empresa'
+            ).value;
+
+
+          const descripcion =
+            document.getElementById(
+              'descripcion_conf'
+            ).value.trim();
+
+
+          if (
+            !tipoConflicto ||
+            !empresa ||
+            !descripcion
+          ) {
+
+            alert(
+              'Debe registrar el conflicto de interés antes de enviar la inscripción.'
+            );
+
+            return;
+
+          }
+
+
+          const aceptaImp =
+            document.getElementById(
+              'acepta_imparcialidad'
+            ).checked;
+
+
+          const aceptaConf =
+            document.getElementById(
+              'acepta_confidencialidad'
+            ).checked;
+
+
+          if (
+            !aceptaImp ||
+            !aceptaConf
+          ) {
+
+            alert(
+              'Debe aceptar las declaraciones de Imparcialidad y Confidencialidad para continuar.'
+            );
+
+            return;
+
+          }
+
+
+          const documentoUrl =
+            document.getElementById(
+              'documento_url_soporte'
+            ).value.trim();
+
+
+          if (!documentoUrl) {
+
+            alert(
+              'Debe registrar la URL de los documentos soporte antes de enviar.'
+            );
+
+            return;
+
+          }
+
+
+          /*
+           * PRIMERA CONFIRMACIÓN
+           */
+
+          const confirmarPrimero =
+            confirm(
+              '⚠️ ATENCIÓN\n\n' +
+              'Está a punto de enviar su inscripción al Banco de Auditores.\n\n' +
+              'Después de realizar el envío, su registro cambiará a estado PENDIENTE y quedará sujeto a revisión administrativa.\n\n' +
+              'Verifique que todos los datos, competencias, conflictos, declaraciones y documentos soporte sean correctos.\n\n' +
+              '¿Desea continuar?'
+            );
+
+
+          if (!confirmarPrimero) {
+            return;
+          }
+
+
+          /*
+           * SEGUNDA CONFIRMACIÓN
+           */
+
+          const confirmarSegundo =
+            confirm(
+              '🚨 CONFIRMACIÓN DEFINITIVA\n\n' +
+              '¿ESTÁ COMPLETAMENTE SEGURO DE ENVIAR EL FORMULARIO?\n\n' +
+              'Una vez enviado, el registro quedará en estado PENDIENTE DE REVISIÓN y no podrá continuar modificándolo libremente.\n\n' +
+              'Si toda la información es correcta, presione "Aceptar".'
+            );
+
+
+          if (!confirmarSegundo) {
+            return;
+          }
+
+
+          try {
+
+            const payload = {
+
+              id_usuario:
+                userId,
+
+              documento_url_soporte:
+                documentoUrl
+
+            };
+
+
+            const res =
+              await fetch(
+                '/auditores/registro/enviar',
+                {
+
+                  method: 'POST',
+
+                  headers: {
+
+                    'Content-Type':
+                      'application/json',
+
+                    'Authorization':
+                      `Bearer ${token}`
+
+                  },
+
+                  body:
+                    JSON.stringify(
+                      payload
+                    )
+
+                }
+              );
+
+
+            const data =
+              await res.json();
+
+
+            if (res.ok) {
+
+              /*
+               * Ya no necesitamos conservar el
+               * borrador local.
+               */
+              // localStorage.removeItem(
+              //   storageKey(
+              //     'documento_url_soporte'
+              //   )
+              // );
+
+              // localStorage.removeItem(
+              //   storageKey(
+              //     'declaraciones'
+              //   )
+              // );
+
+              // localStorage.removeItem(
+              //   storageKey(
+              //     'competencia'
+              //   )
+              // );
+
+              // localStorage.removeItem(
+              //   storageKey(
+              //     'conflicto'
+              //   )
+              // );
+
+              
+               // inhabilitar btn enviar
+              const btnEnviarGeneral = document.getElementById('btnEnviarGeneral');
+
+              if (btnEnviarGeneral) {
+                btnEnviarGeneral.textContent = 'Formulario enviado — Estado: Pendiente';
+                btnEnviarGeneral.disabled = true;
+              }
+
+              alert(
+                data.mensaje ||
+                'Formulario enviado correctamente al Banco de Auditores.'
+              );
+
+
+              window.location.reload();
+
+
+            } else {
+
+              if (
+                data.detail &&
+                data.detail.faltantes
+              ) {
+
+                alert(
+                  `Formulario incompleto.\n\nRequisitos faltantes:\n- ${data.detail.faltantes.join(
+                    '\n- '
+                  )
+                  }`
+                );
+
+              } else {
+
+                alert(
+                  `Error: ${JSON.stringify(
+                    data.detail
+                  )
+                  }`
+                );
+
+              }
+
+            }
+
+
+          } catch (error) {
+
+            console.error(
+              error
+            );
+
+
+            alert(
+              'No fue posible enviar el formulario.'
+            );
+
+          }
+
+        }
+      );
+
+
+    /* =====================================================
+       INICIALIZACIÓN
+    ====================================================== */
+
+    async function inicializar() {
+
+      await cargarNormas();
+
+      await cargarEmpresas();
+
+      await cargarBorrador();
+
+    }
+
+
+    inicializar();
+
+  </script>
+
 </body>
 
 </html>
