@@ -14,6 +14,8 @@ from core.logger import logger
 from core.security import hash_password
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
+from modules.consultas_p.consultas_router import router as consultas_publicas_router
+from modules.consultas_p.paginas_router import router as consultas_publicas_paginas
 from modules.aprobaciones.aprobacion_router import router as aprobaciones_router
 from modules.aprobaciones.aprobacion_bootstrap import preparar_aprobaciones
 from modules.comite.comite_router import router as comite_router
@@ -235,6 +237,8 @@ app.include_router(role_router)
 app.include_router(users_router)
 app.include_router(security_router)
 app.include_router(empresas_router)
+app.include_router(consultas_publicas_router)
+app.include_router(consultas_publicas_paginas)
 app.include_router(aprobaciones_router)
 app.include_router(comite_router)
 app.include_router(apelaciones_router)
@@ -385,9 +389,9 @@ async def revision_solicitudes_page(request: Request):
     return FileResponse("static/revision-solicitudes.html")
 
 
-@app.get("/buscar_empresa", response_class=HTMLResponse)
-async def buscar_empresa_page(request: Request):
-    return FileResponse("static/buscar_e.html")
+# /buscar_empresa lo sirve modules/consultas_p/paginas_router.py: la página del
+# portal público vive junto a los endpoints que la alimentan.
+
 
 @app.on_event("shutdown")
 async def shutdown_redis_pool():

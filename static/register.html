@@ -40,6 +40,19 @@
 
         <div class="header-buttons">
 
+            <div class="nav-dropdown">
+                <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+                    Consulta pública <span class="nav-caret">▼</span>
+                </button>
+                <div class="nav-dropdown-menu">
+                    <div class="nav-dropdown-panel">
+                        <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                        <a href="/">Consultar estado de vigencia</a>
+                        <a href="/consulta-norma">Consultar norma evaluada</a>
+                    </div>
+                </div>
+            </div>
+
             <a href="/login" class="btn-login">
                 Iniciar sesión
             </a>
@@ -56,6 +69,12 @@
 
     <div class="mobile-menu" id="mobileMenu">
         <a href="/login">Iniciar sesión</a>
+        <div class="mobile-menu-group">
+            <span class="mobile-menu-label">Consulta pública</span>
+            <a href="/buscar_empresa">Buscar empresa por NIT</a>
+            <a href="/">Consultar estado de vigencia</a>
+            <a href="/consulta-norma">Consultar norma evaluada</a>
+        </div>
     </div>
 
 </header>

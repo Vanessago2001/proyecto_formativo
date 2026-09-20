@@ -1,9 +1,10 @@
 """
-Constancia pública de consulta de empresa por NIT.
+Constancia pública de consulta de empresa por NIT (M11).
 
-Genera el PDF descargable desde el portal público `buscar_e.html`.
-Solo incluye los datos que se ven en la tarjeta: empresa, NIT,
-si está radicada, el número de radicado y si está verificada o en proceso.
+Genera el PDF descargable desde el portal público `buscar_e.html`. Solo incluye
+los datos que se ven en la tarjeta: empresa, NIT, si está radicada, el número de
+radicado y si está verificada o en proceso. No lleva `correo` ni `direccion`,
+coherente con lo que publica este módulo.
 
 La mecánica del formato PDF vive en `core/pdf.py` (sin dependencias nuevas).
 """

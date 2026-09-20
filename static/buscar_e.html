@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <link rel="stylesheet" href="/static/styles.css?v=5">
+    <link rel="stylesheet" href="/static/styles.css?v=6">
     <style>
         .cp-wrap { max-width: 1100px; margin: 0 auto; padding: 26px 18px 40px; }
         .cp-panel { background: #fff; border: 1px solid #e2e6ea; border-radius: 4px; padding: 26px 28px; }
@@ -81,6 +81,19 @@
 
             <div class="header-buttons">
 
+                <div class="nav-dropdown">
+                    <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+                        Consulta pública <span class="nav-caret">▼</span>
+                    </button>
+                    <div class="nav-dropdown-menu">
+                        <div class="nav-dropdown-panel">
+                            <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                            <a href="/">Consultar estado de vigencia</a>
+                            <a href="/consulta-norma">Consultar norma evaluada</a>
+                        </div>
+                    </div>
+                </div>
+
                 <a href="/login" class="btn-login">
                     Iniciar sesión
                 </a>
@@ -107,6 +120,12 @@
             <a href="/register">
                 Registrarse
             </a>
+            <div class="mobile-menu-group">
+                <span class="mobile-menu-label">Consulta pública</span>
+                <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                <a href="/">Consultar estado de vigencia</a>
+                <a href="/consulta-norma">Consultar norma evaluada</a>
+            </div>
         </div>
 
     </header>
@@ -230,7 +249,7 @@
             btnConsultar.disabled = true;
 
             try {
-                const response = await fetch(`/api/empresas/buscar/${encodeURIComponent(nit)}`, {
+                const response = await fetch(`/api/consultas-publicas/empresa/${encodeURIComponent(nit)}`, {
                     method: "GET",
                     headers: { "Content-Type": "application/json" }
                 });
@@ -275,7 +294,7 @@
             btn.disabled = true;
             btn.textContent = "Generando PDF...";
             try {
-                const r = await fetch(`/api/empresas/constancia/${encodeURIComponent(nit)}/pdf`);
+                const r = await fetch(`/api/consultas-publicas/constancia/${encodeURIComponent(nit)}/pdf`);
                 if (!r.ok) throw new Error("No se pudo generar el PDF (" + r.status + ")");
                 const blob = await r.blob();
                 const url = URL.createObjectURL(blob);

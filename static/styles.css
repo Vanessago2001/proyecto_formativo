@@ -1291,3 +1291,88 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
         width: 100%;
     }
 }
+
+/*=========================
+DROPDOWN DE CONSULTA PÚBLICA
+==========================*/
+
+/* Se abre con :hover y :focus-within, sin JavaScript: el menú de navegación no
+   debe depender de que cargue un script. El padding-top del menú cubre el
+   hueco entre el botón y el panel, así el puntero no lo cierra al bajar. */
+
+.nav-dropdown {
+    position: relative;
+}
+
+.nav-dropdown-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font: inherit;
+    font-weight: 600;
+}
+
+.nav-caret {
+    font-size: 10px;
+    transition: transform .2s;
+}
+
+.nav-dropdown:hover .nav-caret,
+.nav-dropdown:focus-within .nav-caret {
+    transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    padding-top: 10px;
+    min-width: 255px;
+    z-index: 60;
+}
+
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu {
+    display: block;
+}
+
+.nav-dropdown-panel {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-dropdown-panel a {
+    color: #3BAA01;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    transition: .2s;
+}
+
+.nav-dropdown-panel a:hover {
+    background: #f0f7ec;
+}
+
+/* Grupo de consulta pública dentro del menú hamburguesa */
+.mobile-menu-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mobile-menu-label {
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    text-align: center;
+    opacity: .85;
+}

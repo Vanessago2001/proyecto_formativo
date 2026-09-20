@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA - Consultar norma evaluada</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/styles.css?v=6">
+    <style>
+        .cn-wrap { max-width: 1100px; margin: 0 auto; padding: 26px 18px 40px; }
+        .cn-panel { background: #fff; border: 1px solid #e2e6ea; border-radius: 4px; padding: 26px 28px; }
+        .cn-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
+        .cn-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
+        .cn-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+        .cn-field { flex: 1 1 240px; min-width: 200px; }
+        .cn-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .cn-field input { width: 100%; padding: 10px 12px; border: 1px solid #cfd6dd; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
+        .cn-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
+        .cn-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .cn-btn:hover { background: #388e3c; }
+        .cn-btn:disabled { opacity: .6; cursor: wait; }
+        #conteo { color: #6b7280; font-size: 13px; margin: 16px 2px 10px; }
+        #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
+        .cn-card { background: #fff; border: 1px solid #e2e6ea; border-left: 4px solid #9aa5b1; border-radius: 3px; padding: 20px 22px; margin-bottom: 16px; }
+        .cn-card.vigente { border-left-color: #2f7d32; }
+        .cn-card.tramite { border-left-color: #f9a825; }
+        .cn-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px; background: #eef1f4; color: #4b5563; }
+        .cn-card.vigente .cn-estado { background: #e6f4ea; color: #1a7f37; }
+        .cn-card.tramite .cn-estado { background: #fff8e1; color: #8d6e00; }
+        .cn-norma { margin: 0 0 4px; color: #2f7d32; font-size: 22px; font-weight: 700; }
+        .cn-norma-label { margin: 0; color: #6b7280; font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+        .cn-empresa { margin: 12px 0 0; color: #374151; font-size: 15px; font-weight: 600; }
+        .cn-sub { margin: 2px 0 12px; color: #6b7280; font-size: 12px; }
+        .cn-rows { display: grid; grid-template-columns: 170px 1fr; row-gap: 6px; font-size: 13px; }
+        .cn-rows dt { color: #2f7d32; font-weight: 700; }
+        .cn-rows dd { margin: 0; color: #374151; word-break: break-word; }
+        .cn-msg { border-left: 3px solid #9aa5b1; padding: 4px 0 4px 12px; color: #4b5563; font-size: 13px; margin: 14px 0 0; line-height: 1.5; }
+        .cn-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
+        .cn-sin-norma { color: #b3261e; font-weight: 700; }
+        @media (max-width: 700px) {
+            .cn-form { flex-direction: column; align-items: stretch; }
+            .cn-btn { width: 100%; }
+            .cn-rows { grid-template-columns: 1fr; row-gap: 2px; }
+            .cn-rows dt { margin-top: 8px; }
+        }
+        @media print {
+            .login-header, .login-footer, .cn-panel, .cn-btn, #loader, #conteo, .hamburger-btn, .mobile-menu { display: none !important; }
+            body { background: #fff; }
+            .cn-wrap { max-width: 100%; padding: 0; }
+            .cn-card { box-shadow: none; break-inside: avoid; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="login-header">
+
+        <div class="header-content">
+
+            <div class="header-left">
+
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Plataforma de gestión y consulta de certificados</p>
+                    <p style="font-size:12px;opacity:.85;margin-top:4px;">
+                        Servicio Nacional de Aprendizaje • CertiSENA
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="header-buttons">
+
+                <div class="nav-dropdown">
+                    <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+                        Consulta pública <span class="nav-caret">▼</span>
+                    </button>
+                    <div class="nav-dropdown-menu">
+                        <div class="nav-dropdown-panel">
+                            <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                            <a href="/">Consultar estado de vigencia</a>
+                            <a href="/consulta-norma">Consultar norma evaluada</a>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="/login" class="btn-login">Iniciar sesión</a>
+                <a href="/register" class="btn-login">Registrarse</a>
+
+            </div>
+
+            <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+        </div>
+
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="/login">Iniciar sesión</a>
+            <a href="/register">Registrarse</a>
+            <div class="mobile-menu-group">
+                <span class="mobile-menu-label">Consulta pública</span>
+                <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                <a href="/">Consultar estado de vigencia</a>
+                <a href="/consulta-norma">Consultar norma evaluada</a>
+            </div>
+        </div>
+
+    </header>
+
+    <main class="cn-wrap">
+
+        <section class="cn-panel">
+
+            <h2>Consultar norma evaluada</h2>
+
+            <p class="cn-desc">
+                Averigüe bajo qué norma se evaluó el trámite de una empresa. Ingrese el número de
+                radicado o el NIT. No necesita iniciar sesión.
+            </p>
+
+            <form id="searchForm" class="cn-form">
+
+                <div class="cn-field">
+                    <label for="radicado">Radicado del trámite</label>
+                    <input type="text" id="radicado" name="codigo" placeholder="RAD-2026-001">
+                </div>
+
+                <div class="cn-field">
+                    <label for="nit">NIT de la empresa</label>
+                    <input type="text" id="nit" name="nit" placeholder="900123456-7">
+                </div>
+
+                <button type="submit" class="cn-btn" id="btnConsultar">Consultar</button>
+
+            </form>
+
+        </section>
+
+        <p id="conteo" class="hidden-section"></p>
+
+        <div id="loader" class="hidden-section">Consultando...</div>
+
+        <div id="resultados"></div>
+
+        <div id="mensajeError" class="cn-error hidden-section"></div>
+
+    </main>
+
+    <footer class="login-footer">
+        <p>© 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+
+        // Menú hamburguesa
+        const hamburgerBtn = document.getElementById("hamburgerBtn");
+        const mobileMenu = document.getElementById("mobileMenu");
+
+        hamburgerBtn.addEventListener("click", () => {
+            hamburgerBtn.classList.toggle("active");
+            mobileMenu.classList.toggle("open");
+        });
+
+        document.querySelectorAll(".mobile-menu a").forEach(link => {
+            link.addEventListener("click", () => {
+                hamburgerBtn.classList.remove("active");
+                mobileMenu.classList.remove("open");
+            });
+        });
+
+        // Consulta de norma evaluada (M11)
+        const searchForm = document.getElementById("searchForm");
+        const radicadoInput = document.getElementById("radicado");
+        const nitInput = document.getElementById("nit");
+        const btnConsultar = document.getElementById("btnConsultar");
+        const loader = document.getElementById("loader");
+        const conteo = document.getElementById("conteo");
+        const resultados = document.getElementById("resultados");
+        const mensajeError = document.getElementById("mensajeError");
+
+        const esc = (v) => String(v ?? "--")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+
+        function mostrarError(texto) {
+            mensajeError.textContent = texto;
+            mensajeError.classList.remove("hidden-section");
+        }
+
+        function limpiar() {
+            mensajeError.textContent = "";
+            mensajeError.classList.add("hidden-section");
+            resultados.innerHTML = "";
+            conteo.classList.add("hidden-section");
+            conteo.textContent = "";
+        }
+
+        function claseEstado(estado) {
+            if (estado === "CERTIFICADA") return "vigente";
+            if (estado && estado.startsWith("EN TRAMITE")) return "tramite";
+            return "";
+        }
+
+        function tarjeta(fila) {
+            const estado = fila.estado_general || "SIN DATOS";
+            const norma = (fila.norma_completa || "").trim();
+            const sinNorma = !norma || norma === "--";
+
+            return `<article class="cn-card ${claseEstado(estado)}">
+                <span class="cn-estado">${esc(estado)}</span>
+                <p class="cn-norma-label">Norma evaluada</p>
+                <p class="cn-norma ${sinNorma ? "cn-sin-norma" : ""}">${esc(sinNorma ? "Sin norma registrada" : norma)}</p>
+                <p class="cn-empresa">${esc(fila.empresa)}</p>
+                <p class="cn-sub">NIT ${esc(fila.nit)}${fila.ciudad ? " - " + esc(fila.ciudad) : ""}</p>
+                <dl class="cn-rows">
+                    <dt>Radicado</dt><dd>${esc(fila.numero_radicado)}</dd>
+                    <dt>Alcance certificado</dt><dd>${esc(fila.alcance_certificacion)}</dd>
+                    <dt>Código de verificación</dt><dd>${esc(fila.codigo_verificacion)}</dd>
+                    <dt>Fecha de emisión</dt><dd>${esc(fila.cert_emision)}</dd>
+                    <dt>Vigente hasta</dt><dd>${esc(fila.cert_vence)}</dd>
+                </dl>
+                <p class="cn-msg"></p>
+            </article>`;
+        }
+
+        async function consultarNorma() {
+            const codigo = radicadoInput.value.trim();
+            const nit = nitInput.value.trim();
+
+            limpiar();
+
+            if (!codigo && !nit) {
+                mostrarError("Ingrese el radicado del trámite o el NIT de la empresa.");
+                return;
+            }
+
+            loader.classList.remove("hidden-section");
+            btnConsultar.disabled = true;
+
+            try {
+                const params = new URLSearchParams();
+                if (codigo) params.set("codigo", codigo);
+                if (nit) params.set("nit", nit);
+
+                const respuesta = await fetch(`/api/consultas-publicas/documentos?${params.toString()}`);
+
+                loader.classList.add("hidden-section");
+                btnConsultar.disabled = false;
+
+                if (!respuesta.ok) {
+                    let detalle = "No se pudo completar la consulta.";
+                    try {
+                        const datos = await respuesta.json();
+                        detalle = datos.detail || detalle;
+                    } catch (e) { /* respuesta no JSON */ }
+                    mostrarError(detalle);
+                    return;
+                }
+
+                const filas = await respuesta.json();
+
+                if (!Array.isArray(filas) || filas.length === 0) {
+                    mostrarError("No se encontraron trámites con esos datos.");
+                    return;
+                }
+
+                conteo.textContent = `${filas.length} resultado(s)`;
+                conteo.classList.remove("hidden-section");
+                resultados.innerHTML = filas.map(tarjeta).join("");
+
+                // El mensaje lo envía el servidor, así que se pone con textContent.
+                resultados.querySelectorAll(".cn-card").forEach((card, i) => {
+                    card.querySelector(".cn-msg").textContent = filas[i].mensaje || "";
+                });
+
+            } catch (error) {
+                console.error("Error en la consulta:", error);
+                loader.classList.add("hidden-section");
+                btnConsultar.disabled = false;
+                mostrarError("Error de conexión con el servidor.");
+            }
+        }
+
+        searchForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            consultarNorma();
+        });
+
+        radicadoInput.focus();
+
+    </script>
+
+</body>
+
+</html>
