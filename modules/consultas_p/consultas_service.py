@@ -10,7 +10,7 @@ Las consultas leen la tabla `certificado` y la columna `solicitud.id_certificado
 que existen en la base de datos real pero no crea ningún bootstrap de la app.
 """
 
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +25,10 @@ COLUMNAS_PUBLICAS_EMPRESA_ALIAS = "id_empresa, nombre AS empresa, nit, ciudad"
 # Es una constante del módulo, nunca entrada del usuario, por eso se interpola.
 MAX_EMPRESAS_POR_BUSQUEDA = 20
 
+# Días que faltan para el vencimiento a partir de los cuales un certificado se
+# reporta "POR VENCER": es el margen típico para gestionar la renovación.
+DIAS_ALERTA_VENCIMIENTO = 90
+
 
 def _escapar_comodines(valor: str) -> str:
     """
@@ -35,6 +39,30 @@ def _escapar_comodines(valor: str) -> str:
     escape por defecto en LIKE, así que no hace falta una cláusula ESCAPE.
     """
     return valor.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _a_fecha(valor):
+    """
+    Normaliza a `date`. Según cómo esté tipada cada columna en la base real,
+    asyncpg devuelve `date` o `datetime`; mezclarlos con `date.today()` en una
+    resta o comparación lanza TypeError.
+    """
+    return valor.date() if isinstance(valor, datetime) else valor
+
+
+def _estado_vigencia(fecha_vencimiento, hoy: date) -> tuple[str, int | None]:
+    """
+    Traduce la fecha de vencimiento a un estado legible y a los días que faltan
+    (negativos si ya venció). Sin fecha no hay plazo que calcular.
+    """
+    if fecha_vencimiento is None:
+        return "SIN FECHA DE VENCIMIENTO", None
+    dias = (fecha_vencimiento - hoy).days
+    if dias < 0:
+        return "VENCIDO", dias
+    if dias <= DIAS_ALERTA_VENCIMIENTO:
+        return "POR VENCER", dias
+    return "VIGENTE", dias
 
 
 class ConsultasPublicasService:
@@ -190,6 +218,7 @@ class ConsultasPublicasService:
                 s.numero_radicado,
                 s.estado AS estado_tramite,
                 s.fecha AS fecha_tramite,
+                s.fecha_radicacion,
                 s.alcance_certificacion,
                 e.id_empresa,
                 e.nombre AS empresa,
@@ -218,7 +247,7 @@ class ConsultasPublicasService:
         hoy = date.today()
         resultados: list[dict] = []
         for f in filas:
-            vence = f.get("cert_vence")
+            vence = _a_fecha(f.get("cert_vence"))
             vigente = bool(f.get("codigo_verificacion")) and vence is not None and vence >= hoy
             estado_tramite = (f.get("estado_tramite") or "").strip()
             if vigente:
@@ -238,6 +267,12 @@ class ConsultasPublicasService:
             f["vigente"] = vigente
             f["estado_general"] = estado_general
             f["mensaje"] = mensaje
+            if f.get("codigo_verificacion"):
+                f["estado_vigencia"], f["dias_restantes"] = _estado_vigencia(vence, hoy)
+            else:
+                f["estado_vigencia"], f["dias_restantes"] = "SIN CERTIFICADO", None
+            radicacion = _a_fecha(f.get("fecha_radicacion"))
+            f["dias_desde_radicacion"] = (hoy - radicacion).days if radicacion else None
             resultados.append(f)
 
         if not resultados and nit:
@@ -269,10 +304,78 @@ class ConsultasPublicasService:
                     "cert_emision": None,
                     "cert_vence": None,
                     "url_certificado": None,
+                    "fecha_radicacion": None,
                     "vigente": False,
                     "estado_general": "REGISTRADA",
+                    "estado_vigencia": "SIN CERTIFICADO",
+                    "dias_restantes": None,
+                    "dias_desde_radicacion": None,
                     "mensaje": "Empresa registrada. Aun no tiene trámites radicados.",
                 })
                 resultados.append(e)
 
         return resultados
+
+    async def validar_autenticidad(self, codigo: str) -> dict:
+        """
+        Confirma que un código de verificación existe y a qué certificado
+        corresponde. La coincidencia es exacta (ignorando mayúsculas y espacios
+        de más): una búsqueda parcial dejaría que cualquiera enumere códigos
+        válidos probando prefijos.
+        """
+        codigo_limpio = (codigo or "").strip()
+        if not codigo_limpio:
+            return {
+                "autentico": False,
+                "detalle": "Ingrese el código de verificación impreso en el documento.",
+                "documento": None,
+            }
+
+        result = await self.db.execute(text("""
+            SELECT
+                c.codigo_verificacion,
+                TRIM(c.estado_certificado) AS cert_estado,
+                c.fecha_emision AS cert_emision,
+                c.fecha_vencimiento AS cert_vence,
+                s.numero_radicado,
+                s.estado AS estado_tramite,
+                s.fecha_radicacion,
+                s.alcance_certificacion,
+                e.nombre AS empresa,
+                e.nit,
+                e.ciudad,
+                n.codigo AS norma_codigo,
+                n.nombre AS norma_nombre,
+                n.version AS norma_version
+            FROM certificado c
+            JOIN solicitud s
+              ON s.id_solicitud = c.id_solicitud
+              OR s.id_certificado = c.id_certificado
+            JOIN empresa e ON e.id_empresa = s.id_empresa
+            LEFT JOIN norma n ON n.id_norma = s.id_norma
+            WHERE UPPER(TRIM(c.codigo_verificacion)) = UPPER(TRIM(:codigo))
+            ORDER BY c.fecha_emision DESC NULLS LAST
+            LIMIT 1;
+        """), {"codigo": codigo_limpio})
+        fila = result.mappings().first()
+
+        if not fila:
+            return {
+                "autentico": False,
+                "detalle": "Ningún certificado registrado coincide con ese código.",
+                "documento": None,
+            }
+
+        hoy = date.today()
+        doc = dict(fila)
+        norma_partes = [doc.get("norma_codigo"), doc.get("norma_nombre"), doc.get("norma_version")]
+        doc["norma_completa"] = " ".join([p for p in norma_partes if p]).strip() or "--"
+        doc["estado_vigencia"], doc["dias_restantes"] = _estado_vigencia(_a_fecha(doc.get("cert_vence")), hoy)
+        radicacion = _a_fecha(doc.get("fecha_radicacion"))
+        doc["dias_desde_radicacion"] = (hoy - radicacion).days if radicacion else None
+
+        return {
+            "autentico": True,
+            "detalle": "Código válido: corresponde a un certificado emitido por CertiSENA.",
+            "documento": doc,
+        }

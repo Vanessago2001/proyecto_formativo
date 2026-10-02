@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CertiSENA - Consultar norma evaluada</title>
+    <title>CertiSENA - Consultar vigencia y plazos</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,47 +13,51 @@
 
     <link rel="stylesheet" href="/static/styles.css?v=6">
     <style>
-        .cn-wrap { max-width: 1100px; margin: 0 auto; padding: 26px 18px 40px; }
-        .cn-panel { background: #fff; border: 1px solid #e2e6ea; border-radius: 4px; padding: 26px 28px; }
-        .cn-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
-        .cn-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
-        .cn-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
-        .cn-field { flex: 1 1 240px; min-width: 200px; }
-        .cn-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-        .cn-field input { width: 100%; padding: 10px 12px; border: 1px solid #cfd6dd; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
-        .cn-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
-        .cn-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-        .cn-btn:hover { background: #388e3c; }
-        .cn-btn:disabled { opacity: .6; cursor: wait; }
+        .vg-wrap { max-width: 1100px; margin: 0 auto; padding: 26px 18px 40px; }
+        .vg-panel { background: #fff; border: 1px solid #e2e6ea; border-radius: 4px; padding: 26px 28px; }
+        .vg-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
+        .vg-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
+        .vg-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+        .vg-field { flex: 1 1 240px; min-width: 200px; }
+        .vg-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .vg-field input { width: 100%; padding: 10px 12px; border: 1px solid #cfd6dd; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
+        .vg-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
+        .vg-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .vg-btn:hover { background: #388e3c; }
+        .vg-btn:disabled { opacity: .6; cursor: wait; }
         #conteo { color: #6b7280; font-size: 13px; margin: 16px 2px 10px; }
         #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
-        .cn-card { background: #fff; border: 1px solid #e2e6ea; border-left: 4px solid #9aa5b1; border-radius: 3px; padding: 20px 22px; margin-bottom: 16px; }
-        .cn-card.vigente { border-left-color: #2f7d32; }
-        .cn-card.tramite { border-left-color: #f9a825; }
-        .cn-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px; background: #eef1f4; color: #4b5563; }
-        .cn-card.vigente .cn-estado { background: #e6f4ea; color: #1a7f37; }
-        .cn-card.tramite .cn-estado { background: #fff8e1; color: #8d6e00; }
-        .cn-norma { margin: 0 0 4px; color: #2f7d32; font-size: 22px; font-weight: 700; }
-        .cn-norma-label { margin: 0; color: #6b7280; font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
-        .cn-empresa { margin: 12px 0 0; color: #374151; font-size: 15px; font-weight: 600; }
-        .cn-sub { margin: 2px 0 12px; color: #6b7280; font-size: 12px; }
-        .cn-rows { display: grid; grid-template-columns: 170px 1fr; row-gap: 6px; font-size: 13px; }
-        .cn-rows dt { color: #2f7d32; font-weight: 700; }
-        .cn-rows dd { margin: 0; color: #374151; word-break: break-word; }
-        .cn-msg { border-left: 3px solid #9aa5b1; padding: 4px 0 4px 12px; color: #4b5563; font-size: 13px; margin: 14px 0 0; line-height: 1.5; }
-        .cn-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
-        .cn-sin-norma { color: #b3261e; font-weight: 700; }
+        .vg-card { background: #fff; border: 1px solid #e2e6ea; border-left: 4px solid #9aa5b1; border-radius: 3px; padding: 20px 22px; margin-bottom: 16px; }
+        .vg-card.ok { border-left-color: #2f7d32; }
+        .vg-card.por { border-left-color: #f9a825; }
+        .vg-card.vencido { border-left-color: #c62828; }
+        .vg-top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+        .vg-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; background: #eef1f4; color: #4b5563; }
+        .vg-card.ok .vg-estado { background: #e6f4ea; color: #1a7f37; }
+        .vg-card.por .vg-estado { background: #fff8e1; color: #8d6e00; }
+        .vg-card.vencido .vg-estado { background: #fdecea; color: #b3261e; }
+        .vg-plazo { font-size: 20px; font-weight: 700; color: #374151; }
+        .vg-card.ok .vg-plazo { color: #1a7f37; }
+        .vg-card.por .vg-plazo { color: #8d6e00; }
+        .vg-card.vencido .vg-plazo { color: #b3261e; }
+        .vg-empresa { margin: 12px 0 0; color: #374151; font-size: 15px; font-weight: 600; }
+        .vg-sub { margin: 2px 0 12px; color: #6b7280; font-size: 12px; }
+        .vg-rows { display: grid; grid-template-columns: 190px 1fr; row-gap: 6px; font-size: 13px; }
+        .vg-rows dt { color: #2f7d32; font-weight: 700; }
+        .vg-rows dd { margin: 0; color: #374151; word-break: break-word; }
+        .vg-msg { border-left: 3px solid #9aa5b1; padding: 4px 0 4px 12px; color: #4b5563; font-size: 13px; margin: 14px 0 0; line-height: 1.5; }
+        .vg-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
         @media (max-width: 700px) {
-            .cn-form { flex-direction: column; align-items: stretch; }
-            .cn-btn { width: 100%; }
-            .cn-rows { grid-template-columns: 1fr; row-gap: 2px; }
-            .cn-rows dt { margin-top: 8px; }
+            .vg-form { flex-direction: column; align-items: stretch; }
+            .vg-btn { width: 100%; }
+            .vg-rows { grid-template-columns: 1fr; row-gap: 2px; }
+            .vg-rows dt { margin-top: 8px; }
         }
         @media print {
-            .login-header, .login-footer, .cn-panel, .cn-btn, #loader, #conteo, .hamburger-btn, .mobile-menu { display: none !important; }
+            .login-header, .login-footer, .vg-panel, .vg-btn, #loader, #conteo, .hamburger-btn, .mobile-menu { display: none !important; }
             body { background: #fff; }
-            .cn-wrap { max-width: 100%; padding: 0; }
-            .cn-card { box-shadow: none; break-inside: avoid; }
+            .vg-wrap { max-width: 100%; padding: 0; }
+            .vg-card { box-shadow: none; break-inside: avoid; }
         }
     </style>
 </head>
@@ -125,30 +129,30 @@
 
     </header>
 
-    <main class="cn-wrap">
+    <main class="vg-wrap">
 
-        <section class="cn-panel">
+        <section class="vg-panel">
 
-            <h2>Consultar norma evaluada</h2>
+            <h2>Consultar vigencia y plazos</h2>
 
-            <p class="cn-desc">
-                Averigüe bajo qué norma se evaluó el trámite de una empresa. Ingrese el número de
-                radicado o el NIT. No necesita iniciar sesión.
+            <p class="vg-desc">
+                Vea cuánto tiempo sigue vigente un certificado y cuánto lleva el trámite en curso.
+                Ingrese el número de radicado o el NIT. No necesita iniciar sesión.
             </p>
 
-            <form id="searchForm" class="cn-form">
+            <form id="searchForm" class="vg-form">
 
-                <div class="cn-field">
+                <div class="vg-field">
                     <label for="radicado">Radicado del trámite</label>
                     <input type="text" id="radicado" name="codigo" placeholder="RAD-2026-001">
                 </div>
 
-                <div class="cn-field">
+                <div class="vg-field">
                     <label for="nit">NIT de la empresa</label>
                     <input type="text" id="nit" name="nit" placeholder="900123456-7">
                 </div>
 
-                <button type="submit" class="cn-btn" id="btnConsultar">Consultar</button>
+                <button type="submit" class="vg-btn" id="btnConsultar">Consultar</button>
 
             </form>
 
@@ -160,7 +164,7 @@
 
         <div id="resultados"></div>
 
-        <div id="mensajeError" class="cn-error hidden-section"></div>
+        <div id="mensajeError" class="vg-error hidden-section"></div>
 
     </main>
 
@@ -186,7 +190,7 @@
             });
         });
 
-        // Consulta de norma evaluada (M11)
+        // Vigencia y plazos (M11)
         const searchForm = document.getElementById("searchForm");
         const radicadoInput = document.getElementById("radicado");
         const nitInput = document.getElementById("nit");
@@ -215,35 +219,49 @@
             conteo.textContent = "";
         }
 
-        function claseEstado(estado) {
-            if (estado === "CERTIFICADA") return "vigente";
-            if (estado && estado.startsWith("EN TRAMITE")) return "tramite";
+        function claseVigencia(estado) {
+            if (estado === "VIGENTE") return "ok";
+            if (estado === "POR VENCER") return "por";
+            if (estado === "VENCIDO") return "vencido";
             return "";
         }
 
-        function tarjeta(fila) {
-            const estado = fila.estado_general || "SIN DATOS";
-            const norma = (fila.norma_completa || "").trim();
-            const sinNorma = !norma || norma === "--";
+        function textoPlazo(fila) {
+            const dias = fila.dias_restantes;
+            if (dias === null || dias === undefined) return "Sin certificado emitido";
+            if (dias < 0) return `Venció hace ${-dias} día(s)`;
+            if (dias === 0) return "Vence hoy";
+            return `Faltan ${dias} día(s)`;
+        }
 
-            return `<article class="cn-card ${claseEstado(estado)}">
-                <span class="cn-estado">${esc(estado)}</span>
-                <p class="cn-norma-label">Norma evaluada</p>
-                <p class="cn-norma ${sinNorma ? "cn-sin-norma" : ""}">${esc(sinNorma ? "Sin norma registrada" : norma)}</p>
-                <p class="cn-empresa">${esc(fila.empresa)}</p>
-                <p class="cn-sub">NIT ${esc(fila.nit)}${fila.ciudad ? " - " + esc(fila.ciudad) : ""}</p>
-                <dl class="cn-rows">
+        function textoTramite(fila) {
+            const dias = fila.dias_desde_radicacion;
+            if (dias === null || dias === undefined) return "--";
+            return `${dias} día(s) desde la radicación`;
+        }
+
+        function tarjeta(fila) {
+            const vigencia = fila.estado_vigencia || "SIN CERTIFICADO";
+            return `<article class="vg-card ${claseVigencia(vigencia)}">
+                <div class="vg-top">
+                    <span class="vg-estado">${esc(vigencia)}</span>
+                    <span class="vg-plazo">${esc(textoPlazo(fila))}</span>
+                </div>
+                <p class="vg-empresa">${esc(fila.empresa)}</p>
+                <p class="vg-sub">NIT ${esc(fila.nit)}${fila.ciudad ? " - " + esc(fila.ciudad) : ""}</p>
+                <dl class="vg-rows">
+                    <dt>Estado del trámite</dt><dd>${esc(fila.estado_general)}</dd>
                     <dt>Radicado</dt><dd>${esc(fila.numero_radicado)}</dd>
-                    <dt>Alcance certificado</dt><dd>${esc(fila.alcance_certificacion)}</dd>
-                    <dt>Código de verificación</dt><dd>${esc(fila.codigo_verificacion)}</dd>
-                    <dt>Fecha de emisión</dt><dd>${esc(fila.cert_emision)}</dd>
-                    <dt>Vigente hasta</dt><dd>${esc(fila.cert_vence)}</dd>
+                    <dt>Norma</dt><dd>${esc(fila.norma_completa)}</dd>
+                    <dt>Emitido el</dt><dd>${esc(fila.cert_emision)}</dd>
+                    <dt>Vence el</dt><dd>${esc(fila.cert_vence)}</dd>
+                    <dt>Tiempo en trámite</dt><dd>${esc(textoTramite(fila))}</dd>
                 </dl>
-                <p class="cn-msg"></p>
+                <p class="vg-msg"></p>
             </article>`;
         }
 
-        async function consultarNorma() {
+        async function consultarVigencia() {
             const codigo = radicadoInput.value.trim();
             const nit = nitInput.value.trim();
 
@@ -289,8 +307,8 @@
                 resultados.innerHTML = filas.map(tarjeta).join("");
 
                 // El mensaje lo envía el servidor, así que se pone con textContent.
-                resultados.querySelectorAll(".cn-card").forEach((card, i) => {
-                    card.querySelector(".cn-msg").textContent = filas[i].mensaje || "";
+                resultados.querySelectorAll(".vg-card").forEach((card, i) => {
+                    card.querySelector(".vg-msg").textContent = filas[i].mensaje || "";
                 });
 
             } catch (error) {
@@ -303,7 +321,7 @@
 
         searchForm.addEventListener("submit", function (e) {
             e.preventDefault();
-            consultarNorma();
+            consultarVigencia();
         });
 
         radicadoInput.focus();

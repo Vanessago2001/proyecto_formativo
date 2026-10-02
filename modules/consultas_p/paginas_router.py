@@ -25,3 +25,21 @@ async def pagina_buscar_empresa():
 async def pagina_consulta_norma():
     """Consulta pública de la norma evaluada, por NIT o número de radicado."""
     return FileResponse("static/consulta_norma.html")
+
+
+@router.get("/vigencia", response_class=HTMLResponse)
+async def pagina_vigencia():
+    """Vigencia del certificado y plazos del trámite, por NIT o radicado."""
+    return FileResponse("static/vigencia.html")
+
+
+@router.get("/validar", response_class=HTMLResponse)
+async def pagina_validar():
+    """Validación de autenticidad por código de verificación."""
+    return FileResponse("static/validar.html")
+
+
+@router.get("/constancia", response_class=HTMLResponse)
+async def pagina_constancia():
+    """Descarga de la constancia pública en PDF, por NIT."""
+    return FileResponse("static/constancia.html")

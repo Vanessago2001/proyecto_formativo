@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA - Validar autenticidad</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/styles.css?v=6">
+    <style>
+        .va-wrap { max-width: 860px; margin: 0 auto; padding: 26px 18px 40px; }
+        .va-panel { background: #fff; border: 1px solid #e2e6ea; border-radius: 4px; padding: 26px 28px; }
+        .va-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
+        .va-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
+        .va-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+        .va-field { flex: 1 1 260px; min-width: 220px; }
+        .va-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .va-field input { width: 100%; padding: 10px 12px; border: 1px solid #cfd6dd; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
+        .va-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
+        .va-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .va-btn:hover { background: #388e3c; }
+        .va-btn:disabled { opacity: .6; cursor: wait; }
+        #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
+        .va-veredicto { border-radius: 4px; padding: 18px 20px; margin-top: 18px; border: 1px solid #e2e6ea; background: #fff; }
+        .va-veredicto.autentico { border-color: #bfe3c6; background: #e6f4ea; }
+        .va-veredicto.falso { border-color: #f5c6cb; background: #fdecea; }
+        .va-titulo { margin: 0 0 6px; font-size: 18px; font-weight: 700; }
+        .va-veredicto.autentico .va-titulo { color: #1a7f37; }
+        .va-veredicto.falso .va-titulo { color: #b3261e; }
+        .va-detalle { margin: 0; color: #4b5563; font-size: 13px; line-height: 1.5; }
+        .va-card { background: #fff; border: 1px solid #e2e6ea; border-left: 4px solid #2f7d32; border-radius: 3px; padding: 20px 22px; margin-top: 16px; }
+        .va-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px; background: #eef1f4; color: #4b5563; }
+        .va-card.ok .va-estado { background: #e6f4ea; color: #1a7f37; }
+        .va-card.por .va-estado { background: #fff8e1; color: #8d6e00; }
+        .va-card.vencido .va-estado { background: #fdecea; color: #b3261e; }
+        .va-empresa { margin: 0; color: #374151; font-size: 15px; font-weight: 600; }
+        .va-sub { margin: 2px 0 12px; color: #6b7280; font-size: 12px; }
+        .va-rows { display: grid; grid-template-columns: 190px 1fr; row-gap: 6px; font-size: 13px; }
+        .va-rows dt { color: #2f7d32; font-weight: 700; }
+        .va-rows dd { margin: 0; color: #374151; word-break: break-word; }
+        .va-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
+        @media (max-width: 700px) {
+            .va-form { flex-direction: column; align-items: stretch; }
+            .va-btn { width: 100%; }
+            .va-rows { grid-template-columns: 1fr; row-gap: 2px; }
+            .va-rows dt { margin-top: 8px; }
+        }
+        @media print {
+            .login-header, .login-footer, .va-panel, .va-btn, #loader, .hamburger-btn, .mobile-menu { display: none !important; }
+            body { background: #fff; }
+            .va-wrap { max-width: 100%; padding: 0; }
+            .va-card { box-shadow: none; break-inside: avoid; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="login-header">
+
+        <div class="header-content">
+
+            <div class="header-left">
+
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Plataforma de gestión y consulta de certificados</p>
+                    <p style="font-size:12px;opacity:.85;margin-top:4px;">
+                        Servicio Nacional de Aprendizaje • CertiSENA
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="header-buttons">
+
+                <div class="nav-dropdown">
+                    <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+                        Consulta pública <span class="nav-caret">▼</span>
+                    </button>
+                    <div class="nav-dropdown-menu">
+                        <div class="nav-dropdown-panel">
+                            <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                            <a href="/">Consultar estado de vigencia</a>
+                            <a href="/consulta-norma">Consultar norma evaluada</a>
+                            <a href="/vigencia">Consultar vigencia y plazos</a>
+                            <a href="/validar">Validar autenticidad</a>
+                            <a href="/constancia">Descargar constancia pública</a>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="/login" class="btn-login">Iniciar sesión</a>
+                <a href="/register" class="btn-login">Registrarse</a>
+
+            </div>
+
+            <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+        </div>
+
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="/login">Iniciar sesión</a>
+            <a href="/register">Registrarse</a>
+            <div class="mobile-menu-group">
+                <span class="mobile-menu-label">Consulta pública</span>
+                <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                <a href="/">Consultar estado de vigencia</a>
+                <a href="/consulta-norma">Consultar norma evaluada</a>
+                <a href="/vigencia">Consultar vigencia y plazos</a>
+                <a href="/validar">Validar autenticidad</a>
+                <a href="/constancia">Descargar constancia pública</a>
+            </div>
+        </div>
+
+    </header>
+
+    <main class="va-wrap">
+
+        <section class="va-panel">
+
+            <h2>Validar autenticidad del documento</h2>
+
+            <p class="va-desc">
+                Escriba el código de verificación impreso en el certificado para confirmar que fue
+                emitido por CertiSENA. La comparación es exacta: un código incompleto o alterado no
+                valida. No necesita iniciar sesión.
+            </p>
+
+            <form id="searchForm" class="va-form">
+
+                <div class="va-field">
+                    <label for="codigo">Código de verificación</label>
+                    <input type="text" id="codigo" name="codigo" placeholder="CERT-2026-000123" autocomplete="off">
+                </div>
+
+                <button type="submit" class="va-btn" id="btnValidar">Validar</button>
+
+            </form>
+
+            <div id="loader" class="hidden-section">Validando...</div>
+
+            <div id="veredicto"></div>
+
+            <div id="mensajeError" class="va-error hidden-section"></div>
+
+        </section>
+
+    </main>
+
+    <footer class="login-footer">
+        <p>© 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+
+        // Menú hamburguesa
+        const hamburgerBtn = document.getElementById("hamburgerBtn");
+        const mobileMenu = document.getElementById("mobileMenu");
+
+        hamburgerBtn.addEventListener("click", () => {
+            hamburgerBtn.classList.toggle("active");
+            mobileMenu.classList.toggle("open");
+        });
+
+        document.querySelectorAll(".mobile-menu a").forEach(link => {
+            link.addEventListener("click", () => {
+                hamburgerBtn.classList.remove("active");
+                mobileMenu.classList.remove("open");
+            });
+        });
+
+        // Validación de autenticidad (M11)
+        const searchForm = document.getElementById("searchForm");
+        const codigoInput = document.getElementById("codigo");
+        const btnValidar = document.getElementById("btnValidar");
+        const loader = document.getElementById("loader");
+        const veredicto = document.getElementById("veredicto");
+        const mensajeError = document.getElementById("mensajeError");
+
+        const esc = (v) => String(v ?? "--")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+
+        function mostrarError(texto) {
+            mensajeError.textContent = texto;
+            mensajeError.classList.remove("hidden-section");
+        }
+
+        function limpiar() {
+            mensajeError.textContent = "";
+            mensajeError.classList.add("hidden-section");
+            veredicto.innerHTML = "";
+        }
+
+        function claseVigencia(estado) {
+            if (estado === "VIGENTE") return "ok";
+            if (estado === "POR VENCER") return "por";
+            if (estado === "VENCIDO") return "vencido";
+            return "";
+        }
+
+        function tarjetaDocumento(doc) {
+            const vigencia = doc.estado_vigencia || "SIN FECHA DE VENCIMIENTO";
+            return `<article class="va-card ${claseVigencia(vigencia)}">
+                <span class="va-estado">${esc(vigencia)}</span>
+                <p class="va-empresa">${esc(doc.empresa)}</p>
+                <p class="va-sub">NIT ${esc(doc.nit)}${doc.ciudad ? " - " + esc(doc.ciudad) : ""}</p>
+                <dl class="va-rows">
+                    <dt>Código verificado</dt><dd>${esc(doc.codigo_verificacion)}</dd>
+                    <dt>Radicado</dt><dd>${esc(doc.numero_radicado)}</dd>
+                    <dt>Norma</dt><dd>${esc(doc.norma_completa)}</dd>
+                    <dt>Alcance certificado</dt><dd>${esc(doc.alcance_certificacion)}</dd>
+                    <dt>Emitido el</dt><dd>${esc(doc.cert_emision)}</dd>
+                    <dt>Vence el</dt><dd>${esc(doc.cert_vence)}</dd>
+                </dl>
+            </article>`;
+        }
+
+        async function validar() {
+            const codigo = codigoInput.value.trim();
+
+            limpiar();
+
+            if (!codigo) {
+                mostrarError("Ingrese el código de verificación del documento.");
+                return;
+            }
+
+            loader.classList.remove("hidden-section");
+            btnValidar.disabled = true;
+
+            try {
+                const params = new URLSearchParams();
+                params.set("codigo", codigo);
+
+                const respuesta = await fetch(`/api/consultas-publicas/validar?${params.toString()}`);
+
+                loader.classList.add("hidden-section");
+                btnValidar.disabled = false;
+
+                if (!respuesta.ok) {
+                    let detalle = "No se pudo completar la validación.";
+                    try {
+                        const datos = await respuesta.json();
+                        detalle = datos.detail || detalle;
+                    } catch (e) { /* respuesta no JSON */ }
+                    mostrarError(detalle);
+                    return;
+                }
+
+                const datos = await respuesta.json();
+                const clase = datos.autentico ? "autentico" : "falso";
+                const titulo = datos.autentico ? "Documento auténtico" : "Documento no auténtico";
+
+                veredicto.innerHTML =
+                    `<div class="va-veredicto ${clase}">` +
+                    `<p class="va-titulo">${titulo}</p>` +
+                    `<p class="va-detalle"></p>` +
+                    `</div>` +
+                    (datos.autentico && datos.documento ? tarjetaDocumento(datos.documento) : "");
+
+                // El detalle lo envía el servidor, así que se pone con textContent.
+                veredicto.querySelector(".va-detalle").textContent = datos.detalle || "";
+
+            } catch (error) {
+                console.error("Error en la validación:", error);
+                loader.classList.add("hidden-section");
+                btnValidar.disabled = false;
+                mostrarError("Error de conexión con el servidor.");
+            }
+        }
+
+        searchForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            validar();
+        });
+
+        codigoInput.focus();
+
+    </script>
+
+</body>
+
+</html>

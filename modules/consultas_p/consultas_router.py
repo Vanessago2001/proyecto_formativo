@@ -50,6 +50,20 @@ async def consulta_documentos(
 
 
 @router.get(
+    "/validar",
+    summary="Validar autenticidad por código de verificación (público)",
+)
+async def validar_autenticidad(
+    codigo: str = "",
+    db: AsyncSession = Depends(get_db),
+):
+    """Responde si el código existe (`autentico`) y a qué certificado, empresa y
+    trámite corresponde. Siempre 200: un código inexistente es una respuesta
+    válida ("no auténtico"), no un error del servidor."""
+    return await ConsultasPublicasService(db).validar_autenticidad(codigo)
+
+
+@router.get(
     "/constancia/{nit}/pdf",
     summary="Descargar constancia de la empresa en PDF (público)",
     response_class=Response,

@@ -14,7 +14,7 @@ es otra cosa:
 """
 
 import re
-from datetime import date
+from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -342,8 +342,26 @@ async def test_la_pagina_apunta_al_api_del_modulo(cliente):
 # 7. MENÚ "CONSULTA PÚBLICA" DEL NAV
 # ============================================================
 
-# Las páginas que se ven sin iniciar sesión. Las cuatro llevan el menú.
-PAGINAS_PUBLICAS = ["/", "/login", "/register", "/buscar_empresa"]
+# Las páginas que se ven sin iniciar sesión. Todas llevan el menú.
+PAGINAS_PUBLICAS = [
+    "/",
+    "/login",
+    "/register",
+    "/buscar_empresa",
+    "/consulta-norma",
+    "/vigencia",
+    "/validar",
+    "/constancia",
+]
+
+ENLACES_DEL_MENU = [
+    "/buscar_empresa",
+    "/",
+    "/consulta-norma",
+    "/vigencia",
+    "/validar",
+    "/constancia",
+]
 
 PANEL = re.compile(
     r'<div class="nav-dropdown-panel">(.*?)</div>',
@@ -385,11 +403,11 @@ async def test_el_menu_aparece_en_todas_las_paginas_publicas(cliente, pagina):
         html = (await ac.get(pagina)).text
 
     assert "Consulta pública" in html
-    assert _enlaces_del_menu(html) == ["/buscar_empresa", "/", "/consulta-norma"]
+    assert _enlaces_del_menu(html) == ENLACES_DEL_MENU
 
     grupo = GRUPO_MOVIL.search(html)
     assert grupo, f"{pagina} no repite el menú en la versión móvil"
-    assert ENLACES.findall(grupo.group(1)) == ["/buscar_empresa", "/", "/consulta-norma"]
+    assert ENLACES.findall(grupo.group(1)) == ENLACES_DEL_MENU
 
 
 async def test_los_enlaces_del_menu_no_estan_muertos(cliente):
@@ -406,5 +424,173 @@ async def test_los_enlaces_del_menu_no_estan_muertos(cliente):
     assert rutas, "no se pudieron leer las rutas de la aplicación"
     for enlace in _enlaces_del_menu(html):
         assert enlace in rutas, f"el menú enlaza a {enlace}, que no existe"
+
+
+# ============================================================
+# 8. VIGENCIA, PLAZOS Y AUTENTICIDAD
+# ============================================================
+
+def _fila_documento(**cambios):
+    fila = {
+        "id_solicitud": "s-9",
+        "numero_radicado": "RAD-2026-009",
+        "estado_tramite": "Aprobada",
+        "fecha_tramite": date(2026, 1, 1),
+        "fecha_radicacion": date(2026, 1, 1),
+        "alcance_certificacion": "ISO 9001",
+        "id_empresa": EMPRESA["id_empresa"],
+        "empresa": EMPRESA["nombre"],
+        "nit": EMPRESA["nit"],
+        "ciudad": EMPRESA["ciudad"],
+        "norma_codigo": "NTC",
+        "norma_nombre": "ISO 9001",
+        "norma_version": "2015",
+        "codigo_verificacion": "CV-123",
+        "cert_estado": "Vigente",
+        "cert_emision": date(2026, 1, 1),
+        "cert_vence": date(2099, 1, 1),
+        "url_certificado": None,
+    }
+    fila.update(cambios)
+    return fila
+
+
+@pytest.mark.parametrize("vence, estado", [
+    (date.today() + timedelta(days=91), "VIGENTE"),
+    (date.today() + timedelta(days=90), "POR VENCER"),
+    (date.today(), "POR VENCER"),
+    (date.today() - timedelta(days=1), "VENCIDO"),
+])
+async def test_el_estado_de_vigencia_respeta_el_umbral_de_90_dias(db, cliente, vence, estado):
+    db.execute.side_effect = [_filas([_fila_documento(cert_vence=vence)])]
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/documentos", params={"nit": EMPRESA["nit"]})
+
+    fila = respuesta.json()[0]
+    assert fila["estado_vigencia"] == estado
+    assert fila["dias_restantes"] == (vence - date.today()).days
+
+
+async def test_sin_certificado_no_hay_plazo_que_contar(db, cliente):
+    db.execute.side_effect = [_filas([
+        _fila_documento(codigo_verificacion=None, cert_vence=None),
+    ])]
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/documentos", params={"nit": EMPRESA["nit"]})
+
+    fila = respuesta.json()[0]
+    assert fila["estado_vigencia"] == "SIN CERTIFICADO"
+    assert fila["dias_restantes"] is None
+
+
+async def test_las_fechas_como_datetime_no_rompen_la_consulta(db, cliente):
+    """
+    En la base real `fecha_radicacion` es timestamp, así que asyncpg la entrega
+    como `datetime`. Restarla con `date.today()` lanzaba TypeError y el
+    endpoint respondía 500; el service debe normalizarla a `date`.
+    """
+    db.execute.side_effect = [_filas([_fila_documento(
+        fecha_radicacion=datetime(2026, 9, 1, 10, 30),
+        cert_vence=datetime(2099, 1, 1, 0, 0),
+    )])]
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/documentos", params={"nit": EMPRESA["nit"]})
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    fila = respuesta.json()[0]
+    assert fila["estado_vigencia"] == "VIGENTE"
+    assert fila["dias_desde_radicacion"] == (date.today() - date(2026, 9, 1)).days
+
+
+async def test_un_codigo_existente_valida_como_autentico(db, cliente):
+    db.execute.side_effect = [_una_fila({
+        "codigo_verificacion": "CV-123",
+        "cert_estado": "Vigente",
+        "cert_emision": date(2026, 1, 1),
+        "cert_vence": date(2099, 1, 1),
+        "numero_radicado": "RAD-2026-009",
+        "estado_tramite": "Aprobada",
+        "fecha_radicacion": date(2026, 1, 1),
+        "alcance_certificacion": "ISO 9001",
+        "empresa": EMPRESA["nombre"],
+        "nit": EMPRESA["nit"],
+        "ciudad": EMPRESA["ciudad"],
+        "norma_codigo": "NTC",
+        "norma_nombre": "ISO 9001",
+        "norma_version": "2015",
+    })]
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/validar", params={"codigo": "CV-123"})
+
+    datos = respuesta.json()
+    assert datos["autentico"] is True
+    assert datos["documento"]["empresa"] == EMPRESA["nombre"]
+    assert datos["documento"]["estado_vigencia"] == "VIGENTE"
+    assert datos["documento"]["norma_completa"] == "NTC ISO 9001 2015"
+
+
+async def test_un_codigo_inexistente_no_valida(db, cliente):
+    db.execute.side_effect = [_una_fila(None)]
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/validar", params={"codigo": "CV-999"})
+
+    datos = respuesta.json()
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert datos["autentico"] is False
+    assert datos["documento"] is None
+
+
+async def test_la_validacion_compara_exacto_y_no_por_prefijo(db, cliente):
+    """
+    Un ILIKE aquí dejaría que cualquiera enumere códigos válidos probando
+    prefijos ("CV-1", "CV-12"...). La comparación debe ser de igualdad.
+    """
+    db.execute.side_effect = [_una_fila(None)]
+
+    async with cliente as ac:
+        await ac.get(f"{BASE}/validar", params={"codigo": "CV-1"})
+
+    sql = _sql_ejecutados(db)[0]
+    assert "ILIKE" not in sql.upper()
+    assert "UPPER(TRIM(c.codigo_verificacion)) = UPPER(TRIM(:codigo))" in sql
+
+
+async def test_validar_sin_codigo_no_toca_la_base_de_datos(db, cliente):
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/validar")
+
+    assert respuesta.json()["autentico"] is False
+    db.execute.assert_not_called()
+
+
+@pytest.mark.parametrize("pagina, titulo", [
+    ("/vigencia", "Consultar vigencia y plazos"),
+    ("/validar", "Validar autenticidad"),
+    ("/constancia", "Descargar constancia pública"),
+])
+async def test_las_paginas_nuevas_las_sirve_el_modulo(cliente, pagina, titulo):
+    async with cliente as ac:
+        respuesta = await ac.get(pagina)
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert "text/html" in respuesta.headers["content-type"]
+    assert titulo in respuesta.text
+
+
+async def test_las_paginas_nuevas_apuntan_al_api_del_modulo(cliente):
+    async with cliente as ac:
+        vigencia = (await ac.get("/vigencia")).text
+        validar = (await ac.get("/validar")).text
+        constancia = (await ac.get("/constancia")).text
+
+    assert f"{BASE}/documentos" in vigencia
+    assert f"{BASE}/validar" in validar
+    assert f"{BASE}/empresa/" in constancia
+    assert f"{BASE}/constancia/" in constancia
 
 

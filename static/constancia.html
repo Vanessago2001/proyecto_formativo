@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA - Descargar constancia pública</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/styles.css?v=6">
+    <style>
+        .ct-wrap { max-width: 860px; margin: 0 auto; padding: 26px 18px 40px; }
+        .ct-panel { background: #fff; border: 1px solid #e2e6ea; border-radius: 4px; padding: 26px 28px; }
+        .ct-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
+        .ct-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
+        .ct-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+        .ct-field { flex: 1 1 260px; min-width: 220px; }
+        .ct-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .ct-field input { width: 100%; padding: 10px 12px; border: 1px solid #cfd6dd; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
+        .ct-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
+        .ct-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .ct-btn:hover { background: #388e3c; }
+        .ct-btn:disabled { opacity: .6; cursor: wait; }
+        #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
+        .ct-card { background: #fff; border: 1px solid #e2e6ea; border-left: 4px solid #2f7d32; border-radius: 3px; padding: 20px 22px; margin-top: 18px; }
+        .ct-empresa { margin: 0; color: #374151; font-size: 16px; font-weight: 700; }
+        .ct-sub { margin: 2px 0 12px; color: #6b7280; font-size: 12px; }
+        .ct-rows { display: grid; grid-template-columns: 190px 1fr; row-gap: 6px; font-size: 13px; }
+        .ct-rows dt { color: #2f7d32; font-weight: 700; }
+        .ct-rows dd { margin: 0; color: #374151; word-break: break-word; }
+        .ct-descarga { display: inline-block; margin-top: 16px; background: #43a047; color: #fff; border-radius: 6px; padding: 11px 26px; font-size: 14px; font-weight: 700; text-decoration: none; }
+        .ct-descarga:hover { background: #388e3c; }
+        .ct-nota { margin: 10px 0 0; color: #6b7280; font-size: 12px; }
+        .ct-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
+        @media (max-width: 700px) {
+            .ct-form { flex-direction: column; align-items: stretch; }
+            .ct-btn { width: 100%; }
+            .ct-rows { grid-template-columns: 1fr; row-gap: 2px; }
+            .ct-rows dt { margin-top: 8px; }
+            .ct-descarga { display: block; text-align: center; }
+        }
+        @media print {
+            .login-header, .login-footer, .ct-panel, .ct-btn, #loader, .hamburger-btn, .mobile-menu { display: none !important; }
+            body { background: #fff; }
+            .ct-wrap { max-width: 100%; padding: 0; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="login-header">
+
+        <div class="header-content">
+
+            <div class="header-left">
+
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Plataforma de gestión y consulta de certificados</p>
+                    <p style="font-size:12px;opacity:.85;margin-top:4px;">
+                        Servicio Nacional de Aprendizaje • CertiSENA
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="header-buttons">
+
+                <div class="nav-dropdown">
+                    <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+                        Consulta pública <span class="nav-caret">▼</span>
+                    </button>
+                    <div class="nav-dropdown-menu">
+                        <div class="nav-dropdown-panel">
+                            <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                            <a href="/">Consultar estado de vigencia</a>
+                            <a href="/consulta-norma">Consultar norma evaluada</a>
+                            <a href="/vigencia">Consultar vigencia y plazos</a>
+                            <a href="/validar">Validar autenticidad</a>
+                            <a href="/constancia">Descargar constancia pública</a>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="/login" class="btn-login">Iniciar sesión</a>
+                <a href="/register" class="btn-login">Registrarse</a>
+
+            </div>
+
+            <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+        </div>
+
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="/login">Iniciar sesión</a>
+            <a href="/register">Registrarse</a>
+            <div class="mobile-menu-group">
+                <span class="mobile-menu-label">Consulta pública</span>
+                <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                <a href="/">Consultar estado de vigencia</a>
+                <a href="/consulta-norma">Consultar norma evaluada</a>
+                <a href="/vigencia">Consultar vigencia y plazos</a>
+                <a href="/validar">Validar autenticidad</a>
+                <a href="/constancia">Descargar constancia pública</a>
+            </div>
+        </div>
+
+    </header>
+
+    <main class="ct-wrap">
+
+        <section class="ct-panel">
+
+            <h2>Descargar constancia pública</h2>
+
+            <p class="ct-desc">
+                Obtenga en PDF la constancia con los datos públicos de una empresa y su estado de
+                certificación. Ingrese el NIT exacto o parcial. No necesita iniciar sesión.
+            </p>
+
+            <form id="searchForm" class="ct-form">
+
+                <div class="ct-field">
+                    <label for="nit">NIT de la empresa</label>
+                    <input type="text" id="nit" name="nit" placeholder="900123456-7" autocomplete="off">
+                </div>
+
+                <button type="submit" class="ct-btn" id="btnDescargar">Descargar</button>
+
+            </form>
+
+            <div id="loader" class="hidden-section">Buscando la empresa...</div>
+
+            <div id="resultado"></div>
+
+            <div id="mensajeError" class="ct-error hidden-section"></div>
+
+        </section>
+
+    </main>
+
+    <footer class="login-footer">
+        <p>© 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+
+        // Menú hamburguesa
+        const hamburgerBtn = document.getElementById("hamburgerBtn");
+        const mobileMenu = document.getElementById("mobileMenu");
+
+        hamburgerBtn.addEventListener("click", () => {
+            hamburgerBtn.classList.toggle("active");
+            mobileMenu.classList.toggle("open");
+        });
+
+        document.querySelectorAll(".mobile-menu a").forEach(link => {
+            link.addEventListener("click", () => {
+                hamburgerBtn.classList.remove("active");
+                mobileMenu.classList.remove("open");
+            });
+        });
+
+        // Descarga de constancia pública (M11)
+        const searchForm = document.getElementById("searchForm");
+        const nitInput = document.getElementById("nit");
+        const btnDescargar = document.getElementById("btnDescargar");
+        const loader = document.getElementById("loader");
+        const resultado = document.getElementById("resultado");
+        const mensajeError = document.getElementById("mensajeError");
+
+        const esc = (v) => String(v ?? "--")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+
+        function mostrarError(texto) {
+            mensajeError.textContent = texto;
+            mensajeError.classList.remove("hidden-section");
+        }
+
+        function limpiar() {
+            mensajeError.textContent = "";
+            mensajeError.classList.add("hidden-section");
+            resultado.innerHTML = "";
+        }
+
+        function tarjeta(empresa, urlPdf) {
+            return `<article class="ct-card">
+                <p class="ct-empresa">${esc(empresa.nombre)}</p>
+                <p class="ct-sub">NIT ${esc(empresa.nit)}${empresa.ciudad ? " - " + esc(empresa.ciudad) : ""}</p>
+                <dl class="ct-rows">
+                    <dt>Estado</dt><dd>${empresa.certificada ? "Certificada" : "Sin certificados vigentes"}</dd>
+                    <dt>Certificados vigentes</dt><dd>${esc(empresa.certificados_vigentes)}</dd>
+                    <dt>Trámites radicados</dt><dd>${esc(empresa.total_solicitudes)}</dd>
+                </dl>
+                <a class="ct-descarga" href="${esc(urlPdf)}" download>Descargar PDF</a>
+                <p class="ct-nota">Si la descarga no arranca sola, use este botón.</p>
+            </article>`;
+        }
+
+        async function descargar() {
+            const nit = nitInput.value.trim();
+
+            limpiar();
+
+            if (!nit) {
+                mostrarError("Ingrese el NIT de la empresa.");
+                return;
+            }
+
+            loader.classList.remove("hidden-section");
+            btnDescargar.disabled = true;
+
+            try {
+                const respuesta = await fetch(`/api/consultas-publicas/empresa/${encodeURIComponent(nit)}`);
+
+                loader.classList.add("hidden-section");
+                btnDescargar.disabled = false;
+
+                if (!respuesta.ok) {
+                    let detalle = "No se pudo completar la búsqueda.";
+                    try {
+                        const datos = await respuesta.json();
+                        detalle = datos.detail || detalle;
+                    } catch (e) { /* respuesta no JSON */ }
+                    mostrarError(detalle);
+                    return;
+                }
+
+                const empresas = await respuesta.json();
+
+                if (!Array.isArray(empresas) || empresas.length === 0) {
+                    mostrarError("No hay empresas registradas con ese NIT.");
+                    return;
+                }
+
+                const empresa = empresas[0];
+                const urlPdf = `/api/consultas-publicas/constancia/${encodeURIComponent(nit)}/pdf`;
+
+                resultado.innerHTML = tarjeta(empresa, urlPdf);
+
+                // Content-Disposition: attachment hace que el navegador descargue
+                // el PDF sin abandonar esta página.
+                window.location.assign(urlPdf);
+
+            } catch (error) {
+                console.error("Error en la descarga:", error);
+                loader.classList.add("hidden-section");
+                btnDescargar.disabled = false;
+                mostrarError("Error de conexión con el servidor.");
+            }
+        }
+
+        searchForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            descargar();
+        });
+
+        nitInput.focus();
+
+    </script>
+
+</body>
+
+</html>
