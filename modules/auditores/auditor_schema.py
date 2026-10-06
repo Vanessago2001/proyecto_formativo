@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -174,12 +174,6 @@ class DocumentoAuditorCrear(BaseModel):
 
 class EnviarSolicitudAuditor(BaseModel):
     id_usuario: UUID
-    documento_url_soporte: str
-
-    @field_validator("documento_url_soporte")
-    @classmethod
-    def limpiar_url(cls, value):
-        return value.strip()
 
 
 class EnviarSolicitudRespuesta(BaseModel):
@@ -225,6 +219,7 @@ class ConflictoInteresRespuesta(BaseModel):
 
 class DocumentoAuditorRespuesta(BaseModel):
     id_documento: UUID
+    id_postulacion: UUID
     nombre_archivo: str
     tipo_documento: str
     url_archivo: str
@@ -254,24 +249,49 @@ class BorradorAuditorRespuesta(BaseModel):
         default_factory=list
     )
 
-    documento_url_soporte: str | None = None
+
+# 
+class PostulacionAuditorEstadoRespuesta(BaseModel):
+    id_postulacion: UUID
+    estado_postulacion: str
+    fecha_postulacion: datetime | None = None
 
 
 # ============================================================
-# CONSULTA DE ESTADO
+# CONSULTA DE ESTADO POR CORREO
 # ============================================================
 
 class ConsultaEstadoAuditorRespuesta(BaseModel):
+
     id_usuario: UUID | None = None
     id_postulacion: UUID | None = None
 
     nombre: str
     correo: str
-    estado: str
 
+    estado: str | None = None
+    estado_usuario: str | None = None
     estado_auditor: str | None = None
     estado_postulacion: str | None = None
     rol: str | None = None
+
+    fecha_postulacion: datetime | None = None
+    fecha_revision: datetime | None = None
+
+    # ========================================================
+    # CORRECCIONES
+    # ========================================================
+
+    tiene_correcciones: bool = False
+
+    observaciones_correccion: str | None = None
+
+    administrador_correccion: str | None = None
+
+    fecha_correccion: datetime | None = None
+
+    estado_anterior_correccion: str | None = None
+    
 
 
 class EstadoAuditorRespuesta(BaseModel):

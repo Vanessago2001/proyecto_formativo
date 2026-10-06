@@ -24,10 +24,12 @@ from modules.apelaciones.apelaciones_router import router as apelaciones_router
 from modules.alejandra.router import router as alejandra_router
 
 from core.redis_client import redis_pool
+from uuid import UUID
 
 from modules.system.system_router import router as system_router
 from modules.asignacion_auditores.asignacion_router import router as asignacion_auditores_router
 
+from modules.administrar_auditores.administrar_auditores_router import router as administrar_auditores_router
 from modules.auditores.auditor_router import router as auditor_router
 # Modulo heredado de otro proyecto: su tabla `tareas` no existe en esta base
 # de datos, asi que sus endpoints devolvian 500. El codigo se conserva en
@@ -227,6 +229,12 @@ app = FastAPI(
     description="Estructura limpia basada en dominios directo en raíz sin Passlib",
     lifespan=lifespan
 )
+# Montaje de directorio para archivos subidos por los usuarios (PDF, imágenes, etc.)
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads",
+)
 
 # Montaje de archivos estáticos (CSS, JS, imágenes)
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -255,7 +263,10 @@ app.include_router(documento_router)
 app.include_router(informacion_router)
 app.include_router(sede_router)
 
+# M5 - Administrar Auditores
+app.include_router(administrar_auditores_router)
 # ============================================================
+
 # RUTAS DE INTERFAZ DE USUARIO
 # ============================================================
 
@@ -293,6 +304,9 @@ async def asignacion_auditores_page():
 async def comite_page(request: Request):
     return FileResponse("static/comite.html")
 
+@app.get("/consultar-estado")
+async def consultar_estado():
+    return FileResponse("static/consultar_estado_registro.html")
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
@@ -377,6 +391,19 @@ async def profile_page(request: Request):
 async def auditor_page(request: Request):
     return FileResponse("static/auditor.html")
 
+# banco de auditores
+@app.get("/banco-auditores", response_class=HTMLResponse)
+async def banco_auditores_page(request: Request):
+    return FileResponse("static/banco_auditores.html")
+
+# detalle de una solicitud
+@app.get("/banco-auditores/solicitud/{id_postulacion}")
+async def banco_auditores_solicitud(
+    id_postulacion: UUID,
+):
+    return FileResponse(
+        "static/banco_auditores_solicitud.html"
+    )
 
 @app.get("/empresa", response_class=HTMLResponse)
 async def empresa_page(request: Request):

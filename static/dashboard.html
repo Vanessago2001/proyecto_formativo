@@ -263,9 +263,11 @@
         </div>
       </div>
       <div style="display:flex; gap:12px; align-items:center;">
-        <a id="companyHeaderLink" class="profile-button" href="/empresa" title="Ir a mi empresa" style="display:none;"><span class="profile-label">Mi empresa</span><span class="avatar" id="companyAvatar">E</span></a>
-        <a class="profile-button" href="/profile" title="Ir a mi perfil"><span class="profile-label">Mi perfil</span><span
-            class="avatar" id="headerAvatar">U</span></a>
+        <a id="companyHeaderLink" class="profile-button" href="/empresa" title="Ir a mi empresa"
+          style="display:none;"><span class="profile-label">Mi empresa</span><span class="avatar"
+            id="companyAvatar">E</span></a>
+        <a class="profile-button" href="/profile" title="Ir a mi perfil"><span class="profile-label">Mi
+            perfil</span><span class="avatar" id="headerAvatar">U</span></a>
       </div>
     </div>
   </header>
@@ -276,13 +278,20 @@
         <p id="roleDescription">Cargando informacion de la cuenta...</p>
       </div>
     </div>
-    <div id="adminView" class="admin-grid non-admin">
-      <nav class="admin-nav">
-        <a class="active" href="/dashboard">Resumen</a><a href="/empresas">Empresas registradas</a><a
-          href="#usuarios">Gestionar usuarios</a><a href="/asignacion-auditores">Asignación de auditores</a><a href="/revision-solicitudes">Revisión de solicitudes</a><a href="/comite">Ir al Comité de certificación</a><a href="/profile">Mi perfil</a>
-        <a href="#" id="mfaLink">Activar autenticación en dos pasos</a>
-        <a href="/login" id="logoutLink">Cerrar sesion</a>
-      </nav>
+   <div id="adminView" class="admin-grid non-admin">
+  <nav class="admin-nav">
+    <a class="active" href="/dashboard">Resumen</a>
+    <a href="/empresas">Empresas registradas</a>
+    <a href="#usuarios">Gestionar usuarios</a>
+    <a href="/asignacion-auditores">Asignación de auditores</a>
+    <a href="/revision-solicitudes">Revisión de solicitudes</a>
+    <a href="/banco-auditores">Banco de auditores</a>
+    <a href="/comite">Ir al Comité de certificación</a>
+    <a href="/profile">Mi perfil</a>
+    <a href="#" id="mfaLink">Activar autenticación en dos pasos</a>
+    <a href="/login" id="logoutLink">Cerrar sesion</a>
+  </nav>
+
       <div>
         <section class="metrics">
           <div class="metric">
@@ -329,7 +338,9 @@
           </form>
           <div class="committee-access-note">
             <strong>¿Cómo habilitar a una persona para el Comité?</strong>
-            En el campo «Permiso o rol», selecciona <b>Comité</b> al crear la cuenta. Para un usuario existente, cambia su rol a <b>Comité</b> en la tabla «Control de usuarios». La persona debe quedar en estado <b>Activo</b>; después podrá iniciar sesión y será enviada automáticamente al módulo de Comité.
+            En el campo «Permiso o rol», selecciona <b>Comité</b> al crear la cuenta. Para un usuario existente, cambia
+            su rol a <b>Comité</b> en la tabla «Control de usuarios». La persona debe quedar en estado <b>Activo</b>;
+            después podrá iniciar sesión y será enviada automáticamente al módulo de Comité.
           </div>
         </section>
         <section class="surface" style="margin-top: 24px">
@@ -359,7 +370,8 @@
         consultar los datos de tu sesion.
       </p>
       <p style="margin-top: 18px">
-        <a id="companyLink" class="primary-action" style="display: inline-block; width: auto; text-decoration: none" href="/profile">Ir a mi perfil</a>
+        <a id="companyLink" class="primary-action" style="display: inline-block; width: auto; text-decoration: none"
+          href="/profile">Ir a mi perfil</a>
       </p>
     </section>
 
@@ -665,7 +677,7 @@
             return;
 
           }
-           console.log("3. Va a llamar /mfa/disable");
+          console.log("3. Va a llamar /mfa/disable");
 
           const response = await fetch("/mfa/disable", {
 
@@ -674,9 +686,9 @@
             headers: headers()
 
           });
-           console.log("4. Respuesta HTTP:", response.status);
+          console.log("4. Respuesta HTTP:", response.status);
           const data = await response.json();
-           console.log("5. Respuesta:", data);
+          console.log("5. Respuesta:", data);
           if (!response.ok) {
 
             // errorMessage.textContent =
@@ -958,11 +970,11 @@
       );
 
 
-      
+
   </script>
 
 
-<script src="/static/session.js"></script>
+  <script src="/static/session.js"></script>
 </body>
 
 </html>

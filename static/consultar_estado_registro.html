@@ -1,0 +1,2613 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>CertiSENA | Estado del registro</title>
+
+  <link rel="stylesheet" href="/static/styles.css">
+
+  <style>
+    .portal {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 28px;
+
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      gap: 24px;
+    }
+
+    .side,
+    .content {
+      background: #fff;
+      border: 1px solid #dbe4d4;
+      padding: 20px;
+    }
+
+    .side a {
+      display: block;
+      padding: 11px;
+
+      color: #334155;
+      text-decoration: none;
+
+      border-left: 3px solid transparent;
+    }
+
+    .side a:hover {
+      background: #f1f8ed;
+    }
+
+    .side a.active {
+      color: #256d00;
+      background: #f1f8ed;
+      border-left-color: #3baa01;
+    }
+
+    .content h2 {
+      color: #256d00;
+      font-size: 23px;
+      margin-bottom: 8px;
+    }
+
+    .content>p {
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .notice {
+      margin: 22px 0;
+      padding: 16px;
+
+      background: #f1f8ed;
+
+      border-left: 4px solid #3baa01;
+
+      color: #365314;
+
+      line-height: 1.5;
+    }
+
+    .notice-correcciones {
+      background: #fff7ed;
+      border-left-color: #f97316;
+      color: #9a3412;
+    }
+
+    .notice-correcciones strong {
+      color: #7c2d12;
+    }
+
+    .status-card {
+      border: 1px solid #dbe4d4;
+
+      padding: 20px;
+
+      margin-top: 22px;
+
+      background: #fff;
+    }
+
+    .status-card h3 {
+      margin-top: 0;
+
+      color: #1e293b;
+
+      font-size: 17px;
+    }
+
+    .status-grid {
+      display: grid;
+
+      grid-template-columns:
+        repeat(2, 1fr);
+
+      gap: 16px;
+
+      margin-top: 18px;
+    }
+
+    .status-item {
+      background: #f8fafc;
+
+      border: 1px solid #e2e8f0;
+
+      padding: 14px;
+
+      border-radius: 4px;
+    }
+
+    .status-item .label {
+      display: block;
+
+      font-size: 12px;
+
+      color: #64748b;
+
+      margin-bottom: 5px;
+
+      font-weight: 600;
+    }
+
+    .status-item .value {
+      display: block;
+
+      color: #0f172a;
+
+      font-size: 14px;
+
+      font-weight: 600;
+
+      word-break: break-word;
+    }
+
+    /* =====================================================
+       BADGES
+    ====================================================== */
+
+    .estado-badge {
+      display: inline-block;
+
+      padding: 5px 10px;
+
+      border-radius: 12px;
+
+      font-size: 12px;
+
+      font-weight: 600;
+
+      background: #fef3c7;
+
+      color: #92400e;
+    }
+
+    .estado-enviado {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .estado-pendiente {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .estado-aprobado {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .estado-rechazado {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .estado-cancelado {
+      background: #e2e8f0;
+      color: #475569;
+    }
+
+    .estado-correcciones {
+      background: #ffedd5;
+      color: #c2410c;
+    }
+
+    /* =====================================================
+       TARJETA CORRECCIONES
+    ====================================================== */
+
+    .correcciones-card {
+      display: none;
+
+      margin-top: 22px;
+
+      border: 1px solid #fed7aa;
+
+      background: #fffaf5;
+
+      border-radius: 6px;
+
+      overflow: hidden;
+    }
+
+    .correcciones-card.visible {
+      display: block;
+    }
+
+    .correcciones-header {
+      padding: 16px 18px;
+
+      background: #ffedd5;
+
+      border-bottom: 1px solid #fed7aa;
+    }
+
+    .correcciones-header h3 {
+      margin: 0;
+
+      color: #9a3412;
+
+      font-size: 17px;
+    }
+
+    .correcciones-subtitulo {
+      margin: 5px 0 0;
+
+      color: #9a3412;
+
+      font-size: 13px;
+    }
+
+    .correcciones-body {
+      padding: 20px;
+    }
+
+    .observacion-box {
+      padding: 16px;
+
+      background: #fff;
+
+      border: 1px solid #fed7aa;
+
+      border-radius: 5px;
+    }
+
+    .observacion-label {
+      display: block;
+
+      margin-bottom: 8px;
+
+      color: #7c2d12;
+
+      font-size: 12px;
+
+      font-weight: 700;
+
+      text-transform: uppercase;
+
+      letter-spacing: 0.03em;
+    }
+
+    #observacionCorreccion {
+      color: #431407;
+
+      font-size: 15px;
+
+      line-height: 1.7;
+
+      white-space: pre-line;
+
+      word-break: break-word;
+    }
+
+    .correccion-meta {
+      display: grid;
+
+      grid-template-columns:
+        repeat(2, 1fr);
+
+      gap: 12px;
+
+      margin-top: 14px;
+
+      font-size: 13px;
+
+      color: #7c2d12;
+    }
+
+    .correccion-meta-item {
+      padding: 10px 12px;
+
+      background: #fff7ed;
+
+      border: 1px solid #fed7aa;
+
+      border-radius: 4px;
+    }
+
+    .correccion-meta-item strong {
+      display: block;
+
+      margin-bottom: 4px;
+
+      font-size: 11px;
+
+      color: #9a3412;
+
+      text-transform: uppercase;
+    }
+
+    /* =====================================================
+       ACCIONES
+    ====================================================== */
+
+    .acciones {
+      margin-top: 24px;
+
+      display: flex;
+
+      gap: 10px;
+
+      flex-wrap: wrap;
+    }
+
+    .btn-accion {
+      border: none;
+
+      padding: 10px 16px;
+
+      border-radius: 4px;
+
+      font-size: 13px;
+
+      font-weight: 600;
+
+      cursor: pointer;
+    }
+
+    .btn-actualizar {
+      background: #0284c7;
+
+      color: #fff;
+    }
+
+    .btn-actualizar:hover {
+      background: #0369a1;
+    }
+
+    .btn-cancelar {
+      background: #dc2626;
+
+      color: #fff;
+    }
+
+    .btn-cancelar:hover {
+      background: #b91c1c;
+    }
+
+    .btn-pdf {
+      background: #256d00;
+
+      color: #fff;
+    }
+
+    .btn-pdf:hover {
+      background: #1e5800;
+    }
+
+    .btn-accion:disabled {
+      background: #94a3b8;
+
+      cursor: not-allowed;
+    }
+
+    .mensaje {
+      margin-top: 18px;
+
+      padding: 12px 14px;
+
+      border-radius: 4px;
+
+      display: none;
+
+      font-size: 13px;
+    }
+
+    .mensaje.success {
+      display: block;
+
+      background: #dcfce7;
+
+      border: 1px solid #bbf7d0;
+
+      color: #166534;
+    }
+
+    .mensaje.error {
+      display: block;
+
+      background: #fee2e2;
+
+      border: 1px solid #fecaca;
+
+      color: #991b1b;
+    }
+
+    .loading {
+      color: #64748b;
+
+      padding: 15px 0;
+    }
+
+    /* =====================================================
+       PAGINACIÓN
+    ====================================================== */
+
+    .paginacion {
+      display: none;
+
+      margin-top: 20px;
+
+      padding: 14px;
+
+      border: 1px solid #dbe4d4;
+
+      background: #f8fafc;
+
+      border-radius: 4px;
+
+      align-items: center;
+
+      justify-content: space-between;
+
+      gap: 12px;
+
+      flex-wrap: wrap;
+    }
+
+    .paginacion.visible {
+      display: flex;
+    }
+
+    .indicador {
+      font-size: 13px;
+
+      font-weight: 600;
+
+      color: #334155;
+    }
+
+    /* =====================================================
+       MODAL
+    ====================================================== */
+
+    .modal-overlay {
+      position: fixed;
+
+      inset: 0;
+
+      background: rgba(15,
+          23,
+          42,
+          0.55);
+
+      display: none;
+
+      align-items: center;
+
+      justify-content: center;
+
+      z-index: 9999;
+
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-confirmacion {
+      width: 100%;
+
+      max-width: 480px;
+
+      background: #fff;
+
+      border-radius: 8px;
+
+      box-shadow:
+        0 20px 45px rgba(0, 0, 0, 0.2);
+
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 20px 24px 14px;
+
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+
+      color: #1e293b;
+
+      font-size: 19px;
+    }
+
+    .modal-body {
+      padding: 20px 24px;
+
+      color: #475569;
+
+      line-height: 1.6;
+
+      font-size: 14px;
+    }
+
+    .modal-body strong {
+      color: #1e293b;
+    }
+
+    .modal-advertencia {
+      margin-top: 14px;
+
+      padding: 12px 14px;
+
+      background: #fff7ed;
+
+      border-left: 4px solid #f97316;
+
+      color: #9a3412;
+
+      font-size: 13px;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+
+      display: flex;
+
+      justify-content: flex-end;
+
+      gap: 10px;
+
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .btn-modal {
+      border: none;
+
+      padding: 10px 16px;
+
+      border-radius: 4px;
+
+      font-size: 13px;
+
+      font-weight: 600;
+
+      cursor: pointer;
+    }
+
+    .btn-modal-volver {
+      background: #e2e8f0;
+
+      color: #334155;
+    }
+
+    .btn-modal-confirmar {
+      background: #dc2626;
+
+      color: #fff;
+    }
+
+    .btn-modal:disabled {
+      opacity: 0.6;
+
+      cursor: not-allowed;
+    }
+
+    @media(max-width:720px) {
+
+      .portal {
+        grid-template-columns: 1fr;
+
+        padding: 18px;
+      }
+
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .correccion-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .acciones {
+        flex-direction: column;
+      }
+
+      .btn-accion {
+        width: 100%;
+      }
+
+    }
+  </style>
+
+</head>
+
+
+<body>
+
+  <header class="login-header">
+
+    <div class="header-content">
+
+      <div class="header-left">
+
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+
+        <div>
+
+          <h1>CertiSENA</h1>
+
+          <p class="subtitle">
+            Portal de auditoría
+          </p>
+
+        </div>
+
+      </div>
+
+      <a class="profile-link" href="/profile">
+        Mi perfil
+      </a>
+
+    </div>
+
+  </header>
+
+
+  <main class="portal">
+
+    <!-- =====================================================
+       MENÚ
+  ====================================================== -->
+
+    <nav class="side">
+
+      <a href="/auditor">
+        Mi registro
+      </a>
+
+      <a href="/auditor#datos-personales">
+        Datos personales
+      </a>
+
+      <a href="/auditor#perfil">
+        Perfil Auditor
+      </a>
+
+      <a href="/auditor#competencias">
+        Competencias
+      </a>
+
+      <a href="/auditor#conflictos">
+        Conflictos de Interés
+      </a>
+
+      <a href="/consultar-estado-registro" class="active">
+        Consultar estado del registro
+      </a>
+
+      <a id="logout" href="/login">
+        Cerrar sesión
+      </a>
+
+    </nav>
+
+
+    <!-- =====================================================
+       CONTENIDO
+  ====================================================== -->
+
+    <section class="content">
+
+      <h2>
+        Estado del registro de auditor
+      </h2>
+
+      <p>
+        Consulte el estado actual de su inscripción en el
+        Banco de Auditores.
+      </p>
+
+
+      <div id="estadoAlerta" class="notice">
+        Consultando estado del registro...
+      </div>
+
+
+      <div id="loading" class="loading">
+        Cargando información...
+      </div>
+
+
+      <div id="contenidoEstado" style="display:none;">
+
+        <!-- =================================================
+           INFORMACIÓN
+      ================================================== -->
+
+        <div class="status-card">
+
+          <h3>
+            Información del registro
+          </h3>
+
+
+          <div class="status-grid">
+
+            <div class="status-item datos-ocultables">
+
+              <span class="label">
+                Nombre completo
+              </span>
+
+              <span class="value" id="nombre">
+                -
+              </span>
+
+            </div>
+
+
+            <div class="status-item datos-ocultables">
+
+              <span class="label">
+                Correo electrónico
+              </span>
+
+              <span class="value" id="correo">
+                -
+              </span>
+
+            </div>
+
+
+            <div class="status-item">
+
+              <span class="label">
+                ID de usuario
+              </span>
+
+              <span class="value" id="idUsuario">
+                -
+              </span>
+
+            </div>
+
+
+            <div class="status-item">
+
+              <span class="label">
+                ID de postulación
+              </span>
+
+              <span class="value" id="idPostulacion">
+                -
+              </span>
+
+            </div>
+
+
+            <div class="status-item">
+
+              <span class="label">
+                Estado de la solicitud
+              </span>
+
+              <span class="value" id="estadoPostulacion">
+                -
+              </span>
+
+            </div>
+
+
+            <div class="status-item">
+
+              <span class="label">
+                Estado del auditor
+              </span>
+
+              <span class="value" id="estadoAuditor">
+                -
+              </span>
+
+            </div>
+
+
+            <div class="status-item">
+
+              <span class="label">
+                Estado de la cuenta
+              </span>
+
+              <span class="value" id="estadoUsuario">
+                -
+              </span>
+
+            </div>
+
+
+            <div class="status-item">
+
+              <span class="label">
+                Rol
+              </span>
+
+              <span class="value" id="rol">
+                Auditor
+              </span>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+             CORRECCIONES
+        ================================================== -->
+
+          <div id="correccionesCard" class="correcciones-card">
+
+            <div class="correcciones-header">
+
+              <h3>
+                ⚠️ Observaciones de corrección
+              </h3>
+
+              <p class="correcciones-subtitulo">
+                El administrador ha solicitado cambios
+                en su postulación.
+              </p>
+
+            </div>
+
+
+            <div class="correcciones-body">
+
+              <div class="observacion-box">
+
+                <span class="observacion-label">
+                  Observación del administrador
+                </span>
+
+                <div id="observacionCorreccion">
+                  -
+                </div>
+
+              </div>
+
+
+              <div class="correccion-meta">
+
+                <div class="correccion-meta-item">
+
+                  <strong>
+                    Administrador
+                  </strong>
+
+                  <span id="administradorCorreccion">
+                    No registrado
+                  </span>
+
+                </div>
+
+
+                <div class="correccion-meta-item">
+
+                  <strong>
+                    Fecha
+                  </strong>
+
+                  <span id="fechaCorreccion">
+                    No registrada
+                  </span>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+             PAGINACIÓN
+        ================================================== -->
+
+          <div id="paginacionPostulaciones" class="paginacion">
+
+            <button type="button" id="btnAnterior" class="btn-accion btn-actualizar">
+              ← Anterior
+            </button>
+
+            <span id="indicadorPostulacion" class="indicador">
+              Postulación 1 de 1
+            </span>
+
+            <button type="button" id="btnSiguiente" class="btn-accion btn-actualizar">
+              Siguiente →
+            </button>
+
+          </div>
+
+
+          <!-- =================================================
+             ACCIONES
+        ================================================== -->
+
+          <div class="acciones">
+
+            <button type="button" id="btnActualizar" class="btn-accion btn-actualizar">
+              Actualizar estado
+            </button>
+
+
+            <button type="button" id="btnCancelar" class="btn-accion btn-cancelar">
+              Cancelar solicitud
+            </button>
+
+
+            <button type="button" id="btnPdf" class="btn-accion btn-pdf">
+              Descargar comprobante PDF
+            </button>
+
+          </div>
+
+
+          <div id="mensaje" class="mensaje"></div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- =====================================================
+     MODAL CANCELACIÓN
+====================================================== -->
+
+  <div id="modalCancelar" class="modal-overlay" role="dialog" aria-modal="true">
+
+    <div class="modal-confirmacion">
+
+      <div class="modal-header">
+
+        <h3>
+          Confirmar cancelación de solicitud
+        </h3>
+
+      </div>
+
+
+      <div class="modal-body">
+
+        <p>
+          Está a punto de cancelar su solicitud de registro
+          como auditor en el Banco de Auditores.
+        </p>
+
+        <p>
+          Al confirmar, el estado de su solicitud cambiará a
+          <strong>Cancelado</strong>.
+        </p>
+
+
+        <div class="modal-advertencia">
+
+          Al cancelar la solicitud se eliminarán todos los datos
+          registrados en el formulario, incluyendo el perfil
+          profesional, competencias, conflictos de interés y
+          documentos.
+
+          <br><br>
+
+          <strong>
+            Los datos personales no serán eliminados.
+          </strong>
+
+          <br><br>
+
+          Esta acción no se puede deshacer.
+
+        </div>
+
+
+        <p>
+          ¿Desea continuar con la cancelación?
+        </p>
+
+      </div>
+
+
+      <div class="modal-footer">
+
+        <button type="button" id="btnCerrarModal" class="btn-modal btn-modal-volver">
+          Volver
+        </button>
+
+
+        <button type="button" id="btnConfirmarCancelacion" class="btn-modal btn-modal-confirmar">
+          Sí, cancelar solicitud
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <script>
+
+    "use strict";
+
+
+    /* ============================================================
+       VARIABLES
+    ============================================================ */
+
+    let usuarioId = null;
+
+    let correoUsuario = null;
+
+    let estadoActual = null;
+
+    let indicePostulacion = 0;
+
+    let postulaciones = [];
+
+    const token =
+      localStorage.getItem("access_token");
+
+
+    /* ============================================================
+       ELEMENTOS
+    ============================================================ */
+
+    const elementos = {
+
+      loading:
+        document.getElementById("loading"),
+
+      contenido:
+        document.getElementById("contenidoEstado"),
+
+      alerta:
+        document.getElementById("estadoAlerta"),
+
+      nombre:
+        document.getElementById("nombre"),
+
+      correo:
+        document.getElementById("correo"),
+
+      idUsuario:
+        document.getElementById("idUsuario"),
+
+      idPostulacion:
+        document.getElementById("idPostulacion"),
+
+      estadoPostulacion:
+        document.getElementById("estadoPostulacion"),
+
+      estadoAuditor:
+        document.getElementById("estadoAuditor"),
+
+      estadoUsuario:
+        document.getElementById("estadoUsuario"),
+
+      rol:
+        document.getElementById("rol"),
+
+      correccionesCard:
+        document.getElementById("correccionesCard"),
+
+      observacionCorreccion:
+        document.getElementById("observacionCorreccion"),
+
+      administradorCorreccion:
+        document.getElementById("administradorCorreccion"),
+
+      fechaCorreccion:
+        document.getElementById("fechaCorreccion"),
+
+      btnActualizar:
+        document.getElementById("btnActualizar"),
+
+      btnCancelar:
+        document.getElementById("btnCancelar"),
+
+      btnPdf:
+        document.getElementById("btnPdf"),
+
+      btnAnterior:
+        document.getElementById("btnAnterior"),
+
+      btnSiguiente:
+        document.getElementById("btnSiguiente"),
+
+      indicador:
+        document.getElementById("indicadorPostulacion"),
+
+      paginacion:
+        document.getElementById("paginacionPostulaciones"),
+
+      mensaje:
+        document.getElementById("mensaje"),
+
+      modal:
+        document.getElementById("modalCancelar"),
+
+      cerrarModal:
+        document.getElementById("btnCerrarModal"),
+
+      confirmarCancelacion:
+        document.getElementById(
+          "btnConfirmarCancelacion"
+        )
+
+    };
+
+
+    /* ============================================================
+       MENSAJES
+    ============================================================ */
+
+    function mostrarMensaje(
+      texto,
+      tipo = "success"
+    ) {
+
+      elementos.mensaje.textContent =
+        texto;
+
+      elementos.mensaje.className =
+        `mensaje ${tipo}`;
+
+    }
+
+
+    /* ============================================================
+       TOKEN JWT
+    ============================================================ */
+
+    function obtenerUsuarioToken() {
+
+      try {
+
+        if (!token) {
+
+          throw new Error(
+            "No existe una sesión activa."
+          );
+
+        }
+
+        const partes =
+          token.split(".");
+
+        if (partes.length !== 3) {
+
+          throw new Error(
+            "El token de sesión no es válido."
+          );
+
+        }
+
+        const base64 =
+          partes[1]
+            .replace(/-/g, "+")
+            .replace(/_/g, "/");
+
+        const payload =
+          JSON.parse(
+            atob(base64)
+          );
+
+
+        if (
+          payload.role_name &&
+          String(payload.role_name)
+            .toLowerCase() !== "auditor"
+        ) {
+
+          window.location.href =
+            "/dashboard";
+
+          return null;
+
+        }
+
+
+        usuarioId =
+          payload.user_id ||
+          payload.id_usuario ||
+          payload.sub;
+
+
+        if (!usuarioId) {
+
+          throw new Error(
+            "No se encontró el ID del usuario."
+          );
+
+        }
+
+
+        correoUsuario =
+          payload.correo ||
+          payload.email ||
+          null;
+
+
+        return payload;
+
+      } catch (error) {
+
+        console.error(
+          "Error leyendo JWT:",
+          error
+        );
+
+        localStorage.clear();
+
+        window.location.href =
+          "/login";
+
+        return null;
+
+      }
+
+    }
+
+
+    /* ============================================================
+       NORMALIZAR ESTADO
+    ============================================================ */
+
+    function normalizarEstado(estado) {
+
+      return String(estado || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(
+          /[\u0300-\u036f]/g,
+          ""
+        );
+
+    }
+
+
+    /* ============================================================
+       FECHA
+    ============================================================ */
+
+    function formatearFecha(fecha) {
+
+      if (!fecha) {
+
+        return "No registrada";
+
+      }
+
+
+      const fechaObj =
+        new Date(fecha);
+
+
+      if (
+        Number.isNaN(
+          fechaObj.getTime()
+        )
+      ) {
+
+        return String(fecha);
+
+      }
+
+
+      return fechaObj.toLocaleString(
+        "es-CO",
+        {
+          dateStyle: "medium",
+          timeStyle: "short"
+        }
+      );
+
+    }
+
+
+    /* ============================================================
+       BADGE
+    ============================================================ */
+
+    function crearEstadoBadge(
+      estado
+    ) {
+
+      const badge =
+        document.createElement(
+          "span"
+        );
+
+      badge.className =
+        "estado-badge";
+
+
+      if (!estado) {
+
+        badge.textContent =
+          "Sin solicitud";
+
+        return badge;
+
+      }
+
+
+      const normalizado =
+        normalizarEstado(
+          estado
+        );
+
+
+      if (
+        normalizado.includes(
+          "enviado"
+        )
+      ) {
+
+        badge.classList.add(
+          "estado-enviado"
+        );
+
+      }
+
+      else if (
+        normalizado.includes(
+          "pendiente"
+        )
+      ) {
+
+        badge.classList.add(
+          "estado-pendiente"
+        );
+
+      }
+
+      else if (
+        normalizado.includes(
+          "aprobado"
+        )
+      ) {
+
+        badge.classList.add(
+          "estado-aprobado"
+        );
+
+      }
+
+      else if (
+        normalizado.includes(
+          "rechazado"
+        )
+      ) {
+
+        badge.classList.add(
+          "estado-rechazado"
+        );
+
+      }
+
+      else if (
+        normalizado.includes(
+          "cancelado"
+        )
+      ) {
+
+        badge.classList.add(
+          "estado-cancelado"
+        );
+
+      }
+
+      else if (
+        normalizado.includes(
+          "correccion"
+        )
+      ) {
+
+        badge.classList.add(
+          "estado-correcciones"
+        );
+
+      }
+
+
+      badge.textContent =
+        estado;
+
+
+      return badge;
+
+    }
+
+
+    /* ============================================================
+       MOSTRAR CORRECCIONES
+    ============================================================ */
+
+    function mostrarCorrecciones(
+      postulacion
+    ) {
+
+      const card =
+        elementos.correccionesCard;
+
+      if (!card) {
+
+        return;
+
+      }
+
+
+      card.classList.remove(
+        "visible"
+      );
+
+
+      elementos.observacionCorreccion.textContent =
+        "-";
+
+      elementos.administradorCorreccion.textContent =
+        "No registrado";
+
+      elementos.fechaCorreccion.textContent =
+        "No registrada";
+
+
+      if (!postulacion) {
+
+        return;
+
+      }
+
+
+      const estado =
+        normalizarEstado(
+          postulacion.estado_postulacion ||
+          postulacion.estado
+        );
+
+
+      if (
+        estado !== "correcciones"
+      ) {
+
+        return;
+
+      }
+
+
+      card.classList.add(
+        "visible"
+      );
+
+
+      /*
+       * IMPORTANTE:
+       *
+       * Aquí se muestra DIRECTAMENTE
+       * observaciones_correccion.
+       *
+       * No se intenta buscar:
+       *
+       * observaciones
+       * comentario
+       * comentarios
+       * etc.
+       *
+       * El backend entrega un contrato único.
+       */
+
+      const observacion =
+        postulacion.observaciones_correccion;
+
+
+      if (
+        observacion !== null &&
+        observacion !== undefined &&
+        String(observacion).trim() !== ""
+      ) {
+
+        elementos.observacionCorreccion.textContent =
+          String(observacion);
+
+      } else {
+
+        elementos.observacionCorreccion.textContent =
+          "El administrador marcó la postulación para correcciones, pero no registró una observación.";
+
+      }
+
+
+      elementos.administradorCorreccion.textContent =
+        postulacion.administrador_correccion ||
+        "No registrado";
+
+
+      elementos.fechaCorreccion.textContent =
+        formatearFecha(
+          postulacion.fecha_correccion
+        );
+
+    }
+
+
+    /* ============================================================
+       RENDERIZAR POSTULACIÓN
+    ============================================================ */
+
+    function renderizarPostulacionActual() {
+
+      const postulacion =
+        postulaciones[
+        indicePostulacion
+        ];
+
+
+      if (!postulacion) {
+
+        estadoActual =
+          null;
+
+
+        elementos.idPostulacion.textContent =
+          "-";
+
+
+        elementos.estadoPostulacion.innerHTML =
+          "";
+
+
+        elementos.estadoPostulacion.appendChild(
+          crearEstadoBadge(null)
+        );
+
+
+        elementos.alerta.className =
+          "notice";
+
+
+        elementos.alerta.textContent =
+          "El usuario todavía no tiene una postulación enviada.";
+
+
+        mostrarCorrecciones(
+          null
+        );
+
+
+        actualizarBotones(
+          null
+        );
+
+
+        actualizarPaginacion();
+
+        return;
+
+      }
+
+
+      const idPostulacion =
+        postulacion.id_postulacion ||
+        postulacion.id ||
+        "-";
+
+
+      const estado =
+        postulacion.estado_postulacion ||
+        postulacion.estado ||
+        null;
+
+
+      estadoActual =
+        estado;
+
+
+      elementos.idPostulacion.textContent =
+        idPostulacion;
+
+
+      elementos.estadoPostulacion.innerHTML =
+        "";
+
+
+      elementos.estadoPostulacion.appendChild(
+        crearEstadoBadge(
+          estado
+        )
+      );
+
+
+      /*
+       * AQUÍ SE PASA LA POSTULACIÓN COMPLETA.
+       *
+       * Por tanto:
+       *
+       * postulacion.observaciones_correccion
+       *
+       * llega hasta mostrarCorrecciones().
+       */
+
+      mostrarCorrecciones(
+        postulacion
+      );
+
+
+      const estadoNormalizado =
+        normalizarEstado(
+          estado
+        );
+
+
+      elementos.alerta.className =
+        "notice";
+
+
+      if (
+        estadoNormalizado ===
+        "correcciones"
+      ) {
+
+        elementos.alerta.classList.add(
+          "notice-correcciones"
+        );
+
+
+        elementos.alerta.innerHTML =
+          `
+        <strong>
+          La postulación requiere correcciones.
+        </strong>
+        <br>
+        Revise las observaciones del administrador
+        que aparecen debajo del estado y realice
+        los ajustes solicitados en Mi registro.
+      `;
+
+      }
+
+      else if (estado) {
+
+        elementos.alerta.textContent =
+          `Estado actual de la solicitud: ${estado}`;
+
+      }
+
+      else {
+
+        elementos.alerta.textContent =
+          "El usuario todavía no tiene una postulación enviada.";
+
+      }
+
+
+      actualizarBotones(
+        estado
+      );
+
+
+      actualizarPaginacion();
+
+    }
+
+
+    /* ============================================================
+       BOTONES SEGÚN ESTADO
+    ============================================================ */
+
+    function actualizarBotones(
+      estado
+    ) {
+
+      const normalizado =
+        normalizarEstado(
+          estado
+        );
+
+
+      document
+        .querySelectorAll(
+          ".datos-ocultables"
+        )
+        .forEach(
+          elemento => {
+            elemento.style.display = "";
+          }
+        );
+
+
+      elementos.btnActualizar.style.display =
+        "none";
+
+      elementos.btnCancelar.style.display =
+        "none";
+
+      elementos.btnPdf.style.display =
+        "none";
+
+
+      if (!normalizado) {
+
+        elementos.btnActualizar.style.display =
+          "inline-flex";
+
+        return;
+
+      }
+
+
+      if (
+        normalizado ===
+        "cancelado"
+      ) {
+
+        document
+          .querySelectorAll(
+            ".datos-ocultables"
+          )
+          .forEach(
+            elemento => {
+              elemento.style.display =
+                "none";
+            }
+          );
+
+
+        elementos.btnPdf.style.display =
+          "inline-flex";
+
+        return;
+
+      }
+
+
+      elementos.btnActualizar.style.display =
+        "inline-flex";
+
+
+      elementos.btnPdf.style.display =
+        "inline-flex";
+
+
+      if (
+        normalizado ===
+        "enviado"
+      ) {
+
+        elementos.btnCancelar.style.display =
+          "inline-flex";
+
+      }
+
+    }
+
+
+    /* ============================================================
+       PAGINACIÓN
+    ============================================================ */
+
+    function actualizarPaginacion() {
+
+      if (
+        postulaciones.length <= 1
+      ) {
+
+        elementos.paginacion.classList.remove(
+          "visible"
+        );
+
+        return;
+
+      }
+
+
+      elementos.paginacion.classList.add(
+        "visible"
+      );
+
+
+      elementos.indicador.textContent =
+        `Postulación ${indicePostulacion + 1} de ${postulaciones.length}`;
+
+
+      elementos.btnAnterior.disabled =
+        indicePostulacion === 0;
+
+
+      elementos.btnSiguiente.disabled =
+        indicePostulacion ===
+        postulaciones.length - 1;
+
+    }
+
+
+    /* ============================================================
+       CONSULTAR ESTADO
+    ============================================================ */
+
+    async function consultarEstado() {
+
+      elementos.loading.style.display =
+        "block";
+
+      elementos.contenido.style.display =
+        "none";
+
+
+      try {
+
+        const payload =
+          obtenerUsuarioToken();
+
+
+        if (!payload) {
+
+          return;
+
+        }
+
+
+        /*
+         * Si el JWT no trae correo,
+         * se obtiene desde el registro.
+         */
+
+        if (!correoUsuario) {
+
+          const respuestaUsuario =
+            await fetch(
+              `/auditores/registro/${encodeURIComponent(usuarioId)}`,
+              {
+                method: "GET",
+
+                headers: {
+                  "Authorization":
+                    `Bearer ${token}`
+                }
+              }
+            );
+
+
+          if (
+            respuestaUsuario.ok
+          ) {
+
+            const usuario =
+              await respuestaUsuario.json();
+
+
+            correoUsuario =
+              usuario.correo ||
+              null;
+
+          }
+
+        }
+
+
+        if (!correoUsuario) {
+
+          throw new Error(
+            "No fue posible identificar el correo del usuario."
+          );
+
+        }
+
+
+        /* ========================================================
+           CONSULTA REAL
+        ======================================================== */
+
+        const response =
+          await fetch(
+            `/auditores/registro/estado?correo=${encodeURIComponent(correoUsuario)}`,
+            {
+              method: "GET",
+
+              headers: {
+                "Authorization":
+                  `Bearer ${token}`,
+
+                "Accept":
+                  "application/json"
+              }
+            }
+          );
+
+
+        let data = null;
+
+
+        try {
+
+          data =
+            await response.json();
+
+        } catch (_) {
+
+          data = null;
+
+        }
+
+
+        /*
+         * IMPORTANTE:
+         *
+         * Primero se valida response.ok.
+         *
+         * Antes tenías:
+         *
+         * mostrarCorrecciones(data);
+         *
+         * ANTES de validar el error.
+         */
+
+        if (!response.ok) {
+
+          throw new Error(
+            data?.detail ||
+            "No fue posible consultar el estado del registro."
+          );
+
+        }
+
+
+        console.log(
+          "Respuesta estado auditor:",
+          data
+        );
+
+
+        /* ========================================================
+           DATOS GENERALES
+        ======================================================== */
+
+        elementos.nombre.textContent =
+          data.nombre ||
+          "-";
+
+
+        elementos.correo.textContent =
+          data.correo ||
+          "-";
+
+
+        elementos.idUsuario.textContent =
+          data.id_usuario ||
+          usuarioId ||
+          "-";
+
+
+        elementos.estadoAuditor.textContent =
+          data.estado_auditor ||
+          "-";
+
+
+        elementos.estadoUsuario.textContent =
+          data.estado_usuario ||
+          data.estado ||
+          "-";
+
+
+        elementos.rol.textContent =
+          data.rol ||
+          "Auditor";
+
+
+        /* ========================================================
+           CONSTRUIR POSTULACIÓN
+        ======================================================== */
+
+        /*
+         * El endpoint actual devuelve UNA postulación.
+         *
+         * Por eso la convertimos en un array de una sola
+         * postulación para que el resto de la interfaz
+         * funcione de manera uniforme.
+         */
+
+        const postulacionActual = {
+
+          id_postulacion:
+            data.id_postulacion,
+
+          id_usuario:
+            data.id_usuario,
+
+          estado_postulacion:
+            data.estado_postulacion,
+
+          fecha_postulacion:
+            data.fecha_postulacion,
+
+          fecha_revision:
+            data.fecha_revision,
+
+          /*
+           * CAMPOS CRÍTICOS
+           */
+
+          tiene_correcciones:
+            data.tiene_correcciones,
+
+          observaciones_correccion:
+            data.observaciones_correccion,
+
+          administrador_correccion:
+            data.administrador_correccion,
+
+          correo_administrador_correccion:
+            data.correo_administrador_correccion,
+
+          fecha_correccion:
+            data.fecha_correccion,
+
+          estado_anterior_correccion:
+            data.estado_anterior_correccion
+
+        };
+
+
+        if (
+          data.id_postulacion
+        ) {
+
+          postulaciones = [
+            postulacionActual
+          ];
+
+        } else {
+
+          postulaciones = [];
+
+        }
+
+
+        indicePostulacion =
+          0;
+
+
+        renderizarPostulacionActual();
+
+
+        elementos.loading.style.display =
+          "none";
+
+
+        elementos.contenido.style.display =
+          "block";
+
+
+      } catch (error) {
+
+        console.error(
+          "Error consultando estado:",
+          error
+        );
+
+
+        elementos.loading.style.display =
+          "none";
+
+
+        elementos.contenido.style.display =
+          "none";
+
+
+        elementos.alerta.className =
+          "notice";
+
+
+        elementos.alerta.textContent =
+          error.message ||
+          "No fue posible consultar el estado.";
+
+
+        mostrarMensaje(
+          error.message ||
+          "No fue posible consultar el estado.",
+          "error"
+        );
+
+      }
+
+    }
+
+
+    /* ============================================================
+       ANTERIOR
+    ============================================================ */
+
+    elementos.btnAnterior.addEventListener(
+      "click",
+      function () {
+
+        if (
+          indicePostulacion <= 0
+        ) {
+
+          return;
+
+        }
+
+
+        indicePostulacion--;
+
+        renderizarPostulacionActual();
+
+      }
+    );
+
+
+    /* ============================================================
+       SIGUIENTE
+    ============================================================ */
+
+    elementos.btnSiguiente.addEventListener(
+      "click",
+      function () {
+
+        if (
+          indicePostulacion >=
+          postulaciones.length - 1
+        ) {
+
+          return;
+
+        }
+
+
+        indicePostulacion++;
+
+        renderizarPostulacionActual();
+
+      }
+    );
+
+
+    /* ============================================================
+       ACTUALIZAR
+    ============================================================ */
+
+    elementos.btnActualizar.addEventListener(
+      "click",
+      async function () {
+
+        await consultarEstado();
+
+      }
+    );
+
+
+    /* ============================================================
+       LOGOUT
+    ============================================================ */
+
+    document
+      .getElementById("logout")
+      .addEventListener(
+        "click",
+        function (event) {
+
+          event.preventDefault();
+
+          localStorage.clear();
+
+          window.location.href =
+            "/login";
+
+        }
+      );
+
+
+    /* ============================================================
+       MODAL CANCELACIÓN
+    ============================================================ */
+
+    elementos.btnCancelar.addEventListener(
+      "click",
+      function () {
+
+        if (!usuarioId) {
+
+          mostrarMensaje(
+            "No se pudo identificar el usuario.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        const idPostulacion =
+          elementos.idPostulacion.textContent.trim();
+
+
+        if (
+          !idPostulacion ||
+          idPostulacion === "-"
+        ) {
+
+          mostrarMensaje(
+            "No existe una solicitud de registro para cancelar.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        elementos.modal.classList.add(
+          "active"
+        );
+
+      }
+    );
+
+
+    /* ============================================================
+       CERRAR MODAL
+    ============================================================ */
+
+    elementos.cerrarModal.addEventListener(
+      "click",
+      function () {
+
+        elementos.modal.classList.remove(
+          "active"
+        );
+
+      }
+    );
+
+
+    elementos.modal.addEventListener(
+      "click",
+      function (event) {
+
+        if (
+          event.target ===
+          elementos.modal
+        ) {
+
+          elementos.modal.classList.remove(
+            "active"
+          );
+
+        }
+
+      }
+    );
+
+
+    /* ============================================================
+       CANCELAR POSTULACIÓN
+    ============================================================ */
+
+    elementos.confirmarCancelacion.addEventListener(
+      "click",
+      async function () {
+
+        const idPostulacion =
+          elementos.idPostulacion.textContent.trim();
+
+
+        if (
+          !idPostulacion ||
+          idPostulacion === "-"
+        ) {
+
+          elementos.modal.classList.remove(
+            "active"
+          );
+
+
+          mostrarMensaje(
+            "No existe una solicitud de registro para cancelar.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        try {
+
+          elementos.confirmarCancelacion.disabled =
+            true;
+
+
+          elementos.confirmarCancelacion.textContent =
+            "Cancelando...";
+
+
+          const response =
+            await fetch(
+              `/auditores/registro/postulacion/${encodeURIComponent(idPostulacion)}/cancelar`,
+              {
+                method: "POST",
+
+                headers: {
+                  "Authorization":
+                    `Bearer ${token}`,
+
+                  "Accept":
+                    "application/json"
+                }
+              }
+            );
+
+
+          let data = null;
+
+
+          try {
+
+            data =
+              await response.json();
+
+          } catch (_) {
+
+            data = null;
+
+          }
+
+
+          if (!response.ok) {
+
+            throw new Error(
+              data?.detail ||
+              "No fue posible cancelar la solicitud."
+            );
+
+          }
+
+
+          elementos.modal.classList.remove(
+            "active"
+          );
+
+
+          mostrarMensaje(
+            data?.mensaje ||
+            "La solicitud fue cancelada correctamente.",
+            "success"
+          );
+
+
+          await consultarEstado();
+
+
+        } catch (error) {
+
+          console.error(
+            "Error cancelando solicitud:",
+            error
+          );
+
+
+          mostrarMensaje(
+            error.message ||
+            "No fue posible cancelar la solicitud.",
+            "error"
+          );
+
+        } finally {
+
+          elementos.confirmarCancelacion.disabled =
+            false;
+
+
+          elementos.confirmarCancelacion.textContent =
+            "Sí, cancelar solicitud";
+
+        }
+
+      }
+    );
+
+
+    /* ============================================================
+       PDF
+    ============================================================ */
+
+    elementos.btnPdf.addEventListener(
+      "click",
+      async function () {
+
+        const idPostulacion =
+          elementos.idPostulacion.textContent.trim();
+
+
+        if (
+          !idPostulacion ||
+          idPostulacion === "-"
+        ) {
+
+          mostrarMensaje(
+            "No existe una postulación para generar el comprobante.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        const ventanaPdf =
+          window.open(
+            "about:blank",
+            "_blank"
+          );
+
+
+        if (!ventanaPdf) {
+
+          mostrarMensaje(
+            "El navegador bloqueó la ventana del comprobante.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        ventanaPdf.document.write(
+          `
+      <!DOCTYPE html>
+
+      <html>
+
+      <head>
+
+        <title>
+          Generando comprobante...
+        </title>
+
+      </head>
+
+      <body style="
+        font-family: Arial, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      ">
+
+        <h3>
+          Generando comprobante PDF...
+        </h3>
+
+      </body>
+
+      </html>
+      `
+        );
+
+
+        try {
+
+          const response =
+            await fetch(
+              `/auditores/registro/postulacion/${encodeURIComponent(idPostulacion)}/comprobante`,
+              {
+                method: "GET",
+
+                headers: {
+                  "Authorization":
+                    `Bearer ${token}`
+                }
+              }
+            );
+
+
+          if (!response.ok) {
+
+            let mensaje =
+              "No fue posible generar el comprobante.";
+
+
+            try {
+
+              const data =
+                await response.json();
+
+
+              mensaje =
+                data.detail ||
+                mensaje;
+
+            } catch (_) { }
+
+
+            throw new Error(
+              mensaje
+            );
+
+          }
+
+
+          const blob =
+            await response.blob();
+
+
+          const url =
+            window.URL.createObjectURL(
+              blob
+            );
+
+
+          ventanaPdf.location.href =
+            url;
+
+
+          setTimeout(
+            function () {
+
+              window.URL.revokeObjectURL(
+                url
+              );
+
+            },
+            60000
+          );
+
+
+        } catch (error) {
+
+          console.error(
+            "Error generando comprobante:",
+            error
+          );
+
+
+          try {
+
+            ventanaPdf.close();
+
+          } catch (_) { }
+
+
+          mostrarMensaje(
+            error.message ||
+            "No fue posible generar el comprobante PDF.",
+            "error"
+          );
+
+        }
+
+      }
+    );
+
+
+    /* ============================================================
+       INICIO
+    ============================================================ */
+
+    consultarEstado();
+
+  </script>
+
+
+  <script src="/static/session.js"></script>
+
+</body>
+
+</html>

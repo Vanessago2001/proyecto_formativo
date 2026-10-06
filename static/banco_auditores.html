@@ -1,0 +1,2360 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>CertiSENA | Banco de Auditores</title>
+
+    <link rel="stylesheet" href="/static/styles.css" />
+
+    <style>
+        .app-shell {
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 26px;
+        }
+
+        .admin-header h2 {
+            color: #256d00;
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .admin-header p {
+            color: #64748b;
+            margin-top: 6px;
+        }
+
+        .profile-button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #1f2937;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: #3baa01;
+            color: #fff;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 260px minmax(0, 1fr);
+            gap: 24px;
+        }
+
+        .admin-nav {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            height: max-content;
+        }
+
+        .admin-nav a {
+            display: block;
+            color: #334155;
+            text-decoration: none;
+            padding: 12px;
+            border-left: 3px solid transparent;
+        }
+
+        .admin-nav a.active,
+        .admin-nav a:hover {
+            background: #f1f8ed;
+            color: #256d00;
+            border-left-color: #3baa01;
+        }
+
+        .surface {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            padding: 24px;
+        }
+
+        .surface h3 {
+            color: #1f2937;
+            margin: 0 0 18px;
+            font-size: 18px;
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns:
+                minmax(220px, 2fr) minmax(180px, 1fr) auto auto;
+
+            gap: 14px;
+            align-items: end;
+            margin-bottom: 22px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 5px;
+        }
+
+        .field input,
+        .field select,
+        .modal-textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font: inherit;
+            background: #fff;
+        }
+
+        .modal-textarea {
+            min-height: 130px;
+            resize: vertical;
+        }
+
+        .primary-action,
+        .secondary-action {
+            padding: 10px 16px;
+            border-radius: 4px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .primary-action {
+            border: 0;
+            background: #3baa01;
+            color: #fff;
+        }
+
+        .primary-action:hover {
+            background: #2d8700;
+        }
+
+        .secondary-action {
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #334155;
+        }
+
+        .secondary-action:hover {
+            background: #f8fafc;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1100px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        th {
+            color: #475569;
+            background: #f8fafc;
+        }
+
+        td small {
+            color: #64748b;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .status-enviado {
+            background: #fff7ed;
+            color: #c2410c;
+        }
+
+        .status-revision {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .status-correcciones {
+            background: #fff7ed;
+            color: #b45309;
+        }
+
+        .status-aprobado {
+            background: #e8f5e2;
+            color: #256d00;
+        }
+
+        .status-rechazado {
+            background: #feecec;
+            color: #b42318;
+        }
+
+        .status-default {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .action-link {
+            border: 0;
+            background: transparent;
+            color: #256d00;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 6px 0;
+        }
+
+        .action-link:hover {
+            text-decoration: underline;
+        }
+
+        .actions-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 155px;
+        }
+
+        .action-button {
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #334155;
+            border-radius: 4px;
+            padding: 7px 9px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .action-button:hover {
+            background: #f8fafc;
+        }
+
+        .action-button.revision {
+            color: #1d4ed8;
+            border-color: #bfdbfe;
+        }
+
+        .action-button.correcciones {
+            color: #b45309;
+            border-color: #fed7aa;
+        }
+
+        .action-button.aprobar {
+            color: #256d00;
+            border-color: #bbf7d0;
+        }
+
+        .action-button.rechazar {
+            color: #b42318;
+            border-color: #fecaca;
+        }
+
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .message {
+            min-height: 20px;
+            color: #b42318;
+            font-size: 14px;
+            margin: 4px 0 16px;
+        }
+
+        .message.success {
+            color: #256d00;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 36px 20px;
+            color: #64748b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 28px;
+            color: #64748b;
+        }
+
+        .non-admin {
+            display: none;
+        }
+
+        /* =====================================================
+           MODAL
+        ====================================================== */
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 9999;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            width: 100%;
+            max-width: 560px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #1f2937;
+        }
+
+        .modal-header p {
+            margin: 6px 0 0;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .modal-body {
+            padding: 22px;
+        }
+
+        .modal-footer {
+            padding: 16px 22px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-cancel {
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #334155;
+            border-radius: 4px;
+            padding: 10px 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .modal-confirm {
+            border: 0;
+            background: #3baa01;
+            color: #fff;
+            border-radius: 4px;
+            padding: 10px 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .modal-confirm.danger {
+            background: #b42318;
+        }
+
+        .modal-confirm.warning {
+            background: #b45309;
+        }
+
+        .modal-confirm:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .modal-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 7px;
+        }
+
+        @media (max-width: 900px) {
+
+            .admin-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filters {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-header {
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 800px) {
+
+            .app-shell {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+
+<body>
+
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
+    <header class="login-header">
+
+        <div class="header-content">
+
+            <div class="header-left">
+
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco" />
+
+                <div>
+
+                    <h1>CertiSENA</h1>
+
+                    <p class="subtitle">
+                        Gestión de certificados
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div style="display:flex; gap:12px; align-items:center;">
+
+                <a class="profile-button" href="/profile" title="Ir a mi perfil">
+
+                    <span class="profile-label">
+                        Mi perfil
+                    </span>
+
+                    <span class="avatar" id="headerAvatar">
+                        U
+                    </span>
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- =====================================================
+         CONTENIDO
+    ====================================================== -->
+
+    <main class="app-shell">
+
+
+        <div class="admin-header">
+
+            <div>
+
+                <h2>
+                    Banco de Auditores de Solicitudes
+                </h2>
+
+                <p>
+                    Consulta y gestión de las solicitudes
+                    de registro de auditores.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             VISTA ADMINISTRADOR
+        ================================================== -->
+
+        <div id="adminView" class="admin-grid non-admin">
+
+
+            <!-- =============================================
+                 MENÚ
+            ============================================== -->
+
+            <nav class="admin-nav">
+
+                <a href="/dashboard">
+                    Resumen
+                </a>
+
+                <a href="/empresas">
+                    Empresas registradas
+                </a>
+
+                <a href="#usuarios">
+                    Gestionar usuarios
+                </a>
+
+                <a href="/asignacion-auditores">
+                    Asignación de auditores
+                </a>
+
+                <a class="active" href="/banco-auditores">
+                    Banco de auditores
+                </a>
+
+                <a href="/comite">
+                    Ir al Comité de certificación
+                </a>
+
+                <a href="/profile">
+                    Mi perfil
+                </a>
+
+                <a href="/dashboard" id="logoutLink">
+                    Cerrar sesión
+                </a>
+
+            </nav>
+
+
+            <!-- =============================================
+                 BANCO
+            ============================================== -->
+
+            <div>
+
+                <section class="surface">
+
+                    <h3>
+                        Solicitudes de auditores
+                    </h3>
+
+
+                    <p class="message" id="tableMessage"></p>
+
+
+                    <!-- =====================================
+                         FILTROS
+                    ====================================== -->
+
+                    <div class="filters">
+
+
+                        <div class="field">
+
+                            <label for="buscar">
+                                Buscar auditor
+                            </label>
+
+                            <input id="buscar" type="search" placeholder="Nombre, documento o correo" />
+
+                        </div>
+
+
+                        <div class="field">
+
+                            <label for="estado">
+                                Estado
+                            </label>
+
+                            <select id="estado">
+
+                                <option value="">
+                                    Todos los estados
+                                </option>
+
+                                <option value="Enviado">
+                                    Enviado
+                                </option>
+
+                                <option value="En Revisión">
+                                    En Revisión
+                                </option>
+
+                                <option value="Correcciones">
+                                    Correcciones
+                                </option>
+
+                                <option value="Aprobado">
+                                    Aprobado
+                                </option>
+
+                                <option value="Rechazado">
+                                    Rechazado
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <button id="buscarBtn" type="button" class="primary-action">
+                            Buscar
+                        </button>
+
+
+                        <button id="limpiarBtn" type="button" class="secondary-action">
+                            Limpiar
+                        </button>
+
+
+                    </div>
+
+
+                    <!-- =====================================
+                         TABLA
+                    ====================================== -->
+
+                    <div class="table-wrap">
+
+                        <table>
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>
+                                        Auditor
+                                    </th>
+
+                                    <th>
+                                        Documento
+                                    </th>
+
+                                    <th>
+                                        Correo
+                                    </th>
+
+                                    <th>
+                                        Estado
+                                    </th>
+
+                                    <th>
+                                        Fecha postulación
+                                    </th>
+
+                                    <th>
+                                        Fecha revisión
+                                    </th>
+
+                                    <th>
+                                        Acciones
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody id="solicitudesBody">
+
+                                <tr>
+
+                                    <td colspan="7" class="loading">
+                                        Cargando solicitudes...
+                                    </td>
+
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             NO ADMIN
+        ================================================== -->
+
+        <section id="regularView" class="surface non-admin">
+
+            <h3>
+                Acceso no autorizado
+            </h3>
+
+            <p>
+                Tu cuenta no tiene permisos de administración
+                para consultar el banco de solicitudes de auditores.
+            </p>
+
+            <p style="margin-top: 18px;">
+
+                <a class="primary-action" href="/profile" style="text-decoration:none;">
+                    Ir a mi perfil
+                </a>
+
+            </p>
+
+        </section>
+
+
+    </main>
+
+
+    <!-- =====================================================
+         MODAL DE ACCIONES
+    ====================================================== -->
+
+    <div id="actionModal" class="modal-overlay">
+
+        <div class="modal">
+
+
+            <div class="modal-header">
+
+                <h3 id="modalTitle">
+                    Actualizar solicitud
+                </h3>
+
+                <p id="modalSubtitle">
+                    Registra la información de la acción.
+                </p>
+
+            </div>
+
+
+            <div class="modal-body">
+
+                <label for="modalObservaciones" class="modal-label">
+                    Observaciones
+                </label>
+
+                <textarea id="modalObservaciones" class="modal-textarea"
+                    placeholder="Escribe las observaciones de la decisión..."></textarea>
+
+            </div>
+
+
+            <div class="modal-footer">
+
+                <button type="button" class="modal-cancel" id="modalCancelBtn">
+                    Cancelar
+                </button>
+
+                <button type="button" class="modal-confirm" id="modalConfirmBtn">
+                    Confirmar
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         JAVASCRIPT
+    ====================================================== -->
+
+    <script>
+
+        /* ====================================================
+           TOKEN
+        ==================================================== */
+
+        function tokenPayload() {
+
+            try {
+
+                const rawToken =
+                    localStorage.getItem(
+                        "access_token"
+                    );
+
+
+                if (!rawToken) {
+                    return null;
+                }
+
+
+                return JSON.parse(
+
+                    atob(
+
+                        rawToken
+                            .split(".")[1]
+                            .replace(/-/g, "+")
+                            .replace(/_/g, "/")
+
+                    )
+
+                );
+
+            } catch (_) {
+
+                return null;
+
+            }
+
+        }
+
+
+        const token =
+            localStorage.getItem(
+                "access_token"
+            );
+
+
+        const user =
+            tokenPayload();
+
+
+        if (!token || !user) {
+
+            location.href = "/login";
+
+        }
+
+
+        const isAdmin =
+            user &&
+            user.role_name === "Administrador";
+
+
+        if (!isAdmin) {
+
+            document
+                .getElementById("regularView")
+                .style.display = "block";
+
+        } else {
+
+            document
+                .getElementById("adminView")
+                .style.display = "grid";
+
+        }
+
+
+        document
+            .getElementById("headerAvatar")
+            .textContent =
+            (
+                user?.sub ||
+                "U"
+            )
+                .charAt(0)
+                .toUpperCase();
+
+
+        /* ====================================================
+           HEADERS
+        ==================================================== */
+
+        function headers() {
+
+            return {
+
+                "Content-Type":
+                    "application/json",
+
+                "Accept":
+                    "application/json",
+
+                "Authorization":
+                    "Bearer " + token,
+
+            };
+
+        }
+
+
+        /* ====================================================
+           MENSAJES
+        ==================================================== */
+
+        function showMessage(
+            text,
+            success = false
+        ) {
+
+            const element =
+                document.getElementById(
+                    "tableMessage"
+                );
+
+
+            element.textContent =
+                text;
+
+
+            element.className =
+                "message" +
+                (
+                    success
+                        ? " success"
+                        : ""
+                );
+
+        }
+
+
+        /* ====================================================
+           ESCAPE HTML
+        ==================================================== */
+
+        function escapeHtml(value) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return "";
+
+            }
+
+
+            return String(value)
+
+                .replaceAll(
+                    "&",
+                    "&amp;"
+                )
+
+                .replaceAll(
+                    "<",
+                    "&lt;"
+                )
+
+                .replaceAll(
+                    ">",
+                    "&gt;"
+                )
+
+                .replaceAll(
+                    '"',
+                    "&quot;"
+                )
+
+                .replaceAll(
+                    "'",
+                    "&#039;"
+                );
+
+        }
+
+
+        /* ====================================================
+           FECHAS
+        ==================================================== */
+
+        function formatDate(value) {
+
+            if (!value) {
+
+                return "-";
+
+            }
+
+
+            const date =
+                new Date(value);
+
+
+            if (
+                Number.isNaN(
+                    date.getTime()
+                )
+            ) {
+
+                return value;
+
+            }
+
+
+            return date.toLocaleDateString(
+                "es-CO",
+                {
+
+                    year: "numeric",
+
+                    month: "2-digit",
+
+                    day: "2-digit",
+
+                }
+            );
+
+        }
+
+
+        /* ====================================================
+           CLASE ESTADO
+        ==================================================== */
+
+        function statusClass(status) {
+
+            switch (status) {
+
+                case "Enviado":
+
+                    return "status-enviado";
+
+
+                case "En Revisión":
+
+                    return "status-revision";
+
+
+                case "Correcciones":
+
+                    return "status-correcciones";
+
+
+                case "Aprobado":
+
+                    return "status-aprobado";
+
+
+                case "Rechazado":
+
+                    return "status-rechazado";
+
+
+                default:
+
+                    return "status-default";
+
+            }
+
+        }
+
+
+        /* ====================================================
+           NORMALIZAR ESTADO
+        ==================================================== */
+
+        function normalizarEstado(
+            estado
+        ) {
+
+            return String(
+                estado || ""
+            )
+                .trim()
+                .toLowerCase();
+
+        }
+
+
+        /* ====================================================
+           DETERMINAR SI ACCIÓN ESTÁ DISPONIBLE
+        ==================================================== */
+
+        function accionDisponible(
+            estado,
+            accion
+        ) {
+
+            const estadoNormalizado =
+                normalizarEstado(
+                    estado
+                );
+
+
+            /*
+             * Enviado:
+             * puede pasar a revisión,
+             * correcciones, aprobar o rechazar.
+             */
+
+            if (
+                estadoNormalizado ===
+                "enviado"
+            ) {
+
+                return true;
+
+            }
+
+
+            /*
+             * En Revisión:
+             * puede solicitar correcciones,
+             * aprobar o rechazar.
+             */
+
+            if (
+                estadoNormalizado ===
+                "en revisión"
+            ) {
+
+                return (
+                    accion !== "revision"
+                );
+
+            }
+
+
+            /*
+             * Correcciones:
+             * cuando vuelve a revisión
+             * se permite revisar nuevamente,
+             * aprobar o rechazar.
+             */
+
+            if (
+                estadoNormalizado ===
+                "correcciones"
+            ) {
+
+                return true;
+
+            }
+
+
+            /*
+             * Aprobado y Rechazado:
+             * quedan como estados finales.
+             */
+
+            return false;
+
+        }
+
+
+        /* ====================================================
+           BOTONES DE ACCIÓN
+        ==================================================== */
+
+        function renderActionButtons(
+            solicitud
+        ) {
+
+            const id =
+                solicitud.id_postulacion;
+
+
+            const estado =
+                solicitud.estado_postulacion ||
+                solicitud.estado ||
+                "";
+
+
+            let html = `
+
+                <div class="actions-container">
+
+            `;
+
+
+            /*
+             * EN REVISIÓN
+             */
+
+            if (
+                accionDisponible(
+                    estado,
+                    "revision"
+                )
+            ) {
+
+                html += `
+
+                    <button
+                        type="button"
+                        class="action-button revision"
+                        data-action="revision"
+                        data-id="${escapeHtml(id)}"
+                    >
+                        Pasar a En Revisión
+                    </button>
+
+                `;
+
+            }
+
+
+            /*
+             * CORRECCIONES
+             */
+
+            if (
+                accionDisponible(
+                    estado,
+                    "correcciones"
+                )
+            ) {
+
+                html += `
+
+                    <button
+                        type="button"
+                        class="action-button correcciones"
+                        data-action="correcciones"
+                        data-id="${escapeHtml(id)}"
+                    >
+                        Solicitar correcciones
+                    </button>
+
+                `;
+
+            }
+
+
+            /*
+             * APROBAR
+             */
+
+            if (
+                accionDisponible(
+                    estado,
+                    "aprobar"
+                )
+            ) {
+
+                html += `
+
+                    <button
+                        type="button"
+                        class="action-button aprobar"
+                        data-action="aprobar"
+                        data-id="${escapeHtml(id)}"
+                    >
+                        Aprobar
+                    </button>
+
+                `;
+
+            }
+
+
+            /*
+             * RECHAZAR
+             */
+
+            if (
+                accionDisponible(
+                    estado,
+                    "rechazar"
+                )
+            ) {
+
+                html += `
+
+                    <button
+                        type="button"
+                        class="action-button rechazar"
+                        data-action="rechazar"
+                        data-id="${escapeHtml(id)}"
+                    >
+                        Rechazar
+                    </button>
+
+                `;
+
+            }
+
+
+            /*
+             * VER SOLICITUD
+             */
+
+            html += `
+
+                    <button
+                        type="button"
+                        class="action-button"
+                        data-action="ver"
+                        data-id="${escapeHtml(id)}"
+                    >
+                        Ver solicitud
+                    </button>
+
+                </div>
+
+            `;
+
+
+            return html;
+
+        }
+
+
+        /* ====================================================
+           RENDER TABLA
+        ==================================================== */
+
+        function renderSolicitudes(solicitudes) {
+
+            const body = document.getElementById("solicitudesBody");
+
+            body.textContent = "";
+
+            if (!solicitudes.length) {
+
+                body.innerHTML = `
+            <tr>
+                <td
+                    colspan="7"
+                    class="empty-state"
+                >
+                    No se encontraron
+                    solicitudes de auditores.
+                </td>
+            </tr>
+        `;
+
+                return;
+            }
+
+            solicitudes.forEach((solicitud) => {
+
+                const tr = document.createElement("tr");
+
+                const estado =
+                    solicitud.estado_postulacion ||
+                    solicitud.estado ||
+                    "";
+
+                const nombre =
+                    solicitud.nombre ||
+                    "Sin nombre";
+
+                const documento =
+                    [
+                        solicitud.tipo_doc,
+                        solicitud.num_doc
+                    ]
+                        .filter(Boolean)
+                        .join(" ") ||
+                    "-";
+
+                tr.innerHTML = `
+            <td>
+                <strong>
+                    ${escapeHtml(nombre)}
+                </strong>
+            </td>
+
+            <td>
+                ${escapeHtml(documento)}
+            </td>
+
+            <td>
+                ${escapeHtml(
+                    solicitud.correo || "-"
+                )}
+            </td>
+
+            <td>
+                <span
+                    class="status-badge ${statusClass(estado)}"
+                >
+                    ${escapeHtml(estado || "-")}
+                </span>
+            </td>
+
+            <td>
+                ${escapeHtml(
+                    formatDate(
+                        solicitud.fecha_postulacion
+                    )
+                )}
+            </td>
+
+            <td>
+                ${escapeHtml(
+                    formatDate(
+                        solicitud.fecha_revision
+                    )
+                )}
+            </td>
+
+            <td>
+                ${renderActionButtons(solicitud)}
+            </td>
+        `;
+
+                body.appendChild(tr);
+            });
+        }
+
+        /* ====================================================
+           BOTONES DE ACCIÓN DE LA TABLA
+           UN ÚNICO MANEJADOR DELEGADO
+        ==================================================== */
+
+        document.addEventListener("click", (event) => {
+
+            const button = event.target.closest("button[data-action]");
+
+            if (!button) {
+                return;
+            }
+
+            const action = button.dataset.action;
+            const id = button.dataset.id;
+
+            console.log("CLICK EN ACCIÓN:", { action, id });
+
+            if (!id) {
+                showMessage("La solicitud no tiene un identificador válido.");
+                return;
+            }
+
+            if (action === "ver") {
+                window.location.href =
+                    "/banco-auditores/solicitud/" + encodeURIComponent(id);
+                return;
+            }
+
+            const configuracion = acciones[action];
+
+            if (!configuracion) {
+                console.error("Acción no configurada:", action);
+                showMessage("La acción seleccionada no está configurada.");
+                return;
+            }
+
+            const fila = button.closest("tr");
+            const nombre =
+                fila?.querySelector("td strong")?.textContent?.trim() ||
+                "Auditor";
+
+            abrirModalAccion(id, action, nombre);
+        });
+
+
+        /* ====================================================
+           CARGAR SOLICITUDES
+        ==================================================== */
+
+        async function loadSolicitudes() {
+
+            const body =
+                document.getElementById(
+                    "solicitudesBody"
+                );
+
+
+            body.innerHTML = `
+
+                <tr>
+
+                    <td
+                        colspan="7"
+                        class="loading"
+                    >
+                        Cargando solicitudes...
+                    </td>
+
+                </tr>
+
+            `;
+
+
+            showMessage("");
+
+
+            try {
+
+                const estado =
+                    document
+                        .getElementById(
+                            "estado"
+                        )
+                        .value;
+
+
+                let url =
+                    "/administrar-auditores/solicitudes";
+
+
+                if (estado) {
+
+                    url +=
+                        "?estado=" +
+                        encodeURIComponent(
+                            estado
+                        );
+
+                }
+
+
+                const response =
+                    await fetch(
+                        url,
+                        {
+
+                            method: "GET",
+
+                            headers:
+                                headers()
+
+                        }
+                    );
+
+
+                const data =
+                    await response
+                        .json()
+                        .catch(
+                            () => null
+                        );
+
+
+                if (
+                    response.status ===
+                    401 ||
+                    response.status ===
+                    403
+                ) {
+
+                    localStorage
+                        .removeItem(
+                            "access_token"
+                        );
+
+                    location.href =
+                        "/login";
+
+                    return;
+
+                }
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+
+                        data?.detail ||
+
+                        "No fue posible cargar las solicitudes de auditores."
+
+                    );
+
+                }
+
+
+                const solicitudes =
+                    Array.isArray(data)
+
+                        ? data
+
+                        : (
+                            data?.solicitudes ||
+                            []
+                        );
+
+
+                renderSolicitudes(
+                    solicitudes
+                );
+
+
+                /*
+                 * Aplicamos también
+                 * el filtro de texto local.
+                 */
+
+                aplicarFiltros();
+
+            } catch (error) {
+
+                console.error(
+                    "Error al cargar solicitudes:",
+                    error
+                );
+
+
+                body.innerHTML = `
+
+                    <tr>
+
+                        <td
+                            colspan="7"
+                            class="empty-state"
+                        >
+                            No fue posible cargar
+                            las solicitudes.
+                        </td>
+
+                    </tr>
+
+                `;
+
+
+                showMessage(
+                    error.message
+                );
+
+            }
+
+        }
+
+
+        /* ====================================================
+           FILTROS
+        ==================================================== */
+
+        function aplicarFiltros() {
+
+            const buscar =
+                document
+                    .getElementById(
+                        "buscar"
+                    )
+                    .value
+                    .trim()
+                    .toLowerCase();
+
+
+            const estado =
+                document
+                    .getElementById(
+                        "estado"
+                    )
+                    .value;
+
+
+            const filas =
+                document.querySelectorAll(
+                    "#solicitudesBody tr"
+                );
+
+
+            filas.forEach(
+                (fila) => {
+
+                    if (
+
+                        fila.querySelector(
+                            ".empty-state"
+                        ) ||
+
+                        fila.querySelector(
+                            ".loading"
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const texto =
+                        fila.textContent
+                            .toLowerCase();
+
+
+                    const coincideTexto =
+                        !buscar ||
+                        texto.includes(
+                            buscar
+                        );
+
+
+                    const estadoElemento =
+                        fila.querySelector(
+                            ".status-badge"
+                        );
+
+
+                    const estadoFila =
+                        estadoElemento
+                            ?.textContent
+                            .trim() ||
+                        "";
+
+
+                    const coincideEstado =
+                        !estado ||
+                        estadoFila ===
+                        estado;
+
+
+                    fila.style.display =
+                        coincideTexto &&
+                            coincideEstado
+
+                            ? ""
+
+                            : "none";
+
+                }
+            );
+
+        }
+
+
+        /* ====================================================
+           referecia MODAL
+        ==================================================== */
+
+        const actionModal =
+            document.getElementById(
+                "actionModal"
+            );
+
+
+        const modalTitle =
+            document.getElementById(
+                "modalTitle"
+            );
+
+
+        const modalSubtitle =
+            document.getElementById(
+                "modalSubtitle"
+            );
+
+
+        const modalObservaciones =
+            document.getElementById(
+                "modalObservaciones"
+            );
+
+
+        const modalCancelBtn =
+            document.getElementById(
+                "modalCancelBtn"
+            );
+
+
+        const modalConfirmBtn =
+            document.getElementById(
+                "modalConfirmBtn"
+            );
+
+
+        let accionPendiente =
+            null;
+
+
+        const acciones = {
+
+            revision: {
+
+                titulo:
+                    "Pasar a En Revisión",
+
+                descripcion:
+                    "La solicitud pasará al estado En Revisión.",
+
+                endpoint:
+                    "revision",
+
+                clase:
+                    ""
+
+            },
+
+
+            correcciones: {
+
+                titulo:
+                    "Solicitar Correcciones",
+
+                descripcion:
+                    "El auditor recibirá una solicitud de correcciones.",
+
+                endpoint:
+                    "correcciones",
+
+                clase:
+                    "warning"
+
+            },
+
+
+            aprobar: {
+
+                titulo:
+                    "Aprobar Solicitud",
+
+                descripcion:
+                    "La solicitud será marcada como Aprobada.",
+
+                endpoint:
+                    "aprobar",
+
+                clase:
+                    ""
+
+            },
+
+
+            rechazar: {
+
+                titulo:
+                    "Rechazar Solicitud",
+
+                descripcion:
+                    "La solicitud será marcada como Rechazada.",
+
+                endpoint:
+                    "rechazar",
+
+                clase:
+                    "danger"
+
+            }
+
+        };
+
+
+        /* ====================================================
+           ABRIR MODAL
+        ==================================================== */
+
+        function abrirModalAccion(idPostulacion, accion, nombre) {
+
+            console.log("ABRIENDO MODAL:", {
+                idPostulacion,
+                accion,
+                nombre
+            });
+
+            if (!idPostulacion) {
+                console.error("No existe idPostulacion.");
+                return;
+            }
+
+            if (!accion) {
+                console.error("No existe acción.");
+                return;
+            }
+
+            const configuracion = acciones[accion];
+
+            if (!configuracion) {
+                console.error(
+                    "No existe configuración para la acción:",
+                    accion
+                );
+                return;
+            }
+
+            if (!actionModal) {
+                console.error(
+                    "No se encontró el elemento #actionModal"
+                );
+                return;
+            }
+
+            if (!modalTitle) {
+                console.error(
+                    "No se encontró el elemento #modalTitle"
+                );
+                return;
+            }
+
+            if (!modalSubtitle) {
+                console.error(
+                    "No se encontró el elemento #modalSubtitle"
+                );
+                return;
+            }
+
+            if (!modalObservaciones) {
+                console.error(
+                    "No se encontró el elemento #modalObservaciones"
+                );
+                return;
+            }
+
+            if (!modalConfirmBtn) {
+                console.error(
+                    "No se encontró el elemento #modalConfirmBtn"
+                );
+                return;
+            }
+
+            accionPendiente = {
+                idPostulacion: idPostulacion,
+                accion: accion,
+                nombre: nombre
+            };
+
+            modalTitle.textContent =
+                configuracion.titulo;
+
+            modalSubtitle.textContent =
+                `${nombre} — ${configuracion.descripcion}`;
+
+            modalObservaciones.value = "";
+
+            modalConfirmBtn.textContent =
+                configuracion.titulo;
+
+            modalConfirmBtn.className =
+                "modal-confirm";
+
+            if (configuracion.clase) {
+                modalConfirmBtn.classList.add(
+                    configuracion.clase
+                );
+            }
+
+            modalConfirmBtn.disabled = false;
+
+            actionModal.classList.add("show");
+
+            console.log(
+                "MODAL MOSTRADO CORRECTAMENTE"
+            );
+
+            setTimeout(() => {
+                modalObservaciones.focus();
+            }, 50);
+        }
+
+        /* ====================================================
+           CERRAR MODAL
+        ==================================================== */
+
+        function cerrarModal() {
+
+            actionModal.classList.remove(
+                "show"
+            );
+
+
+            accionPendiente =
+                null;
+
+
+            modalObservaciones.value =
+                "";
+
+        }
+
+
+        modalCancelBtn
+            .addEventListener(
+                "click",
+                () => {
+
+                    cerrarModal();
+
+                }
+            );
+
+        modalConfirmBtn.addEventListener(
+            "click",
+            ejecutarAccion
+        );
+
+
+
+
+
+        actionModal
+            .addEventListener(
+                "click",
+                (event) => {
+
+                    if (
+                        event.target ===
+                        actionModal
+                    ) {
+
+                        cerrarModal();
+
+                    }
+
+                }
+            );
+
+
+        document
+            .addEventListener(
+                "keydown",
+                (event) => {
+
+                    if (
+                        event.key ===
+                        "Escape" &&
+                        actionModal.classList.contains(
+                            "show"
+                        )
+                    ) {
+
+                        cerrarModal();
+
+                    }
+
+                }
+            );
+
+
+        /* ====================================================
+           EJECUTAR ACCIÓN
+        ==================================================== */
+
+
+        async function ejecutarAccion() {
+
+            if (!accionPendiente) {
+                return;
+            }
+
+            const idPostulacion =
+                accionPendiente.idPostulacion;
+
+            const accion =
+                accionPendiente.accion;
+
+            const configuracion =
+                acciones[accion];
+
+            if (!configuracion) {
+                return;
+            }
+
+            const observaciones =
+                modalObservaciones.value
+                    .trim();
+
+            /*
+             * Para correcciones y rechazo
+             * se requieren observaciones.
+             */
+
+            if (
+                (
+                    accion === "correcciones" ||
+                    accion === "rechazar"
+                ) &&
+                !observaciones
+            ) {
+                showMessage(
+                    "Debes registrar las observaciones antes de continuar."
+                );
+
+                modalObservaciones.focus();
+
+                return;
+            }
+
+            /*
+             * El usuario autenticado es el actor
+             * que realiza el cambio de estado.
+             */
+            const idUsuarioActor =
+                user?.id_usuario ||
+                user?.idUsuario ||
+                user?.user_id ||
+                user?.userId;
+
+            if (!idUsuarioActor) {
+                console.error("Payload JWT sin identificador de usuario:", user);
+                showMessage(
+                    "No fue posible identificar al usuario administrador autenticado. " +
+                    "Cierra sesión, vuelve a ingresar y prueba nuevamente."
+                );
+                return;
+            }
+
+            const confirmar =
+                window.confirm(
+                    `¿Confirmas la acción "${configuracion.titulo}"?`
+                );
+
+            if (!confirmar) {
+                return;
+            }
+
+            modalConfirmBtn.disabled = true;
+
+            modalConfirmBtn.textContent =
+                "Procesando...";
+
+            showMessage(
+                `Procesando: ${configuracion.titulo}...`
+            );
+
+            try {
+
+                const endpoint =
+                    `/administrar-auditores/solicitudes/${encodeURIComponent(
+                        idPostulacion
+                    )}/${configuracion.endpoint}`;
+
+                const response =
+                    await fetch(
+                        endpoint,
+                        {
+                            method: "PATCH",
+
+                            headers:
+                                headers(),
+
+                            body:
+                                JSON.stringify(
+                                    {
+                                        id_usuario_actor:
+                                            idUsuarioActor,
+
+                                        observaciones:
+                                            observaciones ||
+                                            null
+                                    }
+                                )
+                        }
+                    );
+
+                const data =
+                    await response
+                        .json()
+                        .catch(
+                            () => null
+                        );
+
+                if (
+                    response.status === 401 ||
+                    response.status === 403
+                ) {
+
+                    localStorage
+                        .removeItem(
+                            "access_token"
+                        );
+
+                    location.href =
+                        "/login";
+
+                    return;
+                }
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data?.detail ||
+                        "No fue posible actualizar la solicitud."
+                    );
+                }
+
+                cerrarModal();
+
+                showMessage(
+
+                    data?.mensaje ||
+                    data?.message ||
+                    "La solicitud fue actualizada correctamente.",
+
+                    true
+                );
+
+                await loadSolicitudes();
+
+            } catch (error) {
+
+                console.error(
+                    "Error ejecutando acción:",
+                    error
+                );
+
+                modalConfirmBtn.disabled =
+                    false;
+
+                modalConfirmBtn.textContent =
+                    configuracion.titulo;
+
+                showMessage(
+                    error.message
+                );
+            }
+        }
+
+
+
+
+
+        /* ====================================================
+           BOTÓN BUSCAR
+        ==================================================== */
+
+        document
+            .getElementById(
+                "buscarBtn"
+            )
+            .addEventListener(
+                "click",
+                () => {
+
+                    aplicarFiltros();
+
+                }
+            );
+
+
+        /* ====================================================
+           ENTER EN BUSCADOR
+        ==================================================== */
+
+        document
+            .getElementById(
+                "buscar"
+            )
+            .addEventListener(
+                "keydown",
+                (event) => {
+
+                    if (
+                        event.key ===
+                        "Enter"
+                    ) {
+
+                        event.preventDefault();
+
+                        aplicarFiltros();
+
+                    }
+
+                }
+            );
+
+
+        /* ====================================================
+           CAMBIO DE ESTADO
+        ==================================================== */
+
+        document
+            .getElementById(
+                "estado"
+            )
+            .addEventListener(
+                "change",
+                () => {
+
+                    /*
+                     * El estado se consulta
+                     * directamente al backend.
+                     */
+
+                    loadSolicitudes();
+
+                }
+            );
+
+
+        /* ====================================================
+           LIMPIAR
+        ==================================================== */
+
+        document
+            .getElementById(
+                "limpiarBtn"
+            )
+            .addEventListener(
+                "click",
+                () => {
+
+                    document
+                        .getElementById(
+                            "buscar"
+                        )
+                        .value = "";
+
+
+                    document
+                        .getElementById(
+                            "estado"
+                        )
+                        .value = "";
+
+
+                    loadSolicitudes();
+
+                }
+            );
+
+
+        /* ====================================================
+           LOGOUT
+        ==================================================== */
+
+        document
+            .getElementById(
+                "logoutLink"
+            )
+            .addEventListener(
+                "click",
+                (event) => {
+
+                    event.preventDefault();
+
+
+                    localStorage.clear();
+
+
+                    location.href =
+                        "/login";
+
+                }
+            );
+
+
+        /* ====================================================
+           INICIO
+        ==================================================== */
+
+        if (isAdmin) {
+
+            loadSolicitudes();
+
+        }
+
+
+
+    </script>
+
+
+    <script src="/static/session.js"></script>
+
+</body>
+
+</html>

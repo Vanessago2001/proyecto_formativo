@@ -36,6 +36,7 @@ typing-inspection==0.4.2
 typing_extensions==4.16.0
 tzdata==2026.3
 uvicorn==0.51.0
+reportlab==5.0.1
 
 # Dependencias de desarrollo (para ejecutar los tests)
 pytest==9.1.1
