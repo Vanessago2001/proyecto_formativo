@@ -12,6 +12,11 @@ __pycache__/
 .env
 .env.*
 
+# Llaves privadas de firma digital (no versionar)
+certificados_claves/
+*.p12
+*.pfx
+
 # VS Code
 .vscode/
 

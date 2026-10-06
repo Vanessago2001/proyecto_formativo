@@ -20,6 +20,8 @@ from modules.aprobaciones.aprobacion_router import router as aprobaciones_router
 from modules.aprobaciones.aprobacion_bootstrap import preparar_aprobaciones
 from modules.comite.comite_router import router as comite_router
 from modules.apelaciones.apelaciones_router import router as apelaciones_router
+from modules.certificados.certificados_bootstrap import preparar_modulo_certificados
+from modules.certificados.certificados_router import router as certificados_router
 
 from modules.alejandra.router import router as alejandra_router
 
@@ -215,6 +217,7 @@ async def lifespan(app: FastAPI):
     await preparar_modulo_solicitudes()
     await preparar_modulo_empresas()
     await preparar_aprobaciones()
+    await preparar_modulo_certificados()
     try:
         yield
     finally:
@@ -249,6 +252,7 @@ app.include_router(consultas_publicas_router)
 app.include_router(consultas_publicas_paginas)
 app.include_router(aprobaciones_router)
 app.include_router(comite_router)
+app.include_router(certificados_router)
 app.include_router(apelaciones_router)
 app.include_router(alejandra_router)
 app.include_router(mfa_router)
@@ -307,6 +311,16 @@ async def comite_page(request: Request):
 @app.get("/consultar-estado")
 async def consultar_estado():
     return FileResponse("static/consultar_estado_registro.html")
+
+@app.get("/gestion-certificados", response_class=HTMLResponse)
+async def gestion_certificados_page(request: Request):
+    return FileResponse("static/certificados.html")
+
+
+@app.get("/verificar-certificado", response_class=HTMLResponse)
+async def verificar_certificado_page(request: Request):
+    return FileResponse("static/certificados.html")
+
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
