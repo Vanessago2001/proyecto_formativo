@@ -1,44 +1,25 @@
 from typing import Optional
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from core.security import get_current_user, require_role
+from core.security import require_role
 from modules.apelaciones.apelaciones_service import ApelacionesService
 
 router = APIRouter(prefix="/api/apelaciones", tags=["Apelaciones"])
 
 
 class ApelacionCreate(BaseModel):
-    id_solicitud: int
-    motivo: str
-    fallo: Optional[str] = None
-    estado: Optional[str] = "RADICADA"
+    id_solicitud: UUID
+    motivo: str = Field(..., min_length=10)
 
 
 class ApelacionUpdate(BaseModel):
-    id_solicitud: Optional[int] = None
     motivo: Optional[str] = None
-    fallo: Optional[str] = None
-    estado: Optional[str] = None
-
-
-class EvidenciaCreate(BaseModel):
-    id_usuario: int
-    nombre_archivo: str
-    tipo_evidencia: str
-    url_archivo: str
-    descripcion: Optional[str] = None
-
-
-class HiloLegalCreate(BaseModel):
-    observaciones: str
-
-
-class AnalisisJuridicoCreate(BaseModel):
-    analisis: str
 
 
 class RequerimientoCreate(BaseModel):
@@ -46,34 +27,45 @@ class RequerimientoCreate(BaseModel):
 
 
 class DecisionCreate(BaseModel):
-    decision: str
+    decision: str = Field(..., pattern=r"^(APROBADA|RECHAZADA|CANCELADA)$")
+    observaciones: Optional[str] = None
 
 
-class BitacoraCreate(BaseModel):
-    detalle: str
-
-
-class CancelarApelacionRequest(BaseModel):
-    estado: str = "CANCELADA"
+class ComitéAssignmentRequest(BaseModel):
+    miembros_comite: list[UUID] = Field(..., min_length=1)
+    id_auditor_evaluador: Optional[UUID] = None
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def registrar_apelacion(
     data: ApelacionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "empresa", "auditor"]))
+    current_user: dict = Depends(require_role(["empresa"]))
 ):
-    return await ApelacionesService(db).create_apelacion(data.model_dump())
+    return await ApelacionesService(db).create_apelacion(data.model_dump(), current_user)
+
+
+@router.get("/{id}")
+async def consultar_apelacion(
+    id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
+):
+    apelacion = await ApelacionesService(db).get_apelacion_by_id(id, current_user)
+    if not apelacion:
+        raise HTTPException(status_code=404, detail="Apelación no encontrada.")
+    return apelacion
 
 
 @router.post("/{id}/evidencias", status_code=status.HTTP_201_CREATED)
 async def adjuntar_evidencias(
-    id: int,
-    data: EvidenciaCreate,
+    id: UUID,
+    archivo: UploadFile = File(...),
+    descripcion: Optional[str] = Form(default=None),
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "empresa", "auditor"]))
+    current_user: dict = Depends(require_role(["empresa"]))
 ):
-    updated = await ApelacionesService(db).add_evidence(id, data.model_dump())
+    updated = await ApelacionesService(db).add_evidence(id, archivo, descripcion, current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
     return updated
@@ -81,116 +73,131 @@ async def adjuntar_evidencias(
 
 @router.put("/{id}")
 async def editar_apelacion(
-    id: int,
+    id: UUID,
     data: ApelacionUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "empresa", "auditor"]))
+    current_user: dict = Depends(require_role(["empresa"]))
 ):
-    updated = await ApelacionesService(db).update_apelacion(id, data.model_dump(exclude_unset=True))
+    updated = await ApelacionesService(db).update_apelacion(id, data.model_dump(exclude_unset=True), current_user)
     if not updated:
         raise HTTPException(status_code=400, detail="No se puede editar la apelación o ya fue revisada.")
     return updated
 
 
 @router.get("/")
-async def consultar_apelacion_radicada(
+async def consultar_apelaciones_radicadas(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin", "empresa", "auditor", "auxiliar", "comite"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
 ):
-    return await ApelacionesService(db).get_all_apelaciones()
+    return await ApelacionesService(db).get_all_apelaciones(current_user)
 
 
 @router.get("/{id}/estado")
 async def consultar_estado_tramite(
-    id: int,
+    id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin", "empresa", "auditor", "auxiliar", "comite"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
 ):
-    apelacion = await ApelacionesService(db).get_apelacion_by_id(id)
+    apelacion = await ApelacionesService(db).get_apelacion_by_id(id, current_user)
     if not apelacion:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
-    return {"id": apelacion["id"], "estado": apelacion["estado"]}
+    return {"id": apelacion["id"], "estado": apelacion["estado"], "radicado": apelacion.get("radicado")}
 
 
 @router.patch("/{id}/cancelar")
 async def cancelar_retirar_apelacion(
-    id: int,
-    data: Optional[CancelarApelacionRequest] = None,
+    id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "empresa", "auditor"]))
+    current_user: dict = Depends(require_role(["empresa"]))
 ):
-    estado = (data.estado if data else CancelarApelacionRequest()).estado
-    updated = await ApelacionesService(db).cancelar_apelacion(id, estado)
+    updated = await ApelacionesService(db).cancelar_apelacion(id, current_user)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Apelación no encontrada o no puede cancelarse en este estado.")
+    return updated
+
+
+@router.post("/{id}/asignar-comite", status_code=status.HTTP_200_OK)
+async def asignar_comite_apelacion(
+    id: UUID,
+    data: ComitéAssignmentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
+):
+    try:
+        return await ApelacionesService(db).assign_committee(
+            id,
+            data.miembros_comite,
+            data.id_auditor_evaluador,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/{id}/historial")
+async def consultar_historial_apelacion(
+    id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
+):
+    return await ApelacionesService(db).get_historial(id, current_user)
+
+
+@router.get("/{id}/evidencias")
+async def consultar_evidencias_previas(
+    id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
+):
+    return await ApelacionesService(db).get_evidencias_previas(id, current_user)
+
+
+@router.get("/{id}/evidencias/{id_evidencia}/archivo", response_class=FileResponse)
+async def descargar_evidencia(
+    id: UUID,
+    id_evidencia: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"])),
+):
+    archivo = await ApelacionesService(db).obtener_archivo_evidencia(id, id_evidencia, current_user)
+    if not archivo:
+        raise HTTPException(status_code=404, detail="Evidencia no encontrada.")
+    ruta, nombre = archivo
+    return FileResponse(ruta, filename=nombre)
+
+
+@router.post("/{id}/solicitar-info", status_code=status.HTTP_201_CREATED)
+async def solicitar_info_adicional(
+    id: UUID,
+    data: RequerimientoCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
+):
+    updated = await ApelacionesService(db).solicitar_info_adicional(id, data.requerimiento, current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
     return updated
 
 
-@router.post("/{id}/hilo-legal", status_code=status.HTTP_201_CREATED)
-# async def registrar_observaciones_hilo_legal(
-#     id: int,
-#     data: HiloLegalCreate,
-#     db: AsyncSession = Depends(get_db),
-#     current_user: dict = Depends(require_role(["superadmin", "admin", "auditor"]))
-# ):
-#     return await ApelacionesService(db).registrar_hilo_legal(id, data.observaciones)
-
-
-@router.get("/{id}/historial")
-async def consultar_historial_apelacion(
-    id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin", "auxiliar", "empresa", "auditor", "comite"]))
-):
-    return await ApelacionesService(db).get_historial(id)
-
-
-@router.get("/{id}/evidencias")
-async def consultar_evidencias_previas(
-    id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin", "auxiliar", "auditor", "comite"]))
-):
-    return await ApelacionesService(db).get_evidencias_previas(id)
-
-
-# @router.post("/{id}/analisis-juridico", status_code=status.HTTP_201_CREATED)
-# async def registrar_analisis_juridico(
-#     id: int,
-#     data: AnalisisJuridicoCreate,
-#     db: AsyncSession = Depends(get_db),
-#     current_user: dict = Depends(require_role(["superadmin", "admin", "auditor"]))
-# ):
-#     return await ApelacionesService(db).registrar_analisis_juridico(id, data.analisis)
-
-
-@router.post("/{id}/solicitar-info", status_code=status.HTTP_201_CREATED)
-async def solicitar_info_adicional(
-    id: int,
-    data: RequerimientoCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin", "auxiliar"]))
-):
-    return await ApelacionesService(db).solicitar_info_adicional(id, data.requerimiento)
-
-
-@router.post("/{id}/decision-final", status_code=status.HTTP_201_CREATED)
-async def registrar_decision_final(
-    id: int,
+@router.post("/{id}/resolve", status_code=status.HTTP_200_OK)
+async def resolver_apelacion(
+    id: UUID,
     data: DecisionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin", "auxiliar"]))
+    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
 ):
-    return await ApelacionesService(db).registrar_decision_final(id, data.decision)
+    updated = await ApelacionesService(db).registrar_decision_final(id, data.decision, data.observaciones, current_user)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Apelación no encontrada.")
+    return {"id": id, "estado": data.decision, "observaciones": data.observaciones}
 
 
 @router.post("/{id}/aprobar")
 async def aprobar_apelacion(
-    id: int,
+    id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
 ):
-    updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "APROBADA")
+    updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "APROBADA", current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
     return updated
@@ -198,11 +205,11 @@ async def aprobar_apelacion(
 
 @router.post("/{id}/rechazar")
 async def rechazar_apelacion(
-    id: int,
+    id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin", "auxiliar"]))
+    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
 ):
-    updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "RECHAZADA")
+    updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "RECHAZADA", current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
     return updated
@@ -210,11 +217,11 @@ async def rechazar_apelacion(
 
 @router.post("/{id}/notificar")
 async def notificar_dictamen_final(
-    id: int,
+    id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin", "auxiliar"]))
+    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
 ):
-    updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "NOTIFICADA")
+    updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "NOTIFICADA", current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
     return {"mensaje": "Dictamen notificado exitosamente", "estado": updated["estado"]}
@@ -222,21 +229,11 @@ async def notificar_dictamen_final(
 
 @router.post("/{id}/cerrar")
 async def cerrar_apelacion_definitivamente(
-    id: int,
+    id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
 ):
-    updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "CERRADA")
+    updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "CERRADA", current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
     return updated
-
-
-# @router.post("/{id}/bitacora-cierre", status_code=status.HTTP_201_CREATED)
-# async def registrar_cierre_bitacora(
-#     id: int,
-#     data: BitacoraCreate,
-#     db: AsyncSession = Depends(get_db),
-#     current_user: dict = Depends(require_role(["superadmin", "admin"]))
-# ):
-#     return await ApelacionesService(db).registrar_bitacora_cierre(id, data.detalle)

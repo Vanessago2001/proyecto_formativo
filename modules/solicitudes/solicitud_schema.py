@@ -30,6 +30,7 @@ class EstadoSolicitud(str, Enum):
     borrador = "Borrador"
     radicada = "Radicada"
     en_revision = "En revision"
+    rechazada = "Rechazada"
     cancelada = "Cancelada"
 
 

@@ -75,49 +75,107 @@ async def ensure_login_security_schema(session) -> None:
 
 async def ensure_apelaciones_schema(session) -> None:
     await session.execute(text("""
+        DO $$
+        DECLARE tipo_id TEXT;
+        BEGIN
+            SELECT udt_name INTO tipo_id
+            FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = 'apelacion'
+              AND column_name = 'id';
+
+            IF tipo_id IS NOT NULL AND (
+                tipo_id <> 'uuid'
+                OR EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                      AND table_name IN ('apelacion', 'apelacion_comite', 'evidencia_apelacion')
+                      AND column_name IN (
+                          'id', 'id_solicitud', 'id_usuario_presenta', 'id_empresa',
+                          'id_auditor_evaluador', 'id_asignacion', 'id_apelacion',
+                          'id_usuario', 'id_evidencia'
+                      )
+                      AND udt_name <> 'uuid'
+                )
+                OR EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'apelacion'
+                      AND column_name = 'fallo'
+                      AND data_type <> 'boolean'
+                )
+            ) THEN
+                DROP TABLE IF EXISTS evidencia_apelacion;
+                DROP TABLE IF EXISTS apelacion_comite;
+                DROP TABLE IF EXISTS apelacion;
+            END IF;
+        END $$;
+    """))
+
+    await session.execute(text("""
+        CREATE SEQUENCE IF NOT EXISTS apelacion_radicado_seq START WITH 1;
+    """))
+
+    await session.execute(text("""
         CREATE TABLE IF NOT EXISTS apelacion (
-            id SERIAL PRIMARY KEY,
-            id_solicitud INTEGER NOT NULL,
-            estado VARCHAR(50) NOT NULL DEFAULT 'RADICADA',
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id_solicitud UUID NOT NULL REFERENCES solicitud(id_solicitud),
+            id_usuario_presenta UUID NOT NULL REFERENCES usuario(id_usuario),
+            id_empresa UUID NOT NULL,
+            id_auditor_evaluador UUID,
+            estado VARCHAR(50) NOT NULL DEFAULT 'ENVIADA',
+            radicado VARCHAR(50) NOT NULL UNIQUE,
             fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             motivo TEXT NOT NULL,
-            fallo TEXT
+            razones_rechazo TEXT,
+            fallo BOOLEAN NOT NULL DEFAULT FALSE,
+            observaciones TEXT,
+            fecha_decision TIMESTAMP WITH TIME ZONE
         );
     """))
 
     for column_sql in [
-        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS id_solicitud INTEGER;",
-        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS estado VARCHAR(50) DEFAULT 'RADICADA';",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS id_solicitud UUID;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS id_usuario_presenta UUID;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS id_empresa UUID;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS id_auditor_evaluador UUID;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS estado VARCHAR(50) NOT NULL DEFAULT 'ENVIADA';",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS radicado VARCHAR(50);",
         "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
         "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS motivo TEXT;",
-        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS fallo TEXT;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS razones_rechazo TEXT;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS fallo BOOLEAN NOT NULL DEFAULT FALSE;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS observaciones TEXT;",
+        "ALTER TABLE apelacion ADD COLUMN IF NOT EXISTS fecha_decision TIMESTAMP WITH TIME ZONE;",
     ]:
         await session.execute(text(column_sql))
 
+    await session.execute(text(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_apelacion_solicitud ON apelacion (id_solicitud);"
+    ))
+
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS apelacion_comite (
+            id_asignacion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id_apelacion UUID NOT NULL REFERENCES apelacion(id) ON DELETE CASCADE,
+            id_usuario UUID NOT NULL REFERENCES usuario(id_usuario),
+            asignado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (id_apelacion, id_usuario)
+        );
+    """))
+
     await session.execute(text("""
         CREATE TABLE IF NOT EXISTS evidencia_apelacion (
-            id_evidencia SERIAL PRIMARY KEY,
-            id_apelacion INTEGER NOT NULL,
-            id_usuario INTEGER NOT NULL,
+            id_evidencia UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id_apelacion UUID NOT NULL REFERENCES apelacion(id) ON DELETE CASCADE,
+            id_usuario UUID NOT NULL REFERENCES usuario(id_usuario),
             nombre_archivo VARCHAR(255) NOT NULL,
             tipo_evidencia VARCHAR(100),
             url_archivo TEXT NOT NULL,
             descripcion TEXT,
-            fecha_subida TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT fk_evidencia_apelacion FOREIGN KEY (id_apelacion) REFERENCES apelacion(id)
+            fecha_subida TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
     """))
-
-    for column_sql in [
-        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS id_apelacion INTEGER;",
-        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS id_usuario INTEGER;",
-        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS nombre_archivo VARCHAR(255);",
-        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS tipo_evidencia VARCHAR(100);",
-        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS url_archivo TEXT;",
-        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS descripcion TEXT;",
-        "ALTER TABLE evidencia_apelacion ADD COLUMN IF NOT EXISTS fecha_subida TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
-    ]:
-        await session.execute(text(column_sql))
 
 
 async def ensure_empresa_sedes_schema(session) -> None:
@@ -408,6 +466,11 @@ async def auditor_page(request: Request):
 @app.get("/empresa", response_class=HTMLResponse)
 async def empresa_page(request: Request):
     return FileResponse("static/empresa.html")
+
+
+@app.get("/apelacion", response_class=HTMLResponse)
+async def apelacion_page(request: Request):
+    return FileResponse("static/apelacion.html")
 
 
 @app.get("/buscar_empresa", response_class=HTMLResponse)

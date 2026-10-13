@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CertiSENA | Apelaciones</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <style>
+    :root {
+      --verde-900: #1f4d17;
+      --verde-800: #246400;
+      --verde-700: #2d6a13;
+      --verde-600: #3baa01;
+      --verde-100: #edf7e5;
+      --verde-50: #f5faf3;
+      --gris-900: #1f2937;
+      --gris-700: #475569;
+      --gris-500: #64748b;
+      --gris-200: #dfe9d8;
+      --gris-100: #f3f7f0;
+      --azul-100: #e8f1ff;
+      --azul-700: #1e4db8;
+      --amarillo-100: #fff3cd;
+      --amarillo-700: #7a5400;
+      --rojo-100: #fde7e7;
+      --rojo-700: #9b1c1c;
+      --blanco: #ffffff;
+      --sombra: 0 12px 28px rgba(22, 35, 12, 0.08);
+      --borde: 1px solid #dfe9d8;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--gris-100);
+      color: var(--gris-900);
+    }
+
+    .page-shell {
+      max-width: 1200px;
+      margin: 32px auto;
+      padding: 0 20px 48px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .brand h1 {
+      margin: 8px 0 0;
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      color: var(--verde-800);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--verde-100);
+      color: var(--verde-700);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ghost-link,
+    button {
+      font: inherit;
+    }
+
+    .ghost-link {
+      color: var(--verde-800);
+      text-decoration: none;
+      font-weight: 700;
+      border: 1px solid var(--gris-200);
+      background: var(--blanco);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+
+    .panel {
+      background: var(--blanco);
+      border: var(--borde);
+      border-radius: 16px;
+      box-shadow: var(--sombra);
+      padding: 24px;
+    }
+
+    .alert {
+      display: none;
+      margin-bottom: 18px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .alert.success {
+      display: block;
+      background: #eaf7ea;
+      color: #205531;
+      border: 1px solid #cfe8d7;
+    }
+
+    .alert.error {
+      display: block;
+      background: #fdecea;
+      color: #7a1f1a;
+      border: 1px solid #f8c7c4;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .metric {
+      background: var(--blanco);
+      border: var(--borde);
+      border-radius: 14px;
+      padding: 18px 18px 16px;
+      box-shadow: var(--sombra);
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--gris-500);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+    }
+
+    .metric-value {
+      margin-top: 14px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--verde-800);
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      gap: 22px;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .side-title {
+      margin: 0; color: var(--verde-800); font-size: 1.1rem;
+    }
+
+    .flow-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .flow-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px 10px;
+      border-radius: 10px;
+      background: var(--verde-50);
+      border: 1px solid #dfeee0;
+      color: var(--verde-900);
+      font-weight: 600;
+    }
+
+    .flow-number {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: var(--verde-600);
+      color: var(--blanco);
+      display: grid;
+      place-items: center;
+      font-size: 0.8rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .field,
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 700;
+      color: var(--verde-800);
+    }
+
+    input, textarea, select, button {
+      font: inherit;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid #cfe0ca;
+      background: #ffffff;
+      padding: 11px 12px;
+      color: var(--gris-900);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .read-only {
+      background: #f7faf5;
+      color: var(--gris-700);
+    }
+
+    .two-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 18px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 11px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter 0.2s ease;
+    }
+
+    button:hover { filter: brightness(0.97); }
+    button:active { filter: brightness(0.94); }
+
+    .primary { background: var(--verde-600); color: var(--blanco); }
+    .secondary { background: #edf3eb; color: var(--verde-900); }
+    .muted-action { background: #eef2ff; color: var(--azul-700); }
+    .warning { background: var(--amarillo-100); color: var(--amarillo-700); }
+    .danger { background: #e53935; color: var(--blanco); }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 140px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .status.sin_solicitud { background: #eef2f7; color: #475569; }
+    .status.enviada { background: var(--verde-100); color: var(--verde-700); }
+    .status.en_revision { background: var(--azul-100); color: var(--azul-700); }
+    .status.informacion_solicitada { background: var(--amarillo-100); color: var(--amarillo-700); }
+    .status.aprobada { background: #d9f6e4; color: #1e7d4d; }
+    .status.rechazada { background: var(--rojo-100); color: var(--rojo-700); }
+    .status.cancelada { background: #e5e7eb; color: #4b5563; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .section-header h2,
+    .section-header h3 {
+      margin: 0;
+      color: var(--verde-800);
+    }
+
+    .support-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .support-item {
+      border: 1px solid #e5ede3;
+      border-radius: 12px;
+      background: #fafcf9;
+      padding: 14px 16px;
+    }
+
+    .support-item strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--gris-900);
+    }
+
+    .support-item small {
+      color: var(--gris-500);
+    }
+
+    .timeline {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .timeline-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      border-left: 3px solid #d9ebcf;
+      padding-left: 12px;
+      color: var(--gris-700);
+    }
+
+    .timeline-dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 8px;
+      border-radius: 50%;
+      background: var(--verde-600);
+      flex-shrink: 0;
+    }
+
+    .empty-state {
+      padding: 16px;
+      border: 1px dashed #d9e0d5;
+      border-radius: 12px;
+      background: #fafcf9;
+      color: var(--gris-500);
+    }
+
+    @media (max-width: 880px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .content-grid { grid-template-columns: 1fr; }
+      .two-cols { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .metrics { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="badge">Módulo de apelaciones</span>
+        <h1>Gestión y revisión</h1>
+      </div>
+      <div class="header-actions">
+        <a class="ghost-link" id="backLink" href="/empresa">Volver a mis solicitudes</a>
+        <button class="secondary" id="logoutBtn" type="button">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <div id="alertBox" class="alert"></div>
+
+    <section class="metrics">
+      <div class="metric">
+        <div class="metric-label">Estado</div>
+        <div class="metric-value" id="metricEstado">Sin solicitud</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Solicitud</div>
+        <div class="metric-value" id="metricSolicitud">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Radicado</div>
+        <div class="metric-value" id="metricRadicado">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Último cambio</div>
+        <div class="metric-value" id="metricFecha">--</div>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <aside class="sidebar">
+        <div class="panel">
+          <h3 class="side-title">Flujo de la apelación</h3>
+          <div class="flow-list">
+            <div class="flow-item"><span class="flow-number">1</span><span>Solicitud rechazada</span></div>
+            <div class="flow-item"><span class="flow-number">2</span><span>Empresa presenta apelación</span></div>
+            <div class="flow-item"><span class="flow-number">3</span><span>Comité revisa evidencias</span></div>
+            <div class="flow-item"><span class="flow-number">4</span><span>Aprobación o rechazo final</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3 class="side-title">Buscar solicitud</h3>
+          <div class="stack">
+            <label for="solicitudId">ID de la solicitud</label>
+            <input id="solicitudId" type="text" placeholder="ID de la solicitud" />
+          </div>
+          <div class="actions">
+            <button class="primary" id="btnBuscar" type="button">Buscar</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-column">
+        <section class="panel" id="committeeInbox" style="display:none; margin-bottom: 22px;">
+          <div class="section-header">
+            <h2>Bandeja del comité</h2>
+            <button class="secondary" id="btnActualizarBandeja" type="button">Actualizar</button>
+          </div>
+          <div id="listaApelaciones" class="support-list"></div>
+        </section>
+
+        <div class="panel">
+          <div class="section-header">
+            <h2>Detalle de la apelación</h2>
+            <span id="estadoBadge" class="status sin_solicitud">Sin apelación</span>
+          </div>
+
+          <div class="two-cols">
+            <div class="stack">
+              <label for="razonesRechazo">Razones del rechazo inicial</label>
+              <textarea id="razonesRechazo" class="read-only" readonly>El sistema todavía no registra una razón de rechazo para esta solicitud. Revise la evaluación previa del auditor.</textarea>
+            </div>
+
+            <div class="stack">
+              <label for="motivo">Motivo de la apelación</label>
+              <textarea id="motivo" placeholder="Explique de forma clara y precisa por qué considera que la decisión fue incorrecta y qué desea corregir."></textarea>
+            </div>
+          </div>
+
+          <div class="two-cols" style="margin-top: 20px;">
+            <div class="stack">
+              <label for="evidenciaArchivo">Adjuntar evidencia</label>
+              <input id="evidenciaArchivo" type="file" />
+            </div>
+            <div class="stack">
+              <label for="evidenciaDescripcion">Descripción de la evidencia</label>
+              <textarea id="evidenciaDescripcion" placeholder="Describa qué documento, prueba o respaldo adjunta y por qué es relevante para la apelación."></textarea>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="btnCrear" type="button">Enviar apelación</button>
+            <button class="secondary" id="btnGuardar" type="button">Guardar cambios</button>
+            <button class="muted-action" id="btnAdjuntar" type="button">Guardar evidencia</button>
+            <button class="warning" id="btnSolicitarInfo" type="button">Solicitar más información</button>
+            <button class="danger" id="btnCancelar" type="button">Cancelar apelación</button>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 22px;">
+          <div class="section-header">
+            <h3>Evidencias y historial</h3>
+          </div>
+          <div id="listaEvidencias" class="support-list"></div>
+        </div>
+
+        <div class="panel" style="margin-top: 22px;">
+          <div class="section-header">
+            <h3>Respuesta del comité</h3>
+          </div>
+          <textarea id="comentariosComite" class="read-only" readonly placeholder="Las observaciones, solicitudes de información y decisiones del comité aparecerán aquí."></textarea>
+
+          <div class="actions" style="margin-top: 18px;">
+            <button class="primary" id="btnAprobar" type="button">Aprobar apelación</button>
+            <button class="danger" id="btnRechazar" type="button">Rechazar apelación</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('access_token');
+    const state = {
+      currentAppealId: null,
+      currentSolicitudId: null,
+      role: null,
+    };
+
+    function parseUserRole() {
+      if (!token) return null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return payload.role_name || payload.rol || payload.roles || null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function setAlert(message, kind) {
+      const alertBox = document.getElementById('alertBox');
+      alertBox.textContent = message;
+      alertBox.className = 'alert ' + kind;
+    }
+
+    function normalizeStatus(status) {
+      if (!status) return 'sin_solicitud';
+      return String(status).toLowerCase().replace(/[^a-z]/g, '_');
+    }
+
+    function renderStatus(status) {
+      const badge = document.getElementById('estadoBadge');
+      const metric = document.getElementById('metricEstado');
+      const label = status || 'Sin apelación';
+      badge.textContent = label;
+      badge.className = 'status ' + normalizeStatus(label);
+      metric.textContent = label;
+      metric.className = 'metric-value';
+    }
+
+    function formatDate(value) {
+      if (!value) return '--';
+      const safeValue = value.includes('T') ? value : `${value}T00:00:00`;
+      const date = new Date(safeValue);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    async function api(url, options = {}) {
+      if (!token) {
+        setAlert('Debe iniciar sesión para gestionar la apelación.', 'error');
+        return null;
+      }
+
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      const payload = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+
+      if (!response.ok) {
+        throw new Error(payload?.detail || 'Error en la petición');
+      }
+
+      return payload;
+    }
+
+    function fieldValue(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function setValuesFromAppeal(data) {
+      state.currentAppealId = data.id || state.currentAppealId;
+      state.currentSolicitudId = data.id_solicitud || state.currentSolicitudId;
+      document.getElementById('solicitudId').value = data.id_solicitud || '';
+      document.getElementById('motivo').value = data.motivo || '';
+      document.getElementById('razonesRechazo').value = data.razones_rechazo || 'La solicitud fue rechazada y aún no se registró una explicación detallada en la evaluación inicial.';
+      document.getElementById('comentariosComite').value = data.observaciones || '';
+      document.getElementById('metricSolicitud').textContent = data.id_solicitud || '--';
+      document.getElementById('metricRadicado').textContent = data.radicado || '--';
+      document.getElementById('metricFecha').textContent = formatDate(data.fecha || data.fecha_decision);
+      renderStatus(data.estado || 'Sin apelación');
+      cargarEvidencias(state.currentAppealId);
+    }
+
+    function esComite() {
+      const roles = Array.isArray(state.role) ? state.role : [state.role];
+      return roles.some((role) => {
+        const normalized = String(role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        return normalized.includes('comite') || normalized.includes('admin');
+      });
+    }
+
+    function esEmpresa() {
+      const roles = Array.isArray(state.role) ? state.role : [state.role];
+      return roles.some((role) => String(role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === 'empresa');
+    }
+
+    function configurarAccionesPorRol() {
+      const committee = esComite();
+      const company = esEmpresa();
+      document.getElementById('committeeInbox').style.display = committee ? 'block' : 'none';
+      document.getElementById('btnBuscar').style.display = company ? '' : 'none';
+      document.getElementById('solicitudId').readOnly = !company;
+      document.getElementById('btnCrear').style.display = company ? '' : 'none';
+      document.getElementById('btnGuardar').style.display = company ? '' : 'none';
+      document.getElementById('btnAdjuntar').style.display = company ? '' : 'none';
+      document.getElementById('btnCancelar').style.display = company ? '' : 'none';
+      document.getElementById('btnSolicitarInfo').style.display = committee ? '' : 'none';
+      document.getElementById('btnAprobar').style.display = committee ? '' : 'none';
+      document.getElementById('btnRechazar').style.display = committee ? '' : 'none';
+      document.getElementById('motivo').readOnly = !company;
+      document.getElementById('evidenciaArchivo').disabled = !company;
+      document.getElementById('evidenciaDescripcion').readOnly = !company;
+      document.getElementById('comentariosComite').readOnly = !committee;
+      document.getElementById('comentariosComite').classList.toggle('read-only', !committee);
+      document.getElementById('backLink').href = committee ? '/dashboard' : '/empresa';
+      document.getElementById('backLink').textContent = committee ? 'Volver al panel' : 'Volver a mis solicitudes';
+    }
+
+    async function cargarBandejaComite() {
+      if (!esComite()) return;
+      const container = document.getElementById('listaApelaciones');
+      container.innerHTML = '<div class="empty-state">Cargando apelaciones...</div>';
+      try {
+        const apelaciones = await api('/api/apelaciones/');
+        if (!Array.isArray(apelaciones) || apelaciones.length === 0) {
+          container.innerHTML = '<div class="empty-state">No hay apelaciones radicadas.</div>';
+          return;
+        }
+        container.innerHTML = apelaciones.map((item) => `
+          <div class="support-item">
+            <strong>${escapeHtml(item.radicado || 'Apelación ' + item.id)}</strong>
+            <div>Solicitud: ${escapeHtml(item.id_solicitud || '--')} · Estado: ${escapeHtml(item.estado || '--')}</div>
+            <small>Fecha: ${formatDate(item.fecha)}</small>
+            <div class="actions"><button class="secondary" type="button" data-appeal-id="${item.id}">Revisar</button></div>
+          </div>
+        `).join('');
+        container.querySelectorAll('[data-appeal-id]').forEach((button) => {
+          button.addEventListener('click', () => cargarDetalleApelacion(button.dataset.appealId));
+        });
+      } catch (error) {
+        container.innerHTML = '<div class="empty-state">No se pudo cargar la bandeja del comité.</div>';
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function cargarDetalleApelacion(id) {
+      try {
+        const data = await api(`/api/apelaciones/${id}`);
+        if (data) {
+          setValuesFromAppeal(data);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setAlert('Apelación seleccionada para revisión.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function buscarApelacionPorSolicitud() {
+      const idSolicitud = fieldValue('solicitudId');
+      if (!idSolicitud) {
+        setAlert('Digite el ID de la solicitud rechazada para continuar.', 'error');
+        return;
+      }
+
+      try {
+        const [listado, solicitud] = await Promise.all([
+          api('/api/apelaciones/'),
+          api(`/solicitudes/${encodeURIComponent(idSolicitud)}`),
+        ]);
+        const item = Array.isArray(listado) ? listado.find((a) => String(a.id_solicitud) === String(idSolicitud)) : null;
+
+        if (!item) {
+          const estadoSolicitud = String(solicitud.estado || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+          const estaRechazada = estadoSolicitud === 'rechazada';
+          const razones = solicitud.motivo_rechazo || solicitud.observaciones || solicitud.fallo || '';
+          state.currentAppealId = null;
+          state.currentSolicitudId = idSolicitud;
+          document.getElementById('motivo').value = '';
+          document.getElementById('razonesRechazo').value = razones || 'No se registró una observación de rechazo en la solicitud.';
+          document.getElementById('metricSolicitud').textContent = idSolicitud;
+          document.getElementById('metricRadicado').textContent = '--';
+          document.getElementById('metricFecha').textContent = '--';
+          renderStatus(estaRechazada ? 'Sin apelación' : (solicitud.estado || 'Solicitud no disponible'));
+          document.getElementById('btnCrear').disabled = !estaRechazada;
+          document.getElementById('listaEvidencias').innerHTML = '<div class="empty-state">Aún no hay evidencia asociada a esta solicitud.</div>';
+          setAlert(estaRechazada
+            ? 'No hay apelación creada. Puede presentarla desde aquí.'
+            : 'La apelación solo se habilita cuando la solicitud está Rechazada.', estaRechazada ? 'success' : 'error');
+          return;
+        }
+
+        const detail = await api(`/api/apelaciones/${item.id}`);
+        document.getElementById('btnCrear').disabled = true;
+        setValuesFromAppeal(detail || item);
+        setAlert('Se cargó la apelación asociada a la solicitud.', 'success');
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function crearApelacion() {
+      const idSolicitud = fieldValue('solicitudId');
+      const motivo = fieldValue('motivo');
+      if (!idSolicitud || !motivo) {
+        setAlert('Debe ingresar la solicitud y explicar el motivo de la apelación.', 'error');
+        return;
+      }
+
+      try {
+        const payload = {
+          id_solicitud: idSolicitud,
+          motivo,
+          razones_rechazo: fieldValue('razonesRechazo') || 'Rechazo por revisión inicial.',
+          id_empresa: String(state.role || 'empresa'),
+        };
+
+        const data = await api('/api/apelaciones/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (data) {
+          document.getElementById('btnCrear').disabled = true;
+          setValuesFromAppeal(data);
+          setAlert('La apelación fue creada correctamente.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function guardarCambios() {
+      if (!state.currentAppealId) {
+        setAlert('Primero cree o busque la apelación.', 'error');
+        return;
+      }
+
+      try {
+        const payload = {
+          motivo: fieldValue('motivo') || undefined,
+          razones_rechazo: fieldValue('razonesRechazo') || undefined,
+        };
+
+        const data = await api(`/api/apelaciones/${state.currentAppealId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (data) {
+          setValuesFromAppeal(data);
+          setAlert('Se guardaron los cambios de la apelación.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function guardarEvidencia() {
+      if (!state.currentAppealId) {
+        setAlert('Debe crear o cargar primero la apelación.', 'error');
+        return;
+      }
+
+      const fileInput = document.getElementById('evidenciaArchivo');
+      const file = fileInput.files[0];
+      const descripcion = fieldValue('evidenciaDescripcion');
+
+      if (!file) {
+        setAlert('Seleccione un archivo de evidencia para adjuntarlo.', 'error');
+        return;
+      }
+
+      try {
+        const data = await api(`/api/apelaciones/${state.currentAppealId}/evidencias`, {
+          method: 'POST',
+          body: (() => {
+            const form = new FormData();
+            form.append('archivo', file);
+            form.append('descripcion', descripcion);
+            return form;
+          })(),
+        });
+
+        if (data) {
+          fileInput.value = '';
+          document.getElementById('evidenciaDescripcion').value = '';
+          await cargarEvidencias(state.currentAppealId);
+          setAlert('La evidencia fue adjuntada correctamente.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function cargarEvidencias(id) {
+      if (!id) {
+        document.getElementById('listaEvidencias').innerHTML = '<div class="empty-state">Aún no hay evidencias asociadas.</div>';
+        return;
+      }
+
+      try {
+        const evidencias = await api(`/api/apelaciones/${id}/evidencias`);
+        const container = document.getElementById('listaEvidencias');
+
+        if (!Array.isArray(evidencias) || evidencias.length === 0) {
+          container.innerHTML = '<div class="empty-state">No hay evidencias adjuntas en esta apelación.</div>';
+          return;
+        }
+
+        container.innerHTML = evidencias.map((item) => `
+          <div class="support-item">
+            <strong>${escapeHtml(item.nombre_archivo || 'Evidencia sin nombre')}</strong>
+            <div>${escapeHtml(item.descripcion || 'Sin descripción.')}</div>
+            <small>Tipo: ${escapeHtml(item.tipo_evidencia || 'Documento')} · ${escapeHtml(formatDate(item.fecha_subida))}</small>
+            <div class="actions"><button class="secondary" type="button" data-evidence-id="${escapeHtml(item.id_evidencia)}">Descargar</button></div>
+          </div>
+        `).join('');
+        container.querySelectorAll('[data-evidence-id]').forEach((button) => {
+          button.addEventListener('click', () => descargarEvidencia(button.dataset.evidenceId));
+        });
+      } catch (error) {
+        document.getElementById('listaEvidencias').innerHTML = '<div class="empty-state">No se pudieron cargar las evidencias.</div>';
+      }
+    }
+
+    async function descargarEvidencia(idEvidencia) {
+      try {
+        const response = await fetch(`/api/apelaciones/${state.currentAppealId}/evidencias/${idEvidencia}/archivo`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.detail || 'No se pudo descargar la evidencia.');
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'evidencia-apelacion';
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function solicitarInformacion() {
+      if (!state.currentAppealId) {
+        setAlert('Debe cargar la apelación antes de solicitar información.', 'error');
+        return;
+      }
+
+      try {
+        const data = await api(`/api/apelaciones/${state.currentAppealId}/solicitar-info`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requerimiento: fieldValue('comentariosComite') || 'El comité solicita información adicional para continuar con la revisión de la apelación.',
+          }),
+        });
+
+        if (data) {
+          document.getElementById('comentariosComite').value = data.observaciones || 'El comité solicita información adicional.';
+          renderStatus('INFORMACION_SOLICITADA');
+          setAlert('Se solicitó la información complementaria.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function cancelarApelacion() {
+      if (!state.currentAppealId) {
+        setAlert('Debe cargar la apelación antes de cancelarla.', 'error');
+        return;
+      }
+
+      try {
+        const data = await api(`/api/apelaciones/${state.currentAppealId}/cancelar`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: 'CANCELADA' }),
+        });
+
+        if (data) {
+          renderStatus(data.estado || 'CANCELADA');
+          setAlert('La apelación fue cancelada correctamente.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function resolverApelacion(decision) {
+      if (!state.currentAppealId) {
+        setAlert('Debe cargar la apelación antes de emitir una decisión.', 'error');
+        return;
+      }
+
+      try {
+        const data = await api(`/api/apelaciones/${state.currentAppealId}/resolve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            decision,
+            observaciones: document.getElementById('comentariosComite').value || 'Decisión registrada por el comité.',
+          }),
+        });
+
+        if (data) {
+          renderStatus(data.estado || decision);
+          setAlert(`La apelación fue ${decision.toLowerCase()} correctamente.`, 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    document.getElementById('btnBuscar').addEventListener('click', buscarApelacionPorSolicitud);
+    document.getElementById('btnCrear').addEventListener('click', crearApelacion);
+    document.getElementById('btnGuardar').addEventListener('click', guardarCambios);
+    document.getElementById('btnAdjuntar').addEventListener('click', guardarEvidencia);
+    document.getElementById('btnSolicitarInfo').addEventListener('click', solicitarInformacion);
+    document.getElementById('btnCancelar').addEventListener('click', cancelarApelacion);
+    document.getElementById('btnAprobar').addEventListener('click', () => resolverApelacion('APROBADA'));
+    document.getElementById('btnRechazar').addEventListener('click', () => resolverApelacion('RECHAZADA'));
+    document.getElementById('btnActualizarBandeja').addEventListener('click', cargarBandejaComite);
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    });
+
+    state.role = parseUserRole();
+    configurarAccionesPorRol();
+    cargarBandejaComite();
+    renderStatus('Sin apelación');
+    document.getElementById('metricSolicitud').textContent = '--';
+    document.getElementById('metricRadicado').textContent = '--';
+    document.getElementById('metricFecha').textContent = '--';
+    document.getElementById('btnCrear').disabled = true;
+    document.getElementById('listaEvidencias').innerHTML = '<div class="empty-state">Aún no hay evidencias adjuntas.</div>';
+    const solicitudInicial = new URLSearchParams(window.location.search).get('solicitud');
+    if (solicitudInicial) {
+      document.getElementById('solicitudId').value = solicitudInicial;
+      buscarApelacionPorSolicitud();
+    }
+  </script>
+</body>
+</html>

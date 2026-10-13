@@ -278,7 +278,18 @@
                     })
                 });
 
-                const data = await response.json();
+                const responseBody = await response.text();
+                let data;
+
+                try {
+                    data = responseBody ? JSON.parse(responseBody) : {};
+                } catch {
+                    data = {
+                        detail: response.status >= 500
+                            ? "Error interno del servidor. Intente nuevamente."
+                            : responseBody || "Respuesta no válida del servidor."
+                    };
+                }
 
                 console.log("Respuesta login:", data);
 

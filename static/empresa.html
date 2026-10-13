@@ -23,6 +23,7 @@
     .btn-primary { background: #3BAA01; color: white; }
     .btn-secondary { background: #eef3ee; color: #1f3d12; }
     .btn-danger { background: #e53935; color: white; }
+    .appeal-link { display: inline-block; padding: 6px 10px; border-radius: 6px; background: #edf7e5; color: #246400; text-decoration: none; font-weight: 700; }
     .table-wrap { overflow: auto; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 10px 12px; border-bottom: 1px solid #e8edf2; text-align: left; }
@@ -195,6 +196,7 @@
           '<th>Sedes</th><th>Creada</th><th>Acciones</th></tr></thead><tbody>' +
           datos.map(function (s) {
             const esBorrador = s.estado === "Borrador";
+            const esRechazada = String(s.estado || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === "rechazada";
             return '<tr>' +
               '<td>' + esc(s.numero_radicado || "(borrador)") + '</td>' +
               '<td><span class="chip ' + esc(s.estado) + '">' + esc(s.estado) + '</span></td>' +
@@ -204,6 +206,7 @@
               '<td>' +
                 '<button class="mini sec" data-doc="' + s.id_solicitud + '">Documentos</button> ' +
                 (esBorrador ? '<button class="mini" data-radicar="' + s.id_solicitud + '">Radicar</button> ' : '') +
+                (esRechazada ? '<a class="appeal-link" href="/apelacion?solicitud=' + encodeURIComponent(s.id_solicitud) + '">Apelar</a> ' : '') +
                 '<button class="mini sec" data-pdf="' + s.id_solicitud + '">PDF</button>' +
               '</td></tr>';
           }).join("") + '</tbody></table>';
