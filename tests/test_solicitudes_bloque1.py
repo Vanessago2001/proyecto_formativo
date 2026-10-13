@@ -190,9 +190,8 @@ def test_la_matriz_del_codigo_coincide_con_el_excel():
 
 
 def test_la_matriz_cubre_los_bloques_implementados():
-    """Bloque 1 (SOL-001..010) y Bloque 4 (SOL-031..040)."""
-    esperados = [f"SOL-{n:03d}" for n in range(1, 11)]
-    esperados += [f"SOL-{n:03d}" for n in range(31, 41)]
+    """Bloques 1 a 4: SOL-001 a SOL-040."""
+    esperados = [f"SOL-{n:03d}" for n in range(1, 41)]
     assert sorted(PERMISOS_M5) == sorted(esperados)
 
 
@@ -617,3 +616,38 @@ def test_el_pdf_no_falla_si_faltan_empresa_o_norma():
     texto = _texto_del_pdf(pdf)
     assert "No registrada" in texto
     assert "Sin radicar (borrador)" in texto
+
+
+# ============================================================
+# 5. ESTADOS ANTIGUOS DE LA BASE
+# ============================================================
+# La base tiene solicitudes con estados que no son del ciclo de M5.
+
+ESTADOS_ANTIGUOS = ["APROBADO", "EN_REVISION", "RADICADO"]
+
+
+def test_el_listado_no_falla_con_estados_antiguos(app, cliente, sesion):
+    for estado in ESTADOS_ANTIGUOS:
+        sesion.sembrar(id_empresa=ID_EMPRESA, estado=estado)
+    autenticar(app, "Administrador", id_usuario=uuid.uuid4())
+
+    respuesta = cliente.get("/solicitudes/")
+
+    assert respuesta.status_code == 200
+    assert sorted(s["estado"] for s in respuesta.json()) == sorted(ESTADOS_ANTIGUOS)
+
+
+@pytest.mark.parametrize("estado", ESTADOS_ANTIGUOS)
+def test_una_solicitud_con_estado_antiguo_se_consulta_pero_no_se_modifica(
+    app, cliente, sesion, estado
+):
+    autenticar(app, "Empresa")
+    solicitud = sesion.sembrar(id_empresa=ID_EMPRESA, estado=estado)
+    base = f"/solicitudes/{solicitud['id_solicitud']}"
+
+    assert cliente.get(base).status_code == 200
+    assert cliente.get(base + "/estado").status_code == 200
+    assert cliente.patch(base, json={"numero_sedes": 4}).status_code == 409
+    assert cliente.delete(base).status_code == 409
+    assert cliente.post(base + "/radicar").status_code == 409
+    assert cliente.post(base + "/cancelar", json={"motivo": "Cambio de planes"}).status_code == 409

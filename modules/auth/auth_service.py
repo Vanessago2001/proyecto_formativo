@@ -52,7 +52,7 @@ class AuthService:
         `_a_naive_utc()` antes de compararlas, y Python no deja comparar una
         fecha con zona horaria contra una sin ella.
         """
-        return system_now().astimezone(timezone.utc).replace(tzinfo=None)
+        return system_now_utc_naive()
 
     def _a_naive_utc(self, valor: datetime) -> datetime:
         """

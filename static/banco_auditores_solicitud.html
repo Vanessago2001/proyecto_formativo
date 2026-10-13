@@ -1,0 +1,2147 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8" />
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>
+        CertiSENA | Solicitud de Auditor
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/static/styles.css"
+    />
+
+    <style>
+
+        .app-shell {
+
+            max-width: 1320px;
+
+            margin: 0 auto;
+
+            padding: 28px;
+
+        }
+
+
+        .admin-header {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            margin-bottom: 26px;
+
+        }
+
+
+        .admin-header h2 {
+
+            color: #256d00;
+
+            font-size: 24px;
+
+            margin: 0;
+
+        }
+
+
+        .admin-header p {
+
+            color: #64748b;
+
+            margin-top: 6px;
+
+        }
+
+
+        .profile-button {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            color: #1f2937;
+
+            text-decoration: none;
+
+            font-weight: 600;
+
+        }
+
+
+        .avatar {
+
+            width: 42px;
+
+            height: 42px;
+
+            border-radius: 50%;
+
+            display: grid;
+
+            place-items: center;
+
+            background: #3baa01;
+
+            color: #fff;
+
+        }
+
+
+        .admin-grid {
+
+            display: grid;
+
+            grid-template-columns: 260px minmax(0, 1fr);
+
+            gap: 24px;
+
+        }
+
+
+        .admin-nav {
+
+            background: #fff;
+
+            border: 1px solid #e2e8f0;
+
+            padding: 12px;
+
+            height: max-content;
+
+        }
+
+
+        .admin-nav a {
+
+            display: block;
+
+            color: #334155;
+
+            text-decoration: none;
+
+            padding: 12px;
+
+            border-left: 3px solid transparent;
+
+        }
+
+
+        .admin-nav a.active,
+
+        .admin-nav a:hover {
+
+            background: #f1f8ed;
+
+            color: #256d00;
+
+            border-left-color: #3baa01;
+
+        }
+
+
+        .surface {
+
+            background: #fff;
+
+            border: 1px solid #e2e8f0;
+
+            padding: 24px;
+
+            margin-bottom: 20px;
+
+        }
+
+
+        .surface h3 {
+
+            color: #1f2937;
+
+            margin: 0 0 18px;
+
+            font-size: 18px;
+
+        }
+
+
+        .section-title {
+
+            color: #256d00;
+
+            font-size: 17px;
+
+            margin: 0 0 18px;
+
+            padding-bottom: 10px;
+
+            border-bottom: 1px solid #e2e8f0;
+
+        }
+
+
+        .back-button {
+
+            display: inline-block;
+
+            margin-bottom: 20px;
+
+            padding: 10px 16px;
+
+            border-radius: 4px;
+
+            border: 1px solid #cbd5e1;
+
+            background: #fff;
+
+            color: #334155;
+
+            text-decoration: none;
+
+            font-weight: 700;
+
+        }
+
+
+        .back-button:hover {
+
+            background: #f8fafc;
+
+        }
+
+
+        .status-badge {
+
+            display: inline-block;
+
+            padding: 6px 10px;
+
+            border-radius: 4px;
+
+            font-size: 12px;
+
+            font-weight: 700;
+
+        }
+
+
+        .status-enviado {
+
+            background: #fff7ed;
+
+            color: #c2410c;
+
+        }
+
+
+        .status-revision {
+
+            background: #eff6ff;
+
+            color: #1d4ed8;
+
+        }
+
+
+        .status-correcciones {
+
+            background: #fff7ed;
+
+            color: #b45309;
+
+        }
+
+
+        .status-aprobado {
+
+            background: #e8f5e2;
+
+            color: #256d00;
+
+        }
+
+
+        .status-rechazado {
+
+            background: #feecec;
+
+            color: #b42318;
+
+        }
+
+
+        .status-default {
+
+            background: #f1f5f9;
+
+            color: #475569;
+
+        }
+
+
+        .data-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, minmax(0, 1fr));
+
+            gap: 16px;
+
+        }
+
+
+        .data-item {
+
+            padding: 12px;
+
+            background: #f8fafc;
+
+            border: 1px solid #e2e8f0;
+
+            border-radius: 4px;
+
+        }
+
+
+        .data-label {
+
+            display: block;
+
+            font-size: 12px;
+
+            font-weight: 700;
+
+            color: #64748b;
+
+            margin-bottom: 5px;
+
+        }
+
+
+        .data-value {
+
+            color: #1f2937;
+
+            word-break: break-word;
+
+        }
+
+
+        .full-width {
+
+            grid-column: 1 / -1;
+
+        }
+
+
+        .empty {
+
+            color: #64748b;
+
+            padding: 15px 0;
+
+        }
+
+
+        .record-table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            min-width: 700px;
+
+        }
+
+
+        .table-wrap {
+
+            overflow-x: auto;
+
+        }
+
+
+        .record-table th,
+
+        .record-table td {
+
+            padding: 10px;
+
+            text-align: left;
+
+            border-bottom: 1px solid #e2e8f0;
+
+            font-size: 14px;
+
+            vertical-align: top;
+
+        }
+
+
+        .record-table th {
+
+            background: #f8fafc;
+
+            color: #475569;
+
+        }
+
+
+        .document-link {
+
+            color: #256d00;
+
+            font-weight: 700;
+
+            text-decoration: none;
+
+        }
+
+
+        .document-link:hover {
+
+            text-decoration: underline;
+
+        }
+
+
+        .message {
+
+            padding: 14px;
+
+            border-radius: 4px;
+
+            margin-bottom: 20px;
+
+        }
+
+
+        .message.error {
+
+            background: #feecec;
+
+            color: #b42318;
+
+        }
+
+
+        .loading {
+
+            text-align: center;
+
+            padding: 40px;
+
+            color: #64748b;
+
+        }
+
+
+        .hidden {
+
+            display: none;
+
+        }
+
+
+        @media (max-width: 900px) {
+
+            .admin-grid {
+
+                grid-template-columns: 1fr;
+
+            }
+
+        }
+
+
+        @media (max-width: 700px) {
+
+            .data-grid {
+
+                grid-template-columns: 1fr;
+
+            }
+
+            .app-shell {
+
+                padding: 18px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<header class="login-header">
+
+    <div class="header-content">
+
+        <div class="header-left">
+
+            <img
+                src="/static/sena_blanco.png"
+                alt="Logo SENA"
+                class="sena-blanco"
+            />
+
+            <div>
+
+                <h1>
+                    CertiSENA
+                </h1>
+
+                <p class="subtitle">
+                    Gestión de certificados
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div>
+
+            <a
+                class="profile-button"
+                href="/profile"
+            >
+
+                <span>
+                    Mi perfil
+                </span>
+
+                <span
+                    class="avatar"
+                    id="headerAvatar"
+                >
+                    U
+                </span>
+
+            </a>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+<main class="app-shell">
+
+
+    <div class="admin-header">
+
+        <div>
+
+            <h2>
+                Detalle de solicitud de auditor
+            </h2>
+
+            <p>
+                Consulta completa de la información registrada.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="admin-grid">
+
+
+        <!-- =================================================
+             MENÚ
+        ================================================== -->
+
+        <nav class="admin-nav">
+
+            <a href="/dashboard">
+                Resumen
+            </a>
+
+            <a href="/empresas">
+                Empresas registradas
+            </a>
+
+            <a href="#usuarios">
+                Gestionar usuarios
+            </a>
+
+            <a href="/asignacion-auditores">
+                Asignación de auditores
+            </a>
+
+            <a
+                class="active"
+                href="/banco-auditores"
+            >
+                Banco de auditores
+            </a>
+
+            <a href="/comite">
+                Ir al Comité de certificación
+            </a>
+
+            <a href="/profile">
+                Mi perfil
+            </a>
+
+            <a
+                href="/dashboard"
+                id="logoutLink"
+            >
+                Cerrar sesión
+            </a>
+
+        </nav>
+
+
+        <!-- =================================================
+             CONTENIDO
+        ================================================== -->
+
+        <div>
+
+
+            <a
+                href="/banco-auditores"
+                class="back-button"
+            >
+                ← Volver al banco de auditores
+            </a>
+
+
+            <div
+                id="errorMessage"
+                class="message error hidden"
+            ></div>
+
+
+            <div
+                id="loading"
+                class="loading"
+            >
+                Cargando información de la solicitud...
+            </div>
+
+
+            <div
+                id="detailContent"
+                class="hidden"
+            >
+
+
+                <!-- =========================================
+                     DATOS DE LA SOLICITUD
+                ========================================== -->
+
+                <section class="surface">
+
+                    <h3 class="section-title">
+                        Información de la solicitud
+                    </h3>
+
+
+                    <div class="data-grid">
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Estado de la postulación
+                            </span>
+
+                            <span
+                                id="estadoPostulacion"
+                            ></span>
+
+                        </div>
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Fecha de postulación
+                            </span>
+
+                            <span
+                                id="fechaPostulacion"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Fecha de revisión
+                            </span>
+
+                            <span
+                                id="fechaRevision"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Rol
+                            </span>
+
+                            <span
+                                id="rol"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                        <div class="data-item full-width">
+
+                            <span class="data-label">
+                                Observaciones técnicas
+                            </span>
+
+                            <span
+                                id="observaciones"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+                </section>
+
+
+                <!-- =========================================
+                     DATOS PERSONALES
+                ========================================== -->
+
+                <section class="surface">
+
+                    <h3 class="section-title">
+                        Datos personales
+                    </h3>
+
+
+                    <div class="data-grid">
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Nombre completo
+                            </span>
+
+                            <span
+                                id="nombre"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Correo electrónico
+                            </span>
+
+                            <span
+                                id="correo"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Tipo de documento
+                            </span>
+
+                            <span
+                                id="tipoDoc"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Número de documento
+                            </span>
+
+                            <span
+                                id="numDoc"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Estado del usuario
+                            </span>
+
+                            <span
+                                id="estadoUsuario"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                        <div class="data-item">
+
+                            <span class="data-label">
+                                Estado como auditor
+                            </span>
+
+                            <span
+                                id="estadoAuditor"
+                                class="data-value"
+                            >
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+                </section>
+
+
+                <!-- =========================================
+                     PERFIL
+                ========================================== -->
+
+                <section class="surface">
+
+                    <h3 class="section-title">
+                        Perfil del auditor
+                    </h3>
+
+
+                    <div
+                        id="perfilContainer"
+                    ></div>
+
+                </section>
+
+
+                <!-- =========================================
+                     COMPETENCIAS
+                ========================================== -->
+
+                <section class="surface">
+
+                    <h3 class="section-title">
+                        Competencias
+                    </h3>
+
+
+                    <div
+                        id="competenciasContainer"
+                    ></div>
+
+                </section>
+
+
+                <!-- =========================================
+                     CONFLICTOS
+                ========================================== -->
+
+                <section class="surface">
+
+                    <h3 class="section-title">
+                        Conflictos de interés
+                    </h3>
+
+
+                    <div
+                        id="conflictosContainer"
+                    ></div>
+
+                </section>
+
+
+                <!-- =========================================
+                     DOCUMENTOS
+                ========================================== -->
+
+                <section class="surface">
+
+                    <h3 class="section-title">
+                        Documentos adjuntos
+                    </h3>
+
+
+                    <div
+                        id="documentosContainer"
+                    ></div>
+
+                </section>
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+</main>
+
+
+<script>
+
+    /* =====================================================
+       TOKEN
+    ====================================================== */
+
+    function tokenPayload() {
+
+        try {
+
+            const rawToken =
+                localStorage.getItem(
+                    "access_token"
+                );
+
+
+            if (!rawToken) {
+
+                return null;
+
+            }
+
+
+            return JSON.parse(
+
+                atob(
+
+                    rawToken
+                        .split(".")[1]
+                        .replace(/-/g, "+")
+                        .replace(/_/g, "/")
+
+                )
+
+            );
+
+        } catch (_) {
+
+            return null;
+
+        }
+
+    }
+
+
+    const token =
+        localStorage.getItem(
+            "access_token"
+        );
+
+
+    const user =
+        tokenPayload();
+
+
+    if (!token || !user) {
+
+        location.href =
+            "/login";
+
+    }
+
+
+    const isAdmin =
+        user &&
+        user.role_name ===
+        "Administrador";
+
+
+    if (!isAdmin) {
+
+        location.href =
+            "/dashboard";
+
+    }
+
+
+    document
+        .getElementById(
+            "headerAvatar"
+        )
+        .textContent =
+        (
+            user?.sub ||
+            "U"
+        )
+            .charAt(0)
+            .toUpperCase();
+
+
+    /* =====================================================
+       HEADERS
+    ====================================================== */
+
+    function headers() {
+
+        return {
+
+            "Accept":
+                "application/json",
+
+            "Authorization":
+                "Bearer " + token
+
+        };
+
+    }
+
+
+    /* =====================================================
+       ESCAPE HTML
+    ====================================================== */
+
+    function escapeHtml(value) {
+
+        if (
+            value === null ||
+            value === undefined
+        ) {
+
+            return "";
+
+        }
+
+
+        return String(value)
+
+            .replaceAll(
+                "&",
+                "&amp;"
+            )
+
+            .replaceAll(
+                "<",
+                "&lt;"
+            )
+
+            .replaceAll(
+                ">",
+                "&gt;"
+            )
+
+            .replaceAll(
+                '"',
+                "&quot;"
+            )
+
+            .replaceAll(
+                "'",
+                "&#039;"
+            );
+
+    }
+
+
+    /* =====================================================
+       FORMATO FECHA
+    ====================================================== */
+
+    function formatDate(value) {
+
+        if (!value) {
+
+            return "-";
+
+        }
+
+
+        const date =
+            new Date(value);
+
+
+        if (
+            Number.isNaN(
+                date.getTime()
+            )
+        ) {
+
+            return escapeHtml(
+                value
+            );
+
+        }
+
+
+        return date.toLocaleString(
+            "es-CO",
+            {
+
+                year: "numeric",
+
+                month: "2-digit",
+
+                day: "2-digit",
+
+                hour: "2-digit",
+
+                minute: "2-digit"
+
+            }
+        );
+
+    }
+
+
+    /* =====================================================
+       ESTADO
+    ====================================================== */
+
+    function statusClass(
+        estado
+    ) {
+
+        switch (estado) {
+
+            case "Enviado":
+
+                return "status-enviado";
+
+
+            case "En Revisión":
+
+                return "status-revision";
+
+
+            case "Correcciones":
+
+                return "status-correcciones";
+
+
+            case "Aprobado":
+
+                return "status-aprobado";
+
+
+            case "Rechazado":
+
+                return "status-rechazado";
+
+
+            default:
+
+                return "status-default";
+
+        }
+
+    }
+
+
+    /* =====================================================
+       TEXTO SEGURO
+    ====================================================== */
+
+    function valueOrDash(
+        value
+    ) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            value === ""
+        ) {
+
+            return "-";
+
+        }
+
+
+        return escapeHtml(
+            value
+        );
+
+    }
+
+
+    /* =====================================================
+       RENDER PERFIL
+    ====================================================== */
+
+    function renderPerfil(
+        perfil
+    ) {
+
+        const container =
+            document.getElementById(
+                "perfilContainer"
+            );
+
+
+        if (!perfil) {
+
+            container.innerHTML = `
+
+                <p class="empty">
+                    No hay información de perfil registrada.
+                </p>
+
+            `;
+
+            return;
+
+        }
+
+
+        container.innerHTML = `
+
+            <div class="data-grid">
+
+
+                <div class="data-item">
+
+                    <span class="data-label">
+                        Ciudad de residencia
+                    </span>
+
+                    <span class="data-value">
+                        ${valueOrDash(
+                            perfil.ciudad_residencia
+                        )}
+                    </span>
+
+                </div>
+
+
+                <div class="data-item">
+
+                    <span class="data-label">
+                        Departamento
+                    </span>
+
+                    <span class="data-value">
+                        ${valueOrDash(
+                            perfil.departamento_residencia
+                        )}
+                    </span>
+
+                </div>
+
+
+                <div class="data-item">
+
+                    <span class="data-label">
+                        Modalidad preferida
+                    </span>
+
+                    <span class="data-value">
+                        ${valueOrDash(
+                            perfil.modalidad_preferida
+                        )}
+                    </span>
+
+                </div>
+
+
+                <div class="data-item">
+
+                    <span class="data-label">
+                        Calificación promedio
+                    </span>
+
+                    <span class="data-value">
+                        ${valueOrDash(
+                            perfil.calificacion_promedio
+                        )}
+                    </span>
+
+                </div>
+
+
+                <div class="data-item">
+
+                    <span class="data-label">
+                        Fotografía
+                    </span>
+
+                    <span class="data-value">
+                        ${
+                            perfil.foto_url
+
+                                ? `
+                                    <a
+                                        href="${escapeHtml(
+                                            perfil.foto_url
+                                        )}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="document-link"
+                                    >
+                                        Ver fotografía
+                                    </a>
+                                `
+
+                                : "-"
+                        }
+                    </span>
+
+                </div>
+
+
+                <div class="data-item full-width">
+
+                    <span class="data-label">
+                        Resumen profesional
+                    </span>
+
+                    <span class="data-value">
+                        ${valueOrDash(
+                            perfil.resumen_profesional
+                        )}
+                    </span>
+
+                </div>
+
+
+            </div>
+
+        `;
+
+    }
+
+
+    /* =====================================================
+       RENDER COMPETENCIAS
+    ====================================================== */
+
+    function renderCompetencias(
+        competencias
+    ) {
+
+        const container =
+            document.getElementById(
+                "competenciasContainer"
+            );
+
+
+        if (
+            !Array.isArray(
+                competencias
+            ) ||
+            !competencias.length
+        ) {
+
+            container.innerHTML = `
+
+                <p class="empty">
+                    No hay competencias registradas.
+                </p>
+
+            `;
+
+            return;
+
+        }
+
+
+        let rows = "";
+
+
+        competencias.forEach(
+            (item) => {
+
+                rows += `
+
+                    <tr>
+
+                        <td>
+                            ${valueOrDash(
+                                item.tipo_competencia
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.codigo_sector_iaf
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.titulo_institucion
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.descripcion
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.fecha_inicio
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.fecha_fin
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.estado_validacion
+                            )}
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+
+        container.innerHTML = `
+
+            <div class="table-wrap">
+
+                <table class="record-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Tipo
+                            </th>
+
+                            <th>
+                                Sector IAF
+                            </th>
+
+                            <th>
+                                Institución
+                            </th>
+
+                            <th>
+                                Descripción
+                            </th>
+
+                            <th>
+                                Fecha inicio
+                            </th>
+
+                            <th>
+                                Fecha fin
+                            </th>
+
+                            <th>
+                                Validación
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        ${rows}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        `;
+
+    }
+
+
+    /* =====================================================
+       RENDER CONFLICTOS
+    ====================================================== */
+
+    function renderConflictos(
+        conflictos
+    ) {
+
+        const container =
+            document.getElementById(
+                "conflictosContainer"
+            );
+
+
+        if (
+            !Array.isArray(
+                conflictos
+            ) ||
+            !conflictos.length
+        ) {
+
+            container.innerHTML = `
+
+                <p class="empty">
+                    No hay conflictos de interés registrados.
+                </p>
+
+            `;
+
+            return;
+
+        }
+
+
+        let rows = "";
+
+
+        conflictos.forEach(
+            (item) => {
+
+                rows += `
+
+                    <tr>
+
+                        <td>
+                            ${valueOrDash(
+                                item.id_empresa
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.tipo_conflicto
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.descripcion
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.bloquea_asignacion
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.fecha_declaracion
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.estado
+                            )}
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+
+        container.innerHTML = `
+
+            <div class="table-wrap">
+
+                <table class="record-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Empresa
+                            </th>
+
+                            <th>
+                                Tipo de conflicto
+                            </th>
+
+                            <th>
+                                Descripción
+                            </th>
+
+                            <th>
+                                Bloquea asignación
+                            </th>
+
+                            <th>
+                                Fecha declaración
+                            </th>
+
+                            <th>
+                                Estado
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        ${rows}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        `;
+
+    }
+
+
+    /* =====================================================
+       RENDER DOCUMENTOS
+    ====================================================== */
+
+    function renderDocumentos(
+        documentos
+    ) {
+
+        const container =
+            document.getElementById(
+                "documentosContainer"
+            );
+
+
+        if (
+            !Array.isArray(
+                documentos
+            ) ||
+            !documentos.length
+        ) {
+
+            container.innerHTML = `
+
+                <p class="empty">
+                    No hay documentos adjuntos.
+                </p>
+
+            `;
+
+            return;
+
+        }
+
+
+        let rows = "";
+
+
+        documentos.forEach(
+            (item) => {
+
+                const archivo =
+                    item.url_archivo;
+
+
+                rows += `
+
+                    <tr>
+
+                        <td>
+                            ${valueOrDash(
+                                item.nombre_archivo
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.tipo_documento
+                            )}
+                        </td>
+
+                        <td>
+                            ${formatDate(
+                                item.fecha_subida
+                            )}
+                        </td>
+
+                        <td>
+                            ${valueOrDash(
+                                item.estado_revision
+                            )}
+                        </td>
+
+                        <td>
+
+                            ${
+                                archivo
+
+                                    ? `
+                                        <a
+                                            href="${escapeHtml(
+                                                archivo
+                                            )}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="document-link"
+                                        >
+                                            Ver documento
+                                        </a>
+                                    `
+
+                                    : "-"
+                            }
+
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+
+        container.innerHTML = `
+
+            <div class="table-wrap">
+
+                <table class="record-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Archivo
+                            </th>
+
+                            <th>
+                                Tipo
+                            </th>
+
+                            <th>
+                                Fecha subida
+                            </th>
+
+                            <th>
+                                Estado revisión
+                            </th>
+
+                            <th>
+                                Documento
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        ${rows}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        `;
+
+    }
+
+
+    /* =====================================================
+       CARGAR SOLICITUD
+    ====================================================== */
+
+    async function cargarSolicitud() {
+
+        const pathParts =
+            location.pathname
+                .split("/")
+                .filter(Boolean);
+
+
+        const idPostulacion =
+            pathParts[
+                pathParts.length - 1
+            ];
+
+
+        if (!idPostulacion) {
+
+            mostrarError(
+                "No se recibió el identificador de la solicitud."
+            );
+
+            return;
+
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+
+                    "/administrar-auditores/solicitudes/" +
+                    encodeURIComponent(
+                        idPostulacion
+                    ),
+
+                    {
+
+                        method: "GET",
+
+                        headers:
+                            headers()
+
+                    }
+
+                );
+
+
+            const data =
+                await response
+                    .json()
+                    .catch(
+                        () => null
+                    );
+
+
+            if (
+                response.status ===
+                    401 ||
+                response.status ===
+                    403
+            ) {
+
+                localStorage
+                    .removeItem(
+                        "access_token"
+                    );
+
+                location.href =
+                    "/login";
+
+                return;
+
+            }
+
+
+            if (!response.ok) {
+
+                throw new Error(
+
+                    data?.detail ||
+
+                    "No fue posible cargar la solicitud."
+
+                );
+
+            }
+
+
+            renderSolicitud(
+                data
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "Error cargando solicitud:",
+                error
+            );
+
+
+            mostrarError(
+                error.message
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       RENDER SOLICITUD
+    ====================================================== */
+
+    function renderSolicitud(
+        data
+    ) {
+
+        document
+            .getElementById(
+                "loading"
+            )
+            .classList.add(
+                "hidden"
+            );
+
+
+        document
+            .getElementById(
+                "detailContent"
+            )
+            .classList.remove(
+                "hidden"
+            );
+
+
+        const estado =
+            data.estado_postulacion ||
+            "";
+
+
+        document
+            .getElementById(
+                "estadoPostulacion"
+            )
+            .innerHTML = `
+
+                <span
+                    class="status-badge ${statusClass(
+                        estado
+                    )}"
+                >
+                    ${escapeHtml(
+                        estado || "-"
+                    )}
+                </span>
+
+            `;
+
+
+        document
+            .getElementById(
+                "fechaPostulacion"
+            )
+            .textContent =
+            formatDate(
+                data.fecha_postulacion
+            );
+
+
+        document
+            .getElementById(
+                "fechaRevision"
+            )
+            .textContent =
+            formatDate(
+                data.fecha_revision
+            );
+
+
+        document
+            .getElementById(
+                "rol"
+            )
+            .textContent =
+            data.rol || "-";
+
+
+        document
+            .getElementById(
+                "observaciones"
+            )
+            .textContent =
+            data.observaciones_tecnicas ||
+            "-";
+
+
+        document
+            .getElementById(
+                "nombre"
+            )
+            .textContent =
+            data.nombre || "-";
+
+
+        document
+            .getElementById(
+                "correo"
+            )
+            .textContent =
+            data.correo || "-";
+
+
+        document
+            .getElementById(
+                "tipoDoc"
+            )
+            .textContent =
+            data.tipo_doc || "-";
+
+
+        document
+            .getElementById(
+                "numDoc"
+            )
+            .textContent =
+            data.num_doc || "-";
+
+
+        document
+            .getElementById(
+                "estadoUsuario"
+            )
+            .textContent =
+            data.estado_usuario || "-";
+
+
+        document
+            .getElementById(
+                "estadoAuditor"
+            )
+            .textContent =
+            data.estado_auditor || "-";
+
+
+        renderPerfil(
+            data.perfil
+        );
+
+
+        renderCompetencias(
+            data.competencias
+        );
+
+
+        renderConflictos(
+            data.conflictos
+        );
+
+
+        renderDocumentos(
+            data.documentos
+        );
+
+    }
+
+
+    /* =====================================================
+       ERROR
+    ====================================================== */
+
+    function mostrarError(
+        mensaje
+    ) {
+
+        document
+            .getElementById(
+                "loading"
+            )
+            .classList.add(
+                "hidden"
+            );
+
+
+        const element =
+            document.getElementById(
+                "errorMessage"
+            );
+
+
+        element.textContent =
+            mensaje;
+
+
+        element.classList.remove(
+            "hidden"
+        );
+
+    }
+
+
+    /* =====================================================
+       LOGOUT
+    ====================================================== */
+
+    document
+        .getElementById(
+            "logoutLink"
+        )
+        .addEventListener(
+            "click",
+            (event) => {
+
+                event.preventDefault();
+
+
+                localStorage.clear();
+
+
+                location.href =
+                    "/login";
+
+            }
+        );
+
+
+    /* =====================================================
+       INICIO
+    ====================================================== */
+
+    if (isAdmin) {
+
+        cargarSolicitud();
+
+    }
+
+</script>
+
+
+<script src="/static/session.js"></script>
+
+</body>
+
+</html>

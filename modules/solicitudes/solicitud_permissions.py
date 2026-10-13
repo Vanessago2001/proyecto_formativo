@@ -3,6 +3,8 @@ M5 — GESTIÓN DE SOLICITUDES
 Catálogo de permisos y matriz de roles.
 
 Bloque 1: SOL-001 a SOL-010 (ciclo de vida).
+Bloque 2: SOL-011 a SOL-020 (información general).
+Bloque 3: SOL-021 a SOL-030 (sedes de la solicitud).
 Bloque 4: SOL-031 a SOL-040 (documentos adjuntos).
 
 La fuente de verdad es la hoja "M5 — GESTIÓN DE SOLICITUDES" del archivo
@@ -153,7 +155,7 @@ def columna_de_rol(nombre_rol: str | None) -> str | None:
 
 
 # ============================================================
-# MATRIZ DE PERMISOS — BLOQUES 1 Y 4
+# MATRIZ DE PERMISOS — BLOQUES 1 A 4
 # ============================================================
 # Transcripción literal de la hoja de cálculo.
 # Cada fila: código -> (descripción, valores en el orden de COLUMNAS_MATRIZ)
@@ -175,6 +177,32 @@ PERMISOS_M5: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
     "SOL-008": ("Duplicar solicitud",                 (V,  F,  F,  V,  F,  F,  F,  F)),
     "SOL-009": ("Cancelar solicitud antes de revisión",(V, F,  F,  V,  F,  F,  F,  F)),
     "SOL-010": ("Consultar estado de solicitud",      (V,  V,  V,  V,  V,  V,  V,  F)),
+
+    # ---- BLOQUE 2: información general (SOL-011 a SOL-020) ----
+    #                                          SUPERADM ADM AUX EMP AUD COM APR PUB
+    "SOL-011": ("Registrar norma ISO solicitada",     (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-012": ("Editar norma ISO",                   (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-013": ("Registrar alcance técnico",          (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-014": ("Editar alcance",                     (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-015": ("Registrar procesos clave",           (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-016": ("Editar procesos",                    (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-017": ("Registrar número de empleados",      (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-018": ("Editar número de empleados",         (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-019": ("Registrar número de sedes",          (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-020": ("Consultar información general",      (V,  V,  V,  V,  V,  V,  V,  F)),
+
+    # ---- BLOQUE 3: sedes de la solicitud (SOL-021 a SOL-030) ----
+    #                                          SUPERADM ADM AUX EMP AUD COM APR PUB
+    "SOL-021": ("Agregar sede a la solicitud",        (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-022": ("Editar sede en solicitud",           (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-023": ("Eliminar sede de la solicitud",      (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-024": ("Registrar dirección de sede",        (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-025": ("Editar dirección de sede",           (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-026": ("Registrar ciudad de la sede",        (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-027": ("Registrar departamento",             (V,  F,  F,  V,  F,  F,  F,  F)),
+    "SOL-028": ("Consultar sedes añadidas",           (V,  V,  V,  V,  V,  V,  V,  F)),
+    "SOL-029": ("Validar sedes (Administración)",     (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-030": ("Exportar sedes a Excel",             (V,  V,  V,  V,  F,  F,  F,  F)),
 
     # ---- BLOQUE 4: documentos adjuntos (SOL-031 a SOL-040) ----
     #                                          SUPERADM ADM AUX EMP AUD COM APR PUB
@@ -217,6 +245,33 @@ def tiene_permiso(codigo: str, nombre_rol: str | None) -> bool:
     return True
 
 
+def _permiso_denegado(codigo: str, nombre_rol: str | None) -> HTTPException:
+    """403 que indica exactamente qué permiso faltó y para qué rol."""
+    descripcion = PERMISOS_M5[codigo][0]
+    return HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=(
+            f"Permiso {codigo} ({descripcion}) denegado "
+            f"para el rol '{nombre_rol or 'sin rol'}'."
+        ),
+    )
+
+
+def exigir_permisos(usuario: dict, *codigos: str) -> None:
+    """
+    Verifica permisos adicionales desde dentro de una operación.
+
+    `requiere_permiso` protege cada endpoint con un único código, pero algunas
+    acciones ejecutan varios permisos de la hoja a la vez: agregar una sede
+    nueva (SOL-021) también registra su dirección (SOL-024) y su ciudad
+    (SOL-026).
+    """
+    nombre_rol = usuario.get("role_name")
+    for codigo in codigos:
+        if not tiene_permiso(codigo, nombre_rol):
+            raise _permiso_denegado(codigo, nombre_rol)
+
+
 def requiere_permiso(codigo: str):
     """
     Fábrica de dependencias de FastAPI que protege un endpoint con un código
@@ -234,14 +289,7 @@ def requiere_permiso(codigo: str):
         nombre_rol = current_user.get("role_name")
 
         if not tiene_permiso(codigo, nombre_rol):
-            descripcion = PERMISOS_M5[codigo][0]
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=(
-                    f"Permiso {codigo} ({descripcion}) denegado "
-                    f"para el rol '{nombre_rol or 'sin rol'}'."
-                ),
-            )
+            raise _permiso_denegado(codigo, nombre_rol)
 
         # Se adjunta el nivel para que el servicio sepa si la acción queda
         # pendiente de aprobación (REQ) o se aplica de inmediato (V / SA).

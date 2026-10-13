@@ -1,0 +1,3427 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>CertiSENA | Asignación de Auditores</title>
+
+  <link rel="stylesheet" href="/static/styles.css" />
+
+  <style>
+    /* =========================================================
+       BASE
+    ========================================================= */
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f4f7f3;
+      color: #263238;
+    }
+
+    .app-shell {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    /* =========================================================
+       HEADER
+    ========================================================= */
+
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 26px;
+    }
+
+    .header-title h2 {
+      margin: 0;
+      color: #256d00;
+      font-size: 24px;
+    }
+
+    .header-title p {
+      margin: 6px 0 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .profile-button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #1f2937;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #3baa01;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    /* =========================================================
+       GRID
+    ========================================================= */
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* =========================================================
+       SIDEBAR
+    ========================================================= */
+
+    .admin-nav {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      height: max-content;
+    }
+
+    .admin-nav h3 {
+      margin: 7px 10px 13px;
+      color: #64748b;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .admin-nav a {
+      display: block;
+      color: #334155;
+      text-decoration: none;
+      padding: 11px 12px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      font-size: 14px;
+      transition: .2s ease;
+    }
+
+    .admin-nav a:hover {
+      background: #f1f8ed;
+      color: #256d00;
+    }
+
+    .admin-nav a.active {
+      background: #3baa01;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .logout-link {
+      margin-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 15px !important;
+      color: #b42318 !important;
+    }
+
+    .logout-link:hover {
+      background: #fff1f0 !important;
+      color: #9f1d16 !important;
+    }
+
+    /* =========================================================
+       SURFACE
+    ========================================================= */
+
+    .surface {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .page-title h3 {
+      margin: 0 0 6px;
+      color: #1f2937;
+      font-size: 21px;
+    }
+
+    .page-title p {
+      margin: 0;
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* =========================================================
+       MESSAGE
+    ========================================================= */
+
+    .message {
+      display: none;
+      margin: 18px 0;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.success {
+      background: #edf8e9;
+      border: 1px solid #b8dfaa;
+      color: #256d00;
+    }
+
+    .message.error {
+      background: #fff1f0;
+      border: 1px solid #efb5b1;
+      color: #a5261e;
+    }
+
+    .message.info {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    /* =========================================================
+       SECTION
+    ========================================================= */
+
+    .section-title {
+      margin: 26px 0 14px;
+      color: #1f2937;
+      font-size: 17px;
+    }
+
+    /* =========================================================
+       FORM
+    ========================================================= */
+
+    .assignment-form {
+      background: #fbfdf9;
+      border: 1px solid #dbe7d4;
+      border-radius: 10px;
+      padding: 18px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .form-group label {
+      margin-bottom: 6px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      height: 42px;
+      padding: 0 11px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      background: #fff;
+      color: #263238;
+      font: inherit;
+      outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: #3baa01;
+      box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+    }
+
+    .form-group input:disabled,
+    .form-group select:disabled {
+      background: #f1f5f9;
+      cursor: not-allowed;
+    }
+
+    .form-help {
+      margin-top: 5px;
+      color: #7b847e;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .primary-action,
+    .secondary-action {
+      border: 0;
+      border-radius: 7px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .primary-action {
+      background: #3baa01;
+      color: #fff;
+    }
+
+    .primary-action:hover {
+      background: #2d8700;
+    }
+
+    .primary-action:disabled {
+      background: #9bbf8c;
+      cursor: not-allowed;
+    }
+
+    .secondary-action {
+      background: #e9eeea;
+      color: #3f4942;
+    }
+
+    .secondary-action:hover {
+      background: #dce4de;
+    }
+
+    /* =========================================================
+       SOLICITUD INFO
+    ========================================================= */
+
+    .request-info {
+      display: none;
+      margin-top: 16px;
+      padding: 15px;
+      border: 1px solid #dbe7d4;
+      border-radius: 9px;
+      background: #f8fbf6;
+    }
+
+    .request-info.show {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .info-item {
+      min-width: 0;
+    }
+
+    .info-label {
+      display: block;
+      margin-bottom: 3px;
+      color: #7b847e;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    .info-value {
+      color: #263238;
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    /* =========================================================
+       VALIDATION BOX
+    ========================================================= */
+
+    .validation-box {
+      display: none;
+      margin-top: 16px;
+      padding: 15px;
+      border-radius: 9px;
+      border: 1px solid #dbe7d4;
+      background: #fff;
+    }
+
+    .validation-box.show {
+      display: block;
+    }
+
+    .validation-title {
+      margin-bottom: 11px;
+      color: #303a34;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .validation-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .validation-item {
+      padding: 9px 10px;
+      border-radius: 7px;
+      background: #f8faf8;
+      font-size: 12px;
+    }
+
+    .validation-item.ok {
+      color: #256d00;
+      background: #edf8e9;
+    }
+
+    .validation-item.fail {
+      color: #a5261e;
+      background: #fff1f0;
+    }
+
+    .validation-item.neutral {
+      color: #64748b;
+    }
+
+    /* =========================================================
+       TABLE
+    ========================================================= */
+
+    .table-section {
+      margin-top: 28px;
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 13px;
+    }
+
+    .table-header h3 {
+      margin: 0;
+      color: #1f2937;
+      font-size: 17px;
+    }
+
+    .table-counter {
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+
+    thead {
+      background: #f8fafc;
+    }
+
+    th {
+      padding: 12px 11px;
+      text-align: left;
+      color: #475569;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    td {
+      padding: 12px 11px;
+      color: #374151;
+      border-bottom: 1px solid #edf0ed;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover {
+      background: #fafcf9;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    /* =========================================================
+       STATUS
+    ========================================================= */
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status.active,
+    .status.assigned {
+      background: #e7f6df;
+      color: #2d750b;
+    }
+
+    .status.pending {
+      background: #fff5d8;
+      color: #896500;
+    }
+
+    .status.inactive {
+      background: #f0f1f0;
+      color: #68706b;
+    }
+
+    /* =========================================================
+       ACTIONS
+    ========================================================= */
+
+    .actions {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      border: 0;
+      border-radius: 6px;
+      padding: 6px 9px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .action-view {
+      background: #e9f4e5;
+      color: #256d00;
+    }
+
+    .action-view:hover {
+      background: #dcefd6;
+    }
+
+    /* =========================================================
+       EMPTY / LOADING
+    ========================================================= */
+
+    .empty-state {
+      padding: 35px 20px;
+      text-align: center;
+      color: #778078;
+    }
+
+    .empty-state strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #465048;
+    }
+
+    .loading {
+      padding: 25px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    /* =========================================================
+       AUDITOR CARDS
+    ========================================================= */
+
+    .auditors-section {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .auditors-section.show {
+      display: block;
+    }
+
+    .auditors-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .auditors-header h4 {
+      margin: 0;
+      color: #303a34;
+      font-size: 15px;
+    }
+
+    .auditors-header span {
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .auditors-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .auditor-card {
+      border: 1px solid #e1e8e2;
+      border-radius: 9px;
+      padding: 13px;
+      background: #fff;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .auditor-card:hover {
+      border-color: #9bcf89;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, .05);
+    }
+
+    .auditor-card.selected {
+      border-color: #3baa01;
+      background: #f7fcf4;
+      box-shadow: 0 0 0 2px rgba(59, 170, 1, .10);
+    }
+
+    .auditor-name {
+      color: #263238;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .auditor-email {
+      margin-top: 3px;
+      color: #64748b;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .auditor-checks {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-top: 9px;
+    }
+
+    .check {
+      padding: 4px 7px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .check.ok {
+      background: #e7f6df;
+      color: #2d750b;
+    }
+
+    .check.fail {
+      background: #fff0ef;
+      color: #a5261e;
+    }
+
+    .no-auditors {
+      padding: 25px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 9px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    /* =========================================================
+       MODAL
+    ========================================================= */
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(20, 30, 23, .48);
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 15px 45px rgba(0, 0, 0, .20);
+    }
+
+    .modal h3 {
+      margin: 0 0 8px;
+      color: #256d00;
+      font-size: 18px;
+    }
+
+    .modal p {
+      margin: 0 0 17px;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .modal-details {
+      padding: 14px;
+      margin-bottom: 18px;
+      border-radius: 9px;
+      background: #f5f8f5;
+    }
+
+    .modal-detail {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 8px 0;
+      border-bottom: 1px solid #e3e9e4;
+      font-size: 13px;
+    }
+
+    .modal-detail:last-child {
+      border-bottom: 0;
+    }
+
+    .modal-detail span:first-child {
+      color: #778078;
+    }
+
+    .modal-detail span:last-child {
+      color: #303a34;
+      font-weight: 700;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+    }
+
+    /* =========================================================
+       ACCESS DENIED
+    ========================================================= */
+
+    .access-denied {
+      display: none;
+    }
+
+    .access-denied.show {
+      display: block;
+    }
+
+    .access-denied h3 {
+      margin-top: 0;
+      color: #a5261e;
+    }
+
+    /* =========================================================
+       FOOTER
+    ========================================================= */
+
+    .footer {
+      margin-top: 22px;
+      color: #8a928c;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* =========================================================
+       RESPONSIVE
+    ========================================================= */
+
+    @media (max-width: 900px) {
+
+      .app-shell {
+        padding: 18px;
+      }
+
+      .admin-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-nav {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px;
+      }
+
+      .admin-nav h3 {
+        grid-column: 1 / -1;
+      }
+
+      .logout-link {
+        border-top: 0;
+        margin-top: 0;
+        padding-top: 11px !important;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group.full {
+        grid-column: auto;
+      }
+
+      .request-info.show {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .validation-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .auditors-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+
+      .admin-header {
+        align-items: flex-start;
+      }
+
+      .header-title h2 {
+        font-size: 20px;
+      }
+
+      .profile-label {
+        display: none;
+      }
+
+      .admin-nav {
+        grid-template-columns: 1fr;
+      }
+
+      .surface {
+        padding: 18px;
+      }
+
+      .request-info.show,
+      .validation-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-actions {
+        flex-direction: column;
+      }
+
+      .primary-action,
+      .secondary-action {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+
+<body>
+
+  <header class="login-header">
+
+    <div class="header-content">
+
+      <div class="header-left">
+
+        <img
+          src="/static/sena_blanco.png"
+          alt="Logo SENA"
+          class="sena-blanco"
+        />
+
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Gestión de certificados</p>
+        </div>
+
+      </div>
+
+      <div style="display:flex; gap:12px; align-items:center;">
+
+        <a
+          class="profile-button"
+          href="/profile"
+          title="Ir a mi perfil"
+        >
+          <span class="profile-label">Mi perfil</span>
+
+          <span
+            class="avatar"
+            id="headerAvatar"
+          >
+            U
+          </span>
+
+        </a>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <main class="app-shell">
+
+    <!-- =======================================================
+         HEADER DE PÁGINA
+    ======================================================== -->
+
+    <div class="admin-header">
+
+      <div class="header-title">
+
+        <h2 id="welcomeTitle">
+          Asignación de Auditores
+        </h2>
+
+        <p id="roleDescription">
+          Gestión y asignación de auditores para solicitudes aprobadas.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <!-- =======================================================
+         VISTA ADMIN
+    ======================================================== -->
+
+    <div
+      id="adminView"
+      class="admin-grid"
+      style="display:none;"
+    >
+
+      <!-- =====================================================
+           SIDEBAR
+      ====================================================== -->
+
+      <nav class="admin-nav">
+
+        <h3>Administración</h3>
+
+        <a href="/dashboard">
+          Resumen
+        </a>
+
+        <a href="/empresas">
+          Empresas registradas
+        </a>
+
+        <a href="/dashboard#usuarios">
+          Gestionar usuarios
+        </a>
+
+        <a
+          href="/asignacion-auditores"
+          class="active"
+        >
+          Asignación de auditores
+        </a>
+
+        <a href="/auditor">
+          Gestión de auditorías
+        </a>
+
+        <a href="/profile">
+          Mi perfil
+        </a>
+
+        <a
+          href="#"
+          id="mfaLink"
+        >
+          Activar autenticación en dos pasos
+        </a>
+
+        <a
+          href="/login"
+          id="logoutLink"
+          class="logout-link"
+        >
+          Cerrar sesión
+        </a>
+
+      </nav>
+
+
+      <!-- =====================================================
+           CONTENIDO
+      ====================================================== -->
+
+      <div>
+
+        <section class="surface">
+
+          <div class="page-title">
+
+            <h3>
+              Asignación de Auditores
+            </h3>
+
+            <p>
+              Selecciona una solicitud de certificación aprobada.
+              El sistema verificará automáticamente la elegibilidad
+              de los auditores antes de permitir la asignación.
+            </p>
+
+          </div>
+
+
+          <!-- MENSAJES -->
+
+          <div
+            id="message"
+            class="message"
+          ></div>
+
+
+          <!-- =================================================
+               NUEVA ASIGNACIÓN
+          ================================================== -->
+
+          <h3 class="section-title">
+            Nueva asignación
+          </h3>
+
+
+          <form
+            id="assignmentForm"
+            class="assignment-form"
+          >
+
+            <div class="form-grid">
+
+              <!-- SOLICITUD -->
+
+              <div class="form-group full">
+
+                <label for="solicitud">
+                  Solicitud de certificación
+                </label>
+
+                <select
+                  id="solicitud"
+                  required
+                >
+
+                  <option value="">
+                    Cargando solicitudes aprobadas...
+                  </option>
+
+                </select>
+
+                <span class="form-help">
+                  Solo se muestran solicitudes en estado Aprobada.
+                </span>
+
+              </div>
+
+
+              <!-- FECHA -->
+
+              <div class="form-group">
+
+                <label for="fechaAuditoria">
+                  Fecha de auditoría
+                </label>
+
+                <input
+                  type="date"
+                  id="fechaAuditoria"
+                  required
+                />
+
+                <span class="form-help">
+                  Fecha prevista para la auditoría.
+                </span>
+
+              </div>
+
+
+              <!-- HORA INICIO -->
+
+              <div class="form-group">
+
+                <label for="horaInicio">
+                  Hora de inicio
+                </label>
+
+                <input
+                  type="time"
+                  id="horaInicio"
+                  required
+                />
+
+                <span class="form-help">
+                  Hora de inicio de la auditoría.
+                </span>
+
+              </div>
+
+
+              <!-- HORA FIN -->
+
+              <div class="form-group">
+
+                <label for="horaFin">
+                  Hora de finalización
+                </label>
+
+                <input
+                  type="time"
+                  id="horaFin"
+                  required
+                />
+
+                <span class="form-help">
+                  Debe ser posterior a la hora de inicio.
+                </span>
+
+              </div>
+
+
+              <!-- ROL -->
+
+              <div class="form-group">
+
+                <label for="rolAuditor">
+                  Rol dentro de la auditoría
+                </label>
+
+                <select
+                  id="rolAuditor"
+                  required
+                >
+
+                  <option value="">
+                    Seleccione un rol
+                  </option>
+
+                  <option value="Auditor líder">
+                    Auditor líder
+                  </option>
+
+                  <option value="Auditor de apoyo">
+                    Auditor de apoyo
+                  </option>
+
+                </select>
+
+                <span class="form-help">
+                  Define la función que tendrá el auditor.
+                </span>
+
+              </div>
+
+            </div>
+
+
+            <!-- INFORMACIÓN DE SOLICITUD -->
+
+            <div
+              id="requestInfo"
+              class="request-info"
+            >
+
+              <div class="info-item">
+
+                <span class="info-label">
+                  Radicado
+                </span>
+
+                <span
+                  id="infoRadicado"
+                  class="info-value"
+                >
+                  -
+                </span>
+
+              </div>
+
+              <div class="info-item">
+
+                <span class="info-label">
+                  Empresa
+                </span>
+
+                <span
+                  id="infoEmpresa"
+                  class="info-value"
+                >
+                  -
+                </span>
+
+              </div>
+
+              <div class="info-item">
+
+                <span class="info-label">
+                  Norma
+                </span>
+
+                <span
+                  id="infoNorma"
+                  class="info-value"
+                >
+                  -
+                </span>
+
+              </div>
+
+              <div class="info-item">
+
+                <span class="info-label">
+                  Versión
+                </span>
+
+                <span
+                  id="infoVersion"
+                  class="info-value"
+                >
+                  -
+                </span>
+
+              </div>
+
+              <div class="info-item">
+
+                <span class="info-label">
+                  Estado
+                </span>
+
+                <span
+                  id="infoEstado"
+                  class="info-value"
+                >
+                  -
+                </span>
+
+              </div>
+
+              <div class="info-item">
+
+                <span class="info-label">
+                  Fecha solicitud
+                </span>
+
+                <span
+                  id="infoFechaSolicitud"
+                  class="info-value"
+                >
+                  -
+                </span>
+
+              </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 AUDITORES ELEGIBLES
+            ================================================== -->
+
+            <div
+              id="auditorsSection"
+              class="auditors-section"
+            >
+
+              <div class="auditors-header">
+
+                <h4>
+                  Auditores elegibles
+                </h4>
+
+                <span id="auditorsCounter">
+                  0 disponibles
+                </span>
+
+              </div>
+
+              <div
+                id="auditorsList"
+                class="auditors-list"
+              ></div>
+
+            </div>
+
+
+            <!-- =================================================
+                 VALIDACIONES
+            ================================================== -->
+
+            <div
+              id="validationBox"
+              class="validation-box"
+            >
+
+              <div class="validation-title">
+                Validaciones del auditor seleccionado
+              </div>
+
+              <div class="validation-grid">
+
+                <div
+                  id="checkEstado"
+                  class="validation-item neutral"
+                >
+                  Usuario activo
+                </div>
+
+                <div
+                  id="checkAuditor"
+                  class="validation-item neutral"
+                >
+                  Auditor aprobado
+                </div>
+
+                <div
+                  id="checkNorma"
+                  class="validation-item neutral"
+                >
+                  Competencia en norma
+                </div>
+
+                <div
+                  id="checkSector"
+                  class="validation-item neutral"
+                >
+                  Experiencia sectorial
+                </div>
+
+                <div
+                  id="checkConflicto"
+                  class="validation-item neutral"
+                >
+                  Sin conflicto de interés
+                </div>
+
+                <div
+                  id="checkDisponibilidad"
+                  class="validation-item neutral"
+                >
+                  Disponibilidad
+                </div>
+
+                <div
+                  id="checkAgenda"
+                  class="validation-item neutral"
+                >
+                  Sin cruce de agenda
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 ACCIONES
+            ================================================== -->
+
+            <div class="form-actions">
+
+              <button
+                type="button"
+                id="clearBtn"
+                class="secondary-action"
+              >
+                Limpiar
+              </button>
+
+              <button
+                type="submit"
+                id="assignBtn"
+                class="primary-action"
+                disabled
+              >
+                Asignar auditor
+              </button>
+
+            </div>
+
+          </form>
+
+
+          <!-- =================================================
+               ASIGNACIONES EXISTENTES
+          ================================================== -->
+
+          <div class="table-section">
+
+            <div class="table-header">
+
+              <div>
+
+                <h3>
+                  Auditores asignados
+                </h3>
+
+              </div>
+
+              <span
+                id="assignmentCounter"
+                class="table-counter"
+              >
+                0 asignaciones
+              </span>
+
+            </div>
+
+
+            <div class="table-wrap">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+
+                    <th>
+                      Solicitud
+                    </th>
+
+                    <th>
+                      Auditor
+                    </th>
+
+                    <th>
+                      Correo
+                    </th>
+
+                    <th>
+                      Inicio
+                    </th>
+
+                    <th>
+                      Fin
+                    </th>
+
+                    <th>
+                      Rol
+                    </th>
+
+                    <th>
+                      Estado
+                    </th>
+
+                    <th>
+                      Acción
+                    </th>
+
+                  </tr>
+
+                </thead>
+
+                <tbody id="assignmentsTableBody">
+
+                </tbody>
+
+              </table>
+
+
+              <div
+                id="emptyState"
+                class="empty-state"
+                style="display:none;"
+              >
+
+                <strong>
+                  No hay auditores asignados
+                </strong>
+
+                <span>
+                  Las asignaciones realizadas aparecerán aquí.
+                </span>
+
+              </div>
+
+
+              <div
+                id="tableLoading"
+                class="loading"
+              >
+                Cargando asignaciones...
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <div class="footer">
+          CertiSENA · Sistema de gestión de certificados
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =======================================================
+         ACCESO NO AUTORIZADO
+    ======================================================== -->
+
+    <section
+      id="regularView"
+      class="surface access-denied"
+    >
+
+      <h3>
+        Acceso no autorizado
+      </h3>
+
+      <p>
+        Tu cuenta no tiene permisos de administración para acceder
+        al módulo de asignación de auditores.
+      </p>
+
+      <p style="margin-top:18px;">
+
+        <a
+          href="/profile"
+          class="primary-action"
+          style="
+            display:inline-block;
+            width:auto;
+            text-decoration:none;
+          "
+        >
+          Ir a mi perfil
+        </a>
+
+      </p>
+
+    </section>
+
+
+    <!-- =======================================================
+         MODAL DETALLES
+    ======================================================== -->
+
+    <div
+      id="detailsModal"
+      class="modal-overlay"
+    >
+
+      <div class="modal">
+
+        <h3>
+          Detalles de la asignación
+        </h3>
+
+        <p>
+          Información de la asignación seleccionada.
+        </p>
+
+        <div class="modal-details">
+
+          <div class="modal-detail">
+            <span>Solicitud</span>
+            <span id="detailSolicitud">-</span>
+          </div>
+
+          <div class="modal-detail">
+            <span>Auditor</span>
+            <span id="detailAuditor">-</span>
+          </div>
+
+          <div class="modal-detail">
+            <span>Correo</span>
+            <span id="detailCorreo">-</span>
+          </div>
+
+          <div class="modal-detail">
+            <span>Rol</span>
+            <span id="detailRol">-</span>
+          </div>
+
+          <div class="modal-detail">
+            <span>Inicio</span>
+            <span id="detailInicio">-</span>
+          </div>
+
+          <div class="modal-detail">
+            <span>Fin</span>
+            <span id="detailFin">-</span>
+          </div>
+
+          <div class="modal-detail">
+            <span>Estado</span>
+            <span id="detailEstado">-</span>
+          </div>
+
+        </div>
+
+        <div class="modal-actions">
+
+          <button
+            id="closeDetailsBtn"
+            class="secondary-action"
+          >
+            Cerrar
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+  </main>
+
+
+  <script>
+
+    /* =========================================================
+       AUTENTICACIÓN
+    ========================================================= */
+
+    function tokenPayload() {
+
+      try {
+
+        const token =
+          localStorage.getItem("access_token");
+
+        if (!token) {
+          return null;
+        }
+
+        const payload =
+          token
+            .split(".")[1]
+            .replace(/-/g, "+")
+            .replace(/_/g, "/");
+
+        return JSON.parse(
+          atob(payload)
+        );
+
+      } catch (error) {
+
+        console.error(
+          "No se pudo leer el token:",
+          error
+        );
+
+        return null;
+      }
+    }
+
+
+    const token =
+      localStorage.getItem("access_token");
+
+    const user =
+      tokenPayload();
+
+
+    if (!token || !user) {
+
+      location.href = "/login";
+
+    }
+
+
+    const isAdmin =
+      user &&
+      user.role_name === "Administrador";
+
+
+    /* =========================================================
+       ELEMENTOS
+    ========================================================= */
+
+    const adminView =
+      document.getElementById("adminView");
+
+    const regularView =
+      document.getElementById("regularView");
+
+    const welcomeTitle =
+      document.getElementById("welcomeTitle");
+
+    const roleDescription =
+      document.getElementById("roleDescription");
+
+    const headerAvatar =
+      document.getElementById("headerAvatar");
+
+    const message =
+      document.getElementById("message");
+
+    const solicitudSelect =
+      document.getElementById("solicitud");
+
+    const fechaInput =
+      document.getElementById("fechaAuditoria");
+
+    const horaInicioInput =
+      document.getElementById("horaInicio");
+
+    const horaFinInput =
+      document.getElementById("horaFin");
+
+    const rolSelect =
+      document.getElementById("rolAuditor");
+
+    const assignBtn =
+      document.getElementById("assignBtn");
+
+    const clearBtn =
+      document.getElementById("clearBtn");
+
+    const requestInfo =
+      document.getElementById("requestInfo");
+
+    const auditorsSection =
+      document.getElementById("auditorsSection");
+
+    const auditorsList =
+      document.getElementById("auditorsList");
+
+    const auditorsCounter =
+      document.getElementById("auditorsCounter");
+
+    const validationBox =
+      document.getElementById("validationBox");
+
+    const assignmentsTableBody =
+      document.getElementById(
+        "assignmentsTableBody"
+      );
+
+    const assignmentCounter =
+      document.getElementById(
+        "assignmentCounter"
+      );
+
+    const emptyState =
+      document.getElementById("emptyState");
+
+    const tableLoading =
+      document.getElementById("tableLoading");
+
+    const assignmentForm =
+      document.getElementById(
+        "assignmentForm"
+      );
+
+
+    /* =========================================================
+       DATOS LOCALES DE LA PÁGINA
+    ========================================================= */
+
+    let solicitudes = [];
+
+    let auditores = [];
+
+    let auditorSeleccionado = null;
+
+    let asignaciones = [];
+
+
+    /* =========================================================
+       USUARIO
+    ========================================================= */
+
+    const currentName =
+      user?.nombre ||
+      user?.name ||
+      user?.sub ||
+      "Usuario";
+
+    const currentRole =
+      user?.role_name ||
+      "Usuario";
+
+
+    welcomeTitle.textContent =
+      "Bienvenido, " + currentName;
+
+    roleDescription.textContent =
+      isAdmin
+        ? "Asignación y control de auditores"
+        : "Acceso restringido";
+
+    headerAvatar.textContent =
+      currentName
+        .charAt(0)
+        .toUpperCase();
+
+
+    /* =========================================================
+       VISTA SEGÚN ROL
+    ========================================================= */
+
+    if (isAdmin) {
+
+      adminView.style.display =
+        "grid";
+
+    } else {
+
+      regularView.classList.add(
+        "show"
+      );
+
+    }
+
+
+    /* =========================================================
+       HEADERS
+    ========================================================= */
+
+    function headers() {
+
+      return {
+
+        "Content-Type":
+          "application/json",
+
+        "Authorization":
+          "Bearer " + token
+
+      };
+
+    }
+
+
+    /* =========================================================
+       MENSAJES
+    ========================================================= */
+
+    let messageTimer = null;
+
+
+    function showMessage(
+      text,
+      type = "success"
+    ) {
+
+      clearTimeout(
+        messageTimer
+      );
+
+      message.textContent =
+        text;
+
+      message.className =
+        "message show " + type;
+
+      messageTimer =
+        setTimeout(
+          () => {
+
+            message.className =
+              "message";
+
+            message.textContent =
+              "";
+
+          },
+          5000
+        );
+
+    }
+
+
+    /* =========================================================
+       FECHA ACTUAL
+    ========================================================= */
+
+    function getToday() {
+
+      const now =
+        new Date();
+
+      const year =
+        now.getFullYear();
+
+      const month =
+        String(
+          now.getMonth() + 1
+        ).padStart(2, "0");
+
+      const day =
+        String(
+          now.getDate()
+        ).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
+
+    }
+
+
+    fechaInput.value =
+      getToday();
+
+
+    /* =========================================================
+       FORMATEAR FECHA
+    ========================================================= */
+
+    function formatDate(
+      value
+    ) {
+
+      if (!value) {
+        return "-";
+      }
+
+      const date =
+        new Date(value);
+
+      if (Number.isNaN(
+        date.getTime()
+      )) {
+
+        return String(value);
+
+      }
+
+      return date.toLocaleDateString(
+        "es-CO"
+      );
+
+    }
+
+
+    function formatDateTime(
+      value
+    ) {
+
+      if (!value) {
+        return "-";
+      }
+
+      const date =
+        new Date(value);
+
+      if (Number.isNaN(
+        date.getTime()
+      )) {
+
+        return String(value);
+
+      }
+
+      return date.toLocaleString(
+        "es-CO",
+        {
+          dateStyle: "short",
+          timeStyle: "short"
+        }
+      );
+
+    }
+
+
+    /* =========================================================
+       CREAR DATETIME
+    ========================================================= */
+
+    function buildDateTime(
+      date,
+      time
+    ) {
+
+      return `${date}T${time}:00`;
+
+    }
+
+
+    /* =========================================================
+       CARGAR SOLICITUDES APROBADAS
+    ========================================================= */
+
+    async function loadSolicitudes() {
+
+      solicitudSelect.innerHTML =
+        `
+          <option value="">
+            Cargando solicitudes...
+          </option>
+        `;
+
+      try {
+
+        const response =
+          await fetch(
+            "/asignacion-auditores/solicitudes",
+            {
+              headers: headers()
+            }
+          );
+
+
+        const data =
+          await response.json();
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            typeof data.detail === "string"
+              ? data.detail
+              : "No se pudieron cargar las solicitudes."
+          );
+
+        }
+
+
+        solicitudes =
+          Array.isArray(data)
+            ? data
+            : [];
+
+
+        solicitudSelect.innerHTML =
+          `
+            <option value="">
+              Seleccione una solicitud
+            </option>
+          `;
+
+
+        if (
+          solicitudes.length === 0
+        ) {
+
+          solicitudSelect.innerHTML =
+            `
+              <option value="">
+                No hay solicitudes aprobadas
+              </option>
+            `;
+
+          return;
+
+        }
+
+
+        solicitudes.forEach(
+          (solicitud) => {
+
+            const option =
+              document.createElement(
+                "option"
+              );
+
+            option.value =
+              solicitud.id_solicitud;
+
+            const radicado =
+              solicitud.numero_radicado ||
+              "Sin radicado";
+
+            const empresa =
+              solicitud.empresa_nombre ||
+              "Empresa sin nombre";
+
+            const norma =
+              solicitud.norma_codigo ||
+              solicitud.norma_nombre ||
+              "Norma no disponible";
+
+
+            option.textContent =
+              `${radicado} - ${empresa} - ${norma}`;
+
+            solicitudSelect.appendChild(
+              option
+            );
+
+          }
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        solicitudSelect.innerHTML =
+          `
+            <option value="">
+              Error al cargar solicitudes
+            </option>
+          `;
+
+        showMessage(
+          error.message,
+          "error"
+        );
+
+      }
+
+    }
+
+
+    /* =========================================================
+       MOSTRAR INFORMACIÓN SOLICITUD
+    ========================================================= */
+
+    function showRequestInfo(
+      solicitud
+    ) {
+
+      if (!solicitud) {
+
+        requestInfo.classList.remove(
+          "show"
+        );
+
+        return;
+
+      }
+
+
+      document.getElementById(
+        "infoRadicado"
+      ).textContent =
+        solicitud.numero_radicado ||
+        "Sin radicado";
+
+
+      document.getElementById(
+        "infoEmpresa"
+      ).textContent =
+        solicitud.empresa_nombre ||
+        "No disponible";
+
+
+      document.getElementById(
+        "infoNorma"
+      ).textContent =
+        solicitud.norma_codigo ||
+        solicitud.norma_nombre ||
+        "No disponible";
+
+
+      document.getElementById(
+        "infoVersion"
+      ).textContent =
+        solicitud.norma_version ||
+        "No disponible";
+
+
+      document.getElementById(
+        "infoEstado"
+      ).textContent =
+        solicitud.estado ||
+        "No disponible";
+
+
+      document.getElementById(
+        "infoFechaSolicitud"
+      ).textContent =
+        formatDate(
+          solicitud.fecha
+        );
+
+
+      requestInfo.classList.add(
+        "show"
+      );
+
+    }
+
+
+    /* =========================================================
+       OBTENER SOLICITUD SELECCIONADA
+    ========================================================= */
+
+    function getSelectedSolicitud() {
+
+      const id =
+        solicitudSelect.value;
+
+      return solicitudes.find(
+        (item) =>
+          String(
+            item.id_solicitud
+          ) === String(id)
+      );
+
+    }
+
+
+    /* =========================================================
+       CARGAR AUDITORES ELEGIBLES
+    ========================================================= */
+
+    async function loadAuditores() {
+
+      const solicitud =
+        getSelectedSolicitud();
+
+
+      if (!solicitud) {
+
+        auditorsSection.classList.remove(
+          "show"
+        );
+
+        validationBox.classList.remove(
+          "show"
+        );
+
+        auditorSeleccionado =
+          null;
+
+        updateAssignButton();
+
+        return;
+
+      }
+
+
+      if (
+        !fechaInput.value ||
+        !horaInicioInput.value ||
+        !horaFinInput.value
+      ) {
+
+        auditorsSection.classList.remove(
+          "show"
+        );
+
+        return;
+
+      }
+
+
+      const inicio =
+        buildDateTime(
+          fechaInput.value,
+          horaInicioInput.value
+        );
+
+
+      const fin =
+        buildDateTime(
+          fechaInput.value,
+          horaFinInput.value
+        );
+
+
+      if (
+        new Date(fin) <=
+        new Date(inicio)
+      ) {
+
+        showMessage(
+          "La hora de finalización debe ser posterior a la hora de inicio.",
+          "error"
+        );
+
+        return;
+
+      }
+
+
+      auditorsList.innerHTML =
+        `
+          <div class="loading">
+            Verificando elegibilidad de auditores...
+          </div>
+        `;
+
+      auditorsSection.classList.add(
+        "show"
+      );
+
+
+      auditorSeleccionado =
+        null;
+
+      validationBox.classList.remove(
+        "show"
+      );
+
+      updateAssignButton();
+
+
+      try {
+
+        const params =
+          new URLSearchParams();
+
+        params.set(
+          "fecha_inicio",
+          inicio
+        );
+
+        params.set(
+          "fecha_fin",
+          fin
+        );
+
+
+        const response =
+          await fetch(
+            `/asignacion-auditores/solicitudes/${solicitud.id_solicitud}/auditores?${params.toString()}`,
+            {
+              headers: headers()
+            }
+          );
+
+
+        const data =
+          await response.json();
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            typeof data.detail === "string"
+              ? data.detail
+              : "No se pudieron consultar los auditores."
+          );
+
+        }
+
+
+        auditores =
+          Array.isArray(data)
+            ? data
+            : [];
+
+
+        /*
+         * El backend ya realiza las validaciones.
+         * El frontend solamente muestra los
+         * auditores que realmente son elegibles.
+         */
+
+        const elegibles =
+          auditores.filter(
+            (auditor) =>
+              auditor.elegible === true
+          );
+
+
+        auditorsCounter.textContent =
+          `${elegibles.length} ${
+            elegibles.length === 1
+              ? "disponible"
+              : "disponibles"
+          }`;
+
+
+        renderAuditors(
+          elegibles
+        );
+
+
+      } catch (error) {
+
+        console.error(error);
+
+        auditorsList.innerHTML =
+          `
+            <div class="no-auditors">
+              ${escapeHTML(
+                error.message
+              )}
+            </div>
+          `;
+
+        auditorsCounter.textContent =
+          "0 disponibles";
+
+      }
+
+    }
+
+
+    /* =========================================================
+       RENDER AUDITORES
+    ========================================================= */
+
+    function renderAuditors(
+      lista
+    ) {
+
+      auditorsList.innerHTML =
+        "";
+
+
+      if (
+        lista.length === 0
+      ) {
+
+        auditorsList.innerHTML =
+          `
+            <div class="no-auditors">
+              No existen auditores que cumplan
+              las condiciones para esta fecha y horario.
+            </div>
+          `;
+
+        return;
+
+      }
+
+
+      lista.forEach(
+        (auditor) => {
+
+          const card =
+            document.createElement(
+              "div"
+            );
+
+          card.className =
+            "auditor-card";
+
+
+          card.innerHTML =
+            `
+              <div class="auditor-name">
+                ${escapeHTML(
+                  auditor.nombre
+                )}
+              </div>
+
+              <div class="auditor-email">
+                ${escapeHTML(
+                  auditor.correo
+                )}
+              </div>
+
+              <div class="auditor-checks">
+
+                <span class="check ok">
+                  Usuario activo
+                </span>
+
+                <span class="check ok">
+                  Auditor aprobado
+                </span>
+
+                ${
+                  auditor.competencia_norma
+                    ? `
+                      <span class="check ok">
+                        Competencia
+                      </span>
+                    `
+                    : ""
+                }
+
+                ${
+                  auditor.disponible
+                    ? `
+                      <span class="check ok">
+                        Disponible
+                      </span>
+                    `
+                    : ""
+                }
+
+                ${
+                  auditor.sin_cruce_horario
+                    ? `
+                      <span class="check ok">
+                        Agenda libre
+                      </span>
+                    `
+                    : ""
+                }
+
+                ${
+                  !auditor.conflicto_interes
+                    ? `
+                      <span class="check ok">
+                        Sin conflicto
+                      </span>
+                    `
+                    : ""
+                }
+
+              </div>
+            `;
+
+
+          card.addEventListener(
+            "click",
+            () => {
+
+              selectAuditor(
+                auditor,
+                card
+              );
+
+            }
+          );
+
+
+          auditorsList.appendChild(
+            card
+          );
+
+        }
+      );
+
+    }
+
+
+    /* =========================================================
+       SELECCIONAR AUDITOR
+    ========================================================= */
+
+    function selectAuditor(
+      auditor,
+      card
+    ) {
+
+      document
+        .querySelectorAll(
+          ".auditor-card"
+        )
+        .forEach(
+          (item) =>
+            item.classList.remove(
+              "selected"
+            )
+        );
+
+
+      card.classList.add(
+        "selected"
+      );
+
+
+      auditorSeleccionado =
+        auditor;
+
+
+      renderValidation(
+        auditor
+      );
+
+
+      updateAssignButton();
+
+    }
+
+
+    /* =========================================================
+       VALIDACIONES VISUALES
+    ========================================================= */
+
+    function setCheck(
+      id,
+      texto,
+      estado
+    ) {
+
+      const element =
+        document.getElementById(id);
+
+      element.textContent =
+        texto;
+
+      element.className =
+        "validation-item " +
+        (
+          estado === true
+            ? "ok"
+            : estado === false
+              ? "fail"
+              : "neutral"
+        );
+
+    }
+
+
+    function renderValidation(
+      auditor
+    ) {
+
+      validationBox.classList.add(
+        "show"
+      );
+
+
+      setCheck(
+        "checkEstado",
+        "Usuario activo",
+        auditor.estado_usuario === "Activo"
+      );
+
+
+      setCheck(
+        "checkAuditor",
+        "Auditor aprobado",
+        auditor.estado_auditor === "Aprobada"
+      );
+
+
+      setCheck(
+        "checkNorma",
+        "Competencia en norma",
+        auditor.competencia_norma === true
+      );
+
+
+      /*
+       * La experiencia sectorial se encuentra
+       * pendiente de relacionarla con el sector
+       * de la empresa en el esquema actual.
+       */
+
+      setCheck(
+        "checkSector",
+        "Experiencia sectorial",
+        auditor.experiencia_sector === true
+          ? true
+          : null
+      );
+
+
+      setCheck(
+        "checkConflicto",
+        "Sin conflicto de interés",
+        auditor.conflicto_interes === false
+      );
+
+
+      setCheck(
+        "checkDisponibilidad",
+        "Disponibilidad",
+        auditor.disponible === true
+      );
+
+
+      setCheck(
+        "checkAgenda",
+        "Sin cruce de agenda",
+        auditor.sin_cruce_horario === true
+      );
+
+    }
+
+
+    /* =========================================================
+       BOTÓN ASIGNAR
+    ========================================================= */
+
+    function updateAssignButton() {
+
+      const solicitud =
+        getSelectedSolicitud();
+
+
+      const valido =
+        isAdmin &&
+        solicitud &&
+        auditorSeleccionado &&
+        fechaInput.value &&
+        horaInicioInput.value &&
+        horaFinInput.value &&
+        rolSelect.value &&
+        auditorSeleccionado.elegible === true;
+
+
+      assignBtn.disabled =
+        !valido;
+
+    }
+
+
+    /* =========================================================
+       CAMBIOS DEL FORMULARIO
+    ========================================================= */
+
+    solicitudSelect.addEventListener(
+      "change",
+      async () => {
+
+        const solicitud =
+          getSelectedSolicitud();
+
+        showRequestInfo(
+          solicitud
+        );
+
+        await loadAuditores();
+
+      }
+    );
+
+
+    fechaInput.addEventListener(
+      "change",
+      loadAuditores
+    );
+
+
+    horaInicioInput.addEventListener(
+      "change",
+      loadAuditores
+    );
+
+
+    horaFinInput.addEventListener(
+      "change",
+      loadAuditores
+    );
+
+
+    rolSelect.addEventListener(
+      "change",
+      updateAssignButton
+    );
+
+
+    /* =========================================================
+       CREAR ASIGNACIÓN
+    ========================================================= */
+
+    assignmentForm.addEventListener(
+      "submit",
+      async (event) => {
+
+        event.preventDefault();
+
+
+        const solicitud =
+          getSelectedSolicitud();
+
+
+        if (!solicitud) {
+
+          showMessage(
+            "Seleccione una solicitud.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        if (!auditorSeleccionado) {
+
+          showMessage(
+            "Seleccione un auditor elegible.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        if (
+          !fechaInput.value ||
+          !horaInicioInput.value ||
+          !horaFinInput.value
+        ) {
+
+          showMessage(
+            "Complete la fecha y el horario de la auditoría.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        const inicio =
+          buildDateTime(
+            fechaInput.value,
+            horaInicioInput.value
+          );
+
+
+        const fin =
+          buildDateTime(
+            fechaInput.value,
+            horaFinInput.value
+          );
+
+
+        if (
+          new Date(fin) <=
+          new Date(inicio)
+        ) {
+
+          showMessage(
+            "La fecha/hora de finalización debe ser posterior a la fecha/hora de inicio.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        if (!rolSelect.value) {
+
+          showMessage(
+            "Seleccione el rol del auditor.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        /*
+         * Revalidación adicional en frontend.
+         * La validación definitiva siempre
+         * debe hacerse en FastAPI.
+         */
+
+        if (
+          auditorSeleccionado.elegible !== true
+        ) {
+
+          showMessage(
+            "El auditor seleccionado ya no es elegible.",
+            "error"
+          );
+
+          await loadAuditores();
+
+          return;
+
+        }
+
+
+        const payload = {
+
+          id_solicitud:
+            solicitud.id_solicitud,
+
+          id_auditor:
+            auditorSeleccionado.id_usuario,
+
+          rol_auditor:
+            rolSelect.value,
+
+          fecha_inicio_planificada:
+            inicio,
+
+          fecha_fin_planificada:
+            fin
+
+        };
+
+
+        assignBtn.disabled =
+          true;
+
+        assignBtn.textContent =
+          "Asignando...";
+
+
+        try {
+
+          const response =
+            await fetch(
+              "/asignacion-auditores/",
+              {
+                method: "POST",
+                headers: headers(),
+                body: JSON.stringify(
+                  payload
+                )
+              }
+            );
+
+
+          const data =
+            await response.json();
+
+
+          if (!response.ok) {
+
+            throw new Error(
+              typeof data.detail === "string"
+                ? data.detail
+                : "No fue posible asignar el auditor."
+            );
+
+          }
+
+
+          showMessage(
+            data.mensaje ||
+            "Auditor asignado correctamente.",
+            "success"
+          );
+
+
+          resetForm();
+
+
+          await loadAsignaciones();
+
+
+        } catch (error) {
+
+          console.error(error);
+
+          showMessage(
+            error.message,
+            "error"
+          );
+
+        } finally {
+
+          assignBtn.textContent =
+            "Asignar auditor";
+
+          updateAssignButton();
+
+        }
+
+      }
+    );
+
+
+    /* =========================================================
+       LIMPIAR
+    ========================================================= */
+
+    clearBtn.addEventListener(
+      "click",
+      resetForm
+    );
+
+
+    function resetForm() {
+
+      assignmentForm.reset();
+
+      fechaInput.value =
+        getToday();
+
+
+      requestInfo.classList.remove(
+        "show"
+      );
+
+      auditorsSection.classList.remove(
+        "show"
+      );
+
+      validationBox.classList.remove(
+        "show"
+      );
+
+
+      auditorsList.innerHTML =
+        "";
+
+
+      auditorSeleccionado =
+        null;
+
+
+      auditorsCounter.textContent =
+        "0 disponibles";
+
+
+      updateAssignButton();
+
+    }
+
+
+    /* =========================================================
+       CARGAR ASIGNACIONES
+    ========================================================= */
+
+    async function loadAsignaciones() {
+
+      tableLoading.style.display =
+        "block";
+
+      emptyState.style.display =
+        "none";
+
+
+      try {
+
+        const response =
+          await fetch(
+            "/asignacion-auditores/",
+            {
+              headers: headers()
+            }
+          );
+
+
+        const data =
+          await response.json();
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            typeof data.detail === "string"
+              ? data.detail
+              : "No se pudieron cargar las asignaciones."
+          );
+
+        }
+
+
+        asignaciones =
+          Array.isArray(data)
+            ? data
+            : [];
+
+
+        renderAsignaciones();
+
+
+      } catch (error) {
+
+        console.error(error);
+
+        tableLoading.style.display =
+          "none";
+
+        showMessage(
+          error.message,
+          "error"
+        );
+
+      }
+
+    }
+
+
+    /* =========================================================
+       RENDER ASIGNACIONES
+    ========================================================= */
+
+    function renderAsignaciones() {
+
+      tableLoading.style.display =
+        "none";
+
+
+      assignmentsTableBody.innerHTML =
+        "";
+
+
+      assignmentCounter.textContent =
+        `${asignaciones.length} ${
+          asignaciones.length === 1
+            ? "asignación"
+            : "asignaciones"
+        }`;
+
+
+      if (
+        asignaciones.length === 0
+      ) {
+
+        emptyState.style.display =
+          "block";
+
+        return;
+
+      }
+
+
+      emptyState.style.display =
+        "none";
+
+
+      asignaciones.forEach(
+        (asignacion) => {
+
+          const row =
+            document.createElement(
+              "tr"
+            );
+
+
+          let statusClass =
+            "assigned";
+
+
+          const estado =
+            asignacion.estado_asignacion ||
+            "Asignado";
+
+
+          if (
+            /pendiente/i.test(
+              estado
+            )
+          ) {
+
+            statusClass =
+              "pending";
+
+          }
+
+
+          if (
+            /inactivo|cancelado|eliminado/i.test(
+              estado
+            )
+          ) {
+
+            statusClass =
+              "inactive";
+
+          }
+
+
+          row.innerHTML =
+            `
+              <td>
+                ${escapeHTML(
+                  asignacion.numero_radicado ||
+                  String(
+                    asignacion.id_solicitud
+                  )
+                )}
+              </td>
+
+              <td>
+                ${escapeHTML(
+                  asignacion.auditor_nombre ||
+                  "-"
+                )}
+              </td>
+
+              <td>
+                ${escapeHTML(
+                  asignacion.auditor_correo ||
+                  "-"
+                )}
+              </td>
+
+              <td>
+                ${escapeHTML(
+                  formatDateTime(
+                    asignacion.fecha_inicio_planificada
+                  )
+                )}
+              </td>
+
+              <td>
+                ${escapeHTML(
+                  formatDateTime(
+                    asignacion.fecha_fin_planificada
+                  )
+                )}
+              </td>
+
+              <td>
+                ${escapeHTML(
+                  asignacion.especialidad ||
+                  "-"
+                )}
+              </td>
+
+              <td>
+
+                <span
+                  class="status ${statusClass}"
+                >
+                  ${escapeHTML(
+                    estado
+                  )}
+                </span>
+
+              </td>
+
+              <td>
+
+                <div class="actions">
+
+                  <button
+                    type="button"
+                    class="action-btn action-view"
+                  >
+                    Ver
+                  </button>
+
+                </div>
+
+              </td>
+            `;
+
+
+          const viewButton =
+            row.querySelector(
+              ".action-view"
+            );
+
+
+          viewButton.addEventListener(
+            "click",
+            () => {
+
+              viewAssignment(
+                asignacion
+              );
+
+            }
+          );
+
+
+          assignmentsTableBody.appendChild(
+            row
+          );
+
+        }
+      );
+
+    }
+
+
+    /* =========================================================
+       VER DETALLES
+    ========================================================= */
+
+    function viewAssignment(
+      assignment
+    ) {
+
+      document.getElementById(
+        "detailSolicitud"
+      ).textContent =
+        assignment.numero_radicado ||
+        assignment.id_solicitud ||
+        "-";
+
+
+      document.getElementById(
+        "detailAuditor"
+      ).textContent =
+        assignment.auditor_nombre ||
+        "-";
+
+
+      document.getElementById(
+        "detailCorreo"
+      ).textContent =
+        assignment.auditor_correo ||
+        "-";
+
+
+      document.getElementById(
+        "detailRol"
+      ).textContent =
+        assignment.especialidad ||
+        "-";
+
+
+      document.getElementById(
+        "detailInicio"
+      ).textContent =
+        formatDateTime(
+          assignment.fecha_inicio_planificada
+        );
+
+
+      document.getElementById(
+        "detailFin"
+      ).textContent =
+        formatDateTime(
+          assignment.fecha_fin_planificada
+        );
+
+
+      document.getElementById(
+        "detailEstado"
+      ).textContent =
+        assignment.estado_asignacion ||
+        "-";
+
+
+      document.getElementById(
+        "detailsModal"
+      ).classList.add(
+        "show"
+      );
+
+    }
+
+
+    /* =========================================================
+       CERRAR MODAL
+    ========================================================= */
+
+    document.getElementById(
+      "closeDetailsBtn"
+    ).addEventListener(
+      "click",
+      () => {
+
+        document.getElementById(
+          "detailsModal"
+        ).classList.remove(
+          "show"
+        );
+
+      }
+    );
+
+
+    document.getElementById(
+      "detailsModal"
+    ).addEventListener(
+      "click",
+      (event) => {
+
+        if (
+          event.target.id ===
+          "detailsModal"
+        ) {
+
+          event.currentTarget.classList.remove(
+            "show"
+          );
+
+        }
+
+      }
+    );
+
+
+    /* =========================================================
+       ESCAPAR HTML
+    ========================================================= */
+
+    function escapeHTML(
+      value
+    ) {
+
+      return String(
+        value ?? ""
+      )
+        .replace(
+          /&/g,
+          "&amp;"
+        )
+        .replace(
+          /</g,
+          "&lt;"
+        )
+        .replace(
+          />/g,
+          "&gt;"
+        )
+        .replace(
+          /"/g,
+          "&quot;"
+        )
+        .replace(
+          /'/g,
+          "&#039;"
+        );
+
+    }
+
+
+    /* =========================================================
+       LOGOUT
+    ========================================================= */
+
+    document.getElementById(
+      "logoutLink"
+    ).addEventListener(
+      "click",
+      (event) => {
+
+        event.preventDefault();
+
+        localStorage.removeItem(
+          "access_token"
+        );
+
+        location.href =
+          "/login";
+
+      }
+    );
+
+
+    /* =========================================================
+       INICIALIZACIÓN
+    ========================================================= */
+
+    async function initialize() {
+
+      if (!isAdmin) {
+        return;
+      }
+
+
+      await Promise.all([
+        loadSolicitudes(),
+        loadAsignaciones()
+      ]);
+
+    }
+
+
+    initialize();
+
+  </script>
+
+
+  <script src="/static/session.js"></script>
+
+</body>
+
+</html>

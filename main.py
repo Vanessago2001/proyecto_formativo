@@ -14,15 +14,25 @@ from core.logger import logger
 from core.security import hash_password
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
+from modules.consultas_p.consultas_router import router as consultas_publicas_router
+from modules.consultas_p.paginas_router import router as consultas_publicas_paginas
+from modules.aprobaciones.aprobacion_router import router as aprobaciones_router
+from modules.aprobaciones.aprobacion_bootstrap import preparar_aprobaciones
 from modules.comite.comite_router import router as comite_router
 from modules.apelaciones.apelaciones_router import router as apelaciones_router
+from modules.certificados.certificados_bootstrap import preparar_modulo_certificados
+from modules.certificados.certificados_router import router as certificados_router
 
 from modules.alejandra.router import router as alejandra_router
 
 from core.redis_client import redis_pool
+from uuid import UUID
 
 from modules.system.system_router import router as system_router
+from modules.asignacion_auditores.asignacion_router import router as asignacion_auditores_router
 
+from modules.administrar_auditores.administrar_auditores_router import router as administrar_auditores_router
+from modules.auditores.auditor_router import router as auditor_router
 # Modulo heredado de otro proyecto: su tabla `tareas` no existe en esta base
 # de datos, asi que sus endpoints devolvian 500. El codigo se conserva en
 # modules/tareas/ por si se quiere reaprovechar; para reactivarlo hay que
@@ -34,7 +44,10 @@ from modules.system.system_router import router as system_router
 # ============================================================
 from modules.solicitudes.solicitud_router import router as solicitud_router
 from modules.solicitudes.documento_router import router as documento_router
+from modules.solicitudes.informacion_router import router as informacion_router
+from modules.solicitudes.sede_router import router as sede_router
 from modules.solicitudes.solicitud_bootstrap import preparar_modulo_solicitudes
+from modules.empresas.empresas_bootstrap import preparar_modulo_empresas
 
 
 
@@ -178,74 +191,15 @@ async def ensure_apelaciones_schema(session) -> None:
     """))
 
 
-async def ensure_empresa_sedes_schema(session) -> None:
-    await session.execute(text("""
-        CREATE TABLE IF NOT EXISTS sede (
-            id_sede SERIAL PRIMARY KEY,
-            id_empresa INTEGER NOT NULL,
-            nombre_sede VARCHAR(200) NOT NULL,
-            direccion VARCHAR(255) NOT NULL,
-            ciudad VARCHAR(100) NOT NULL,
-            departamento VARCHAR(100),
-            pais VARCHAR(100),
-            es_principal BOOLEAN NOT NULL DEFAULT FALSE,
-            estado VARCHAR(50) NOT NULL DEFAULT 'Activo',
-            fecha_registro TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT fk_sede_empresa FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
-        );
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS id_empresa INTEGER;
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS nombre_sede VARCHAR(200);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS direccion VARCHAR(255);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS ciudad VARCHAR(100);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS departamento VARCHAR(100);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS pais VARCHAR(100);
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS es_principal BOOLEAN DEFAULT FALSE;
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS estado VARCHAR(50) DEFAULT 'Activo';
-    """))
-
-    await session.execute(text("""
-        ALTER TABLE sede
-        ADD COLUMN IF NOT EXISTS fecha_registro TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
-    """))
+# Las sedes de las empresas viven en la tabla `sede_empresa`, que ya existe en
+# la base. Antes aqui se intentaba crear una tabla `sede` con id_empresa
+# INTEGER, incompatible con empresa.id_empresa (UUID).
 
 async def seed_initial_data() -> None:
     async with AsyncSessionLocal() as session:
         try:
             await ensure_login_security_schema(session)
             await ensure_apelaciones_schema(session)
-            await ensure_empresa_sedes_schema(session)
 
             # Roles por defecto según la tabla rol (id_rol PK, nombre, descripcion)
             default_rol = [
@@ -253,6 +207,7 @@ async def seed_initial_data() -> None:
                 ("Empresa", "Puede registrar documentos y solicitudes"),
                 ("Auxiliar", "Cuenta interna creada por el administrador"),
                 ("Administrador", "Acceso total al sistema"),
+                ("Comité", "Puede revisar expedientes y registrar decisiones de certificación"),
                 ("Instructor", "Rol heredado; sin permisos en los modulos de certificacion"),
                 ("Aprendiz", "Usuario estándar"),
             ]
@@ -316,6 +271,11 @@ async def lifespan(app: FastAPI):
     logger.info("  Documentación interactiva: http://127.0.0.1:8000/docs")
     logger.info("==========================================================")
     await seed_initial_data()
+    # Cada modulo prepara su parte de la base con su propia sesion.
+    await preparar_modulo_solicitudes()
+    await preparar_modulo_empresas()
+    await preparar_aprobaciones()
+    await preparar_modulo_certificados()
     try:
         yield
     finally:
@@ -330,6 +290,12 @@ app = FastAPI(
     description="Estructura limpia basada en dominios directo en raíz sin Passlib",
     lifespan=lifespan
 )
+# Montaje de directorio para archivos subidos por los usuarios (PDF, imágenes, etc.)
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads",
+)
 
 # Montaje de archivos estáticos (CSS, JS, imágenes)
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -340,18 +306,29 @@ app.include_router(role_router)
 app.include_router(users_router)
 app.include_router(security_router)
 app.include_router(empresas_router)
+app.include_router(consultas_publicas_router)
+app.include_router(consultas_publicas_paginas)
+app.include_router(aprobaciones_router)
 app.include_router(comite_router)
+app.include_router(certificados_router)
 app.include_router(apelaciones_router)
 app.include_router(alejandra_router)
 app.include_router(mfa_router)
 app.include_router(system_router)
+app.include_router(asignacion_auditores_router)
+app.include_router(auditor_router)
 # app.include_router(tarea_router)   # modulo heredado, ver nota arriba
 
 # M5 - Gestion de solicitudes
 app.include_router(solicitud_router)
 app.include_router(documento_router)
+app.include_router(informacion_router)
+app.include_router(sede_router)
 
+# M5 - Administrar Auditores
+app.include_router(administrar_auditores_router)
 # ============================================================
+
 # RUTAS DE INTERFAZ DE USUARIO
 # ============================================================
 
@@ -377,6 +354,30 @@ async def register_page(request: Request):
 async def reset_password_page(request: Request):
     """Sirve la página para crear una nueva contraseña (enlace del correo)."""
     return FileResponse("static/reset-password.html")
+
+@app.get("/asignacion-auditores")
+async def asignacion_auditores_page():
+    return FileResponse(
+        "static/asignacion-auditores.html"
+    )
+
+
+@app.get("/comite", response_class=HTMLResponse)
+async def comite_page(request: Request):
+    return FileResponse("static/comite.html")
+
+@app.get("/consultar-estado")
+async def consultar_estado():
+    return FileResponse("static/consultar_estado_registro.html")
+
+@app.get("/gestion-certificados", response_class=HTMLResponse)
+async def gestion_certificados_page(request: Request):
+    return FileResponse("static/certificados.html")
+
+
+@app.get("/verificar-certificado", response_class=HTMLResponse)
+async def verificar_certificado_page(request: Request):
+    return FileResponse("static/certificados.html")
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -462,6 +463,19 @@ async def profile_page(request: Request):
 async def auditor_page(request: Request):
     return FileResponse("static/auditor.html")
 
+# banco de auditores
+@app.get("/banco-auditores", response_class=HTMLResponse)
+async def banco_auditores_page(request: Request):
+    return FileResponse("static/banco_auditores.html")
+
+# detalle de una solicitud
+@app.get("/banco-auditores/solicitud/{id_postulacion}")
+async def banco_auditores_solicitud(
+    id_postulacion: UUID,
+):
+    return FileResponse(
+        "static/banco_auditores_solicitud.html"
+    )
 
 @app.get("/empresa", response_class=HTMLResponse)
 async def empresa_page(request: Request):
@@ -476,6 +490,15 @@ async def apelacion_page(request: Request):
 @app.get("/buscar_empresa", response_class=HTMLResponse)
 async def buscar_empresa_page(request: Request):
     return FileResponse("static/buscar_e.html")
+@app.get("/revision-solicitudes", response_class=HTMLResponse)
+async def revision_solicitudes_page(request: Request):
+    """M5: Administración revisa las solicitudes radicadas y valida sus sedes."""
+    return FileResponse("static/revision-solicitudes.html")
+
+
+# /buscar_empresa lo sirve modules/consultas_p/paginas_router.py: la página del
+# portal público vive junto a los endpoints que la alimentan.
+
 
 @app.on_event("shutdown")
 async def shutdown_redis_pool():

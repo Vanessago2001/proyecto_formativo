@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CertiSENA | Certificados</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=3">
+</head>
+
+<body class="comite-page certificados-page">
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Gestión de certificados</p>
+        </div>
+      </div>
+      <div id="authControls" class="comite-header-user">
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="comite-shell">
+    <div class="comite-layout">
+      <aside class="comite-sidebar" aria-label="Navegación de certificados">
+        <div class="comite-sidebar-heading">
+          <strong>Certificados</strong>
+        </div>
+        <nav aria-label="Vistas">
+          <button id="catalogNav" class="comite-nav-link active" type="button" data-view="catalogo">Certificados</button>
+          <button id="alertsNav" class="comite-nav-link" type="button" data-view="vencimientos">Vencimientos</button>
+          <button class="comite-nav-link" type="button" data-view="consulta">Consulta pública</button>
+          <a id="committeeNav" class="comite-nav-link certificados-nav-anchor" href="/comite">Comité</a>
+        </nav>
+        <div id="roleNote" class="comite-access-note">
+          <span id="roleLabel">Validando permisos...</span>
+          <small id="leaderStatus">Consultando líder de firma...</small>
+        </div>
+      </aside>
+
+      <section class="comite-content">
+        <div class="comite-page-heading">
+          <div>
+            <span class="comite-kicker">Registro oficial</span>
+            <h2 id="viewTitle">Certificados</h2>
+          </div>
+          <button id="refreshButton" class="comite-button secondary" type="button" aria-label="Actualizar certificados" title="Actualizar">Actualizar</button>
+        </div>
+
+        <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
+
+        <section id="catalogoView">
+          <section id="leaderPanel" class="comite-panel cert-leader-panel" hidden>
+            <div class="comite-panel-heading">
+              <div>
+                <h3>Líder firmante del Comité</h3>
+              </div>
+              <span id="leaderCurrent" class="comite-status pending">Consultando asignación...</span>
+            </div>
+            <form id="leaderForm" class="cert-leader-form">
+              <div class="cert-field">
+                <label for="leaderSelect">Asignar líder activo del Comité</label>
+                <select id="leaderSelect" required>
+                  <option value="">Cargando usuarios Comité...</option>
+                </select>
+              </div>
+              <button id="leaderAssignButton" class="comite-button secondary" type="submit">Asignar líder</button>
+            </form>
+          </section>
+
+          <div class="cert-metrics" aria-label="Resumen de certificados">
+            <div class="cert-metric"><span>Total</span><strong id="metricTotal">—</strong></div>
+            <div class="cert-metric"><span>Vigentes</span><strong id="metricVigentes">—</strong></div>
+            <div class="cert-metric"><span>Publicados</span><strong id="metricPublicados">—</strong></div>
+            <div class="cert-metric cert-metric-alert"><span>Vencen en 30 días</span><strong id="metricVencen">—</strong></div>
+          </div>
+
+          <section id="createPanel" class="comite-panel cert-create-panel" hidden>
+            <div class="comite-panel-heading">
+              <div>
+                <h3>Generar certificado</h3>
+              </div>
+              <span class="comite-status pending">Pendiente de firma</span>
+            </div>
+            <form id="createForm" class="cert-form-grid">
+              <div class="cert-field">
+                <label for="solicitudSelect">Solicitud aprobada</label>
+                <select id="solicitudSelect" required>
+                  <option value="">Cargando solicitudes...</option>
+                </select>
+              </div>
+              <div class="cert-field">
+                <label for="alcanceSelect">Alcance técnico</label>
+                <select id="alcanceSelect" required disabled>
+                  <option value="">Selecciona una solicitud primero</option>
+                </select>
+              </div>
+              <div class="cert-field">
+                <label for="fechaVencimiento">Fecha de vencimiento</label>
+                <input id="fechaVencimiento" type="date" required>
+              </div>
+              <div class="cert-form-action">
+                <button id="createButton" class="comite-button primary" type="submit">Generar borrador</button>
+              </div>
+            </form>
+          </section>
+
+          <div class="cert-workspace">
+            <section class="comite-panel cert-list-panel">
+              <div class="comite-panel-heading">
+                <div>
+                  <h3>Registro de certificados</h3>
+                  <p id="resultCount">Cargando...</p>
+                </div>
+              </div>
+              <div class="cert-toolbar">
+                <div class="cert-field">
+                  <label for="searchInput">Buscar</label>
+                  <input id="searchInput" type="search" placeholder="Código, radicado, empresa o NIT">
+                </div>
+                <div class="cert-field">
+                  <label for="statusFilter">Estado</label>
+                  <select id="statusFilter">
+                    <option value="">Todos</option>
+                    <option value="PENDIENTE_FIRMA">Pendiente de firma</option>
+                    <option value="VIGENTE">Vigente</option>
+                    <option value="SUSPENDIDO">Suspendido</option>
+                    <option value="CANCELADO">Cancelado</option>
+                  </select>
+                </div>
+                <button id="exportButton" class="comite-button secondary" type="button">Exportar certificados</button>
+                <button id="exportCompaniesButton" class="comite-button secondary" type="button">Empresas certificadas</button>
+              </div>
+              <div class="comite-table-wrap">
+                <table class="cert-table">
+                  <thead>
+                    <tr>
+                      <th>Código de verificación</th>
+                      <th>Radicado</th>
+                      <th>Empresa titular</th>
+                      <th>Norma</th>
+                      <th>Estado</th>
+                      <th>Vencimiento</th>
+                      <th>Detalle</th>
+                    </tr>
+                  </thead>
+                  <tbody id="certificadosBody">
+                    <tr><td colspan="7"><div class="comite-table-empty">Cargando certificados...</div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section id="detailPanel" class="comite-panel cert-detail-panel" aria-live="polite">
+              <div class="comite-empty-state">
+                <span class="comite-empty-icon" aria-hidden="true">+</span>
+                <h3>Ningún certificado seleccionado</h3>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="vencimientosView" class="comite-panel cert-secondary-view" hidden>
+          <div class="comite-panel-heading">
+            <div>
+              <h3>Próximos vencimientos</h3>
+            </div>
+            <div class="cert-inline-control">
+              <label for="alertDays">Días</label>
+              <select id="alertDays">
+                <option value="30">30</option>
+                <option value="60">60</option>
+                <option value="90">90</option>
+                <option value="180">180</option>
+              </select>
+              <button id="loadAlertsButton" class="comite-button secondary" type="button">Consultar</button>
+            </div>
+          </div>
+          <div class="comite-table-wrap">
+            <table class="cert-table">
+              <thead><tr><th>Certificado</th><th>Empresa</th><th>NIT</th><th>Vence</th><th>Acción</th></tr></thead>
+              <tbody id="alertsBody"><tr><td colspan="5"><div class="comite-table-empty">Selecciona Consultar para cargar las alertas.</div></td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="consultaView" class="comite-panel cert-secondary-view" hidden>
+          <div class="comite-panel-heading">
+            <div>
+              <h3>Verificar certificado</h3>
+            </div>
+          </div>
+          <form id="publicSearchForm" class="cert-public-search">
+            <div class="cert-field">
+              <label for="publicCode">Código de verificación</label>
+              <input id="publicCode" type="search" required autocomplete="off">
+            </div>
+            <button class="comite-button primary" type="submit">Consultar</button>
+          </form>
+          <div id="publicResult" class="cert-public-result" aria-live="polite"></div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="actionDialog" class="cert-dialog">
+    <form id="actionForm">
+      <h3 id="dialogTitle">Confirmar acción</h3>
+      <p id="dialogDescription" class="comite-muted"></p>
+      <div id="reasonField" class="cert-field">
+        <label for="actionReason">Motivo</label>
+        <textarea id="actionReason" rows="3" minlength="5" maxlength="1000"></textarea>
+      </div>
+      <div id="renewalField" class="cert-field" hidden>
+        <label for="renewalDate">Nueva fecha de vencimiento</label>
+        <input id="renewalDate" type="date">
+      </div>
+      <div id="scopeField" class="cert-field" hidden>
+        <label for="scopeSelect">Nuevo alcance técnico</label>
+        <select id="scopeSelect"></select>
+      </div>
+      <div class="cert-dialog-actions">
+        <button id="cancelDialog" class="comite-button secondary" type="button">Cancelar</button>
+        <button id="confirmDialog" class="comite-button primary" type="submit">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const publicMode = window.location.pathname === "/verificar-certificado";
+      const token = localStorage.getItem("access_token");
+      if (!token && !publicMode) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const state = { certificados: [], solicitudes: [], seleccionado: null, accion: null, liderazgo: null };
+      const $ = (selector) => document.querySelector(selector);
+      const feedback = $("#feedback");
+      const rolePayload = token ? parseToken(token) : null;
+      const role = publicMode ? "public" : normalizeRole(rolePayload && (rolePayload.role_name || rolePayload.rol));
+      const canCreate = ["superadmin", "admin", "auxiliar"].includes(role);
+      const canManage = ["superadmin", "admin", "auxiliar"].includes(role);
+      const canRenew = canCreate;
+      const canEmail = ["superadmin", "admin", "auxiliar", "empresa", "auditor"].includes(role);
+      const canDecide = ["superadmin", "admin", "comite"].includes(role);
+      const canAssignLeader = ["superadmin", "admin"].includes(role);
+      const canWithdrawPublic = role === "superadmin";
+      const canExport = ["superadmin", "admin", "auxiliar"].includes(role);
+      const canSeeAlerts = ["superadmin", "admin", "auxiliar", "empresa", "auditor"].includes(role);
+      const canSeeHistory = ["superadmin", "admin", "auxiliar", "empresa", "auditor", "public"].includes(role);
+      const publicOnly = publicMode || role === "public";
+      const roleLabel = rolePayload && (rolePayload.role_name || rolePayload.rol) || "Usuario";
+
+      function parseToken(value) {
+        try {
+          const part = value.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+          return JSON.parse(decodeURIComponent(atob(part).split("").map((character) => "%" + ("00" + character.charCodeAt(0).toString(16)).slice(-2)).join("")));
+        } catch (_) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
+        }
+      }
+
+      function normalizeRole(value) {
+        const normalized = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[\s_-]+/g, "");
+        const aliases = {
+          superadministrador: "superadmin", superadm: "superadmin",
+          administrador: "admin", adm: "admin", aux: "auxiliar",
+          comite: "comite", empresario: "empresa", emp: "empresa",
+          publico: "public", pub: "public"
+        };
+        return aliases[normalized] || normalized;
+      }
+
+      async function api(path, options) {
+        const headers = Object.assign({}, (options && options.headers) || {});
+        if (token) headers.Authorization = "Bearer " + token;
+        const response = await fetch(path, Object.assign({}, options || {}, { headers }));
+        const type = response.headers.get("content-type") || "";
+        const body = type.includes("json") ? await response.json().catch(() => null) : null;
+        if (response.status === 401) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
+        }
+        if (!response.ok) {
+          throw new Error(body && body.detail || "No fue posible completar la solicitud.");
+        }
+        return body;
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, (character) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[character]));
+      }
+
+      function showFeedback(message, kind) {
+        feedback.textContent = message || "";
+        feedback.className = "comite-feedback" + (message ? " " + kind : "");
+      }
+
+      function statusClass(value) {
+        const normalized = String(value || "").trim().toLowerCase();
+        if (normalized === "vigente") return "approved";
+        if (normalized.includes("cancel") || normalized.includes("retir")) return "rejected";
+        return "pending";
+      }
+
+      function puedeFirmar(certificate) {
+        const lider = state.liderazgo && state.liderazgo.lider;
+        return Boolean(
+          state.liderazgo && state.liderazgo.es_lider && lider &&
+          String(certificate.id_asignacion_lider) === String(lider.id_asignacion)
+        );
+      }
+
+      function showView(viewName) {
+        const views = { catalogo: "#catalogoView", vencimientos: "#vencimientosView", consulta: "#consultaView" };
+        Object.entries(views).forEach(([name, selector]) => { $(selector).hidden = name !== viewName; });
+        document.querySelectorAll("[data-view]").forEach((item) => item.classList.toggle("active", item.dataset.view === viewName));
+        const titles = {
+          catalogo: "Certificados",
+          vencimientos: "Vencimientos",
+          consulta: "Consulta pública"
+        };
+        $("#viewTitle").textContent = titles[viewName];
+        if (viewName === "vencimientos") loadAlerts();
+      }
+
+      async function loadMetrics() {
+        try {
+          const metrics = await api("/certificados/metricas-publicas");
+          $("#metricTotal").textContent = metrics.total ?? 0;
+          $("#metricVigentes").textContent = metrics.vigentes ?? 0;
+          $("#metricPublicados").textContent = metrics.publicados ?? 0;
+          $("#metricVencen").textContent = metrics.proximos_a_vencer ?? 0;
+        } catch (_) {
+          ["#metricTotal", "#metricVigentes", "#metricPublicados", "#metricVencen"].forEach((selector) => { $(selector).textContent = "—"; });
+        }
+      }
+
+      async function loadCertificates() {
+        $("#resultCount").textContent = "Cargando certificados...";
+        try {
+          state.certificados = await api("/certificados/?limite=500") || [];
+          renderCertificates();
+          if (state.seleccionado) {
+            const current = state.certificados.find((item) => item.id_certificado === state.seleccionado);
+            if (current) await loadDetail(state.seleccionado);
+          }
+        } catch (error) {
+          state.certificados = [];
+          renderCertificates();
+          showFeedback(error.message, "error");
+        }
+      }
+
+      function filteredCertificates() {
+        const query = $("#searchInput").value.trim().toLowerCase();
+        const status = $("#statusFilter").value;
+        return state.certificados.filter((item) => {
+          const text = [item.codigo_verificacion, item.numero_radicado, item.empresa, item.nit, item.norma_codigo].join(" ").toLowerCase();
+          const matchesQuery = !query || text.includes(query);
+          const matchesStatus = !status || String(item.estado_certificado || "").trim().toUpperCase() === status;
+          return matchesQuery && matchesStatus;
+        });
+      }
+
+      function renderCertificates() {
+        const rows = filteredCertificates();
+        $("#resultCount").textContent = rows.length + (rows.length === 1 ? " certificado" : " certificados");
+        const body = $("#certificadosBody");
+        if (!rows.length) {
+          body.innerHTML = '<tr><td colspan="7"><div class="comite-table-empty">No hay certificados para los filtros seleccionados.</div></td></tr>';
+          return;
+        }
+        body.innerHTML = rows.map((item) => '<tr>' +
+          '<td><button class="cert-code-button" type="button" data-open-cert="' + escapeHtml(item.id_certificado) + '">' + escapeHtml(item.codigo_verificacion || "Sin código") + '</button></td>' +
+          '<td>' + escapeHtml(item.numero_radicado || "—") + '</td>' +
+          '<td>' + escapeHtml(item.empresa || "—") + '</td>' +
+          '<td>' + escapeHtml(item.norma_codigo || "—") + '</td>' +
+          '<td><span class="comite-status ' + statusClass(item.estado_certificado) + '">' + escapeHtml(item.estado_certificado || "Sin estado") + '</span></td>' +
+          '<td>' + escapeHtml(formatDate(item.fecha_vencimiento)) + '</td>' +
+          '<td><button class="comite-table-action" type="button" data-open-cert="' + escapeHtml(item.id_certificado) + '">Ver</button></td>' +
+          '</tr>').join("");
+      }
+
+      function formatDate(value) {
+        if (!value) return "—";
+        const date = new Date(value + (String(value).length === 10 ? "T00:00:00" : ""));
+        return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(date);
+      }
+
+      async function loadDetail(id) {
+        state.seleccionado = id;
+        const panel = $("#detailPanel");
+        panel.innerHTML = '<div class="comite-loading">Cargando certificado...</div>';
+        try {
+          const certificate = await api("/certificados/" + encodeURIComponent(id));
+          state.certificadoActual = certificate;
+          renderDetail(certificate);
+        } catch (error) {
+          panel.innerHTML = '<div class="comite-empty-state"><h3>No se pudo cargar el certificado</h3><p>' + escapeHtml(error.message) + '</p></div>';
+        }
+      }
+
+      function renderDetail(certificate) {
+        const id = encodeURIComponent(certificate.id_certificado);
+        const status = String(certificate.estado_certificado || "").trim().toUpperCase();
+        const actions = [];
+        if (status === "PENDIENTE_FIRMA") {
+          if (puedeFirmar(certificate)) {
+            actions.push('<button class="comite-button secondary" type="button" data-action="preview">Vista previa PDF</button>');
+            actions.push('<button class="comite-button primary" type="button" data-action="sign">Firmar digitalmente</button>');
+          } else {
+            const leader = state.liderazgo && state.liderazgo.lider;
+            actions.push('<p class="cert-signature-note">' + (leader ? "Firma asignada a " + escapeHtml(leader.nombre) + ". Solo esa persona puede firmar." : "Pendiente de asignar líder firmante del Comité.") + '</p>');
+          }
+        }
+        if (status === "VIGENTE") {
+          if (certificate.id_firmante) {
+            actions.push('<button class="comite-button primary" type="button" data-action="download">Descargar PDF firmado</button>');
+            if (canEmail) actions.push('<button class="comite-button secondary" type="button" data-action="email">Reenviar PDF firmado</button>');
+          } else {
+            actions.push('<p class="cert-signature-note">Este registro vigente no tiene una firma PAdES registrada; no puede descargarse como certificado oficial.</p>');
+          }
+          if (canRenew) actions.push('<button class="comite-button secondary" type="button" data-action="renew">Renovar</button>');
+          if (canManage) actions.push('<button class="comite-button danger" type="button" data-action="suspend">Suspender</button>');
+          if (role === "comite") actions.push('<button class="comite-button secondary" type="button" data-action="reason-suspend">Registrar motivo de suspensión</button>');
+          if (role === "auxiliar") actions.push('<button class="comite-button secondary" type="button" data-action="reason-cancel">Registrar motivo de cancelación</button>');
+        }
+        if (status === "SUSPENDIDO" && canDecide) {
+          actions.push('<button class="comite-button primary" type="button" data-action="reactivate">Reactivar</button>');
+          actions.push('<button class="comite-button danger" type="button" data-action="cancel">Cancelar certificado</button>');
+        }
+        if (canDecide && status === "VIGENTE") {
+          actions.push('<button class="comite-button danger" type="button" data-action="cancel">Cancelar certificado</button>');
+        }
+        if (canManage && status === "VIGENTE" && !certificate.publico_certificado) {
+          actions.push('<button class="comite-button secondary" type="button" data-action="publish">Publicar en portal</button>');
+        }
+        if (canWithdrawPublic && status === "VIGENTE" && certificate.publico_certificado) {
+          actions.push('<button class="comite-button secondary" type="button" data-action="unpublish">Retirar del portal</button>');
+        }
+        if (role === "superadmin" && status === "VIGENTE") {
+          actions.push('<button class="comite-button secondary" type="button" data-action="change-scope">Cambiar alcance</button>');
+        }
+        if (canSeeHistory) {
+          actions.push('<button class="comite-resource" type="button" data-action="history">Consultar historial de estados <span>CER-020</span></button>');
+        }
+        if (!["PENDIENTE_FIRMA", "VIGENTE", "SUSPENDIDO"].includes(status)) {
+          actions.push('<p class="comite-muted">Este certificado no admite más cambios de estado.</p>');
+        }
+        $("#detailPanel").innerHTML =
+          '<div class="comite-detail-heading"><div><span class="comite-kicker">Detalle del certificado</span><h3>' + escapeHtml(certificate.codigo_verificacion || "Sin código") + '</h3></div>' +
+          '<span class="comite-status ' + statusClass(status) + '">' + escapeHtml(certificate.estado_certificado || "Sin estado") + '</span></div>' +
+          '<dl class="comite-facts cert-facts">' +
+          fact("Radicado", certificate.numero_radicado) + fact("Empresa titular", certificate.empresa) +
+          fact("NIT", certificate.nit) + fact("Norma", [certificate.norma_codigo, certificate.norma, certificate.norma_version].filter(Boolean).join(" ")) +
+          fact("Alcance", certificate.alcance) + fact("Emisión", formatDate(certificate.fecha_emision)) +
+          fact("Vencimiento", formatDate(certificate.fecha_vencimiento)) + fact("Portal público", certificate.publico_certificado ? "Publicado" : "No publicado") +
+          (certificate.nombre_firmante ? fact("Firmado por", certificate.nombre_firmante) : "") +
+          (certificate.huella_firmante ? fact("Huella SHA-256 del certificado", certificate.huella_firmante) : "") +
+          (certificate.huella_pdf ? fact("Huella SHA-256 del PDF", certificate.huella_pdf) : "") +
+          '</dl><div class="cert-action-list">' + actions.join("") + '</div>' +
+          (status === "PENDIENTE_FIRMA" ? '<p class="cert-signature-note">Este registro no es todavía un certificado oficial.</p>' : '') +
+          '<div id="detailFeedback" class="comite-feedback" role="status" aria-live="polite"></div>' +
+          (canSeeHistory ? '<div class="cert-history"><div id="historyContent"></div></div>' : '');
+      }
+
+      function fact(label, value) {
+        return '<div><dt>' + escapeHtml(label) + '</dt><dd>' + escapeHtml(value || "No registrado") + '</dd></div>';
+      }
+
+      async function loadRequests() {
+        if (!canCreate) return;
+        try {
+          const solicitudes = await api("/solicitudes/?limite=200");
+          state.solicitudes = (solicitudes || []).filter((item) => ["APROBADA", "APROBADO", "CERTIFICADA"].includes(String(item.estado || "").trim().toUpperCase()));
+          const select = $("#solicitudSelect");
+          select.innerHTML = '<option value="">Selecciona una solicitud aprobada</option>' + state.solicitudes.map((item) =>
+            '<option value="' + escapeHtml(item.id_solicitud) + '">' + escapeHtml(item.numero_radicado || item.id_solicitud) + ' · ' + escapeHtml(item.estado) + '</option>'
+          ).join("");
+          if (!state.solicitudes.length) select.innerHTML = '<option value="">No hay solicitudes aprobadas</option>';
+        } catch (error) {
+          $("#solicitudSelect").innerHTML = '<option value="">No fue posible cargar las solicitudes</option>';
+          showFeedback(error.message, "error");
+        }
+      }
+
+      async function loadLeaderAssignment() {
+        if (publicOnly) return;
+        try {
+          state.liderazgo = await api("/certificados/lider-comite/actual");
+          const lider = state.liderazgo && state.liderazgo.lider;
+          $("#leaderStatus").textContent = lider
+            ? "Líder firmante: " + lider.nombre
+            : "No hay líder firmante asignado";
+          $("#leaderPanel").hidden = !canAssignLeader;
+          $("#leaderCurrent").textContent = lider ? lider.nombre + " · " + lider.correo : "Sin líder asignado";
+          if (canAssignLeader) {
+            const opciones = await api("/certificados/lider-comite/opciones");
+            const select = $("#leaderSelect");
+            select.innerHTML = '<option value="">Selecciona una persona Comité</option>' +
+              opciones.map((persona) => '<option value="' + escapeHtml(persona.id_usuario) + '">' +
+                escapeHtml(persona.nombre) + ' · ' + escapeHtml(persona.correo) + '</option>').join("");
+            if (lider) select.value = lider.id_usuario;
+          }
+        } catch (error) {
+          $("#leaderStatus").textContent = "No se pudo consultar la asignación del líder.";
+          if (canAssignLeader) $("#leaderCurrent").textContent = error.message;
+        }
+      }
+
+      async function loadScopes(idSolicitud) {
+        const select = $("#alcanceSelect");
+        select.disabled = true;
+        select.innerHTML = '<option value="">Cargando alcances...</option>';
+        if (!idSolicitud) {
+          select.innerHTML = '<option value="">Selecciona una solicitud primero</option>';
+          return;
+        }
+        try {
+          const detail = await api("/solicitudes/" + encodeURIComponent(idSolicitud) + "/informacion-general");
+          const scopes = detail && detail.alcances || [];
+          select.innerHTML = '<option value="">Selecciona un alcance</option>' + scopes.map((item) =>
+            '<option value="' + escapeHtml(item.id_alcance) + '">' + escapeHtml(item.descripcion || item.id_alcance) + '</option>'
+          ).join("");
+          if (!scopes.length) select.innerHTML = '<option value="">La solicitud no tiene alcances registrados</option>';
+          select.disabled = !scopes.length;
+        } catch (error) {
+          select.innerHTML = '<option value="">No fue posible cargar los alcances</option>';
+          showFeedback(error.message, "error");
+        }
+      }
+
+      async function openAction(action, certificate) {
+        state.accion = { action, id: certificate.id_certificado };
+        const isRenewal = action === "renew";
+        const isScopeChange = action === "change-scope";
+        const reasonField = $("#reasonField");
+        const renewalField = $("#renewalField");
+        const scopeField = $("#scopeField");
+        reasonField.hidden = isRenewal || isScopeChange;
+        renewalField.hidden = !isRenewal;
+        scopeField.hidden = !isScopeChange;
+        $("#actionReason").required = !isRenewal && !isScopeChange;
+        $("#renewalDate").required = isRenewal;
+        $("#scopeSelect").required = isScopeChange;
+        $("#dialogTitle").textContent = isRenewal ? "Renovar certificado" : isScopeChange ? "Cambiar alcance" : action === "suspend" ? "Suspender certificado" : action === "cancel" ? "Cancelar certificado" : action === "reason-cancel" ? "Registrar motivo de cancelación" : action === "reason-suspend" ? "Registrar motivo de suspensión" : "Reactivar certificado";
+        $("#dialogDescription").textContent = isRenewal ? "Se creará un nuevo registro pendiente de firma vinculado al mismo radicado." : isScopeChange ? "Selecciona un alcance asociado al mismo radicado." : "El motivo quedará registrado en el historial del certificado.";
+        $("#actionReason").value = "";
+        $("#renewalDate").value = "";
+        if (isScopeChange) {
+          const detail = await api("/solicitudes/" + encodeURIComponent(certificate.id_solicitud) + "/informacion-general");
+          const scopes = detail && detail.alcances || [];
+          $("#scopeSelect").innerHTML = scopes.map((item) =>
+            '<option value="' + escapeHtml(item.id_alcance) + '"' + (item.id_alcance === certificate.id_alcance ? " selected" : "") + '>' + escapeHtml(item.descripcion || item.id_alcance) + '</option>'
+          ).join("");
+          if (!scopes.length) throw new Error("La solicitud no tiene alcances registrados.");
+        }
+        $("#actionDialog").showModal();
+        if (isRenewal) $("#renewalDate").focus();
+        else if (isScopeChange) $("#scopeSelect").focus();
+        else $("#actionReason").focus();
+      }
+
+      function localDateValue(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return year + "-" + month + "-" + day;
+      }
+
+      async function submitAction(event) {
+        event.preventDefault();
+        if (!state.accion) return;
+        const { action, id } = state.accion;
+        const button = $("#confirmDialog");
+        let requiereAprobacion = false;
+        button.disabled = true;
+        try {
+          if (action === "renew") {
+            const result = await api("/certificados/" + encodeURIComponent(id) + "/renovar", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fecha_vencimiento: $("#renewalDate").value })
+            });
+            requiereAprobacion = Boolean(result && result.requiere_aprobacion);
+          } else if (action === "change-scope") {
+            await api("/certificados/" + encodeURIComponent(id) + "/alcance", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id_alcance: $("#scopeSelect").value })
+            });
+          } else {
+            const endpoint = action === "reason-cancel" ? "motivo-cancelacion" : action === "reason-suspend" ? "motivo-suspension" : action === "suspend" ? "suspender" : action === "cancel" ? "cancelar" : "reactivar";
+            const result = await api("/certificados/" + encodeURIComponent(id) + "/" + endpoint, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ motivo: $("#actionReason").value.trim() })
+            });
+            requiereAprobacion = Boolean(result && result.requiere_aprobacion);
+          }
+          $("#actionDialog").close();
+          showFeedback(
+            requiereAprobacion ? "Acción registrada; requiere aprobación superior." : "Cambio guardado correctamente.",
+            "success"
+          );
+          await refreshAll();
+        } catch (error) {
+          showFeedback(error.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function handleDetailAction(action, button) {
+        const certificate = state.certificadoActual;
+        if (!certificate) return;
+        const id = encodeURIComponent(certificate.id_certificado);
+        if (["suspend", "cancel", "reactivate", "renew", "reason-cancel", "reason-suspend", "change-scope"].includes(action)) {
+          try {
+            await openAction(action, certificate);
+          } catch (error) {
+            showFeedback(error.message, "error");
+          }
+          return;
+        }
+        button.disabled = true;
+        try {
+          if (action === "preview" || action === "download") {
+            const path = "/certificados/" + id + (action === "preview" ? "/pdf/preview" : "/pdf");
+            await openPdf(path, action === "download");
+          } else if (action === "sign") {
+            if (!window.confirm("¿Firmar digitalmente este certificado? Se usará su PKCS#12 asignado a esta cuenta.")) return;
+            const resultado = await api("/certificados/" + id + "/firmar", { method: "POST" });
+            showFeedback("Certificado firmado digitalmente. Huella SHA-256 del PDF: " + resultado.huella_pdf, "success");
+            await refreshAll();
+          } else if (action === "email") {
+            await api("/certificados/" + id + "/reenviar", { method: "POST" });
+            showFeedback("Certificado reenviado por correo.", "success");
+          } else if (action === "publish" || action === "unpublish") {
+            const message = action === "publish" ? "¿Publicar este certificado en el portal?" : "¿Retirar este certificado del portal público?";
+            if (!window.confirm(message)) return;
+            const endpoint = action === "publish" ? "publicar" : "retirar-portal";
+            await api("/certificados/" + id + "/" + endpoint, { method: "POST" });
+            showFeedback("Estado de publicación actualizado.", "success");
+            await refreshAll();
+          } else if (action === "history") {
+            await loadHistory(certificate.id_certificado);
+          }
+        } catch (error) {
+          showFeedback(error.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function loadHistory(id) {
+        const container = $("#historyContent");
+        container.textContent = "Cargando historial...";
+        try {
+          const history = await api("/certificados/" + encodeURIComponent(id) + "/historial");
+          container.innerHTML = history.length ? '<ol class="cert-history-list">' + history.map((item) =>
+            '<li><strong>' + escapeHtml(item.estado_nuevo || "Registro") + '</strong><span>' + escapeHtml(item.motivo || "Sin motivo") + '</span><small>' + escapeHtml(item.usuario || "Sistema") + ' · ' + escapeHtml(formatDate(item.fecha)) + '</small></li>'
+          ).join("") + '</ol>' : '<p class="comite-muted">No hay movimientos registrados.</p>';
+        } catch (error) {
+          container.textContent = error.message;
+        }
+      }
+
+      async function openPdf(path, download) {
+        const preview = download ? null : window.open("about:blank", "_blank");
+        const response = await fetch(path, { headers: { Authorization: "Bearer " + token } });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          if (preview) preview.close();
+          throw new Error(body && body.detail || "No fue posible generar el PDF.");
+        }
+        const url = URL.createObjectURL(await response.blob());
+        if (download) {
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = (state.certificadoActual.codigo_verificacion || "certificado") + ".pdf";
+          link.click();
+        } else {
+          if (preview) preview.location.href = url;
+        }
+        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      }
+
+      async function loadAlerts() {
+        const body = $("#alertsBody");
+        body.innerHTML = '<tr><td colspan="5"><div class="comite-loading">Consultando vencimientos...</div></td></tr>';
+        try {
+          const alerts = await api("/certificados/alertas/vencimiento?dias=" + encodeURIComponent($("#alertDays").value));
+          if (!alerts.length) {
+            body.innerHTML = '<tr><td colspan="5"><div class="comite-table-empty">No hay certificados próximos a vencer.</div></td></tr>';
+            return;
+          }
+          body.innerHTML = alerts.map((item) => '<tr>' +
+            '<td><strong>' + escapeHtml(item.codigo_verificacion) + '</strong></td>' +
+            '<td>' + escapeHtml(item.empresa) + '</td><td>' + escapeHtml(item.nit) + '</td>' +
+            '<td>' + escapeHtml(formatDate(item.fecha_vencimiento)) + '</td>' +
+            '<td><button class="comite-table-action" type="button" data-notify="' + escapeHtml(item.id_certificado) + '">Notificar</button></td>' +
+            '</tr>').join("");
+        } catch (error) {
+          body.innerHTML = '<tr><td colspan="5"><div class="comite-table-empty">' + escapeHtml(error.message) + '</div></td></tr>';
+        }
+      }
+
+      async function notifyExpiry(id, button) {
+        button.disabled = true;
+        try {
+          await api("/certificados/notificar-vencimiento/" + encodeURIComponent(id) + "?dias=" + encodeURIComponent($("#alertDays").value), { method: "POST" });
+          showFeedback("Notificación de vencimiento enviada.", "success");
+        } catch (error) {
+          showFeedback(error.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function publicSearch(event) {
+        event.preventDefault();
+        const code = $("#publicCode").value.trim();
+        const result = $("#publicResult");
+        result.textContent = "Consultando...";
+        try {
+          const response = await fetch("/certificados/publico/" + encodeURIComponent(code));
+          const certificate = await response.json().catch(() => null);
+          if (!response.ok) throw new Error(certificate && certificate.detail || "No se encontró un certificado público vigente.");
+          result.innerHTML = '<p class="cert-signature-note">Firma PAdES registrada. Comprueba la identidad del firmante y las huellas antes de aceptarlo.</p><dl class="comite-facts cert-public-facts">' +
+            fact("Empresa", certificate.empresa) + fact("NIT", certificate.nit) +
+            fact("Norma", [certificate.norma_codigo, certificate.norma, certificate.norma_version].filter(Boolean).join(" ")) +
+            fact("Alcance", certificate.alcance) + fact("Código", certificate.codigo_verificacion) +
+            fact("Firmante", certificate.firmante) +
+            fact("Huella SHA-256 del certificado", certificate.huella_certificado) +
+            fact("Huella SHA-256 del PDF", certificate.huella_pdf) +
+            fact("Vigencia", formatDate(certificate.fecha_emision) + " – " + formatDate(certificate.fecha_vencimiento)) +
+            '</dl><button class="comite-button primary" type="button" id="publicPdfButton">Descargar PDF firmado</button>';
+          $("#publicPdfButton").addEventListener("click", () => downloadPublicPdf(code));
+        } catch (error) {
+          result.innerHTML = '<div class="comite-feedback error">' + escapeHtml(error.message) + '</div>';
+        }
+      }
+
+      async function downloadPublicPdf(code) {
+        const response = await fetch("/certificados/publico/" + encodeURIComponent(code) + "/pdf");
+        if (!response.ok) {
+          showFeedback("No fue posible descargar el certificado.", "error");
+          return;
+        }
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = code + ".pdf";
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      }
+
+      async function exportData(path, filename, button) {
+        button.disabled = true;
+        try {
+          const response = await fetch(path, { headers: { Authorization: "Bearer " + token } });
+          if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            throw new Error(body && body.detail || "No fue posible generar la exportación.");
+          }
+          const url = URL.createObjectURL(await response.blob());
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+          link.click();
+          window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+          if (response.headers.get("X-Requiere-Aprobacion")) {
+            showFeedback("Exportación realizada; requiere aprobación superior.", "success");
+          }
+        } catch (error) {
+          showFeedback(error.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      function exportCsv() {
+        return exportData("/certificados/exportar", "certificados.csv", $("#exportButton"));
+      }
+
+      function exportCompanies() {
+        return exportData("/certificados/empresas-oficiales", "empresas-certificadas.csv", $("#exportCompaniesButton"));
+      }
+
+      async function refreshAll() {
+        await Promise.all([loadCertificates(), loadMetrics()]);
+      }
+
+      $("#roleLabel").textContent = publicMode ? "Consulta sin autenticación" : "Rol: " + roleLabel;
+      $("#leaderPanel").hidden = !canAssignLeader || publicOnly;
+      $("#createPanel").hidden = !canCreate;
+      $("#alertsNav").hidden = !canSeeAlerts || publicMode;
+      $("#catalogNav").hidden = publicOnly;
+      $("#exportButton").hidden = !canExport || publicOnly;
+      $("#exportCompaniesButton").hidden = !canExport || publicOnly;
+      $("#committeeNav").hidden = publicOnly;
+      $("#authControls").hidden = publicMode;
+      $("#roleNote").hidden = publicMode;
+      $("#refreshButton").hidden = publicOnly;
+      $("#createForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = $("#createButton");
+        button.disabled = true;
+        try {
+          const response = await api("/certificados/", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id_solicitud: $("#solicitudSelect").value,
+              id_alcance: $("#alcanceSelect").value,
+              fecha_vencimiento: $("#fechaVencimiento").value
+            })
+          });
+          showFeedback("Certificado " + response.codigo_verificacion + " creado; pendiente de firma del líder asignado.", "success");
+          await refreshAll();
+          await loadRequests();
+        } catch (error) {
+          showFeedback(error.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      });
+      $("#leaderForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = $("#leaderAssignButton");
+        button.disabled = true;
+        try {
+          await api("/certificados/lider-comite", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_usuario: $("#leaderSelect").value })
+          });
+          showFeedback("Líder de firma asignado. Los certificados pendientes quedaron ligados a esta asignación.", "success");
+          await loadLeaderAssignment();
+          await refreshAll();
+        } catch (error) {
+          showFeedback(error.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      });
+      $("#solicitudSelect").addEventListener("change", (event) => loadScopes(event.target.value));
+      $("#searchInput").addEventListener("input", renderCertificates);
+      $("#statusFilter").addEventListener("change", renderCertificates);
+      $("#refreshButton").addEventListener("click", refreshAll);
+      $("#exportButton").addEventListener("click", exportCsv);
+      $("#exportCompaniesButton").addEventListener("click", exportCompanies);
+      $("#loadAlertsButton").addEventListener("click", loadAlerts);
+      $("#alertDays").addEventListener("change", loadAlerts);
+      $("#publicSearchForm").addEventListener("submit", publicSearch);
+      $("#actionForm").addEventListener("submit", submitAction);
+      $("#cancelDialog").addEventListener("click", () => $("#actionDialog").close());
+      $("#logoutButton").addEventListener("click", () => {
+        if (window.confirm("¿Cerrar sesión?")) { localStorage.clear(); window.location.href = "/login"; }
+      });
+      document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
+      $("#certificadosBody").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-open-cert]");
+        if (button) loadDetail(button.dataset.openCert);
+      });
+      $("#detailPanel").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-action]");
+        if (button) handleDetailAction(button.dataset.action, button);
+      });
+      $("#alertsBody").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-notify]");
+        if (button) notifyExpiry(button.dataset.notify, button);
+      });
+
+      const minimumDate = localDateValue(new Date());
+      $("#fechaVencimiento").min = minimumDate;
+      if (publicOnly) {
+        showView("consulta");
+        loadMetrics();
+      } else {
+        loadLeaderAssignment().finally(() => {
+          loadRequests();
+          refreshAll();
+        });
+      }
+    })();
+  </script>
+</body>
+
+</html>

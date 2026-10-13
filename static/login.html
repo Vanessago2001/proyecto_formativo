@@ -41,9 +41,24 @@
 
             <div class="header-buttons">
 
-                <a href="/register" class="btn-login">Registrarse</a>
-                <a href="/buscar_empresa" class="btn-login">Buscar empresa</a>
+                <div class="nav-dropdown">
+                    <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+                        Consulta pública <span class="nav-caret">▼</span>
+                    </button>
+                    <div class="nav-dropdown-menu">
+                        <div class="nav-dropdown-panel">
+                            <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                            <a href="/">Consultar estado de vigencia</a>
+                            <a href="/verificar-certificado">Verificar certificado</a>
+                            <a href="/consulta-norma">Consultar norma evaluada</a>
+                            <a href="/vigencia">Consultar vigencia y plazos</a>
+                            <a href="/validar">Validar autenticidad</a>
+                            <a href="/constancia">Descargar constancia pública</a>
+                        </div>
+                    </div>
+                </div>
 
+                <a href="/register" class="btn-login">Registrarse</a>
 
             </div>
 
@@ -57,6 +72,16 @@
 
         <div class="mobile-menu" id="mobileMenu">
             <a href="/register">Registrarse</a>
+            <div class="mobile-menu-group">
+                <span class="mobile-menu-label">Consulta pública</span>
+                <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                <a href="/">Consultar estado de vigencia</a>
+                <a href="/verificar-certificado">Verificar certificado</a>
+                <a href="/consulta-norma">Consultar norma evaluada</a>
+                <a href="/vigencia">Consultar vigencia y plazos</a>
+                <a href="/validar">Validar autenticidad</a>
+                <a href="/constancia">Descargar constancia pública</a>
+            </div>
         </div>
 
     </header>
@@ -358,11 +383,13 @@
                 console.log(payload);
 
                 const destination =
-                    payload.role_name === "Auditor"
-                        ? "/auditor"
-                        : payload.role_name === "Empresa"
-                            ? "/empresa"
-                            : "/dashboard";
+                    ["Comité", "Comite", "comité", "comite"].includes(payload.role_name)
+                        ? "/comite"
+                        : payload.role_name === "Auditor"
+                            ? "/auditor"
+                            : payload.role_name === "Empresa"
+                                ? "/empresa"
+                                : "/dashboard";
 
                 console.log("Destino:", destination);
 
@@ -454,11 +481,13 @@
                     console.log("Rol:", payload.role_name);
 
                     const destination =
-                        payload.role_name === "Auditor"
-                            ? "/auditor"
-                            : payload.role_name === "Empresa"
-                                ? "/empresa"
-                                : "/dashboard";
+                        ["Comité", "Comite", "comité", "comite"].includes(payload.role_name)
+                            ? "/comite"
+                            : payload.role_name === "Auditor"
+                                ? "/auditor"
+                                : payload.role_name === "Empresa"
+                                    ? "/empresa"
+                                    : "/dashboard";
 
                     console.log("Destino:", destination);
                     window.location.href = destination;
@@ -580,7 +609,7 @@
         
 
     </script>
-
+<script src="/static/session.js"></script>
 </body>
 
 </html>

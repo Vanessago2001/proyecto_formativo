@@ -12,6 +12,11 @@ __pycache__/
 .env
 .env.*
 
+# Llaves privadas de firma digital (no versionar)
+certificados_claves/
+*.p12
+*.pfx
+
 # VS Code
 .vscode/
 
@@ -27,3 +32,6 @@ tmp_*
 Thumbs.db
 # Archivos que suben los usuarios (M5 - documentos de solicitud)
 storage/
+
+# Scripts locales con credenciales (no subir)
+query_db.py

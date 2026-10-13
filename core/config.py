@@ -59,6 +59,17 @@ class Settings:
         "CertiSENA ISO"
     )
 
+    CERTIFICADOS_FIRMA_DIR: str = os.getenv("CERTIFICADOS_FIRMA_DIR", "")
+    CERTIFICADOS_FIRMA_PASSWORDS_JSON: str = os.getenv(
+        "CERTIFICADOS_FIRMA_PASSWORDS_JSON", "{}"
+    )
+    CERTIFICADOS_FIRMA_TRUST_ROOTS_JSON: str = os.getenv(
+        "CERTIFICADOS_FIRMA_TRUST_ROOTS_JSON", "[]"
+    )
+    CERTIFICADOS_STORAGE_DIR: str = os.getenv(
+        "CERTIFICADOS_STORAGE_DIR", "storage/certificados_firmados"
+    )
+
     def __init__(self) -> None:
 
         if not self.DATABASE_URL:
