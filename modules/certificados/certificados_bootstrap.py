@@ -87,12 +87,48 @@ async def preparar_modulo_certificados() -> None:
                 ADD COLUMN IF NOT EXISTS huella_pdf VARCHAR(64);
             """))
             await session.execute(text("""
+                ALTER TABLE certificado DROP CONSTRAINT IF EXISTS chk_certificado_estado;
+            """))
+            await session.execute(text("""
+                ALTER TABLE certificado ADD CONSTRAINT chk_certificado_estado
+                CHECK (TRIM(estado_certificado) IN (
+                    'PENDIENTE_FIRMA', 'VIGENTE', 'SUSPENDIDO', 'CANCELADO', 'REVOCADO', 'VENCIDO'
+                ));
+            """))
+            await session.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_certificado_asignacion_lider
                     ON certificado (id_asignacion_lider, estado_certificado);
             """))
             await session.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_historial_certificado_fecha
                     ON historial_certificado (id_certificado, fecha DESC);
+            """))
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS firma_usuario (
+                    id_usuario UUID PRIMARY KEY REFERENCES usuario (id_usuario),
+                    hash_firma TEXT NOT NULL,
+                    qr_token VARCHAR(64) NOT NULL UNIQUE,
+                    intentos_fallidos INTEGER NOT NULL DEFAULT 0,
+                    bloqueada_hasta TIMESTAMP WITHOUT TIME ZONE,
+                    fecha_creacion TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    fecha_actualizacion TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS firma_certificado (
+                    id_firma UUID PRIMARY KEY,
+                    id_certificado UUID NOT NULL
+                        REFERENCES certificado (id_certificado) ON DELETE RESTRICT,
+                    id_usuario UUID NOT NULL REFERENCES usuario (id_usuario),
+                    numero_documento VARCHAR(50) NOT NULL,
+                    datos_generales TEXT NOT NULL,
+                    codigo_firma VARCHAR(64) NOT NULL,
+                    fecha_firma TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_firma_certificado_cert
+                    ON firma_certificado (id_certificado);
             """))
             await session.commit()
             logger.info("Modulo M9 (certificados) preparado correctamente.")

@@ -24,3 +24,12 @@ class CertificadoAlcance(BaseModel):
 
 class LiderComiteAsignar(BaseModel):
     id_usuario: UUID
+
+
+class FirmaConfigurar(BaseModel):
+    password_login: str = Field(min_length=1, max_length=128)
+    password_firma: str = Field(min_length=8, max_length=128)
+
+
+class CertificadoFirmar(BaseModel):
+    password_firma: str = Field(min_length=1, max_length=128)

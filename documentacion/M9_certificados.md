@@ -49,6 +49,17 @@ correo, firma el PDF en formato PAdES y valida su cadena contra las raíces CA
 configuradas. Tras completar el proceso, guarda firmante, fecha, hash SHA-256
 del PDF y huella del certificado; el registro pasa a `VIGENTE`.
 
+Para firmar desde la pantalla de certificados, el líder abre el registro y
+selecciona **Firmar certificado**. Si aún no tiene **contraseña de firma**, el
+sistema le pide crearla (confirmando su contraseña de inicio de sesión) y le
+muestra un QR de identificación. Después, cada firma exige esa contraseña, que
+es independiente de la de inicio de sesión: se compara su hash bcrypt con el del
+usuario autenticado, y tras 5 intentos fallidos se bloquea 15 minutos. Al firmar
+se guarda en `firma_certificado` el número del documento, datos generales y un
+código cifrado (HMAC-SHA256). Endpoints: `GET /certificados/firma/estado`,
+`POST /certificados/firma/configurar`, `GET /certificados/firma/qr`. No se usa
+reconocimiento facial.
+
 La configuración de credenciales, almacenamiento externo, CA de confianza y
 limitaciones TSA está en [la guía de firma del Comité](../../guia_firma_comite.md).
 Sin PKCS#12, contraseña o raíz CA para el líder, la operación falla cerrada y

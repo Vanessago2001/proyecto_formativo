@@ -227,6 +227,22 @@
         <label for="scopeSelect">Nuevo alcance técnico</label>
         <select id="scopeSelect"></select>
       </div>
+      <div id="signField" class="cert-field" hidden>
+        <label for="signPassword">Contraseña de firma</label>
+        <input id="signPassword" type="password" maxlength="72" autocomplete="off">
+      </div>
+      <div id="signSetupField" hidden>
+        <p class="comite-muted">Aún no tienes contraseña de firma. Créala ahora; debe ser distinta a tu contraseña de inicio de sesión.</p>
+        <div class="cert-field">
+          <label for="signLoginPassword">Contraseña de inicio de sesión (para confirmar tu identidad)</label>
+          <input id="signLoginPassword" type="password" maxlength="128" autocomplete="current-password">
+        </div>
+        <div class="cert-field">
+          <label for="signNewPassword">Nueva contraseña de firma</label>
+          <input id="signNewPassword" type="password" maxlength="72" autocomplete="new-password">
+        </div>
+      </div>
+      <div id="signQrBox" hidden></div>
       <div class="cert-dialog-actions">
         <button id="cancelDialog" class="comite-button secondary" type="button">Cancelar</button>
         <button id="confirmDialog" class="comite-button primary" type="submit">Confirmar</button>
@@ -425,7 +441,7 @@
         if (status === "PENDIENTE_FIRMA") {
           if (puedeFirmar(certificate)) {
             actions.push('<button class="comite-button secondary" type="button" data-action="preview">Vista previa PDF</button>');
-            actions.push('<button class="comite-button primary" type="button" data-action="sign">Firmar digitalmente</button>');
+            actions.push('<button class="comite-button primary" type="button" data-action="sign">Firmar certificado</button>');
           } else {
             const leader = state.liderazgo && state.liderazgo.lider;
             actions.push('<p class="cert-signature-note">' + (leader ? "Firma asignada a " + escapeHtml(leader.nombre) + ". Solo esa persona puede firmar." : "Pendiente de asignar líder firmante del Comité.") + '</p>');
@@ -477,7 +493,7 @@
           (certificate.huella_firmante ? fact("Huella SHA-256 del certificado", certificate.huella_firmante) : "") +
           (certificate.huella_pdf ? fact("Huella SHA-256 del PDF", certificate.huella_pdf) : "") +
           '</dl><div class="cert-action-list">' + actions.join("") + '</div>' +
-          (status === "PENDIENTE_FIRMA" ? '<p class="cert-signature-note">Este registro no es todavía un certificado oficial.</p>' : '') +
+          (status === "PENDIENTE_FIRMA" ? '<p class="cert-signature-note">Aún no es un certificado oficial. Si eres la persona asignada, puedes firmarlo desde aquí; el sistema aplicará y verificará la firma digital automáticamente.</p>' : '') +
           '<div id="detailFeedback" class="comite-feedback" role="status" aria-live="polite"></div>' +
           (canSeeHistory ? '<div class="cert-history"><div id="historyContent"></div></div>' : '');
       }
@@ -552,19 +568,38 @@
         state.accion = { action, id: certificate.id_certificado };
         const isRenewal = action === "renew";
         const isScopeChange = action === "change-scope";
+        const isSigning = action === "sign";
         const reasonField = $("#reasonField");
         const renewalField = $("#renewalField");
         const scopeField = $("#scopeField");
-        reasonField.hidden = isRenewal || isScopeChange;
+        reasonField.hidden = isRenewal || isScopeChange || isSigning;
         renewalField.hidden = !isRenewal;
         scopeField.hidden = !isScopeChange;
-        $("#actionReason").required = !isRenewal && !isScopeChange;
+        $("#actionReason").required = !isRenewal && !isScopeChange && !isSigning;
         $("#renewalDate").required = isRenewal;
         $("#scopeSelect").required = isScopeChange;
-        $("#dialogTitle").textContent = isRenewal ? "Renovar certificado" : isScopeChange ? "Cambiar alcance" : action === "suspend" ? "Suspender certificado" : action === "cancel" ? "Cancelar certificado" : action === "reason-cancel" ? "Registrar motivo de cancelación" : action === "reason-suspend" ? "Registrar motivo de suspensión" : "Reactivar certificado";
-        $("#dialogDescription").textContent = isRenewal ? "Se creará un nuevo registro pendiente de firma vinculado al mismo radicado." : isScopeChange ? "Selecciona un alcance asociado al mismo radicado." : "El motivo quedará registrado en el historial del certificado.";
+        $("#dialogTitle").textContent = isSigning ? "Firmar certificado" : isRenewal ? "Renovar certificado" : isScopeChange ? "Cambiar alcance" : action === "suspend" ? "Suspender certificado" : action === "cancel" ? "Cancelar certificado" : action === "reason-cancel" ? "Registrar motivo de cancelación" : action === "reason-suspend" ? "Registrar motivo de suspensión" : "Reactivar certificado";
+        $("#dialogDescription").textContent = isSigning
+          ? "Vas a firmar el certificado " + (certificate.codigo_verificacion || "") + ". Ingresa tu contraseña de firma (distinta a la de inicio de sesión); el sistema verificará que pertenece a tu cuenta y aplicará la firma digital."
+          : isRenewal ? "Se creará un nuevo registro pendiente de firma vinculado al mismo radicado." : isScopeChange ? "Selecciona un alcance asociado al mismo radicado." : "El motivo quedará registrado en el historial del certificado.";
+        $("#confirmDialog").textContent = isSigning ? "Firmar y emitir" : "Confirmar";
         $("#actionReason").value = "";
         $("#renewalDate").value = "";
+        $("#signField").hidden = true;
+        $("#signSetupField").hidden = true;
+        $("#signQrBox").hidden = true;
+        $("#signQrBox").innerHTML = "";
+        ["#signPassword", "#signLoginPassword", "#signNewPassword"].forEach((selector) => { $(selector).value = ""; $(selector).required = false; });
+        if (isSigning) {
+          const firma = await api("/certificados/firma/estado");
+          state.firmaConfigurada = Boolean(firma && firma.configurada);
+          $("#signField").hidden = !state.firmaConfigurada;
+          $("#signSetupField").hidden = state.firmaConfigurada;
+          $("#signPassword").required = state.firmaConfigurada;
+          $("#signLoginPassword").required = !state.firmaConfigurada;
+          $("#signNewPassword").required = !state.firmaConfigurada;
+          $("#confirmDialog").textContent = state.firmaConfigurada ? "Firmar y emitir" : "Crear contraseña de firma";
+        }
         if (isScopeChange) {
           const detail = await api("/solicitudes/" + encodeURIComponent(certificate.id_solicitud) + "/informacion-general");
           const scopes = detail && detail.alcances || [];
@@ -574,7 +609,8 @@
           if (!scopes.length) throw new Error("La solicitud no tiene alcances registrados.");
         }
         $("#actionDialog").showModal();
-        if (isRenewal) $("#renewalDate").focus();
+        if (isSigning) $((state.firmaConfigurada ? "#signPassword" : "#signLoginPassword")).focus();
+        else if (isRenewal) $("#renewalDate").focus();
         else if (isScopeChange) $("#scopeSelect").focus();
         else $("#actionReason").focus();
       }
@@ -592,9 +628,38 @@
         const { action, id } = state.accion;
         const button = $("#confirmDialog");
         let requiereAprobacion = false;
+        let successMessage = "Cambio guardado correctamente.";
         button.disabled = true;
+        if (action === "sign") button.textContent = "Firmando...";
         try {
-          if (action === "renew") {
+          if (action === "sign" && !state.firmaConfigurada) {
+            const creada = await api("/certificados/firma/configurar", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password_login: $("#signLoginPassword").value, password_firma: $("#signNewPassword").value })
+            });
+            state.firmaConfigurada = true;
+            $("#signSetupField").hidden = true;
+            $("#signField").hidden = false;
+            $("#signLoginPassword").value = "";
+            $("#signNewPassword").value = "";
+            $("#signLoginPassword").required = false;
+            $("#signNewPassword").required = false;
+            $("#signPassword").required = true;
+            const qrBox = $("#signQrBox");
+            qrBox.innerHTML = '<p class="comite-muted">Contraseña de firma creada. Este QR te identifica; al firmar siempre se pedirá tu contraseña.</p><img alt="Código QR de tu firma" width="160" height="160" src="data:image/svg+xml;base64,' + btoa(creada.qr_svg) + '">';
+            qrBox.hidden = false;
+            button.textContent = "Firmar y emitir";
+            $("#signPassword").focus();
+            return;
+          }
+          if (action === "sign") {
+            const result = await api("/certificados/" + encodeURIComponent(id) + "/firmar", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password_firma: $("#signPassword").value })
+            });
+            $("#signPassword").value = "";
+            successMessage = "Certificado firmado y emitido correctamente. Huella SHA-256 del PDF: " + result.huella_pdf;
+          } else if (action === "renew") {
             const result = await api("/certificados/" + encodeURIComponent(id) + "/renovar", {
               method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ fecha_vencimiento: $("#renewalDate").value })
@@ -615,14 +680,21 @@
           }
           $("#actionDialog").close();
           showFeedback(
-            requiereAprobacion ? "Acción registrada; requiere aprobación superior." : "Cambio guardado correctamente.",
+            requiereAprobacion ? "Acción registrada; requiere aprobación superior." : successMessage,
             "success"
           );
           await refreshAll();
         } catch (error) {
-          showFeedback(error.message, "error");
+          if (action === "sign") { $("#signPassword").value = ""; $("#actionDialog").close(); }
+          showFeedback(
+            action === "sign"
+              ? "No se pudo completar la firma del certificado. Detalle: " + error.message
+              : error.message,
+            "error"
+          );
         } finally {
           button.disabled = false;
+          button.textContent = action === "sign" ? "Firmar y emitir" : "Confirmar";
         }
       }
 
@@ -630,7 +702,7 @@
         const certificate = state.certificadoActual;
         if (!certificate) return;
         const id = encodeURIComponent(certificate.id_certificado);
-        if (["suspend", "cancel", "reactivate", "renew", "reason-cancel", "reason-suspend", "change-scope"].includes(action)) {
+        if (["sign", "suspend", "cancel", "reactivate", "renew", "reason-cancel", "reason-suspend", "change-scope"].includes(action)) {
           try {
             await openAction(action, certificate);
           } catch (error) {
@@ -643,11 +715,6 @@
           if (action === "preview" || action === "download") {
             const path = "/certificados/" + id + (action === "preview" ? "/pdf/preview" : "/pdf");
             await openPdf(path, action === "download");
-          } else if (action === "sign") {
-            if (!window.confirm("¿Firmar digitalmente este certificado? Se usará su PKCS#12 asignado a esta cuenta.")) return;
-            const resultado = await api("/certificados/" + id + "/firmar", { method: "POST" });
-            showFeedback("Certificado firmado digitalmente. Huella SHA-256 del PDF: " + resultado.huella_pdf, "success");
-            await refreshAll();
           } else if (action === "email") {
             await api("/certificados/" + id + "/reenviar", { method: "POST" });
             showFeedback("Certificado reenviado por correo.", "success");

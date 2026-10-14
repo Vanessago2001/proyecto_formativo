@@ -15,6 +15,7 @@ from core.config import settings
 from core.security import _normalize_role_name
 from modules.certificados.certificados_pdf import generar_pdf_certificado
 from modules.certificados.firma_pades import FirmaPadesError, firmar_pdf_pades
+from modules.certificados.firma_service import FirmaService
 
 
 ESTADO_PENDIENTE_FIRMA = "PENDIENTE_FIRMA"
@@ -80,6 +81,7 @@ class CertificadosService:
                 c.id_alcance, c.fecha_registro, c.fecha_revocacion,
                 c.id_asignacion_lider, c.id_firmante, c.huella_firmante,
                 c.codigo_hash, c.huella_pdf, firmante.nombre AS nombre_firmante,
+                firmante.nombre AS firmante, c.huella_firmante AS huella_certificado,
                 s.numero_radicado, s.id_empresa,
                 e.nombre AS empresa, e.nit,
                 n.codigo AS norma_codigo, n.nombre AS norma,
@@ -417,7 +419,9 @@ class CertificadosService:
             es_renovacion=True,
         )
 
-    async def firmar_con_lider_asignado(self, id_certificado: UUID, usuario: dict) -> dict:
+    async def firmar_con_lider_asignado(
+        self, id_certificado: UUID, usuario: dict, firma: dict | None = None
+    ) -> dict:
         await self.db.execute(text("SELECT pg_advisory_xact_lock(76139521, 11);"))
         resultado = await self.db.execute(text("""
             SELECT c.estado_certificado, c.id_asignacion_lider,
@@ -486,6 +490,7 @@ class CertificadosService:
                     id_firmante = :id_firmante,
                     huella_firmante = :huella_firmante,
                     huella_pdf = :huella_pdf,
+                    codigo_hash = COALESCE(codigo_hash, :codigo_hash),
                     url_certificado = :url_certificado,
                     publico_certificado = FALSE
                 WHERE id_certificado = :id_certificado;
@@ -494,9 +499,14 @@ class CertificadosService:
                 "id_firmante": str(asignacion["id_lider"]),
                 "huella_firmante": huella_certificado,
                 "huella_pdf": huella_pdf,
+                "codigo_hash": hashlib.sha256(
+                    str(certificado["codigo_verificacion"]).encode("utf-8")
+                ).hexdigest(),
                 "url_certificado": f"/certificados/{id_certificado}/pdf",
                 "id_certificado": str(id_certificado),
             })
+            if firma:
+                await FirmaService(self.db).registrar_firma(id_certificado, certificado, firma)
             await self._registrar_historial(
                 id_certificado,
                 ESTADO_PENDIENTE_FIRMA,
@@ -667,7 +677,8 @@ class CertificadosService:
 
     async def cambiar_publicacion(self, id_certificado: UUID, publicar: bool, usuario: dict) -> dict:
         resultado = await self.db.execute(text("""
-            SELECT estado_certificado, fecha_vencimiento, url_certificado
+            SELECT estado_certificado, fecha_vencimiento, url_certificado,
+                   id_firmante, huella_firmante, codigo_hash, huella_pdf
             FROM certificado
             WHERE id_certificado = :id_certificado
             FOR UPDATE;

@@ -19,6 +19,7 @@ from modules.consultas_p.paginas_router import router as consultas_publicas_pagi
 from modules.aprobaciones.aprobacion_router import router as aprobaciones_router
 from modules.aprobaciones.aprobacion_bootstrap import preparar_aprobaciones
 from modules.comite.comite_router import router as comite_router
+from modules.comite.comite_bootstrap import preparar_modulo_comite
 from modules.apelaciones.apelaciones_router import router as apelaciones_router
 from modules.certificados.certificados_bootstrap import preparar_modulo_certificados
 from modules.certificados.certificados_router import router as certificados_router
@@ -273,6 +274,7 @@ async def lifespan(app: FastAPI):
     await seed_initial_data()
     # Cada modulo prepara su parte de la base con su propia sesion.
     await preparar_modulo_solicitudes()
+    await preparar_modulo_comite()
     await preparar_modulo_empresas()
     await preparar_aprobaciones()
     await preparar_modulo_certificados()

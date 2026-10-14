@@ -267,6 +267,7 @@
 
       function renderDetail(id, detail, report, nonconformities, observations, auditor) {
         const expediente = detail && detail.expediente ? detail.expediente : {};
+        const hasFinalDecision = ["APROBADO", "APROBADA", "RECHAZADO", "RECHAZADA"].includes(String(expediente.estado || "").toUpperCase());
         const nonconformityItems = nonconformities && nonconformities.no_conformidades || [];
         const observationItems = observations && observations.observaciones || [];
         const reportData = report && report.informe || {};
@@ -282,8 +283,8 @@
           '<dl class="comite-facts">' +
           fact("Solicitante", expediente.solicitante || "No informado") +
           fact("Auditor", auditor && auditor.auditor || "No asignado") +
-          fact("Resultado auditor", reportData.resultado || "Pendiente") +
-          fact("Fecha informe", reportData.fecha || "No informado") +
+          fact("Resultado auditor", reportData.resultado || "Sin informe disponible") +
+          fact("Fecha informe", reportData.fecha || "No disponible") +
           '</dl>' +
           '<div class="comite-detail-section"><h4>Documentos y evidencias</h4><div class="comite-detail-list">' +
           '<button class="comite-resource" data-resource="/comite/expediente-descargar/' + escapeHtml(id) + '">Descargar expediente digital <span>COM-003</span></button>' +
@@ -291,12 +292,12 @@
           '<button class="comite-resource" data-resource="/comite/acta-firmada/' + escapeHtml(id) + '">Descargar acta firmada <span>COM-026</span></button>' +
           '</div></div>' +
           '<div class="comite-detail-section"><h4>Consultas relacionadas</h4><div class="comite-detail-list">' +
-          '<button class="comite-resource" data-resource="/comite/empresa-evaluada/' + escapeHtml(id) + '">Consultar datos de la empresa <span>COM-023</span></button>' +
-          '<button class="comite-resource" data-resource="/comite/historial-por-empresa/' + escapeHtml(id) + '">Consultar historial por empresa <span>COM-021</span></button>' +
-          '<button class="comite-resource" data-resource="/comite/historial-solicitudes-previas/' + escapeHtml(id) + '">Consultar solicitudes previas <span>COM-007</span></button>' +
+          '<button class="comite-resource" data-resource="/comite/empresa-evaluada/' + escapeHtml(expediente.id_empresa || "") + '">Consultar datos de la empresa <span>COM-023</span></button>' +
+          '<button class="comite-resource" data-resource="/comite/historial-por-empresa/' + escapeHtml(expediente.id_empresa || "") + '">Consultar historial por empresa <span>COM-021</span></button>' +
+          '<button class="comite-resource" data-resource="/comite/historial-solicitudes-previas/' + escapeHtml(expediente.usuario_creador || "") + '">Consultar solicitudes previas <span>COM-007</span></button>' +
           '</div></div>' +
-          '<div class="comite-detail-section"><h4>No conformidades (' + nonconformityItems.length + ')</h4>' + renderItems(nonconformityItems, "No hay no conformidades registradas.") + '</div>' +
-          '<div class="comite-detail-section"><h4>Observaciones técnicas</h4>' + renderItems(observationItems, "No hay observaciones registradas.") + '</div>' +
+          '<div class="comite-detail-section"><h4>No conformidades</h4>' + (nonconformities && nonconformities.disponible ? renderItems(nonconformityItems, "No hay no conformidades registradas.") : '<p class="comite-muted">La consulta de no conformidades aún no está conectada a una fuente de datos.</p>') + '</div>' +
+          '<div class="comite-detail-section"><h4>Observaciones técnicas</h4>' + (observations && observations.disponible ? renderItems(observationItems, "No hay observaciones registradas.") : '<p class="comite-muted">La consulta de observaciones técnicas aún no está conectada a una fuente de datos.</p>') + '</div>' +
           '<div class="comite-detail-section"><h4>Dictamen del comité</h4><label for="decisionComment">Comentario de la decisión</label><textarea id="decisionComment" rows="3" placeholder="Registra la justificación o las observaciones del comité"></textarea>' + decisionActions + '</div>' +
           (canDecide ? '<div class="comite-detail-section"><h4>Acta y seguimiento</h4><div class="comite-decision-actions">' +
             '<button class="comite-button secondary" data-decision="/comite/decisiones">Registrar decisión</button>' +
@@ -304,9 +305,9 @@
             '<button class="comite-button secondary" data-decision="/comite/observaciones-acta">Agregar observación al acta</button>' +
             '<button class="comite-button secondary" data-decision="/comite/restricciones-alcance">Registrar restricción</button>' +
             '<button class="comite-button secondary" data-decision="/comite/comentarios-debate">Comentar debate</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/acta-definitiva">Generar acta definitiva</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/firmar-acta">Firmar acta</button>' +
-            '<button class="comite-button danger" data-decision="/comite/cerrar-expediente">Cerrar expediente</button>' +
+            '<button class="comite-button secondary" data-decision="/comite/acta-definitiva" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Solicitar generación del acta</button>' +
+            '<button class="comite-button secondary" data-decision="/comite/firmar-acta" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Solicitar firma electrónica</button>' +
+            '<button class="comite-button danger" data-decision="/comite/cerrar-expediente" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Cerrar expediente</button>' +
             (isSuperAdmin ? '<button class="comite-button danger" data-decision="/comite/reabrir-dictamen">Reabrir dictamen</button>' : '') +
             '</div></div>' : '');
 
@@ -325,6 +326,27 @@
 
       async function loadResource(path) {
         try {
+          if (path.includes("/comite/expediente-descargar/")) {
+            const response = await fetch(path, { headers: { Authorization: "Bearer " + token } });
+            if (response.status === 401) {
+              localStorage.clear();
+              window.location.href = "/login";
+              return;
+            }
+            if (!response.ok) {
+              const errorBody = await response.json().catch(() => null);
+              throw new Error(errorBody && errorBody.detail || "No fue posible descargar el expediente.");
+            }
+            const blob = await response.blob();
+            const downloadUrl = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = downloadUrl;
+            anchor.download = "expediente-" + state.selectedId + ".zip";
+            anchor.click();
+            URL.revokeObjectURL(downloadUrl);
+            showFeedback("Expediente descargado.", "success");
+            return;
+          }
           const result = await api(path);
           showFeedback(result && (result.permiso || "Consulta completada.") || "Consulta completada.", "success");
         } catch (error) {
@@ -341,8 +363,18 @@
           return;
         }
         try {
-          await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expediente_id: state.selectedId, comentario: comment }) });
-          showFeedback("La acción del comité fue registrada.", "success");
+          const result = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expediente_id: state.selectedId, comentario: comment }) });
+          await Promise.all([loadExpedientes(), loadHistory()]);
+          const statusBadge = $("#detailPanel .comite-status");
+          if (statusBadge && result && result.estado) {
+            statusBadge.textContent = result.estado;
+            statusBadge.className = "comite-status " + statusClass(result.estado);
+            const hasFinalDecision = ["APROBADO", "APROBADA", "RECHAZADO", "RECHAZADA"].includes(String(result.estado).toUpperCase());
+            $("#detailPanel").querySelectorAll("[data-requires-final]").forEach((button) => {
+              button.disabled = !hasFinalDecision;
+            });
+          }
+          showFeedback(result && result.mensaje || "La acción del comité fue guardada.", "success");
         } catch (error) {
           showFeedback(error.message, "error");
         }
@@ -408,7 +440,30 @@
       $("#searchForm").addEventListener("submit", searchExpediente);
       $("#filterButton").addEventListener("click", filterExpedientes);
       $("#refreshButton").addEventListener("click", loadExpedientes);
-      $("#exportButton").addEventListener("click", () => loadResource("/comite/exportar-decisiones"));
+      $("#exportButton").addEventListener("click", async () => {
+        try {
+          const result = await api("/comite/exportar-decisiones");
+          const decisions = result && result.decisiones || [];
+          if (decisions.length) {
+            const columns = ["expediente_id", "codigo_expediente", "accion", "datos", "id_usuario", "fecha"];
+            const csv = [columns.join(","), ...decisions.map((decision) => columns.map((column) => {
+              const value = decision[column] == null ? "" : String(decision[column]);
+              const safeValue = /^[=+\-@]/.test(value) ? "'" + value : value;
+              return '"' + safeValue.replace(/"/g, '""') + '"';
+            }).join(","))].join("\r\n");
+            const blobUrl = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+            const anchor = document.createElement("a");
+            anchor.href = blobUrl;
+            anchor.download = "decisiones-comite.csv";
+            anchor.click();
+            URL.revokeObjectURL(blobUrl);
+          }
+          $("#historyContent").innerHTML = decisions.length ? '<pre>' + escapeHtml(JSON.stringify(decisions, null, 2)) + '</pre>' : '<div class="comite-table-empty">Todavía no hay decisiones históricas para exportar.</div>';
+          showFeedback(decisions.length + (decisions.length === 1 ? " acción persistida exportada." : " acciones persistidas exportadas."), "success");
+        } catch (error) {
+          showFeedback(error.message, "error");
+        }
+      });
       $("#logoutButton").addEventListener("click", () => { localStorage.clear(); window.location.href = "/login"; });
       loadExpedientes();
     })();

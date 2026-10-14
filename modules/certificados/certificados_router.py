@@ -19,8 +19,10 @@ from modules.certificados.certificados_permissions import (
 from modules.certificados.certificados_schema import (
     CertificadoAlcance,
     CertificadoCrear,
+    CertificadoFirmar,
     CertificadoMotivo,
     CertificadoRenovar,
+    FirmaConfigurar,
     LiderComiteAsignar,
 )
 from modules.certificados.certificados_service import (
@@ -29,6 +31,7 @@ from modules.certificados.certificados_service import (
     es_usuario_publico,
     ESTADO_VIGENTE,
 )
+from modules.certificados.firma_service import FirmaService
 from modules.consultas_p.rate_limit import limitar_consultas
 
 router = APIRouter(prefix="/certificados", tags=["M9 - Certificados"])
@@ -105,6 +108,31 @@ async def descargar_certificado_publico(
 @router.get("/metricas-publicas", summary="Consultar métricas públicas")
 async def consultar_metricas_publicas(db: AsyncSession = Depends(get_db)):
     return await CertificadosService(db).metricas_publicas()
+
+
+@router.get("/firma/estado", summary="Consultar si el usuario tiene contraseña de firma")
+async def estado_firma(
+    usuario: dict = Depends(requiere_firma_lider_o_permiso()),
+    db: AsyncSession = Depends(get_db),
+):
+    return await FirmaService(db).estado(usuario)
+
+
+@router.post("/firma/configurar", summary="Crear o cambiar la contraseña de firma")
+async def configurar_firma(
+    datos: FirmaConfigurar,
+    usuario: dict = Depends(requiere_firma_lider_o_permiso()),
+    db: AsyncSession = Depends(get_db),
+):
+    return await FirmaService(db).configurar(usuario, datos.password_login, datos.password_firma)
+
+
+@router.get("/firma/qr", summary="Obtener el código QR de identificación de la firma")
+async def qr_firma(
+    usuario: dict = Depends(requiere_firma_lider_o_permiso()),
+    db: AsyncSession = Depends(get_db),
+):
+    return await FirmaService(db).qr(usuario)
 
 
 @router.get("/lider-comite/actual", summary="Consultar líder de firma asignado")
@@ -245,7 +273,9 @@ async def descargar_certificado(
     usuario: dict = Depends(requiere_permiso("CER-012")),
     db: AsyncSession = Depends(get_db),
 ):
-    contenido = await CertificadosService(db).pdf_firmado(id_certificado, usuario)
+    servicio = CertificadosService(db)
+    certificado = await servicio._obtener(id_certificado, usuario)
+    contenido = await servicio.pdf_firmado(id_certificado, usuario)
     return Response(
         content=contenido,
         media_type="application/pdf",
@@ -256,10 +286,13 @@ async def descargar_certificado(
 @router.post("/{id_certificado}/firmar", summary="CER-010 · Firmar digitalmente")
 async def firmar_certificado(
     id_certificado: UUID,
+    datos: CertificadoFirmar,
     usuario: dict = Depends(requiere_firma_lider_o_permiso()),
     db: AsyncSession = Depends(get_db),
 ):
-    return await CertificadosService(db).firmar_con_lider_asignado(id_certificado, usuario)
+    # La contraseña de firma se valida contra el usuario autenticado, nunca contra otro.
+    firma = await FirmaService(db).verificar(usuario, datos.password_firma)
+    return await CertificadosService(db).firmar_con_lider_asignado(id_certificado, usuario, firma)
 
 
 @router.post("/{id_certificado}/reenviar", summary="CER-013 · Reenviar certificado por correo")
