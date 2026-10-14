@@ -328,7 +328,9 @@
               <label for="numDoc">Numero de documento</label><input id="numDoc" required />
             </div>
             <div>
-              <label for="rol">Permiso o rol</label><select id="rol" required></select>
+              <label for="rol">Permiso o rol</label><select id="rol" required disabled>
+                <option value="">Cargando roles...</option>
+              </select>
             </div>
             <div class="form-action">
               <button class="primary-action" type="submit">
@@ -849,18 +851,27 @@
       el.textContent = text;
       el.className = "message" + (success ? " success" : "");
     }
+    let availableRoles = [];
     async function loadRoles() {
       const res = await fetch("/rol/", { headers: headers() });
       if (!res.ok) throw new Error("No se pudieron cargar los permisos.");
       const roles = await res.json();
       const select = document.getElementById("rol");
       const displayed = new Set();
-      roles.forEach((r) => {
-        if (!displayed.has(r.nombre)) {
-          select.add(new Option(r.nombre, r.id_rol));
-          displayed.add(r.nombre);
-        }
+      availableRoles = roles.filter((role) => {
+        if (!role.nombre || displayed.has(role.nombre)) return false;
+        displayed.add(role.nombre);
+        return true;
       });
+      if (!availableRoles.length) {
+        throw new Error("No hay roles disponibles para asignar.");
+      }
+      select.replaceChildren(new Option("Selecciona un rol", "", true, true));
+      select.options[0].disabled = true;
+      availableRoles.forEach((role) => {
+        select.add(new Option(role.nombre, role.id_rol));
+      });
+      select.disabled = false;
     }
     async function loadUsers() {
       const res = await fetch("/users/all-users", { headers: headers() });
@@ -873,22 +884,29 @@
       document.getElementById("auxUsers").textContent = users.filter((u) =>
         ["Auxiliar", "Instructor"].includes(u.rol_nombre),
       ).length;
-      const roles = [...document.querySelectorAll("#rol option")];
       const body = document.getElementById("usersBody");
       body.textContent = "";
       users.forEach((u) => {
         const tr = document.createElement("tr");
         const roleSelect = document.createElement("select");
-        roles.forEach((r) =>
+        availableRoles.forEach((r) =>
           roleSelect.add(
             new Option(
-              r.text,
-              r.value,
+              r.nombre,
+              r.id_rol,
               false,
-              String(r.value) === String(u.rol_id),
+              String(r.id_rol) === String(u.rol_id),
             ),
           ),
         );
+        if (!availableRoles.some((role) => String(role.id_rol) === String(u.rol_id))) {
+          roleSelect.add(new Option(
+            u.rol_nombre || "Rol " + u.rol_id,
+            u.rol_id,
+            true,
+            true,
+          ));
+        }
         roleSelect.addEventListener("change", () =>
           updateUser(u.id, { rol: roleSelect.value }),
         );
@@ -965,9 +983,9 @@
       location.href = "/login";
     });
     if (isAdmin)
-      Promise.all([loadRoles(), loadUsers()]).catch((e) =>
-        show("tableMessage", e.message, false),
-      );
+      loadRoles()
+        .then(loadUsers)
+        .catch((e) => show("tableMessage", e.message, false));
 
 
 
