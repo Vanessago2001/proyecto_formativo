@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Competencias registradas</title>
+    <link rel="stylesheet" href="/static/styles.css">
+
+    <style>
+        .portal-shell { max-width:1320px; margin:0 auto; padding:28px; }
+        .header-logo { display:flex; align-items:center; gap:16px; }
+        .header-logo img { width:76px; height:auto; }
+        .header-logo h1 { font-size:30px; margin:0; }
+        .header-logo p { font-size:13px; opacity:.92; margin-top:6px; }
+
+        .card {
+            background:#fff;
+            border:1px solid #dbe4d4;
+            border-radius:12px;
+            padding:22px;
+            margin-bottom:22px;
+            box-shadow:0 2px 8px rgba(37,109,0,.06);
+        }
+        .card-header {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:12px;
+            margin-bottom:16px;
+            flex-wrap:wrap;
+        }
+        .card-title { color:#256d00; font-size:20px; margin:0; }
+        .help-text { color:#5f6f69; font-size:13px; margin-bottom:12px; }
+        .form-control { width:100%; box-sizing:border-box; }
+
+        .record-table-wrap { overflow-x:auto; border-radius:8px; border:1px solid #e5f0e1; }
+        table { width:100%; border-collapse:collapse; min-width:980px; }
+        th, td { padding:12px 14px; text-align:left; border-bottom:1px solid #edf0ed; vertical-align:top; font-size:13px; }
+        th { color:#475569; background:#f8fafc; font-size:11px; text-transform:uppercase; letter-spacing:.3px; }
+        tbody tr:hover { background:#fafcf9; }
+        tbody tr:last-child td { border-bottom:0; }
+
+        .badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; }
+        .badge.ok { background:#e7f6df; color:#2d750b; }
+        .badge.warn { background:#fff5d8; color:#896500; }
+        .badge.info { background:#e0f2fe; color:#0369a1; }
+        .badge.danger { background:#fee2e2; color:#991b1b; }
+
+        .btn {
+            border:0;
+            border-radius:8px;
+            padding:10px 14px;
+            font-weight:700;
+            cursor:pointer;
+            font-size:13px;
+            transition:.2s ease;
+        }
+        .btn-primary { background:#3baa01; color:#fff; box-shadow:0 3px 8px rgba(59,170,1,.20); }
+        .btn-primary:hover { background:#2d8700; }
+        .btn-secondary { background:#e9eeea; color:#3f4942; }
+        .btn-secondary:hover { background:#dce4de; }
+        .btn-danger { background:#ef4444; color:#fff; }
+
+        .modal {
+            display:none;
+            position:fixed;
+            inset:0;
+            background:rgba(15,23,42,.7);
+            align-items:center;
+            justify-content:center;
+            z-index:9999;
+            padding:20px;
+        }
+        .modal.active { display:flex; }
+        .modal-card {
+            background:#fff;
+            border-radius:14px;
+            width:min(1000px,100%);
+            max-height:90vh;
+            overflow-y:auto;
+            padding:24px;
+            box-shadow:0 20px 50px rgba(0,0,0,.25);
+        }
+        .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+        .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+        .form-group { display:flex; flex-direction:column; gap:6px; }
+        .form-group.full-width { grid-column:1/-1; }
+
+        .empty {
+            text-align:center;
+            padding:30px 20px;
+            color:#64748b;
+            font-size:14px;
+        }
+        .back-button {
+            display:inline-flex;
+            align-items:center;
+            gap:6px;
+            padding:8px 14px;
+            border-radius:6px;
+            background:#e9eeea;
+            color:#3f4942;
+            text-decoration:none;
+            font-weight:600;
+            font-size:13px;
+        }
+        .footer {
+            text-align:center;
+            padding:18px 0;
+            color:#64748b;
+            font-size:12px;
+            border-top:1px solid #dbe4d4;
+            margin-top:28px;
+        }
+        @media(max-width:720px){
+            .card { padding:16px; }
+            .form-grid { grid-template-columns:1fr; }
+            .form-group.full-width { grid-column:auto; }
+        }
+    </style>
+</head>
+<body>
+    <header class="login-header">
+        <div class="header-content header-logo">
+            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+            <div>
+                <h1>CertiSENA</h1>
+                <p class="subtitle">Competencias registradas - consulta y actualización</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <section class="content">
+            <div class="acciones" style="margin-bottom:18px;">
+                <a href="/auditor" class="back-button">Regresar al portal</a>
+            </div>
+
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Competencias registradas por este auditor</h2>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="cargarCompetencias()">Actualizar listado</button>
+                </div>
+                <p class="help-text">Presione actualizar para cargar sus competencias registradas.</p>
+            </section>
+
+            <section class="card">
+                <div class="record-table-wrap">
+                    <table class="record-table">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Norma</th>
+                                <th>Sector IAF</th>
+                                <th>Título / institución</th>
+                                <th>Descripción</th>
+                                <th>Fecha inicio</th>
+                                <th>Fecha fin</th>
+                                <th>Vigente</th>
+                                <th>Estado validación</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rows"></tbody>
+                    </table>
+                </div>
+                <p id="resumen" class="help-text" style="margin-top:12px;"></p>
+            </section>
+        </section>
+    </main>
+
+    <div class="modal" id="modalEditar">
+        <div class="modal-card">
+            <h2 class="card-title">Actualizar competencia</h2>
+            <input type="hidden" id="edit_id">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="edit_norma">Norma</label>
+                    <select id="edit_norma" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_tipo">Tipo de competencia</label>
+                    <select id="edit_tipo" class="form-control">
+                        <option value="Norma ISO">Norma ISO</option>
+                        <option value="Sector IAF">Sector IAF</option>
+                        <option value="Experiencia Laboral">Experiencia Laboral</option>
+                        <option value="Estudio">Estudio</option>
+                        <option value="Curso">Curso</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_sector">Sector IAF</label>
+                    <input id="edit_sector" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_titulo">Título / institución</label>
+                    <input id="edit_titulo" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_inicio">Fecha inicio</label>
+                    <input id="edit_inicio" class="form-control" type="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_fin">Fecha fin</label>
+                    <input id="edit_fin" class="form-control" type="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_vigente">¿Vigente?</label>
+                    <select id="edit_vigente" class="form-control">
+                        <option value="false">No</option>
+                        <option value="true">Sí</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
+                    <label for="edit_descripcion">Descripción</label>
+                    <textarea id="edit_descripcion" class="form-control" required></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarActualizacion()">Guardar actualización</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        © 2026 CertiSENA - SENA. Todos los derechos reservados.
+    </footer>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        let usuarioId = null;
+        let competencias = [];
+        let catalogo = [];
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        async function resolverUsuario() {
+            if (usuarioId) return usuarioId;
+            if (!token) return null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
+                return usuarioId;
+            } catch { return null; }
+        }
+
+        async function cargarCatalogo() {
+            try {
+                const res = await fetch('/competencias-auditor/catalogo');
+                const data = await res.json().catch(() => ({}));
+                catalogo = Array.isArray(data.catalogo) ? data.catalogo : [];
+                const select = document.getElementById('edit_norma');
+                select.innerHTML = catalogo.map(n =>
+                    `<option value="${escapeHtml(n.id_norma)}">${escapeHtml((n.codigo || '') + ' - ' + (n.nombre || ''))}</option>`
+                ).join('');
+            } catch {}
+        }
+
+        async function cargarCompetencias() {
+            const uid = await resolverUsuario();
+            if (!uid) return;
+            const tbody = document.getElementById('rows');
+            try {
+                const res = await fetch('/competencias-auditor/usuario/' + uid);
+                const data = await res.json().catch(() => ({}));
+                competencias = Array.isArray(data.competencias) ? data.competencias : [];
+                if (!competencias.length) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay competencias registradas.</td></tr>';
+                    document.getElementById('resumen').textContent = '';
+                    return;
+                }
+                tbody.innerHTML = competencias.map(item => `
+                    <tr>
+                        <td>${escapeHtml(item.tipo_competencia || '-')}</td>
+                        <td>${escapeHtml(item.norma_nombre || 'Sin nombre de norma')}</td>
+                        <td>${escapeHtml(item.codigo_sector_iaf || '-')}</td>
+                        <td>${escapeHtml(item.titulo_institucion || '-')}</td>
+                        <td>${escapeHtml(item.descripcion || '-')}</td>
+                        <td>${escapeHtml(item.fecha_inicio || '-')}</td>
+                        <td>${escapeHtml(item.fecha_fin || '-')}</td>
+                        <td><span class="badge ${item.es_vigente ? 'ok' : 'danger'}">${item.es_vigente ? 'Sí' : 'No'}</span></td>
+                        <td>${escapeHtml(item.estado_validacion || '-')}</td>
+                        <td><button type="button" class="btn btn-primary" onclick="abrirEditar('${escapeHtml(item.id_competencia)}')">Actualizar</button></td>
+                    </tr>
+                `).join('');
+                document.getElementById('resumen').textContent = 'Total de competencias registradas: ' + competencias.length;
+            } catch {
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">No se pudo cargar la información.</td></tr>';
+            }
+        }
+
+        function abrirEditar(id) {
+            const item = competencias.find(c => String(c.id_competencia) === String(id));
+            if (!item) return;
+            document.getElementById('edit_id').value = item.id_competencia;
+            document.getElementById('edit_norma').value = item.id_norma;
+            document.getElementById('edit_tipo').value = item.tipo_competencia;
+            document.getElementById('edit_sector').value = item.codigo_sector_iaf || '';
+            document.getElementById('edit_titulo').value = item.titulo_institucion || '';
+            document.getElementById('edit_descripcion').value = item.descripcion || '';
+            document.getElementById('edit_inicio').value = String(item.fecha_inicio || '').slice(0, 10);
+            document.getElementById('edit_fin').value = String(item.fecha_fin || '').slice(0, 10);
+            document.getElementById('edit_vigente').value = String(Boolean(item.es_vigente));
+            document.getElementById('modalEditar').classList.add('active');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalEditar').classList.remove('active');
+        }
+
+        async function guardarActualizacion() {
+            const uid = await resolverUsuario();
+            const idCompetencia = document.getElementById('edit_id').value;
+            if (!uid || !idCompetencia) return;
+            const body = {
+                id_norma: document.getElementById('edit_norma').value,
+                tipo_competencia: document.getElementById('edit_tipo').value,
+                codigo_sector_iaf: document.getElementById('edit_sector').value.trim(),
+                titulo_institucion: document.getElementById('edit_titulo').value.trim(),
+                descripcion: document.getElementById('edit_descripcion').value.trim(),
+                fecha_inicio: document.getElementById('edit_inicio').value,
+                fecha_fin: document.getElementById('edit_fin').value,
+                es_vigente: document.getElementById('edit_vigente').value === 'true'
+            };
+            try {
+                const res = await fetch('/auditores/registro/' + uid + '/competencias/' + idCompetencia, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No fue posible actualizar la competencia.');
+                alert(data.mensaje || 'Competencia actualizada correctamente.');
+                cerrarModal();
+                await cargarCompetencias();
+            } catch (error) {
+                alert(error.message || 'No fue posible actualizar la competencia.');
+            }
+        }
+
+        cargarCatalogo().then(cargarCompetencias);
+    </script>
+</body>
+</html>

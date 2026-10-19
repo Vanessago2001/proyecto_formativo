@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Conflictos de interés registrados</title>
+
+    <link rel="stylesheet" href="/static/styles.css">
+
+    <style>
+        :root {
+            --sena-green: #39a900;
+            --sena-green-dark: #256d00;
+            --sena-green-hover: #2f8f00;
+            --sena-green-light: #f1f8ed;
+            --surface: #ffffff;
+            --surface-soft: #f8fafc;
+            --border-color: #e1e9df;
+            --text-primary: #26352b;
+            --text-secondary: #5f6f69;
+            --shadow-card: 0 5px 20px rgba(32, 74, 25, 0.07);
+            --shadow-hover: 0 8px 24px rgba(32, 74, 25, 0.10);
+            --radius-card: 14px;
+            --radius-control: 8px;
+        }
+
+        /* BASE */
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+
+        .portal-shell {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 28px 24px 40px;
+        }
+
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            min-width: 0;
+        }
+
+        /* ENCABEZADO */
+
+        .login-header {
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-header .header-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .login-header .sena-blanco {
+            width: 76px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .login-header h1 {
+            margin: 0;
+            font-size: 30px;
+            line-height: 1.2;
+        }
+
+        .login-header .subtitle {
+            margin: 6px 0 0;
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: 0.92;
+        }
+
+        /* BARRA SUPERIOR Y REGRESO */
+
+        .top-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 22px;
+            min-width: 0;
+        }
+
+        .page-context {
+            min-width: 0;
+        }
+
+        .page-context p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .acciones {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            flex-shrink: 0;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            min-height: 42px;
+            padding: 10px 18px;
+            color: var(--sena-green-dark);
+            background: #fff;
+            border: 1px solid #cfe3c5;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.4;
+            text-align: center;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background-color 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .back-button:hover {
+            color: var(--sena-green-dark);
+            background: var(--sena-green-light);
+            border-color: var(--sena-green);
+            box-shadow: 0 3px 10px rgba(57, 169, 0, 0.10);
+            transform: translateY(-1px);
+        }
+
+        /* TARJETAS */
+
+        .section-card {
+            min-width: 0;
+            padding: 26px;
+            margin: 0 0 28px;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            transition: box-shadow 0.25s ease,
+                border-color 0.25s ease;
+        }
+
+        .section-card:hover {
+            border-color: #d2e5c9;
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* TÍTULOS */
+
+        .section-title {
+            color: var(--sena-green-dark);
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.45;
+            margin: 0 0 14px;
+        }
+
+        .section-card>.section-title:first-child {
+            padding-bottom: 14px;
+            border-bottom: 1px solid #eaf0e7;
+        }
+
+        /* TEXTOS AUXILIARES */
+
+        .help-text {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.7;
+            margin: 0 0 16px;
+        }
+
+        .section-card>.help-text {
+            max-width: 850px;
+        }
+
+        /* FORMULARIOS */
+
+        .form-section {
+            width: 100%;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .form-group label {
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        .form-control {
+            display: block;
+            width: 100%;
+            min-width: 0;
+            min-height: 44px;
+            padding: 11px 13px;
+            color: var(--text-primary);
+            background: #fff;
+            border: 1px solid #d5dfd3;
+            border-radius: var(--radius-control);
+            outline: none;
+            font: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                background-color 0.2s ease;
+        }
+
+        .form-control::placeholder {
+            color: #929d95;
+            opacity: 1;
+        }
+
+        .form-control:hover {
+            border-color: #a8c99c;
+        }
+
+        .form-control:focus {
+            border-color: var(--sena-green);
+            box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.13);
+            background-color: #fff;
+        }
+
+        /* FILTROS */
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        /* TABLA */
+
+        .record-table-wrap {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            margin-top: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff;
+            scrollbar-width: thin;
+            scrollbar-color: #b8cdb0 #f3f6f1;
+        }
+
+        .record-table {
+            width: 100%;
+            min-width: 1000px;
+            border-collapse: separate;
+            border-spacing: 0;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .record-table thead {
+            color: #fff;
+            background: var(--sena-green);
+        }
+
+        .record-table th {
+            padding: 15px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.5;
+            white-space: nowrap;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .record-table th:first-child {
+            border-top-left-radius: 8px;
+        }
+
+        .record-table th:last-child {
+            border-top-right-radius: 8px;
+        }
+
+        .record-table td {
+            padding: 14px;
+            color: #45534a;
+            line-height: 1.6;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+            border-bottom: 1px solid #edf1eb;
+        }
+
+        .record-table tbody tr {
+            background: #fff;
+            transition: background-color 0.2s ease;
+        }
+
+        .record-table tbody tr:nth-child(even) {
+            background: #f8faf7;
+        }
+
+        .record-table tbody tr:hover {
+            background: var(--sena-green-light);
+        }
+
+        .record-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        /* BADGES */
+
+        .badge-yes {
+            color: #991b1b;
+            font-weight: 600;
+        }
+
+        .badge-no {
+            color: #065f46;
+            font-weight: 600;
+        }
+
+        /* PAGINACIÓN */
+
+        .pagination-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .pagination-row .action-group {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: nowrap;
+        }
+
+        .mini-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 9px 16px;
+            border-radius: 6px;
+            background: var(--sena-green);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.4;
+            text-decoration: none;
+            border: 1px solid var(--sena-green);
+            cursor: pointer;
+            transition: background-color 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .mini-button:hover {
+            background: var(--sena-green-hover);
+            border-color: var(--sena-green-hover);
+            box-shadow: 0 4px 12px rgba(57, 169, 0, 0.20);
+            transform: translateY(-1px);
+        }
+
+        .mini-button.secondary {
+            background: #94a3b8;
+            border-color: #94a3b8;
+        }
+
+        .mini-button.secondary:hover {
+            background: #7d8ea3;
+            border-color: #7d8ea3;
+            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.20);
+        }
+
+        .mini-button:focus-visible {
+            outline: 3px solid rgba(57, 169, 0, 0.30);
+            outline-offset: 3px;
+        }
+
+        /* TABLETAS */
+
+        @media (max-width: 768px) {
+            .portal-shell {
+                padding: 22px 16px 30px;
+            }
+
+            .content {
+                gap: 18px;
+            }
+
+            .section-card {
+                padding: 21px 18px;
+                border-radius: 12px;
+            }
+
+            .section-title {
+                font-size: 20px;
+            }
+
+            .login-header .header-content {
+                gap: 14px;
+            }
+
+            .top-navigation {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .acciones {
+                width: 100%;
+            }
+        }
+
+        /* TELÉFONOS */
+
+        @media (max-width: 480px) {
+            .portal-shell {
+                padding: 16px 11px 24px;
+            }
+
+            .section-card {
+                padding: 18px 14px;
+            }
+
+            .login-header .header-content {
+                gap: 10px;
+            }
+
+            .login-header .sena-blanco {
+                width: 58px !important;
+            }
+
+            .login-header h1 {
+                font-size: 22px;
+            }
+
+            .login-header .subtitle {
+                font-size: 12px;
+            }
+
+            .section-title {
+                font-size: 19px;
+            }
+
+            .form-control {
+                font-size: 14px;
+            }
+
+            .back-button {
+                width: 100%;
+            }
+        }
+
+        /* MOVIMIENTO REDUCIDO */
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="login-header">
+        <div class="header-content">
+            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+            <div>
+                <h1>CertiSENA</h1>
+                <p class="subtitle">Conflictos de interés registrados - vista general del administrador</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <section class="content">
+
+            <!-- REGRESAR AL PORTAL -->
+            <nav class="top-navigation" aria-label="Navegación de la página">
+                <div class="page-context">
+                    <p>Banco de auditores / Conflictos registrados</p>
+                </div>
+
+                <div class="acciones">
+                    <a href="/banco-auditores" class="back-button">
+                        <span aria-hidden="true">←</span>
+                        Volver al Banco de auditores
+                    </a>
+                </div>
+            </nav>
+
+            <!-- CONSULTA GENERAL -->
+            <section class="section-card">
+                <h2 class="section-title">Consulta general de conflictos</h2>
+                <p class="help-text">
+                    Aquí se muestran todos los conflictos registrados, quiénes los generaron y con qué empresa los
+                    tuvieron.
+                </p>
+            </section>
+
+            <!-- FILTROS Y TABLA -->
+            <section class="section-card">
+                <div class="filters-grid">
+                    <div class="form-group">
+                        <label for="busqueda">Filtrar resultados</label>
+                        <input id="busqueda" class="form-control"
+                            placeholder="Auditor, documento, empresa, NIT, tipo...">
+                    </div>
+                    <div class="form-group">
+                        <label for="limite">Mostrar por página</label>
+                        <select id="limite" class="form-control">
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="999999">Todos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="record-table-wrap">
+                    <table class="record-table">
+                        <thead>
+                            <tr>
+                                <th>Auditor</th>
+                                <th>Documento</th>
+                                <th>Correo</th>
+                                <th>Empresa</th>
+                                <th>NIT</th>
+                                <th>Tipo</th>
+                                <th>Bloquea asignación</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rows"></tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-row">
+                    <span id="resumen" class="help-text"></span>
+                    <div class="action-group">
+                        <button type="button" class="mini-button secondary" onclick="paginaAnterior()">Anterior</button>
+                        <button type="button" class="mini-button" onclick="paginaSiguiente()">Siguiente</button>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        let conflictos = [];
+        let pagina = 1;
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        async function cargarConflictos() {
+            try {
+                const res = await fetch('/administradores/auditores/conflictos', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await res.json().catch(() => ({}));
+                conflictos = Array.isArray(data.conflictos) ? data.conflictos : [];
+                pagina = 1;
+                renderizar();
+            } catch (e) {
+                document.getElementById('rows').innerHTML = '<tr><td colspan="10">No se pudo cargar la información.</td></tr>';
+                document.getElementById('resumen').textContent = '';
+            }
+        }
+
+        function filtrar() {
+            const busqueda = document.getElementById('busqueda').value.trim().toLowerCase();
+            if (!busqueda) return conflictos;
+            return conflictos.filter(item => [
+                item.auditor,
+                item.tipo_doc,
+                item.num_doc,
+                item.correo,
+                item.empresa,
+                item.nit,
+                item.tipo_conflicto,
+                item.descripcion,
+                item.estado
+            ].some(v => String(v || '').toLowerCase().includes(busqueda)));
+        }
+
+        function renderizar() {
+            const filtrados = filtrar();
+            const limite = parseInt(document.getElementById('limite').value, 10) || 10;
+            const totalPaginas = Math.max(1, Math.ceil(filtrados.length / limite));
+            if (pagina > totalPaginas) pagina = 1;
+            const inicio = (pagina - 1) * limite;
+            const items = filtrados.slice(inicio, inicio + limite);
+
+            const tbody = document.getElementById('rows');
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="10">No hay conflictos para mostrar.</td></tr>';
+            } else {
+                tbody.innerHTML = items.map(item => `
+                    <tr>
+                        <td>${escapeHtml(item.auditor || '-')}</td>
+                        <td>${escapeHtml((item.tipo_doc || '') + ' ' + (item.num_doc || '-'))}</td>
+                        <td>${escapeHtml(item.correo || '-')}</td>
+                        <td>${escapeHtml(item.empresa || '-')}</td>
+                        <td>${escapeHtml(item.nit || '-')}</td>
+                        <td>${escapeHtml(item.tipo_conflicto || '-')}</td>
+                        <td class="${item.bloquea_asignacion ? 'badge-yes' : 'badge-no'}">${escapeHtml(item.bloquea_asignacion)}</td>
+                        <td>${escapeHtml(item.estado || '-')}</td>
+                        <td>${escapeHtml(item.fecha_declaracion || '-')}</td>
+                        <td>${escapeHtml(item.descripcion || '-')}</td>
+                    </tr>
+                `).join('');
+            }
+
+            document.getElementById('resumen').textContent =
+                'Mostrando ' + items.length + ' de ' + filtrados.length + ' conflictos. Página ' + pagina + ' de ' + totalPaginas + '.';
+        }
+
+        function paginaAnterior() {
+            if (pagina > 1) {
+                pagina--;
+                renderizar();
+            }
+        }
+
+        function paginaSiguiente() {
+            const filtrados = filtrar();
+            const limite = parseInt(document.getElementById('limite').value, 10) || 10;
+            const totalPaginas = Math.max(1, Math.ceil(filtrados.length / limite));
+            if (pagina < totalPaginas) {
+                pagina++;
+                renderizar();
+            }
+        }
+
+        document.getElementById('busqueda').addEventListener('input', () => {
+            pagina = 1;
+            renderizar();
+        });
+        document.getElementById('limite').addEventListener('change', () => {
+            pagina = 1;
+            renderizar();
+        });
+
+        cargarConflictos();
+    </script>
+</body>
+
+</html>

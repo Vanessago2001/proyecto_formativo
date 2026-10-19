@@ -16,6 +16,9 @@ from modules.auditores.auditor_schema import (
     PerfilAuditorCrear,
     CompetenciaAuditorCrear,
     ConflictoInteresCrear,
+    TituloAcademicoCrear,
+    ExperienciaLaboralCrear,
+    ExperienciaAuditoriaCrear,
 )
 
 from reportlab.lib import colors
@@ -521,47 +524,10 @@ class AuditorService:
                 "Cancelado",
                 "Rechazado",
             ):
-
-                result = await self.db.execute(
-                    text("""
-                        INSERT INTO postulacion_auditor (
-                            id_usuario,
-                            estado,
-                            observaciones_tecnicas,
-                            fecha_postulacion,
-                            fecha_revision
-                        )
-                        VALUES (
-                            :id_usuario,
-                            'Borrador',
-                            '',
-                            CURRENT_TIMESTAMP,
-                            NULL
-                        )
-                        RETURNING
-                            id_postulacion,
-                            id_usuario,
-                            estado,
-                            fecha_postulacion,
-                            fecha_revision,
-                            observaciones_tecnicas
-                    """),
-                    {
-                        "id_usuario": id_usuario,
-                    },
-                )
-
-                postulacion = result.mappings().first()
-
-                if not postulacion:
-                    await self.db.rollback()
-
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="No fue posible crear el nuevo borrador.",
-                    )
-
-                await self.db.commit()
+                # Un rechazo/cancelación es histórico y NO se convierte
+                # automáticamente en borrador. La nueva postulación se
+                # crea únicamente mediante crear_nueva_postulacion().
+                postulacion = ultima
 
             else:
 
@@ -712,7 +678,14 @@ class AuditorService:
                     d.tipo_documento,
                     d.url_archivo,
                     d.fecha_subida,
-                    d.estado_revision
+                    d.estado_revision,
+                    d.categoria_documento,
+                    d.id_titulo,
+                    d.id_experiencia_laboral,
+                    d.id_experiencia_auditoria,
+                    d.observacion_revision,
+                    d.revisado_por,
+                    d.fecha_revision
                 FROM documento_auditor d
                 WHERE d.id_postulacion = :id_postulacion
                 ORDER BY d.fecha_subida DESC
@@ -789,7 +762,14 @@ class AuditorService:
                     d.tipo_documento,
                     d.url_archivo,
                     d.fecha_subida,
-                    d.estado_revision
+                    d.estado_revision,
+                    d.categoria_documento,
+                    d.id_titulo,
+                    d.id_experiencia_laboral,
+                    d.id_experiencia_auditoria,
+                    d.observacion_revision,
+                    d.revisado_por,
+                    d.fecha_revision
                 FROM documento_auditor d
                 INNER JOIN postulacion_auditor p
                     ON p.id_postulacion = d.id_postulacion
@@ -813,6 +793,10 @@ class AuditorService:
         id_usuario: UUID,
         tipo_documento: str,
         archivo: UploadFile,
+        categoria_documento: str = "Soporte",
+        id_titulo: UUID | None = None,
+        id_experiencia_laboral: UUID | None = None,
+        id_experiencia_auditoria: UUID | None = None,
     ):
         await self._verificar_usuario_borrador(id_usuario)
 
@@ -822,7 +806,12 @@ class AuditorService:
             "Hoja de Vida",
             "Título",
             "Certificado ISO",
+            "Experiencia laboral",
+            "Experiencia en auditoría",
             "Soporte",
+            "Foto Profesional",
+            "Soporte experiencia laboral",
+            "Soporte experiencia auditoría",
             "Otro",
         }
 
@@ -855,6 +844,35 @@ class AuditorService:
         )
 
         id_postulacion = postulacion["id_postulacion"]
+
+        # Los documentos ya aprobados no pueden reemplazarse desde el portal.
+        result = await self.db.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM documento_auditor
+                WHERE id_postulacion = :id_postulacion
+                  AND tipo_documento = :tipo_documento
+                  AND estado_revision = 'Aprobado'
+            """),
+            {"id_postulacion": id_postulacion, "tipo_documento": tipo_documento},
+        )
+        if result.scalar() and result.scalar() > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe una versión aprobada de este documento.",
+            )
+
+        # Si el auditor vuelve a adjuntar el mismo tipo, se reemplazan solo
+        # los archivos pendientes/rechazados mas antiguos del mismo intento.
+        await self.db.execute(
+            text("""
+                DELETE FROM documento_auditor
+                WHERE id_postulacion = :id_postulacion
+                  AND tipo_documento = :tipo_documento
+                  AND estado_revision = 'Pendiente'
+            """),
+            {"id_postulacion": id_postulacion, "tipo_documento": tipo_documento},
+        )
 
         self.DIRECTORIO_DOCUMENTOS.mkdir(
             parents=True,
@@ -895,7 +913,11 @@ class AuditorService:
                         tipo_documento,
                         url_archivo,
                         fecha_subida,
-                        estado_revision
+                        estado_revision,
+                        categoria_documento,
+                        id_titulo,
+                        id_experiencia_laboral,
+                        id_experiencia_auditoria
                     )
                     VALUES (
                         :id_usuario,
@@ -904,7 +926,11 @@ class AuditorService:
                         :tipo_documento,
                         :url_archivo,
                         CURRENT_TIMESTAMP,
-                        'Pendiente'
+                        'Pendiente',
+                        :categoria_documento,
+                        :id_titulo,
+                        :id_experiencia_laboral,
+                        :id_experiencia_auditoria
                     )
                     RETURNING
                         id_documento,
@@ -921,6 +947,10 @@ class AuditorService:
                     "nombre_archivo": archivo.filename,
                     "tipo_documento": tipo_documento,
                     "url_archivo": url_archivo,
+                    "categoria_documento": categoria_documento.strip() or "Soporte",
+                    "id_titulo": id_titulo,
+                    "id_experiencia_laboral": id_experiencia_laboral,
+                    "id_experiencia_auditoria": id_experiencia_auditoria,
                 },
             )
 
@@ -999,6 +1029,7 @@ class AuditorService:
                 WHERE d.id_documento = :id_documento
                   AND d.id_usuario = :id_usuario
                   AND p.estado IN ('Borrador', 'Correcciones')
+                  AND (p.estado = 'Borrador' OR d.estado_revision = 'Rechazado')
                 LIMIT 1
             """),
             {
@@ -1058,7 +1089,10 @@ class AuditorService:
                         nombre_archivo = :nombre_archivo,
                         url_archivo = :url_archivo,
                         fecha_subida = CURRENT_TIMESTAMP,
-                        estado_revision = 'Pendiente'
+                        estado_revision = 'Pendiente',
+                        observacion_revision = '',
+                        revisado_por = NULL,
+                        fecha_revision = NULL
                     WHERE id_documento = :id_documento
                       AND id_usuario = :id_usuario
                     RETURNING
@@ -1142,6 +1176,7 @@ class AuditorService:
                 WHERE d.id_documento = :id_documento
                   AND d.id_usuario = :id_usuario
                   AND p.estado IN ('Borrador', 'Correcciones')
+                  AND (p.estado = 'Borrador' OR d.estado_revision = 'Rechazado')
                 LIMIT 1
             """),
             {
@@ -1202,6 +1237,29 @@ class AuditorService:
     # UTILIDAD
     # ========================================================
 
+    async def _verificar_usuario_activo(self, id_usuario: UUID):
+        result = await self.db.execute(
+            text("""
+                SELECT id_usuario, estado
+                FROM usuario
+                WHERE id_usuario = :id_usuario
+                LIMIT 1
+            """),
+            {"id_usuario": id_usuario},
+        )
+        usuario = result.mappings().first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No se encontró el usuario auditor.",
+            )
+        if str(usuario["estado"] or "").strip().upper() != "ACTIVO":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El usuario no está activo.",
+            )
+        return usuario
+
     async def _verificar_usuario_borrador(self, id_usuario: UUID):
         result = await self.db.execute(
             text("""
@@ -1235,6 +1293,9 @@ class AuditorService:
             "Postulante",
             "Pendiente",
             "PENDIENTE",
+            "Enviado",
+            "Enviada",
+            "Enviado por Corrección",
         ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -1243,6 +1304,15 @@ class AuditorService:
                     "para edición."
                 ),
             )
+
+        return usuario
+
+    async def _obtener_postulacion_activa(self, id_usuario: UUID):
+        result = await self.db.execute(
+            text('''\n                SELECT id_postulacion\n                FROM postulacion_auditor\n                WHERE id_usuario = :id_usuario\n                  AND estado IN ('Borrador', 'Correcciones', 'Enviado')\n                ORDER BY fecha_postulacion DESC\n                LIMIT 1\n            '''),
+            {"id_usuario": id_usuario},
+        )
+        return result.scalar()
 
         return usuario
 
@@ -1400,7 +1470,7 @@ class AuditorService:
         id_usuario: UUID,
         archivo: UploadFile,
     ):
-        await self._verificar_usuario_borrador(id_usuario)
+        await self._verificar_usuario_activo(id_usuario)
 
         if not archivo.filename:
             raise HTTPException(
@@ -1501,7 +1571,7 @@ class AuditorService:
         }
 
     async def eliminar_foto_perfil(self, id_usuario: UUID):
-        await self._verificar_usuario_borrador(id_usuario)
+        await self._verificar_usuario_activo(id_usuario)
 
         result = await self.db.execute(
             text("""
@@ -1585,17 +1655,46 @@ class AuditorService:
         data: PerfilAuditorCrear,
     ):
 
-        await self._verificar_usuario_borrador(id_usuario)
+        # El perfil puede editarse también por auditores ya aprobados (Activo).
+        # Solo verificamos que el usuario exista y esté activo.
+        result = await self.db.execute(
+            text("""
+                SELECT id_usuario, estado
+                FROM usuario
+                WHERE id_usuario = :id_usuario
+                LIMIT 1
+            """),
+            {"id_usuario": id_usuario},
+        )
+        usuario = result.mappings().first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No se encontró el usuario auditor.",
+            )
+        if str(usuario["estado"] or "").strip().upper() != "ACTIVO":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El usuario no está activo.",
+            )
+
+        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
 
         result = await self.db.execute(
             text("""
                 SELECT id_perfil
                 FROM perfil_auditor
                 WHERE id_usuario = :id_usuario
+                  AND (
+                        (CAST(:id_postulacion AS UUID) IS NOT NULL AND id_postulacion = CAST(:id_postulacion AS UUID))
+                        OR
+                        (CAST(:id_postulacion AS UUID) IS NULL AND id_postulacion IS NULL)
+                  )
                 LIMIT 1
             """),
             {
                 "id_usuario": id_usuario,
+                "id_postulacion": id_postulacion,
             },
         )
 
@@ -1612,10 +1711,10 @@ class AuditorService:
                         modalidad_preferida = :modalidad_preferida,
                         foto_url = :foto_url,
                         resumen_profesional = :resumen_profesional
-                    WHERE id_usuario = :id_usuario
+                    WHERE id_perfil = :id_perfil
                 """),
                 {
-                    "id_usuario": id_usuario,
+                    "id_perfil": perfil["id_perfil"],
                     "ciudad_residencia": data.ciudad_residencia,
                     "departamento_residencia": data.departamento_residencia,
                     "modalidad_preferida": data.modalidad_preferida,
@@ -1635,7 +1734,8 @@ class AuditorService:
                         departamento_residencia,
                         modalidad_preferida,
                         resumen_profesional,
-                        calificacion_promedio
+                        calificacion_promedio,
+                        id_postulacion
                     )
                     VALUES (
                         :id_usuario,
@@ -1644,7 +1744,8 @@ class AuditorService:
                         :departamento_residencia,
                         :modalidad_preferida,
                         :resumen_profesional,
-                        0
+                        0,
+                        :id_postulacion
                     )
                 """),
                 {
@@ -1654,6 +1755,20 @@ class AuditorService:
                     "departamento_residencia": data.departamento_residencia,
                     "modalidad_preferida": data.modalidad_preferida,
                     "resumen_profesional": data.resumen_profesional,
+                    "id_postulacion": id_postulacion,
+                },
+            )
+
+        if (data.nombre or "").strip():
+            await self.db.execute(
+                text("""
+                    UPDATE usuario
+                    SET nombre = :nombre
+                    WHERE id_usuario = :id_usuario
+                """),
+                {
+                    "nombre": data.nombre.strip(),
+                    "id_usuario": id_usuario,
                 },
             )
 
@@ -1675,6 +1790,32 @@ class AuditorService:
 
         await self._verificar_usuario_borrador(id_usuario)
 
+        tipo_valido = {
+            "Norma ISO",
+            "Sector IAF",
+            "Experiencia Laboral",
+            "Estudio",
+            "Curso",
+        }
+
+        if data.tipo_competencia not in tipo_valido:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Tipo de competencia no válido. "
+                    "Use: Norma ISO, Sector IAF, "
+                    "Experiencia Laboral, Estudio o Curso."
+                ),
+            )
+
+        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
+
+        if id_postulacion is None:
+            postulacion = await self._obtener_o_crear_postulacion_borrador(
+                id_usuario
+            )
+            id_postulacion = postulacion["id_postulacion"]
+
         result = await self.db.execute(
             text("""
                 INSERT INTO competencia_auditor (
@@ -1687,7 +1828,8 @@ class AuditorService:
                     fecha_inicio,
                     fecha_fin,
                     es_vigente,
-                    estado_validacion
+                    estado_validacion,
+                    id_postulacion
                 )
                 VALUES (
                     :id_usuario,
@@ -1699,7 +1841,8 @@ class AuditorService:
                     :fecha_inicio,
                     :fecha_fin,
                     :es_vigente,
-                    'Pendiente'
+                    'Pendiente',
+                    :id_postulacion
                 )
                 RETURNING id_competencia
             """),
@@ -1713,12 +1856,19 @@ class AuditorService:
                 "fecha_inicio": data.fecha_inicio,
                 "fecha_fin": data.fecha_fin,
                 "es_vigente": data.es_vigente,
+                "id_postulacion": id_postulacion,
             },
         )
 
-        competencia = result.mappings().first()
-
-        await self.db.commit()
+        try:
+            competencia = result.mappings().first()
+            await self.db.commit()
+        except Exception as error:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No fue posible registrar la competencia: {error}",
+            ) from error
 
         return {
             "id_competencia": competencia["id_competencia"],
@@ -1726,6 +1876,153 @@ class AuditorService:
         }
 
     # ========================================================
+
+    async def eliminar_competencia(self, id_usuario: UUID, id_competencia: UUID):
+        await self._verificar_usuario_borrador(id_usuario)
+
+        result = await self.db.execute(
+            text("""
+                DELETE FROM competencia_auditor
+                WHERE id_competencia = :id_competencia
+                  AND id_usuario = :id_usuario
+                  AND COALESCE(estado_validacion, 'Pendiente') <> 'Aprobado'
+                RETURNING id_competencia
+            """),
+            {
+                "id_competencia": id_competencia,
+                "id_usuario": id_usuario,
+            },
+        )
+        row = result.mappings().first()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La competencia no existe, no pertenece al auditor o ya fue aprobada.",
+            )
+        await self.db.commit()
+        return {"mensaje": "Competencia eliminada correctamente."}
+
+    async def consultar_catalogo_competencias(self):
+        result = await self.db.execute(
+            text("""
+                SELECT
+                    id_norma,
+                    codigo,
+                    nombre,
+                    version
+                FROM norma
+                ORDER BY codigo ASC
+            """)
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def consultar_sectores_iaf(self):
+        result = await self.db.execute(
+            text("""
+                SELECT DISTINCT codigo_sector_iaf
+                FROM competencia_auditor
+                WHERE codigo_sector_iaf IS NOT NULL
+                  AND TRIM(codigo_sector_iaf) <> ''
+                ORDER BY codigo_sector_iaf
+            """)
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+
+    async def registrar_curso_complementario(
+        self,
+        id_usuario: UUID,
+        data: CompetenciaAuditorCrear,
+    ):
+        data.tipo_competencia = "Curso"
+        return await self.crear_competencia(
+            id_usuario=id_usuario,
+            data=data,
+        )
+
+    async def registrar_certificacion(
+        self,
+        id_usuario: UUID,
+        data: CompetenciaAuditorCrear,
+    ):
+        data.tipo_competencia = "Certificaci\u00f3n vigente"
+        return await self.crear_competencia(
+            id_usuario=id_usuario,
+            data=data,
+        )
+
+
+    async def listar_competencias(self, id_usuario: UUID):
+        result = await self.db.execute(
+            text("""
+                SELECT
+                    ca.id_competencia,
+                    ca.tipo_competencia,
+                    ca.id_norma,
+                    ca.codigo_sector_iaf,
+                    ca.titulo_institucion,
+                    ca.descripcion,
+                    ca.fecha_inicio,
+                    ca.fecha_fin,
+                    ca.es_vigente,
+                    ca.estado_validacion,
+                    ca.observacion_validacion,
+                    n.nombre AS norma_nombre,
+                    n.codigo AS norma_codigo,
+                    n.version AS norma_version
+                FROM competencia_auditor ca
+                LEFT JOIN norma n
+                    ON n.id_norma = ca.id_norma
+                WHERE ca.id_usuario = :id_usuario
+                ORDER BY ca.fecha_inicio DESC
+            """),
+            {"id_usuario": id_usuario},
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def consultar_historial_academico(
+        self,
+        id_usuario: UUID,
+    ):
+        titulos = await self.listar_titulos_academicos(
+            id_usuario=id_usuario
+        )
+        competencias = await self.listar_competencias(
+            id_usuario=id_usuario
+        )
+
+        historial = sorted(
+            [
+                {
+                    "categoria": "Título académico",
+                    **titulo,
+                }
+                for titulo in titulos
+            ]
+            + [
+                {
+                    "categoria": "Competencia / curso / certificación",
+                    **competencia,
+                }
+                for competencia in competencias
+            ],
+            key=lambda item: str(
+                item.get("fecha_grado")
+                or item.get("fecha_inicio")
+                or ""
+            ),
+            reverse=True,
+        )
+
+        return {
+            "id_usuario": id_usuario,
+            "registros": historial,
+            "totales": {
+                "titulos": len(titulos),
+                "competencias_curso_certificacion": len(competencias),
+            },
+        }
+
     # COMPETENCIA - ACTUALIZAR
     # ========================================================
 
@@ -1736,7 +2033,32 @@ class AuditorService:
         data: CompetenciaAuditorCrear,
     ):
 
-        await self._verificar_usuario_borrador(id_usuario)
+        # Las competencias pueden actualizarse también por auditores ya aprobados (Activo).
+        result = await self.db.execute(
+            text("""
+                SELECT id_usuario, estado, estado_auditor
+                FROM usuario
+                WHERE id_usuario = :id_usuario
+                LIMIT 1
+            """),
+            {"id_usuario": id_usuario},
+        )
+        usuario = result.mappings().first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No se encontró el usuario auditor.",
+            )
+        if str(usuario["estado"] or "").strip().upper() != "ACTIVO":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El usuario no está activo.",
+            )
+        if str(usuario["estado_auditor"] or "").strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El auditor no se encuentra aprobado/activo.",
+            )
 
         result = await self.db.execute(
             text("""
@@ -1805,6 +2127,7 @@ class AuditorService:
             {"id_usuario": id_usuario},
         )
 
+        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
         result = await self.db.execute(
             text("""
                 INSERT INTO conflicto_interes (
@@ -1814,7 +2137,8 @@ class AuditorService:
                     descripcion,
                     bloquea_asignacion,
                     fecha_declaracion,
-                    estado
+                    estado,
+                    id_postulacion
                 )
                 VALUES (
                     :id_usuario,
@@ -1823,7 +2147,8 @@ class AuditorService:
                     :descripcion,
                     :bloquea_asignacion,
                     CURRENT_TIMESTAMP,
-                    'Activo'
+                    'Activo',
+                    :id_postulacion
                 )
                 RETURNING id_conflicto
             """),
@@ -1833,6 +2158,7 @@ class AuditorService:
                 "tipo_conflicto": data.tipo_conflicto,
                 "descripcion": data.descripcion,
                 "bloquea_asignacion": data.bloquea_asignacion,
+                "id_postulacion": id_postulacion,
             },
         )
 
@@ -1912,6 +2238,66 @@ class AuditorService:
         }
 
     # ========================================================
+
+    async def listar_conflictos(self, id_usuario: UUID):
+        result = await self.db.execute(
+            text("""
+                SELECT c.id_conflicto, c.id_empresa, e.nombre AS empresa, e.nit,
+                       c.tipo_conflicto, c.descripcion, c.bloquea_asignacion,
+                       c.fecha_declaracion, c.estado
+                FROM conflicto_interes c
+                INNER JOIN empresa e ON e.id_empresa = c.id_empresa
+                WHERE c.id_usuario = :id_usuario
+                ORDER BY c.fecha_declaracion DESC
+            """),
+            {"id_usuario": id_usuario},
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def eliminar_conflicto(self, id_usuario: UUID, id_conflicto: UUID):
+        await self._verificar_usuario_borrador(id_usuario)
+        result = await self.db.execute(
+            text("""
+                DELETE FROM conflicto_interes
+                WHERE id_conflicto = :id_conflicto
+                  AND id_usuario = :id_usuario
+                RETURNING id_conflicto
+            """),
+            {"id_conflicto": id_conflicto, "id_usuario": id_usuario},
+        )
+        row = result.mappings().first()
+        if not row:
+            raise HTTPException(404, "El conflicto no existe o no pertenece al auditor.")
+        await self.db.commit()
+        return {"mensaje": "Conflicto eliminado correctamente."}
+
+    async def consultar_empresas_restringidas(self):
+        result = await self.db.execute(
+            text("""
+                SELECT DISTINCT e.id_empresa, e.nombre, e.nit,
+                       ci.tipo_conflicto, ci.descripcion, ci.estado
+                FROM conflicto_interes ci
+                INNER JOIN empresa e ON e.id_empresa = ci.id_empresa
+                WHERE ci.estado = 'Activo' AND ci.bloquea_asignacion = TRUE
+                ORDER BY e.nombre ASC
+            """)
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def validar_conflicto_antes_asignacion(self, id_usuario: UUID, id_empresa: UUID):
+        result = await self.db.execute(
+            text("""
+                SELECT id_conflicto, tipo_conflicto, descripcion
+                FROM conflicto_interes
+                WHERE id_usuario = :id_usuario
+                  AND id_empresa = :id_empresa
+                  AND estado = 'Activo'
+            """),
+            {"id_usuario": id_usuario, "id_empresa": id_empresa},
+        )
+        conflictos = [dict(row) for row in result.mappings().all()]
+        return {"tiene_conflicto": len(conflictos) > 0, "detalles": conflictos}
+
     # REENVIAR POSTULACIÓN DESPUÉS DE CORRECCIONES
     # ========================================================
 
@@ -2187,77 +2573,32 @@ class AuditorService:
     # CONSULTAR ESTADO por correo
     # ========================================================
 
-    async def consultar_estado_por_correo(
-        self,
-        correo: str,
-    ):
+    async def consultar_estado_por_correo(self, correo: str):
+        """Devuelve los datos del auditor y solo sus postulaciones enviadas,
+        en revisión, aprobadas, devueltas a correcciones o rechazadas.
+
+        Los borradores y las postulaciones canceladas no se incluyen en la
+        lista que alimenta el paginador.
         """
-        Consulta el estado actual de la postulación del auditor
-        mediante su correo.
-
-        Si la postulación está en Correcciones, devuelve además
-        la observación registrada por el administrador para esa
-        postulación.
-
-        IMPORTANTE:
-        No crea ninguna postulación.
-        No crea ningún borrador.
-        Solo consulta información existente.
-        """
-
-        # ============================================================
-        # BUSCAR USUARIO Y SU POSTULACIÓN MÁS RECIENTE
-        # ============================================================
-
         result = await self.db.execute(
             text("""
                 SELECT
                     u.id_usuario,
                     u.nombre,
                     u.correo,
+                    u.tipo_doc,
+                    u.num_doc,
                     u.estado AS estado_usuario,
                     u.estado_auditor,
-
-                    pa.id_postulacion,
-                    pa.estado AS estado_postulacion,
-                    pa.fecha_postulacion,
-                    pa.fecha_revision
-
+                    r.nombre AS rol
                 FROM usuario u
-
-                LEFT JOIN LATERAL (
-                    SELECT
-                        p.id_postulacion,
-                        p.estado,
-                        p.fecha_postulacion,
-                        p.fecha_revision
-
-                    FROM postulacion_auditor p
-
-                    WHERE p.id_usuario = u.id_usuario
-
-                    ORDER BY
-                        p.fecha_postulacion DESC
-
-                    LIMIT 1
-                ) pa
-                    ON TRUE
-
-                WHERE LOWER(TRIM(u.correo))
-                    = LOWER(TRIM(:correo))
-
+                LEFT JOIN rol r ON r.id_rol = u.rol_id
+                WHERE LOWER(TRIM(u.correo)) = LOWER(TRIM(:correo))
                 LIMIT 1
             """),
-            {
-                "correo": correo,
-            },
+            {"correo": correo},
         )
-
         auditor = result.mappings().first()
-
-        # ============================================================
-        # VALIDAR USUARIO
-        # ============================================================
 
         if not auditor:
             raise HTTPException(
@@ -2265,130 +2606,155 @@ class AuditorService:
                 detail="No se encontró un usuario con ese correo.",
             )
 
-        id_postulacion = auditor["id_postulacion"]
+        # Consulta todas las postulaciones que llegaron al flujo de revisión.
+        # Se excluyen explícitamente Borrador y Cancelado.
+        result = await self.db.execute(
+            text("""
+                SELECT
+                    p.id_postulacion,
+                    p.id_usuario,
+                    p.estado AS estado_postulacion,
+                    p.fecha_postulacion,
+                    p.fecha_revision,
+                    p.observaciones_tecnicas
+                FROM postulacion_auditor p
+                WHERE p.id_usuario = :id_usuario
+                AND LOWER(TRIM(COALESCE(p.estado, ''))) IN (
+                    'enviado',
+                    'en revisión',
+                    'en revision',
+                    'aprobado',
+                    'rechazado',
+                    'correcciones'
+                )
+                ORDER BY p.fecha_postulacion DESC NULLS LAST,
+                        p.id_postulacion DESC
+            """),
+            {"id_usuario": auditor["id_usuario"]},
+        )
+        filas_postulaciones = result.mappings().all()
+        postulaciones = []
 
-        # ============================================================
-        # ÚLTIMA CORRECCIÓN DE ESTA POSTULACIÓN
-        # ============================================================
-        #
-        # Solamente buscamos historial relacionado con ESTA
-        # postulación.
-        #
-        # No buscamos por usuario únicamente porque un auditor
-        # puede tener varias postulaciones históricas.
-        # ============================================================
+        for fila in filas_postulaciones:
+            postulacion = dict(fila)
+            id_postulacion = postulacion["id_postulacion"]
+            estado_normalizado = str(
+                postulacion.get("estado_postulacion") or ""
+            ).strip().lower()
 
-        correccion = None
+            # Último registro en el que esta postulación fue devuelta a correcciones.
+            correccion = None
+            try:
+                result = await self.db.execute(
+                    text("""
+                        SELECT
+                            h.id_historial,
+                            h.id_postulacion,
+                            h.id_usuario_administrador,
+                            h.estado_anterior,
+                            h.estado_nuevo,
+                            h.observaciones,
+                            h.fecha_cambio,
+                            admin.nombre AS administrador
+                        FROM historial_postulacion_auditor h
+                        LEFT JOIN usuario admin
+                            ON admin.id_usuario = h.id_usuario_administrador
+                        WHERE h.id_postulacion = :id_postulacion
+                        AND LOWER(h.estado_nuevo) = LOWER('Correcciones')
+                        ORDER BY h.fecha_cambio DESC
+                        LIMIT 1
+                    """),
+                    {"id_postulacion": id_postulacion},
+                )
+                correccion = result.mappings().first()
+            except Exception:
+                # Si el historial de correcciones no está disponible, la
+                # consulta del estado debe seguir mostrando la postulación.
+                await self.db.rollback()
+                correccion = None
 
-        if id_postulacion:
-
-            result = await self.db.execute(
-                text("""
-                    SELECT
-                        h.id_historial,
-                        h.id_postulacion,
-                        h.id_usuario_auditor,
-                        h.id_usuario_administrador,
-                        h.estado_anterior,
-                        h.estado_nuevo,
-                        h.observaciones,
-                        h.fecha_cambio,
-
-                        admin.nombre AS administrador
-
-                    FROM historial_postulacion_auditor h
-
-                    LEFT JOIN usuario admin
-                        ON admin.id_usuario =
-                        h.id_usuario_administrador
-
-                    WHERE h.id_postulacion = :id_postulacion
-
-                    AND LOWER(h.estado_nuevo)
-                        = LOWER('Correcciones')
-
-                    ORDER BY
-                        h.fecha_cambio DESC
-
-                    LIMIT 1
-                """),
-                {
-                    "id_postulacion": id_postulacion,
-                },
-            )
-
-            correccion = result.mappings().first()
-
-        # ============================================================
-        # OBSERVACIÓN DE CORRECCIÓN
-        # ============================================================
-
-        observaciones_correccion = ""
-
-        if correccion:
             observaciones_correccion = (
-                correccion["observaciones"]
-                or ""
-            )
+                correccion["observaciones"] if correccion else ""
+            ) or ""
+            if not observaciones_correccion and estado_normalizado == "correcciones":
+                observaciones_correccion = (
+                    postulacion.get("observaciones_tecnicas") or ""
+                )
 
-        # ============================================================
-        # RESPUESTA
-        # ============================================================
+            # Última observación de rechazo asociada a ESTA postulación.
+            rechazo = None
+            try:
+                result = await self.db.execute(
+                    text("""
+                        SELECT observacion AS observaciones
+                        FROM historial_estado
+                        WHERE id_solicitud = :id_postulacion
+                        AND LOWER(estado) = LOWER('Rechazado')
+                        ORDER BY fecha DESC
+                        LIMIT 1
+                    """),
+                    {"id_postulacion": id_postulacion},
+                )
+                rechazo = result.mappings().first()
+            except Exception:
+                # La postulación se conserva aunque no exista historial_estado
+                # o el historial no esté disponible.
+                await self.db.rollback()
+                rechazo = None
+
+            observaciones_rechazo = (
+                rechazo["observaciones"] if rechazo else ""
+            ) or ""
+            if not observaciones_rechazo and estado_normalizado == "rechazado":
+                observaciones_rechazo = (
+                    postulacion.get("observaciones_tecnicas") or ""
+                )
+
+            postulacion["estado"] = postulacion.get("estado_postulacion")
+            postulacion["observaciones_correccion"] = observaciones_correccion
+            postulacion["observaciones_rechazo"] = observaciones_rechazo
+            postulacion["administrador_correccion"] = (
+                correccion["administrador"] if correccion else None
+            )
+            postulacion["fecha_correccion"] = (
+                correccion["fecha_cambio"] if correccion else None
+            )
+            postulacion["estado_anterior_correccion"] = (
+                correccion["estado_anterior"] if correccion else None
+            )
+            postulacion["tiene_correcciones"] = bool(observaciones_correccion)
+            postulaciones.append(postulacion)
+
+        # La pantalla usa estos campos superiores como compatibilidad con la
+        # postulación seleccionada inicialmente: la más reciente de las visibles.
+        actual = postulaciones[0] if postulaciones else None
 
         return {
             "id_usuario": auditor["id_usuario"],
-            "id_postulacion": auditor["id_postulacion"],
-
             "nombre": auditor["nombre"],
             "correo": auditor["correo"],
-
+            "tipo_doc": auditor["tipo_doc"],
+            "num_doc": auditor["num_doc"],
             "estado_usuario": auditor["estado_usuario"],
             "estado_auditor": auditor["estado_auditor"],
-
-            "estado_postulacion": auditor["estado_postulacion"],
-
-            "fecha_postulacion": (
-                auditor["fecha_postulacion"]
+            "rol": auditor["rol"] or "Auditor",
+            "id_postulacion": actual["id_postulacion"] if actual else None,
+            "estado_postulacion": actual["estado_postulacion"] if actual else None,
+            "fecha_postulacion": actual["fecha_postulacion"] if actual else None,
+            "fecha_revision": actual["fecha_revision"] if actual else None,
+            "observaciones_correccion": actual["observaciones_correccion"] if actual else "",
+            "observaciones_rechazo": actual["observaciones_rechazo"] if actual else "",
+            "administrador_correccion": actual["administrador_correccion"] if actual else None,
+            "fecha_correccion": actual["fecha_correccion"] if actual else None,
+            "tiene_correcciones": bool(
+                actual
+                and str(actual.get("estado_postulacion") or "").strip().lower() == "correcciones"
+                and actual.get("observaciones_correccion")
             ),
-
-            "fecha_revision": (
-                auditor["fecha_revision"]
-            ),
-
-            # ========================================================
-            # CORRECCIÓN
-            # ========================================================
-
-            "tiene_correcciones": (
-                auditor["estado_postulacion"]
-                == "Correcciones"
-                and bool(observaciones_correccion)
-            ),
-
-            "observaciones_correccion": (
-                observaciones_correccion
-            ),
-
-            "administrador_correccion": (
-                correccion["administrador"]
-                if correccion
-                else None
-            ),
-
-            "fecha_correccion": (
-                correccion["fecha_cambio"]
-                if correccion
-                else None
-            ),
-
-            "estado_anterior_correccion": (
-                correccion["estado_anterior"]
-                if correccion
-                else None
-            ),
+            "postulaciones": postulaciones,
         }
 
-   
+
     # ========================================================
     # CONSULTAR ESTADO POR POSTULACIÓN
     # ========================================================
@@ -3418,47 +3784,14 @@ class AuditorService:
             "Cancelado",
             "Rechazado",
         ):
-
-            result = await self.db.execute(
-                text("""
-                    INSERT INTO postulacion_auditor (
-                        id_usuario,
-                        estado,
-                        observaciones_tecnicas,
-                        fecha_postulacion,
-                        fecha_revision
-                    )
-                    VALUES (
-                        :id_usuario,
-                        'Borrador',
-                        '',
-                        CURRENT_TIMESTAMP,
-                        NULL
-                    )
-                    RETURNING
-                        id_postulacion,
-                        id_usuario,
-                        estado
-                """),
-                {
-                    "id_usuario": id_usuario,
-                },
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "La última postulación está "
+                    f"'{ultima['estado']}'. Debe iniciar una nueva "
+                    "postulación explícitamente antes de cargar o editar información."
+                ),
             )
-
-            postulacion = result.mappings().first()
-
-            if not postulacion:
-
-                await self.db.rollback()
-
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=(
-                        "No fue posible crear el nuevo borrador."
-                    ),
-                )
-
-            return postulacion
 
         # ========================================================
         # ESTADO NO CONTEMPLADO
@@ -3471,3 +3804,185 @@ class AuditorService:
                 f"no permitido: '{ultima['estado']}'."
             ),
         )
+
+    # ========================================================
+    # NUEVA POSTULACIÓN DESPUÉS DE RECHAZO/CANCELACIÓN
+    # ========================================================
+    async def crear_nueva_postulacion(self, id_usuario: UUID):
+        result = await self.db.execute(
+            text("""
+                SELECT id_postulacion, estado
+                FROM postulacion_auditor
+                WHERE id_usuario = :id_usuario
+                ORDER BY fecha_postulacion DESC
+                LIMIT 1
+            """),
+            {"id_usuario": id_usuario},
+        )
+        ultima = result.mappings().first()
+        if ultima and ultima["estado"] not in ("Rechazado", "Cancelado", "Correcciones"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Solo puede iniciar una nueva postulación cuando la "
+                    "anterior esté Rechazada o Cancelada."
+                ),
+            )
+
+        result = await self.db.execute(
+            text("""
+                INSERT INTO postulacion_auditor (
+                    id_usuario, estado, observaciones_tecnicas,
+                    fecha_postulacion, fecha_revision
+                ) VALUES (
+                    :id_usuario, 'Borrador', '', CURRENT_TIMESTAMP, NULL
+                )
+                RETURNING id_postulacion, id_usuario, estado,
+                          fecha_postulacion, fecha_revision,
+                          observaciones_tecnicas
+            """),
+            {"id_usuario": id_usuario},
+        )
+        nueva = result.mappings().first()
+        if not nueva:
+            await self.db.rollback()
+            raise HTTPException(500, "No fue posible crear la nueva postulación.")
+
+        await self.db.execute(
+            text("""
+                UPDATE usuario
+                SET estado_auditor = 'Postulante'
+                WHERE id_usuario = :id_usuario
+            """),
+            {"id_usuario": id_usuario},
+        )
+        await self.db.commit()
+        return {"mensaje": "Nueva postulación creada.", **dict(nueva)}
+
+    # ========================================================
+    # TÍTULOS ACADÉMICOS
+    # ========================================================
+    async def listar_titulos_academicos(self, id_usuario: UUID):
+        result = await self.db.execute(text("""
+            SELECT id_titulo, nivel, titulo, institucion, fecha_grado,
+                   estado_validacion, observacion_validacion
+            FROM titulo_academico
+            WHERE id_usuario = :id_usuario
+            ORDER BY fecha_grado DESC NULLS LAST, created_at DESC
+        """), {"id_usuario": id_usuario})
+        return [dict(x) for x in result.mappings().all()]
+
+    async def crear_titulo_academico(self, id_usuario: UUID, data: TituloAcademicoCrear):
+        await self._verificar_usuario_borrador(id_usuario)
+        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
+        result = await self.db.execute(text("""
+            INSERT INTO titulo_academico
+                (id_usuario, nivel, titulo, institucion, fecha_grado, id_postulacion)
+            VALUES
+                (:id_usuario, :nivel, :titulo, :institucion, :fecha_grado, :id_postulacion)
+            RETURNING id_titulo, nivel, titulo, institucion, fecha_grado,
+                      estado_validacion, observacion_validacion
+        """), {"id_usuario": id_usuario, "id_postulacion": id_postulacion, **data.model_dump()})
+        row = result.mappings().first()
+        await self.db.commit()
+        return dict(row)
+
+    async def eliminar_titulo_academico(self, id_usuario: UUID, id_titulo: UUID):
+        await self._verificar_usuario_borrador(id_usuario)
+        result = await self.db.execute(text("""
+            DELETE FROM titulo_academico
+            WHERE id_titulo = :id_titulo AND id_usuario = :id_usuario
+              AND estado_validacion <> 'Aprobado'
+            RETURNING id_titulo
+        """), {"id_titulo": id_titulo, "id_usuario": id_usuario})
+        row = result.mappings().first()
+        if not row:
+            raise HTTPException(409, "El título no existe o ya está aprobado.")
+        await self.db.commit()
+        return {"mensaje": "Título eliminado correctamente."}
+
+    # ========================================================
+    # EXPERIENCIA LABORAL
+    # ========================================================
+    async def listar_experiencias_laborales(self, id_usuario: UUID):
+        result = await self.db.execute(text("""
+            SELECT id_experiencia, empresa, cargo, fecha_inicio, fecha_fin,
+                   descripcion, estado_validacion, observacion_validacion
+            FROM experiencia_laboral
+            WHERE id_usuario = :id_usuario
+            ORDER BY fecha_inicio DESC
+        """), {"id_usuario": id_usuario})
+        return [dict(x) for x in result.mappings().all()]
+
+    async def crear_experiencia_laboral(self, id_usuario: UUID, data: ExperienciaLaboralCrear):
+        await self._verificar_usuario_borrador(id_usuario)
+        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
+        result = await self.db.execute(text("""
+            INSERT INTO experiencia_laboral
+                (id_usuario, empresa, cargo, fecha_inicio, fecha_fin, descripcion, id_postulacion)
+            VALUES
+                (:id_usuario, :empresa, :cargo, :fecha_inicio, :fecha_fin, :descripcion, :id_postulacion)
+            RETURNING id_experiencia, empresa, cargo, fecha_inicio, fecha_fin,
+                      descripcion, estado_validacion, observacion_validacion
+        """), {"id_usuario": id_usuario, "id_postulacion": id_postulacion, **data.model_dump()})
+        row = result.mappings().first()
+        await self.db.commit()
+        return dict(row)
+
+    async def eliminar_experiencia_laboral(self, id_usuario: UUID, id_experiencia: UUID):
+        await self._verificar_usuario_borrador(id_usuario)
+        result = await self.db.execute(text("""
+            DELETE FROM experiencia_laboral
+            WHERE id_experiencia = :id_experiencia AND id_usuario = :id_usuario
+              AND estado_validacion <> 'Aprobado'
+            RETURNING id_experiencia
+        """), {"id_experiencia": id_experiencia, "id_usuario": id_usuario})
+        if not result.mappings().first():
+            raise HTTPException(409, "La experiencia no existe o ya está aprobada.")
+        await self.db.commit()
+        return {"mensaje": "Experiencia laboral eliminada correctamente."}
+
+    # ========================================================
+    # EXPERIENCIA EN AUDITORÍA
+    # ========================================================
+    async def listar_experiencias_auditoria(self, id_usuario: UUID):
+        result = await self.db.execute(text("""
+            SELECT id_experiencia, organizacion, rol_auditoria, tipo_auditoria,
+                   fecha_inicio, fecha_fin, descripcion, estado_validacion,
+                   observacion_validacion
+            FROM experiencia_auditoria
+            WHERE id_usuario = :id_usuario
+            ORDER BY fecha_inicio DESC
+        """), {"id_usuario": id_usuario})
+        return [dict(x) for x in result.mappings().all()]
+
+    async def crear_experiencia_auditoria(self, id_usuario: UUID, data: ExperienciaAuditoriaCrear):
+        await self._verificar_usuario_borrador(id_usuario)
+        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
+        result = await self.db.execute(text("""
+            INSERT INTO experiencia_auditoria
+                (id_usuario, organizacion, rol_auditoria, tipo_auditoria,
+                 fecha_inicio, fecha_fin, descripcion, id_postulacion)
+            VALUES
+                (:id_usuario, :organizacion, :rol_auditoria, :tipo_auditoria,
+                 :fecha_inicio, :fecha_fin, :descripcion, :id_postulacion)
+            RETURNING id_experiencia, organizacion, rol_auditoria, tipo_auditoria,
+                      fecha_inicio, fecha_fin, descripcion, estado_validacion,
+                      observacion_validacion
+        """), {"id_usuario": id_usuario, "id_postulacion": id_postulacion, **data.model_dump()})
+        row = result.mappings().first()
+        await self.db.commit()
+        return dict(row)
+
+    async def eliminar_experiencia_auditoria(self, id_usuario: UUID, id_experiencia: UUID):
+        await self._verificar_usuario_borrador(id_usuario)
+        result = await self.db.execute(text("""
+            DELETE FROM experiencia_auditoria
+            WHERE id_experiencia = :id_experiencia AND id_usuario = :id_usuario
+              AND estado_validacion <> 'Aprobado'
+            RETURNING id_experiencia
+        """), {"id_experiencia": id_experiencia, "id_usuario": id_usuario})
+        if not result.mappings().first():
+            raise HTTPException(409, "La experiencia no existe o ya está aprobada.")
+        await self.db.commit()
+        return {"mensaje": "Experiencia en auditoría eliminada correctamente."}

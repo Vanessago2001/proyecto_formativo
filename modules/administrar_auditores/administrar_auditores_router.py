@@ -1,273 +1,171 @@
 from uuid import UUID
-
-from fastapi import (
-    APIRouter,
-    Depends,
-    Query,
-    HTTPException,
-    status,
-)
-from sqlalchemy import text
-
-from pydantic import BaseModel
-
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.database import get_db
+from modules.auth.dependencies import require_admin_access
+from modules.administrar_auditores.administrar_auditores_service import AdministrarAuditoresService
 
-from modules.administrar_auditores.administrar_auditores_service import (
-    AdministrarAuditoresService,
-)
-
-
-router = APIRouter(
-    prefix="/administrar-auditores",
-    tags=["Administrar Auditores"],
-)
+router = APIRouter(prefix="/administradores/auditores", tags=["Administración de Auditores"])
 
 
-# ========================================================
-# ESQUEMA PARA CAMBIO DE ESTADO
-# ========================================================
-
-class CambioEstadoAuditor(BaseModel):
-    id_usuario_actor: UUID
-    observaciones: str | None = None
-
-
-# ========================================================
-# BANCO DE AUDITORES
-# LISTAR SOLICITUDES
-# ========================================================
+@router.get("/conflictos")
+async def listar_conflictos_general(
+    usuario: dict = Depends(require_admin_access),
+    db: AsyncSession = Depends(get_db),
+):
+    return {
+        "conflictos": await AdministrarAuditoresService(db).listar_conflictos_general()
+    }
 
 @router.get("/solicitudes")
-async def listar_solicitudes_auditores(
-    estado: str | None = Query(
-        default=None,
-        description="Filtrar por estado de la postulación",
-    ),
+async def listar_solicitudes(
+    estado: str | None = Query(None),
+    usuario: dict = Depends(require_admin_access),
     db: AsyncSession = Depends(get_db),
 ):
-    service = AdministrarAuditoresService(db)
-
-    return await service.listar_solicitudes(
-        estado=estado,
-    )
-
-
-# ========================================================
-# DETALLE DE UNA SOLICITUD
-# ========================================================
+    return await AdministrarAuditoresService(db).listar_solicitudes(estado)
 
 @router.get("/solicitudes/{id_postulacion}")
-async def obtener_solicitud_auditor(
+async def obtener_solicitud(
     id_postulacion: UUID,
+    usuario: dict = Depends(require_admin_access),
     db: AsyncSession = Depends(get_db),
 ):
-    service = AdministrarAuditoresService(db)
+    return await AdministrarAuditoresService(db).obtener_solicitud(id_postulacion)
 
-    return await service.obtener_solicitud(
-        id_postulacion=id_postulacion,
+@router.post("/documentos/{id_documento}/revision")
+async def revisar_documento(
+    id_documento: UUID,
+    data: dict,
+    usuario: dict = Depends(require_admin_access),
+    db: AsyncSession = Depends(get_db),
+):
+    estado = str(data.get("estado_revision", "")).strip()
+    observacion = str(data.get("observacion", "") or "")
+    actor = usuario.get("id_usuario") or usuario.get("sub")
+    if not actor:
+        from fastapi import HTTPException
+        raise HTTPException(401, "No fue posible identificar al administrador.")
+    return await AdministrarAuditoresService(db).revisar_documento(
+        id_documento=id_documento,
+        estado_revision=estado,
+        observacion=observacion,
+        id_usuario_actor=UUID(str(actor)),
     )
 
-
-# ========================================================
-# PASAR A EN REVISIÓN
-# ========================================================
-
-@router.patch(
-    "/solicitudes/{id_postulacion}/revision"
-)
-async def pasar_a_revision(
-    id_postulacion: UUID,
-    data: CambioEstadoAuditor,
+@router.post("/competencias/{id_competencia}/revision")
+async def revisar_competencia(
+    id_competencia: UUID,
+    data: dict,
+    usuario: dict = Depends(require_admin_access),
     db: AsyncSession = Depends(get_db),
 ):
-    service = AdministrarAuditoresService(db)
-
-    return await service.cambiar_estado(
-        id_postulacion=id_postulacion,
-        nuevo_estado="En Revisión",
-        observaciones=data.observaciones,
-        id_usuario_actor=data.id_usuario_actor,
+    actor = usuario.get("id_usuario") or usuario.get("sub")
+    if not actor:
+        from fastapi import HTTPException
+        raise HTTPException(401, "No fue posible identificar al administrador.")
+    estado = str(data.get("estado_validacion", "")).strip()
+    observacion = str(data.get("observacion", "") or "")
+    return await AdministrarAuditoresService(db).revisar_validacion_competencia(
+        id_competencia=id_competencia,
+        estado_validacion=estado,
+        observacion=observacion,
+        id_usuario_actor=UUID(str(actor)),
     )
 
-
-# ========================================================
-# SOLICITAR CORRECCIONES
-# ========================================================
-
-@router.patch(
-    "/solicitudes/{id_postulacion}/correcciones"
-)
-async def solicitar_correcciones(
+@router.patch("/solicitudes/{id_postulacion}/revision")
+async def pasar_revision_alias(
     id_postulacion: UUID,
-    data: CambioEstadoAuditor,
+    data: dict,
+    usuario: dict = Depends(require_admin_access),
     db: AsyncSession = Depends(get_db),
 ):
-    if not data.observaciones or not data.observaciones.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Debe registrar las observaciones "
-                "que debe corregir el auditor."
-            ),
-        )
+    return await _ejecutar_alias_estado(
+        id_postulacion=id_postulacion,
+        nuevo_estado="En Revisi??n",
+        data=data,
+        usuario=usuario,
+        db=db,
+    )
 
-    service = AdministrarAuditoresService(db)
-
-    return await service.cambiar_estado(
+@router.patch("/solicitudes/{id_postulacion}/correcciones")
+async def solicitar_correcciones_alias(
+    id_postulacion: UUID,
+    data: dict,
+    usuario: dict = Depends(require_admin_access),
+    db: AsyncSession = Depends(get_db),
+):
+    return await _ejecutar_alias_estado(
         id_postulacion=id_postulacion,
         nuevo_estado="Correcciones",
-        observaciones=data.observaciones.strip(),
-        id_usuario_actor=data.id_usuario_actor,
+        data=data,
+        usuario=usuario,
+        db=db,
     )
 
-  
-
-
-# ========================================================
-# APROBAR AUDITOR
-# ========================================================
-
-@router.patch(
-    "/solicitudes/{id_postulacion}/aprobar"
-)
-async def aprobar_auditor(
+@router.patch("/solicitudes/{id_postulacion}/aprobar")
+async def aprobar_alias(
     id_postulacion: UUID,
-    data: CambioEstadoAuditor,
+    data: dict,
+    usuario: dict = Depends(require_admin_access),
     db: AsyncSession = Depends(get_db),
 ):
-    service = AdministrarAuditoresService(db)
-
-    return await service.cambiar_estado(
+    return await _ejecutar_alias_estado(
         id_postulacion=id_postulacion,
         nuevo_estado="Aprobado",
-        observaciones=data.observaciones,
-        id_usuario_actor=data.id_usuario_actor,
+        data=data,
+        usuario=usuario,
+        db=db,
     )
 
-
-# ========================================================
-# RECHAZAR AUDITOR
-# ========================================================
-
-@router.patch(
-    "/solicitudes/{id_postulacion}/rechazar"
-)
-async def rechazar_auditor(
+@router.patch("/solicitudes/{id_postulacion}/rechazar")
+async def rechazar_alias(
     id_postulacion: UUID,
-    data: CambioEstadoAuditor,
+    data: dict,
+    usuario: dict = Depends(require_admin_access),
     db: AsyncSession = Depends(get_db),
 ):
-    if not data.observaciones or not data.observaciones.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Debe registrar las observaciones "
-                "que justifican el rechazo."
-            ),
-        )
-
-    service = AdministrarAuditoresService(db)
-
-    return await service.cambiar_estado(
+    return await _ejecutar_alias_estado(
         id_postulacion=id_postulacion,
         nuevo_estado="Rechazado",
-        observaciones=data.observaciones.strip(),
-        id_usuario_actor=data.id_usuario_actor,
+        data=data,
+        usuario=usuario,
+        db=db,
     )
 
-
-   
-
-# consulta de historial de cambios de estado de una solicitud de auditor
-@router.get(
-    "/solicitudes/{id_postulacion}/historial"
-)
-async def obtener_historial_solicitud(
+async def _ejecutar_alias_estado(
     id_postulacion: UUID,
-    db: AsyncSession = Depends(get_db),
+    nuevo_estado: str,
+    data: dict,
+    usuario: dict,
+    db: AsyncSession,
 ):
-    service = AdministrarAuditoresService(db)
-
-    return await service.obtener_historial(
+    actor = usuario.get("id_usuario") or usuario.get("sub")
+    if not actor:
+        from fastapi import HTTPException
+        raise HTTPException(401, "No fue posible identificar al administrador.")
+    observaciones = str(data.get("observaciones") or "")
+    return await AdministrarAuditoresService(db).cambiar_estado(
         id_postulacion=id_postulacion,
+        nuevo_estado=nuevo_estado,
+        observaciones=observaciones,
+        id_usuario_actor=UUID(str(actor)),
     )
 
-
-
-
-
-@router.delete("/solicitudes/borradores-duplicados/{id_usuario}")
-async def eliminar_borradores_duplicados(
-    id_usuario: UUID,
+@router.post("/solicitudes/{id_postulacion}/estado")
+async def cambiar_estado(
+    id_postulacion: UUID,
+    data: dict,
+    usuario: dict = Depends(require_admin_access),
     db: AsyncSession = Depends(get_db),
 ):
-    try:
-        # Verificar que existan borradores para el usuario
-        result = await db.execute(
-            text("""
-                SELECT id_postulacion
-                FROM postulacion_auditor
-                WHERE id_usuario = :id_usuario
-                  AND estado = 'Borrador'
-            """),
-            {"id_usuario": id_usuario},
-        )
-        borradores = result.mappings().all()
-
-        if not borradores:
-            return {
-                "ok": True,
-                "mensaje": "No hay borradores para eliminar.",
-                "documentos_eliminados": 0,
-                "borradores_eliminados": 0,
-            }
-
-        # Eliminar documentos relacionados con los borradores
-        result_documentos = await db.execute(
-            text("""
-                DELETE FROM documento_auditor
-                WHERE id_postulacion IN (
-                    SELECT id_postulacion
-                    FROM postulacion_auditor
-                    WHERE id_usuario = :id_usuario
-                      AND estado = 'Borrador'
-                )
-            """),
-            {"id_usuario": id_usuario},
-        )
-        documentos_eliminados = result_documentos.rowcount or 0
-
-        # Eliminar los borradores
-        result_borradores = await db.execute(
-            text("""
-                DELETE FROM postulacion_auditor
-                WHERE id_usuario = :id_usuario
-                  AND estado = 'Borrador'
-            """),
-            {"id_usuario": id_usuario},
-        )
-        borradores_eliminados = result_borradores.rowcount or 0
-
-        await db.commit()
-
-        return {
-            "ok": True,
-            "mensaje": "Los borradores y sus documentos relacionados fueron eliminados correctamente.",
-            "documentos_eliminados": documentos_eliminados,
-            "borradores_eliminados": borradores_eliminados,
-        }
-
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al eliminar los borradores: {str(e)}",
-        )
-
-
-
-
-
+    actor = usuario.get("id_usuario") or usuario.get("sub")
+    if not actor:
+        from fastapi import HTTPException
+        raise HTTPException(401, "No fue posible identificar al administrador.")
+    return await AdministrarAuditoresService(db).cambiar_estado(
+        id_postulacion=id_postulacion,
+        nuevo_estado=str(data.get("nuevo_estado", "")).strip(),
+        observaciones=str(data.get("observaciones", "") or ""),
+        id_usuario_actor=UUID(str(actor)),
+    )

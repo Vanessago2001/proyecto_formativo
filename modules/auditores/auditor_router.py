@@ -1,7 +1,5 @@
 from uuid import UUID
 
-from pydantic import BaseModel
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -10,6 +8,7 @@ from fastapi import (
     File,
     Query,
 )
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,20 +25,21 @@ from modules.auditores.auditor_schema import (
     ConflictoInteresCrear,
     EnviarSolicitudAuditor,
     EnviarSolicitudRespuesta,
+    TituloAcademicoCrear,
+    ExperienciaLaboralCrear,
+    ExperienciaAuditoriaCrear,
+    NuevaPostulacionRequest,
+    RevisarDocumentoRequest,
+    ReenviarCorreccionesRequest,
 )
 
 from modules.auditores.auditor_service import AuditorService
+
 
 router = APIRouter(
     prefix="/auditores",
     tags=["Auditores"],
 )
-
-
-class ReenviarCorreccionesRequest(BaseModel):
-    """Datos mínimos para reenviar una postulación corregida."""
-
-    id_usuario: UUID
 
 
 # ============================================================
@@ -55,34 +55,25 @@ async def iniciar_registro_auditor(
     data: IniciarRegistroAuditor,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.iniciar_registro(data)
-
+    return await AuditorService(db).iniciar_registro(data)
 
 # ============================================================
-# ESTADO POR CORREO
+# CONSULTAR ESTADO POR CORREO
 # ============================================================
 
-@router.get(
-    "/registro/estado",
-    response_model=ConsultaEstadoAuditorRespuesta,
-)
+@router.get("/registro/estado")
 async def consultar_estado_auditor(
     correo: str,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.consultar_estado_por_correo(
+    return await AuditorService(db).consultar_estado_por_correo(
         correo=correo
     )
 
+
+
 # ============================================================
-# OBTENER BORRADOR
-#
-# IMPORTANTE:
-# El frontend actual utiliza el id_usuario.
+# OBTENER BORRADOR / REGISTRO
 # ============================================================
 
 @router.get(
@@ -93,9 +84,9 @@ async def obtener_borrador_auditor(
     id_usuario: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.obtener_borrador(id_usuario)
+    return await AuditorService(db).obtener_borrador(
+        id_usuario
+    )
 
 
 # ============================================================
@@ -110,10 +101,15 @@ async def consultar_estado_auditor_por_id(
     id_postulacion: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
+    return await AuditorService(db).consultar_estado(
+        id_postulacion
+    )
 
-    return await service.consultar_estado(id_postulacion)
-# comprobante para el pdf
+
+# ============================================================
+# COMPROBANTE PDF
+# ============================================================
+
 @router.get(
     "/registro/postulacion/{id_postulacion}/comprobante",
 )
@@ -121,14 +117,13 @@ async def descargar_comprobante_registro(
     id_postulacion: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.generar_comprobante_pdf(
+    return await AuditorService(db).generar_comprobante_pdf(
         id_postulacion
     )
 
+
 # ============================================================
-# DOCUMENTOS DE SOPORTE
+# DOCUMENTOS
 # ============================================================
 
 @router.get(
@@ -138,10 +133,8 @@ async def listar_documentos_soporte(
     id_usuario: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.obtener_documentos(
-        id_usuario,
+    return await AuditorService(db).obtener_documentos(
+        id_usuario
     )
 
 
@@ -151,15 +144,21 @@ async def listar_documentos_soporte(
 async def adjuntar_documento_soporte(
     id_usuario: UUID,
     tipo_documento: str = Query(...),
+    categoria_documento: str = Query("Soporte"),
+    id_titulo: UUID | None = Query(None),
+    id_experiencia_laboral: UUID | None = Query(None),
+    id_experiencia_auditoria: UUID | None = Query(None),
     archivo: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.adjuntar_documento(
-        id_usuario,
-        tipo_documento,
-        archivo,
+    return await AuditorService(db).adjuntar_documento(
+        id_usuario=id_usuario,
+        tipo_documento=tipo_documento,
+        archivo=archivo,
+        categoria_documento=categoria_documento,
+        id_titulo=id_titulo,
+        id_experiencia_laboral=id_experiencia_laboral,
+        id_experiencia_auditoria=id_experiencia_auditoria,
     )
 
 
@@ -172,12 +171,10 @@ async def reemplazar_documento_soporte(
     archivo: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.reemplazar_documento(
-        id_usuario,
-        id_documento,
-        archivo,
+    return await AuditorService(db).reemplazar_documento(
+        id_usuario=id_usuario,
+        id_documento=id_documento,
+        archivo=archivo,
     )
 
 
@@ -189,11 +186,37 @@ async def eliminar_documento_soporte(
     id_documento: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
+    return await AuditorService(db).eliminar_documento(
+        id_usuario=id_usuario,
+        id_documento=id_documento,
+    )
 
-    return await service.eliminar_documento(
-        id_usuario,
-        id_documento,
+
+# ============================================================
+# REVISIÓN INDIVIDUAL DE DOCUMENTOS
+#
+# APROBADO:
+#   El auditor ya no puede reemplazar/eliminar.
+#
+# RECHAZADO:
+#   El auditor puede reemplazarlo.
+# ============================================================
+
+@router.put(
+    "/postulacion/{id_postulacion}/documento/{id_documento}/revision",
+)
+async def revisar_documento(
+    id_postulacion: UUID,
+    id_documento: UUID,
+    data: RevisarDocumentoRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).revisar_documento(
+        id_postulacion=id_postulacion,
+        id_documento=id_documento,
+        estado_revision=data.estado_revision,
+        observacion=data.observacion,
+        id_usuario_actor=data.id_usuario_actor,
     )
 
 
@@ -209,8 +232,7 @@ async def subir_foto_perfil(
     archivo: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-    return await service.subir_foto_perfil(
+    return await AuditorService(db).subir_foto_perfil(
         id_usuario,
         archivo,
     )
@@ -223,23 +245,9 @@ async def eliminar_foto_perfil(
     id_usuario: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-    return await service.eliminar_foto_perfil(id_usuario)
-
-
-# ============================================================
-# CONFLICTO - DECLARAR SIN CONFLICTO
-# ============================================================
-
-@router.delete(
-    "/registro/{id_usuario}/conflictos",
-)
-async def declarar_sin_conflicto(
-    id_usuario: UUID,
-    db: AsyncSession = Depends(get_db),
-):
-    service = AuditorService(db)
-    return await service.declarar_sin_conflicto(id_usuario)
+    return await AuditorService(db).eliminar_foto_perfil(
+        id_usuario
+    )
 
 
 # ============================================================
@@ -254,9 +262,7 @@ async def guardar_perfil(
     data: PerfilAuditorCrear,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.guardar_perfil(
+    return await AuditorService(db).guardar_perfil(
         id_usuario,
         data,
     )
@@ -270,9 +276,7 @@ async def actualizar_perfil(
     data: PerfilAuditorCrear,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.guardar_perfil(
+    return await AuditorService(db).guardar_perfil(
         id_usuario,
         data,
     )
@@ -290,13 +294,191 @@ async def crear_competencia(
     data: CompetenciaAuditorCrear,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.crear_competencia(
+    return await AuditorService(db).crear_competencia(
         id_usuario,
         data,
     )
 
+
+
+@router.delete(
+    "/registro/{id_usuario}/competencias/{id_competencia}",
+)
+async def eliminar_competencia(
+    id_usuario: UUID,
+    id_competencia: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).eliminar_competencia(
+        id_usuario,
+        id_competencia,
+    )
+
+
+# ============================================================
+# NOTIFICACIONES DE AGENDA (bandeja del auditor)
+# ============================================================
+
+@router.get(
+    "/{id_usuario}/notificaciones",
+)
+async def listar_notificaciones_auditor(
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        text("""
+            SELECT
+                id_notificacion,
+                id_programacion,
+                titulo,
+                mensaje,
+                leida,
+                fecha_creacion
+            FROM notificacion_agenda_auditor
+            WHERE id_usuario = :id_usuario
+            ORDER BY fecha_creacion DESC
+        """),
+        {"id_usuario": id_usuario},
+    )
+    return {
+        "notificaciones": [
+            dict(row) for row in result.mappings().all()
+        ]
+    }
+
+
+@router.patch(
+    "/{id_usuario}/notificaciones/{id_notificacion}/leer",
+)
+async def marcar_notificacion_leida(
+    id_usuario: UUID,
+    id_notificacion: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        text("""
+            UPDATE notificacion_agenda_auditor
+            SET leida = TRUE
+            WHERE id_notificacion = :id_notificacion
+              AND id_usuario = :id_usuario
+            RETURNING id_notificacion
+        """),
+        {
+            "id_notificacion": id_notificacion,
+            "id_usuario": id_usuario,
+        },
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Notificación no encontrada.")
+    await db.commit()
+    return {"mensaje": "Notificación marcada como leída."}
+
+
+@router.get(
+    "/registro/historial-academico/{id_usuario}",
+)
+async def consultar_historial_academico(
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).consultar_historial_academico(id_usuario)
+
+@router.post(
+    "/registro/{id_usuario}/competencias/curso-complementario",
+)
+async def registrar_curso_complementario(
+    id_usuario: UUID,
+    data: CompetenciaAuditorCrear,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).registrar_curso_complementario(
+        id_usuario=id_usuario,
+        data=data,
+    )
+
+@router.post(
+    "/registro/{id_usuario}/competencias/certificacion",
+)
+async def registrar_certificacion(
+    id_usuario: UUID,
+    data: CompetenciaAuditorCrear,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).registrar_certificacion(
+        id_usuario=id_usuario,
+        data=data,
+    )
+
+
+@router.get(
+    "/registro/conflictos/{id_usuario}",
+)
+async def listar_conflictos(
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return {
+        "conflictos":
+            await AuditorService(db).listar_conflictos(id_usuario)
+    }
+
+@router.delete(
+    "/registro/conflictos/{id_conflicto}",
+)
+async def eliminar_conflicto(
+    id_conflicto: UUID,
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).eliminar_conflicto(
+        id_usuario=id_usuario,
+        id_conflicto=id_conflicto,
+    )
+
+@router.get(
+    "/registro/empresas-restringidas",
+)
+async def consultar_empresas_restringidas(
+    db: AsyncSession = Depends(get_db),
+):
+    return {
+        "empresas":
+            await AuditorService(db).consultar_empresas_restringidas()
+    }
+
+@router.post(
+    "/registro/validar-conflicto",
+)
+async def validar_conflicto_antes_asignacion(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).validar_conflicto_antes_asignacion(
+        id_usuario=UUID(str(data.get("id_usuario"))),
+        id_empresa=UUID(str(data.get("id_empresa"))),
+    )
+
+@router.get(
+    "/registro/catalogo-competencias",
+)
+async def consultar_catalogo_competencias(
+    db: AsyncSession = Depends(get_db),
+):
+    return {
+        "catalogo": await AuditorService(db).consultar_catalogo_competencias()
+    }
+
+@router.get(
+    "/registro/sectores-iaf",
+)
+async def consultar_sectores_iaf(
+    db: AsyncSession = Depends(get_db),
+):
+    return {
+        "sectores": await AuditorService(db).consultar_sectores_iaf()
+    }
 
 @router.put(
     "/registro/{id_usuario}/competencias/{id_competencia}",
@@ -307,9 +489,7 @@ async def actualizar_competencia(
     data: CompetenciaAuditorCrear,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.actualizar_competencia(
+    return await AuditorService(db).actualizar_competencia(
         id_usuario,
         id_competencia,
         data,
@@ -320,6 +500,18 @@ async def actualizar_competencia(
 # CONFLICTOS
 # ============================================================
 
+@router.delete(
+    "/registro/{id_usuario}/conflictos",
+)
+async def declarar_sin_conflicto(
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).declarar_sin_conflicto(
+        id_usuario
+    )
+
+
 @router.post(
     "/registro/{id_usuario}/conflictos",
 )
@@ -328,9 +520,7 @@ async def crear_conflicto(
     data: ConflictoInteresCrear,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.crear_conflicto(
+    return await AuditorService(db).crear_conflicto(
         id_usuario,
         data,
     )
@@ -345,12 +535,142 @@ async def actualizar_conflicto(
     data: ConflictoInteresCrear,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.actualizar_conflicto(
+    return await AuditorService(db).actualizar_conflicto(
         id_usuario,
         id_conflicto,
         data,
+    )
+
+
+# ============================================================
+# TÍTULOS ACADÉMICOS - MÚLTIPLES
+# ============================================================
+
+@router.get(
+    "/registro/{id_usuario}/titulos",
+)
+async def listar_titulos(
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).listar_titulos_academicos(
+        id_usuario
+    )
+
+
+@router.post(
+    "/registro/{id_usuario}/titulos",
+)
+async def crear_titulo(
+    id_usuario: UUID,
+    data: TituloAcademicoCrear,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).crear_titulo_academico(
+        id_usuario,
+        data,
+    )
+
+
+@router.delete(
+    "/registro/{id_usuario}/titulos/{id_titulo}",
+)
+async def eliminar_titulo(
+    id_usuario: UUID,
+    id_titulo: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).eliminar_titulo_academico(
+        id_usuario,
+        id_titulo,
+    )
+
+
+# ============================================================
+# EXPERIENCIA LABORAL - MÚLTIPLE
+# ============================================================
+
+@router.get(
+    "/registro/{id_usuario}/experiencias-laborales",
+)
+async def listar_experiencias_laborales(
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).listar_experiencias_laborales(
+        id_usuario
+    )
+
+
+@router.post(
+    "/registro/{id_usuario}/experiencias-laborales",
+)
+async def crear_experiencia_laboral(
+    id_usuario: UUID,
+    data: ExperienciaLaboralCrear,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).crear_experiencia_laboral(
+        id_usuario,
+        data,
+    )
+
+
+@router.delete(
+    "/registro/{id_usuario}/experiencias-laborales/{id_experiencia}",
+)
+async def eliminar_experiencia_laboral(
+    id_usuario: UUID,
+    id_experiencia: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).eliminar_experiencia_laboral(
+        id_usuario,
+        id_experiencia,
+    )
+
+
+# ============================================================
+# EXPERIENCIA EN AUDITORÍA - MÚLTIPLE
+# ============================================================
+
+@router.get(
+    "/registro/{id_usuario}/experiencias-auditoria",
+)
+async def listar_experiencias_auditoria(
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).listar_experiencias_auditoria(
+        id_usuario
+    )
+
+
+@router.post(
+    "/registro/{id_usuario}/experiencias-auditoria",
+)
+async def crear_experiencia_auditoria(
+    id_usuario: UUID,
+    data: ExperienciaAuditoriaCrear,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).crear_experiencia_auditoria(
+        id_usuario,
+        data,
+    )
+
+
+@router.delete(
+    "/registro/{id_usuario}/experiencias-auditoria/{id_experiencia}",
+)
+async def eliminar_experiencia_auditoria(
+    id_usuario: UUID,
+    id_experiencia: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).eliminar_experiencia_auditoria(
+        id_usuario,
+        id_experiencia,
     )
 
 
@@ -361,16 +681,81 @@ async def actualizar_conflicto(
 @router.post(
     "/registro/enviar",
     response_model=EnviarSolicitudRespuesta,
-    status_code=status.HTTP_200_OK,
 )
 async def enviar_formulario_inscripcion(
     data: EnviarSolicitudAuditor,
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.enviar_solicitud(
+    return await AuditorService(db).enviar_solicitud(
         data.id_usuario
+    )
+
+
+# ============================================================
+# REENVIAR CORRECCIONES
+# ============================================================
+
+@router.post(
+    "/registro/{id_postulacion}/reenviar-correcciones",
+)
+async def reenviar_postulacion_correcciones(
+    id_postulacion: UUID,
+    data: ReenviarCorreccionesRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).reenviar_postulacion_correcciones(
+        id_postulacion=id_postulacion,
+        id_usuario=data.id_usuario,
+    )
+
+
+# ============================================================
+# CREAR NUEVA POSTULACIÓN
+#
+# SOLO DESPUÉS DE RECHAZADO/CANCELADO
+# ============================================================
+
+@router.post(
+    "/registro/nueva-postulacion",
+)
+async def crear_nueva_postulacion(
+    data: NuevaPostulacionRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).crear_nueva_postulacion(
+        data.id_usuario
+    )
+
+
+# ============================================================
+# CANCELAR POSTULACIÓN
+# ============================================================
+
+@router.post(
+    "/registro/postulacion/{id_postulacion}/cancelar",
+)
+async def cancelar_solicitud_auditor(
+    id_postulacion: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).cancelar_solicitud(
+        id_postulacion
+    )
+
+
+# ============================================================
+# ELIMINAR DATOS DE POSTULACIÓN CANCELADA
+# ============================================================
+
+@router.delete(
+    "/registro/postulacion/{id_postulacion}/datos",
+)
+async def eliminar_datos_postulacion_cancelada(
+    id_postulacion: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).eliminar_datos_postulacion_cancelada(
+        id_postulacion
     )
 
 
@@ -378,11 +763,12 @@ async def enviar_formulario_inscripcion(
 # CATÁLOGO DE NORMAS
 # ============================================================
 
-@router.get("/catalogos/normas")
+@router.get(
+    "/catalogos/normas",
+)
 async def listar_normas(
     db: AsyncSession = Depends(get_db),
 ):
-
     result = await db.execute(
         text("""
             SELECT
@@ -408,11 +794,12 @@ async def listar_normas(
 # CATÁLOGO DE EMPRESAS
 # ============================================================
 
-@router.get("/catalogos/empresas")
+@router.get(
+    "/catalogos/empresas",
+)
 async def listar_empresas(
     db: AsyncSession = Depends(get_db),
 ):
-
     result = await db.execute(
         text("""
             SELECT
@@ -433,94 +820,36 @@ async def listar_empresas(
         for row in result.mappings().all()
     ]
 
-# CANCELAR SOLICITUD
-@router.post(
-    "/registro/postulacion/{id_postulacion}/cancelar"
+
+# ============================================================
+# DIAGNÓSTICO
+# ============================================================
+
+@router.get(
+    "/diagnostico/{id_usuario}",
 )
-async def cancelar_solicitud_auditor(
-    id_postulacion: UUID,
-    db: AsyncSession = Depends(get_db),
-):
-    service = AuditorService(db)
-    return await service.cancelar_solicitud(id_postulacion)
-
-# ============================================================
-# INICIAR REGISTRO
-# ============================================================
-
-@router.post(
-    "/registro/iniciar",
-    response_model=RegistroAuditorRespuesta,
-    status_code=status.HTTP_201_CREATED,
-)
-async def iniciar_registro_auditor(
-    data: IniciarRegistroAuditor,
-    db: AsyncSession = Depends(get_db),
-):
-    service = AuditorService(db)
-
-    return await service.iniciar_registro(data)
-
-
-# ============================================================
-# REENVIAR POSTULACIÓN DESPUÉS DE CORRECCIONES
-# ============================================================
-
-@router.post(
-    "/registro/{id_postulacion}/reenviar-correcciones",
-)
-async def reenviar_postulacion_correcciones(
-    id_postulacion: UUID,
-    data: ReenviarCorreccionesRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    service = AuditorService(db)
-
-    return await service.reenviar_postulacion_correcciones(
-        id_postulacion=id_postulacion,
-        id_usuario=data.id_usuario,
-    )
-
-
-
-
-# prueba
-@router.get("/debug/check-tipo-competencia")
-async def debug_check_tipo_competencia(
-    db: AsyncSession = Depends(get_db)
-):
-    result = await db.execute(
-        text("""
-         SELECT
-            conname,
-            pg_get_constraintdef(oid) AS constraint_definition
-        FROM pg_constraint
-        WHERE conrelid = 'postulacion_auditor'::regclass
-        AND contype = 'c';
-        """)
-    )
-
-    return [dict(row) for row in result.mappings().all()]
-
-
-@router.get("/diagnostico/{id_usuario}")
 async def diagnostico_auditor(
     id_usuario: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     try:
+
         resultado_postulaciones = await db.execute(
             text("""
                 SELECT
                     id_postulacion,
                     id_usuario,
                     estado,
-                    fecha_postulacion
+                    fecha_postulacion,
+                    fecha_revision,
+                    observaciones_tecnicas
                 FROM postulacion_auditor
                 WHERE id_usuario = :id_usuario
                 ORDER BY fecha_postulacion DESC
             """),
-            {"id_usuario": id_usuario},
+            {
+                "id_usuario": id_usuario,
+            },
         )
 
         resultado_perfil = await db.execute(
@@ -529,7 +858,9 @@ async def diagnostico_auditor(
                 FROM perfil_auditor
                 WHERE id_usuario = :id_usuario
             """),
-            {"id_usuario": id_usuario},
+            {
+                "id_usuario": id_usuario,
+            },
         )
 
         resultado_competencias = await db.execute(
@@ -538,7 +869,9 @@ async def diagnostico_auditor(
                 FROM competencia_auditor
                 WHERE id_usuario = :id_usuario
             """),
-            {"id_usuario": id_usuario},
+            {
+                "id_usuario": id_usuario,
+            },
         )
 
         resultado_conflictos = await db.execute(
@@ -547,7 +880,9 @@ async def diagnostico_auditor(
                 FROM conflicto_interes
                 WHERE id_usuario = :id_usuario
             """),
-            {"id_usuario": id_usuario},
+            {
+                "id_usuario": id_usuario,
+            },
         )
 
         postulaciones = [
@@ -579,27 +914,37 @@ async def diagnostico_auditor(
         }
 
     except Exception as e:
+
         return {
             "error": True,
             "detalle": str(e),
         }
 
 
-
 # ============================================================
-# ELIMINAR DATOS DE POSTULACIÓN CANCELADA
+# DEBUG CONSTRAINTS
 # ============================================================
 
-@router.delete(
-    "/registro/postulacion/{id_postulacion}/datos",
-    status_code=status.HTTP_200_OK,
+@router.get(
+    "/debug/check-tipo-competencia",
 )
-async def eliminar_datos_postulacion_cancelada(
-    id_postulacion: UUID,
+async def debug_check_tipo_competencia(
     db: AsyncSession = Depends(get_db),
 ):
-    service = AuditorService(db)
-
-    return await service.eliminar_datos_postulacion_cancelada(
-        id_postulacion
+    result = await db.execute(
+        text("""
+            SELECT
+                conname,
+                pg_get_constraintdef(oid)
+                    AS constraint_definition
+            FROM pg_constraint
+            WHERE conrelid =
+                'postulacion_auditor'::regclass
+            AND contype = 'c';
+        """)
     )
+
+    return [
+        dict(row)
+        for row in result.mappings().all()
+    ]

@@ -1,7 +1,12 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 # ============================================================
@@ -70,10 +75,11 @@ class DatosPersonalesAuditorRespuesta(BaseModel):
 # ============================================================
 
 class PerfilAuditorCrear(BaseModel):
+    nombre: str = ""
     ciudad_residencia: str
     departamento_residencia: str
     modalidad_preferida: str
-    foto_url: str
+    foto_url: str = ""
     resumen_profesional: str
 
     @field_validator(
@@ -86,6 +92,14 @@ class PerfilAuditorCrear(BaseModel):
     @classmethod
     def limpiar_texto(cls, value):
         return value.strip()
+
+
+class PerfilAuditorRespuesta(BaseModel):
+    ciudad_residencia: str
+    departamento_residencia: str
+    modalidad_preferida: str
+    foto_url: str
+    resumen_profesional: str
 
 
 # ============================================================
@@ -126,8 +140,20 @@ class CompetenciaAuditorActualizar(CompetenciaAuditorCrear):
     pass
 
 
+class CompetenciaAuditorRespuesta(BaseModel):
+    id_competencia: UUID
+    id_norma: UUID
+    tipo_competencia: str
+    codigo_sector_iaf: str
+    titulo_institucion: str
+    descripcion: str
+    fecha_inicio: date
+    fecha_fin: date
+    es_vigente: bool
+
+
 # ============================================================
-# CONFLICTOS
+# CONFLICTOS DE INTERÉS
 # ============================================================
 
 class ConflictoInteresCrear(BaseModel):
@@ -149,6 +175,14 @@ class ConflictoInteresActualizar(ConflictoInteresCrear):
     pass
 
 
+class ConflictoInteresRespuesta(BaseModel):
+    id_conflicto: UUID
+    id_empresa: UUID
+    tipo_conflicto: str
+    descripcion: str
+    bloquea_asignacion: bool
+
+
 # ============================================================
 # DOCUMENTOS
 # ============================================================
@@ -168,6 +202,199 @@ class DocumentoAuditorCrear(BaseModel):
         return value.strip()
 
 
+class DocumentoAuditorRespuesta(BaseModel):
+    id_documento: UUID
+    id_postulacion: UUID
+    nombre_archivo: str
+    tipo_documento: str
+    url_archivo: str
+
+    # Estos campos permiten mostrar el estado y
+    # la observación del administrador.
+    fecha_subida: datetime | None = None
+    estado_revision: str = "Pendiente"
+    observacion_revision: str | None = None
+
+
+# ============================================================
+# TÍTULOS ACADÉMICOS
+# ============================================================
+
+class TituloAcademicoCrear(BaseModel):
+    nivel: str = Field(
+        ...,
+        min_length=2,
+        max_length=80,
+    )
+
+    titulo: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+    )
+
+    institucion: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+    )
+
+    fecha_grado: date | None = None
+
+    @field_validator(
+        "nivel",
+        "titulo",
+        "institucion",
+    )
+    @classmethod
+    def limpiar_texto(cls, value):
+        return value.strip()
+
+
+class TituloAcademicoRespuesta(BaseModel):
+    id_titulo: UUID
+    id_usuario: UUID
+    nivel: str
+    titulo: str
+    institucion: str
+    fecha_grado: date | None = None
+
+
+# ============================================================
+# EXPERIENCIA LABORAL
+# ============================================================
+
+class ExperienciaLaboralCrear(BaseModel):
+    empresa: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+    )
+
+    cargo: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+    )
+
+    fecha_inicio: date
+    fecha_fin: date | None = None
+    descripcion: str = ""
+
+    @field_validator(
+        "empresa",
+        "cargo",
+        "descripcion",
+    )
+    @classmethod
+    def limpiar_texto(cls, value):
+        return value.strip()
+
+    @model_validator(mode="after")
+    def validar_fechas(self):
+        if self.fecha_fin and self.fecha_fin < self.fecha_inicio:
+            raise ValueError(
+                "La fecha final no puede ser anterior "
+                "a la fecha inicial."
+            )
+        return self
+
+
+class ExperienciaLaboralRespuesta(BaseModel):
+    id_experiencia: UUID
+    id_usuario: UUID
+    empresa: str
+    cargo: str
+    fecha_inicio: date
+    fecha_fin: date | None = None
+    descripcion: str = ""
+
+
+# ============================================================
+# EXPERIENCIA EN AUDITORÍA
+# ============================================================
+
+class ExperienciaAuditoriaCrear(BaseModel):
+    organizacion: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+    )
+
+    rol_auditoria: str = Field(
+        ...,
+        min_length=2,
+        max_length=150,
+    )
+
+    tipo_auditoria: str = Field(
+        default="",
+        max_length=150,
+    )
+
+    fecha_inicio: date
+    fecha_fin: date | None = None
+    descripcion: str = ""
+
+    @field_validator(
+        "organizacion",
+        "rol_auditoria",
+        "tipo_auditoria",
+        "descripcion",
+    )
+    @classmethod
+    def limpiar_texto(cls, value):
+        return value.strip()
+
+    @model_validator(mode="after")
+    def validar_fechas(self):
+        if self.fecha_fin and self.fecha_fin < self.fecha_inicio:
+            raise ValueError(
+                "La fecha final no puede ser anterior "
+                "a la fecha inicial."
+            )
+        return self
+
+
+class ExperienciaAuditoriaRespuesta(BaseModel):
+    id_experiencia: UUID
+    id_usuario: UUID
+    organizacion: str
+    rol_auditoria: str
+    tipo_auditoria: str = ""
+    fecha_inicio: date
+    fecha_fin: date | None = None
+    descripcion: str = ""
+
+
+# ============================================================
+# REVISIÓN INDIVIDUAL DE DOCUMENTOS
+# ============================================================
+
+class RevisarDocumentoRequest(BaseModel):
+    estado_revision: str = Field(
+        ...,
+        pattern=r"^(Aprobado|Rechazado)$",
+    )
+
+    observacion: str = ""
+
+    id_usuario_actor: UUID
+
+    @field_validator("observacion")
+    @classmethod
+    def limpiar_observacion(cls, value):
+        return value.strip()
+
+
+# ============================================================
+# NUEVA POSTULACIÓN
+# ============================================================
+
+class NuevaPostulacionRequest(BaseModel):
+    id_usuario: UUID
+
+
 # ============================================================
 # ENVÍO FINAL
 # ============================================================
@@ -182,51 +409,37 @@ class EnviarSolicitudRespuesta(BaseModel):
     estado: str
     estado_auditor: str
     mensaje: str
-    faltantes: list[str] = Field(default_factory=list)
+    faltantes: list[str] = Field(
+        default_factory=list
+    )
 
 
 # ============================================================
-# RESPUESTAS DE BORRADOR
+# REENVÍO DE CORRECCIONES
 # ============================================================
 
-class PerfilAuditorRespuesta(BaseModel):
-    ciudad_residencia: str
-    departamento_residencia: str
-    modalidad_preferida: str
-    foto_url: str
-    resumen_profesional: str
+class ReenviarCorreccionesRequest(BaseModel):
+    id_usuario: UUID
 
 
-class CompetenciaAuditorRespuesta(BaseModel):
-    id_competencia: UUID
-    id_norma: UUID
-    tipo_competencia: str
-    codigo_sector_iaf: str
-    titulo_institucion: str
-    descripcion: str
-    fecha_inicio: date
-    fecha_fin: date
-    es_vigente: bool
+# ============================================================
+# ESTADO DE POSTULACIÓN
+# ============================================================
 
-
-class ConflictoInteresRespuesta(BaseModel):
-    id_conflicto: UUID
-    id_empresa: UUID
-    tipo_conflicto: str
-    descripcion: str
-    bloquea_asignacion: bool
-
-
-class DocumentoAuditorRespuesta(BaseModel):
-    id_documento: UUID
+class PostulacionAuditorEstadoRespuesta(BaseModel):
     id_postulacion: UUID
-    nombre_archivo: str
-    tipo_documento: str
-    url_archivo: str
+    estado_postulacion: str
+    fecha_postulacion: datetime | None = None
 
+
+# ============================================================
+# BORRADOR
+# ============================================================
 
 class BorradorAuditorRespuesta(BaseModel):
     id_usuario: UUID
+    id_postulacion: UUID
+
     estado: str
     estado_auditor: str
 
@@ -235,26 +448,36 @@ class BorradorAuditorRespuesta(BaseModel):
     num_doc: str
     correo: str
 
+    observaciones_tecnicas: str = ""
+
+    fecha_postulacion: datetime | None = None
+    fecha_revision: datetime | None = None
+
     perfil: PerfilAuditorRespuesta | None = None
 
-    competencias: list[CompetenciaAuditorRespuesta] = Field(
-        default_factory=list
-    )
+    competencias: list[
+        CompetenciaAuditorRespuesta
+    ] = Field(default_factory=list)
 
-    conflictos: list[ConflictoInteresRespuesta] = Field(
-        default_factory=list
-    )
+    conflictos: list[
+        ConflictoInteresRespuesta
+    ] = Field(default_factory=list)
 
-    documentos: list[DocumentoAuditorRespuesta] = Field(
-        default_factory=list
-    )
+    documentos: list[
+        DocumentoAuditorRespuesta
+    ] = Field(default_factory=list)
 
+    titulos: list[
+        TituloAcademicoRespuesta
+    ] = Field(default_factory=list)
 
-# 
-class PostulacionAuditorEstadoRespuesta(BaseModel):
-    id_postulacion: UUID
-    estado_postulacion: str
-    fecha_postulacion: datetime | None = None
+    experiencias_laborales: list[
+        ExperienciaLaboralRespuesta
+    ] = Field(default_factory=list)
+
+    experiencias_auditoria: list[
+        ExperienciaAuditoriaRespuesta
+    ] = Field(default_factory=list)
 
 
 # ============================================================
@@ -278,21 +501,22 @@ class ConsultaEstadoAuditorRespuesta(BaseModel):
     fecha_postulacion: datetime | None = None
     fecha_revision: datetime | None = None
 
-    # ========================================================
-    # CORRECCIONES
-    # ========================================================
-
     tiene_correcciones: bool = False
 
     observaciones_correccion: str | None = None
+
+    observaciones_rechazo: str | None = None
 
     administrador_correccion: str | None = None
 
     fecha_correccion: datetime | None = None
 
     estado_anterior_correccion: str | None = None
-    
 
+
+# ============================================================
+# ESTADO POR ID DE POSTULACIÓN
+# ============================================================
 
 class EstadoAuditorRespuesta(BaseModel):
     id_usuario: UUID

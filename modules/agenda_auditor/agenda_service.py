@@ -1,0 +1,1484 @@
+from datetime import date, datetime, time
+import calendar
+from decimal import Decimal
+from uuid import UUID, uuid4
+
+from fastapi import HTTPException, status
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+
+from modules.auditores.auditor_service import AuditorService
+from modules.agenda_auditor.agenda_schema import (
+    DisponibilidadEditar,
+    DisponibilidadSemanalCrear,
+    FechaNoDisponibleCrear,
+    ProgramacionAuditoriaCrear,
+    normalizar_dia,
+)
+
+
+class AgendaAuditorService(AuditorService):
+    """Consulta y administra la agenda de auditorías de cada auditor."""
+
+    ESTADOS_PROGRAMACION_ACTIVOS = ("Programada", "Confirmada", "Reprogramada")
+
+    async def consultar_agenda(
+        self,
+        id_usuario: UUID,
+        desde: date | None = None,
+        hasta: date | None = None,
+        tipo_registro: str | None = None,
+        incluir_inactivos: bool = True,
+    ):
+        """Consulta registros de disponibilidad, incluidos bloqueos y vigencias."""
+        filtros = ["id_usuario = :id_usuario"]
+        params: dict = {"id_usuario": str(id_usuario)}
+        if desde:
+            filtros.append("(fecha_fin IS NULL OR CAST(fecha_fin AS DATE) >= :desde)")
+            params["desde"] = desde
+        if hasta:
+            filtros.append("CAST(fecha_inicio AS DATE) <= :hasta")
+            params["hasta"] = hasta
+        if tipo_registro:
+            filtros.append("LOWER(COALESCE(tipo_registro, '')) = LOWER(:tipo_registro)")
+            params["tipo_registro"] = tipo_registro.strip()
+        if not incluir_inactivos:
+            filtros.append("UPPER(TRIM(COALESCE(estado, ''))) IN ('ACTIVO', 'ACTIVA')")
+
+        result = await self.db.execute(
+            text(f"""
+                SELECT
+                    id_disponibilidad,
+                    tipo_registro,
+                    dia_semana,
+                    fecha_inicio,
+                    fecha_fin,
+                    hora_inicio,
+                    hora_fin,
+                    motivo,
+                    estado
+                FROM disponibilidad_auditor
+                WHERE {' AND '.join(filtros)}
+                ORDER BY fecha_inicio DESC NULLS LAST, dia_semana
+            """),
+            params,
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def listar_auditores_activos(self):
+        """Lista auditores activos/aprobados para administrar su agenda."""
+        result = await self.db.execute(text("""
+            SELECT id_usuario, nombre, correo, estado, estado_auditor
+            FROM usuario
+            WHERE UPPER(TRIM(COALESCE(estado, ''))) = 'ACTIVO'
+              AND UPPER(TRIM(COALESCE(estado_auditor, ''))) IN ('ACTIVO', 'APROBADO', 'APROBADA')
+            ORDER BY nombre
+        """))
+        return [dict(row) for row in result.mappings().all()]
+
+    async def listar_asignaciones_programables(self):
+        """Retorna las solicitudes aprobadas con un auditor ya asignado."""
+        return await self._listar_asignaciones_programables(None)
+
+    async def listar_asignaciones_programables_auditor(self, id_usuario: UUID):
+        """Retorna las solicitudes aprobadas asignadas a un auditor específico."""
+        return await self._listar_asignaciones_programables(id_usuario)
+
+    async def _listar_asignaciones_programables(self, id_usuario: UUID | None):
+        filtros = [
+            "UPPER(TRIM(COALESCE(s.estado, ''))) = 'APROBADO'",
+            "UPPER(TRIM(COALESCE(a.estado_asignacion, ''))) IN ('AGENDADA', 'PROGRAMADA', 'CONFIRMADO')",
+            "UPPER(TRIM(COALESCE(u.estado, ''))) = 'ACTIVO'",
+            "UPPER(TRIM(COALESCE(u.estado_auditor, ''))) IN ('ACTIVO', 'APROBADO', 'APROBADA')",
+        ]
+        params = {}
+        if id_usuario:
+            filtros.append("a.id_auditor = :id_usuario")
+            params["id_usuario"] = str(id_usuario)
+        result = await self.db.execute(
+            text(f"""
+                SELECT
+                    s.id_solicitud,
+                    s.id_empresa,
+                    s.numero_radicado,
+                    s.estado AS estado_solicitud,
+                    e.nombre AS empresa_nombre,
+                    e.nit AS empresa_nit,
+                    e.direccion AS empresa_direccion,
+                    e.ciudad AS empresa_ciudad,
+                    a.id_auditor AS id_usuario,
+                    u.nombre AS auditor_nombre,
+                    u.correo AS auditor_correo,
+                    u.tipo_doc AS auditor_tipo_doc,
+                    u.num_doc AS auditor_num_doc,
+                    a.especialidad AS rol_auditor,
+                    a.estado_asignacion
+                FROM auditores_solicitud a
+                INNER JOIN solicitud s
+                    ON s.id_solicitud = a.id_solicitud
+                INNER JOIN usuario u
+                    ON u.id_usuario = a.id_auditor
+                LEFT JOIN empresa e
+                    ON e.id_empresa = s.id_empresa
+                WHERE {' AND '.join(filtros)}
+                ORDER BY e.nombre, s.numero_radicado, u.nombre
+            """),
+            params,
+        )
+        return [dict(fila) for fila in result.mappings().all()]
+
+    async def listar_todas_programaciones(
+        self,
+        desde: date | None = None,
+        hasta: date | None = None,
+        ciudad: str | None = None,
+        modalidad: str | None = None,
+        estado: str | None = None,
+    ):
+        filtros = []
+        params: dict = {}
+        if desde:
+            filtros.append("p.fecha_fin >= :desde")
+            params["desde"] = datetime.combine(desde, time.min)
+        if hasta:
+            filtros.append("p.fecha_inicio <= :hasta")
+            params["hasta"] = datetime.combine(hasta, time.max)
+        if ciudad and ciudad.strip():
+            filtros.append("LOWER(COALESCE(p.ciudad_servicio, '')) LIKE :ciudad")
+            params["ciudad"] = f"%{ciudad.strip().lower()}%"
+        if modalidad and modalidad.strip():
+            filtros.append("LOWER(COALESCE(p.modalidad, '')) = LOWER(:modalidad)")
+            params["modalidad"] = modalidad.strip()
+        if estado and estado.strip():
+            filtros.append("UPPER(TRIM(COALESCE(p.estado, ''))) = UPPER(:estado)")
+            params["estado"] = estado.strip()
+
+        where = ("WHERE " + " AND ".join(filtros)) if filtros else ""
+        result = await self.db.execute(
+            text(f"""
+                SELECT
+                    d.id_detalle,
+                    d.id_programacion,
+                    d.id_usuario,
+                    d.rol_auditor,
+                    d.horas_asignadas,
+                    p.id_solicitud,
+                    s.numero_radicado,
+                    e.nombre AS empresa_nombre,
+                    e.direccion AS empresa_direccion,
+                    e.ciudad AS empresa_ciudad,
+                    u.nombre AS auditor_nombre,
+                    u.correo AS auditor_correo,
+                    u.tipo_doc AS auditor_tipo_doc,
+                    u.num_doc AS auditor_num_doc,
+                    p.direccion_servicio,
+                    p.fecha_inicio,
+                    p.fecha_fin,
+                    p.modalidad,
+                    p.ciudad_servicio,
+                    p.estado,
+                    p.notificacion_enviada,
+                    p.motivo_reprogramacion,
+                    p.motivo_cancelacion
+                FROM detalle_programacion_auditor d
+                INNER JOIN programacion_visita p
+                    ON p.id_programacion = d.id_programacion
+                LEFT JOIN solicitud s
+                    ON s.id_solicitud = p.id_solicitud
+                LEFT JOIN empresa e
+                    ON e.id_empresa = s.id_empresa
+                LEFT JOIN usuario u
+                    ON u.id_usuario = d.id_usuario
+                {where}
+                ORDER BY p.fecha_inicio DESC
+            """),
+            params,
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def consultar_auditorias_programadas(
+        self,
+        id_usuario: UUID,
+        desde: date | None = None,
+        hasta: date | None = None,
+        ciudad: str | None = None,
+        modalidad: str | None = None,
+    ):
+        filtros = ["d.id_usuario = :id_usuario"]
+        params: dict = {"id_usuario": str(id_usuario)}
+        if desde:
+            filtros.append("p.fecha_fin >= :desde")
+            params["desde"] = datetime.combine(desde, time.min)
+        if hasta:
+            filtros.append("p.fecha_inicio <= :hasta")
+            params["hasta"] = datetime.combine(hasta, time.max)
+        if ciudad and ciudad.strip():
+            filtros.append("LOWER(COALESCE(p.ciudad_servicio, '')) LIKE :ciudad")
+            params["ciudad"] = f"%{ciudad.strip().lower()}%"
+        if modalidad and modalidad.strip():
+            filtros.append("LOWER(COALESCE(p.modalidad, '')) = LOWER(:modalidad)")
+            params["modalidad"] = modalidad.strip()
+
+        result = await self.db.execute(
+            text(f"""
+                SELECT
+                    d.id_detalle,
+                    d.id_programacion,
+                    d.id_usuario,
+                    d.rol_auditor,
+                    d.horas_asignadas,
+                    p.id_solicitud,
+                    s.numero_radicado,
+                    e.nombre AS empresa_nombre,
+                    e.direccion AS direccion_servicio,
+                    p.fecha_inicio,
+                    p.fecha_fin,
+                    p.modalidad,
+                    p.ciudad_servicio,
+                    p.estado,
+                    p.notificacion_enviada,
+                    p.motivo_reprogramacion,
+                    p.motivo_cancelacion
+                FROM detalle_programacion_auditor d
+                INNER JOIN programacion_visita p
+                    ON p.id_programacion = d.id_programacion
+                LEFT JOIN solicitud s
+                    ON s.id_solicitud = p.id_solicitud
+                LEFT JOIN empresa e
+                    ON e.id_empresa = s.id_empresa
+                WHERE {' AND '.join(filtros)}
+                ORDER BY p.fecha_inicio DESC
+            """),
+            params,
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def consultar_disponibilidad(
+        self,
+        id_usuario: UUID,
+        fecha: date,
+        hora_inicio: datetime,
+        hora_fin: datetime,
+    ) -> dict:
+        if hora_fin <= hora_inicio:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="La hora final debe ser posterior a la hora inicial.",
+            )
+        if hora_inicio.date() != fecha or hora_fin.date() != fecha:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El intervalo consultado debe corresponder a la fecha seleccionada.",
+            )
+
+        auditor = await self.db.execute(text("""
+            SELECT estado, estado_auditor
+            FROM usuario
+            WHERE id_usuario = :id_usuario
+        """), {"id_usuario": str(id_usuario)})
+        auditor = auditor.mappings().first()
+        if not auditor:
+            raise HTTPException(status_code=404, detail="El auditor no existe.")
+        if str(auditor["estado"] or "").strip().upper() != "ACTIVO" or str(
+            auditor["estado_auditor"] or ""
+        ).strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
+            return {"disponible": False, "motivo": "El auditor no está activo/aprobado."}
+
+        tiene_disponibilidad = await self._tiene_disponibilidad_fecha(
+            id_usuario, fecha, hora_inicio.time(), hora_fin.time()
+        )
+        if not tiene_disponibilidad:
+            return {
+                "disponible": False,
+                "motivo": "El auditor no tiene un intervalo de disponibilidad que cubra la fecha y las horas indicadas, o registró ese día como no disponible.",
+            }
+
+        cruce = await self._buscar_cruce(id_usuario, hora_inicio, hora_fin)
+        if cruce:
+            return {
+                "disponible": False,
+                "motivo": "El auditor tiene otra auditoría en ese intervalo.",
+                "conflicto": cruce,
+            }
+        return {"disponible": True, "motivo": "El auditor está disponible en el intervalo."}
+
+    def _normalizar_rol_agenda(self, rol: str | None) -> str:
+        valor = (rol or "").strip()
+        mapeo = {
+            "Auditor líder": "Auditor Líder",
+            "Auditor Líder": "Auditor Líder",
+            "Experto técnicos": "Auditor Técnico",
+            "Experto técnico": "Auditor Técnico",
+            "Auditor Técnico": "Auditor Técnico",
+            "Auditor integral": "Auditor Técnico",
+            "Observador": "Observador",
+        }
+        return mapeo.get(valor, "Auditor Técnico")
+
+    async def _tabla_existe(self, tabla: str) -> bool:
+        result = await self.db.execute(text("""
+            SELECT 1 FROM information_schema.tables
+            WHERE table_name = :tabla
+        """), {"tabla": tabla})
+        return result.scalar() is not None
+
+    async def _tabla_tiene_columna(self, tabla: str, columna: str) -> bool:
+        result = await self.db.execute(text("""
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = :tabla AND column_name = :columna
+        """), {"tabla": tabla, "columna": columna})
+        return result.scalar() is not None
+
+    async def _programacion_tiene_columna(self, columna: str) -> bool:
+        return await self._tabla_tiene_columna("programacion_visita", columna)
+
+    async def _tiene_disponibilidad_fecha(
+        self,
+        id_usuario: UUID,
+        fecha: date,
+        hora_inicio: time | None = None,
+        hora_fin: time | None = None,
+    ) -> bool:
+        """Verifica disponibilidad activa para el día y, si existen las columnas, sus horas."""
+        dia_es = [
+            "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"
+        ][fecha.weekday()]
+        dia_normalizado = normalizar_dia(dia_es)
+        dia_numero = {
+            "lunes": 1, "martes": 2, "miercoles": 3, "jueves": 4,
+            "viernes": 5, "sabado": 6, "domingo": 7,
+        }[dia_normalizado]
+        hora_inicio_consulta = hora_inicio or time.min
+        hora_fin_consulta = hora_fin or time.max
+
+        tiene_horas = await self._tabla_tiene_columna("disponibilidad_auditor", "hora_inicio")
+
+        disp_time_clause = "AND (da.hora_inicio IS NULL OR da.hora_fin IS NULL OR (da.hora_inicio <= :hora_inicio AND da.hora_fin >= :hora_fin))" if tiene_horas else ""
+        bloqueo_time_clause = "AND (nd.hora_inicio IS NULL OR nd.hora_fin IS NULL OR (nd.hora_inicio < :hora_fin AND nd.hora_fin > :hora_inicio))" if tiene_horas else ""
+
+        sql = f"""
+            SELECT EXISTS (
+                SELECT 1
+                FROM disponibilidad_auditor da
+                WHERE da.id_usuario = :id_usuario
+                  AND UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                  AND CAST(da.fecha_inicio AS DATE) <= :fecha
+                  AND (da.fecha_fin IS NULL OR CAST(da.fecha_fin AS DATE) >= :fecha)
+                  AND (
+                      da.dia_semana IS NULL
+                      OR da.dia_semana = :dia_numero
+                      OR (:dia_numero = 7 AND da.dia_semana = 0)
+                  )
+                  AND LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN
+                      ('disponible', 'disponibilidad', 'horario disponible', 'availability', 'semanal', 'disponibilidad extra', 'disponibilidad_extra')
+                  {disp_time_clause}
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM disponibilidad_auditor nd
+                WHERE nd.id_usuario = :id_usuario
+                  AND UPPER(TRIM(COALESCE(nd.estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                  AND LOWER(TRIM(COALESCE(nd.tipo_registro, ''))) IN
+                      ('no disponible', 'no_disponible', 'indisponible', 'bloqueo')
+                  AND CAST(nd.fecha_inicio AS DATE) <= :fecha
+                  AND (nd.fecha_fin IS NULL OR CAST(nd.fecha_fin AS DATE) >= :fecha)
+                  {bloqueo_time_clause}
+            )
+        """
+        params = {
+            "id_usuario": str(id_usuario),
+            "fecha": fecha,
+            "dia_numero": dia_numero,
+        }
+        if tiene_horas:
+            params["hora_inicio"] = hora_inicio_consulta
+            params["hora_fin"] = hora_fin_consulta
+        result = await self.db.execute(text(sql), params)
+        return bool(result.scalar())
+
+    async def _buscar_cruce(
+        self,
+        id_usuario: UUID,
+        fecha_inicio: datetime,
+        fecha_fin: datetime,
+        excluir_programacion: UUID | None = None,
+    ):
+        result = await self.db.execute(
+            text("""
+                SELECT
+                    p.id_programacion,
+                    p.fecha_inicio,
+                    p.fecha_fin,
+                    p.estado,
+                    e.direccion AS direccion_servicio,
+                    e.nombre AS empresa_nombre
+                FROM detalle_programacion_auditor d
+                INNER JOIN programacion_visita p
+                    ON p.id_programacion = d.id_programacion
+                LEFT JOIN solicitud s
+                    ON s.id_solicitud = p.id_solicitud
+                LEFT JOIN empresa e
+                    ON e.id_empresa = s.id_empresa
+                WHERE d.id_usuario = :id_usuario
+                  AND UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN
+                      ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
+                  AND p.fecha_inicio < :fecha_fin
+                  AND p.fecha_fin > :fecha_inicio
+                  AND (CAST(:excluir AS UUID) IS NULL OR p.id_programacion <> CAST(:excluir AS UUID))
+                ORDER BY p.fecha_inicio
+                LIMIT 1
+            """),
+            {
+                "id_usuario": str(id_usuario),
+                "fecha_inicio": fecha_inicio,
+                "fecha_fin": fecha_fin,
+                "excluir": str(excluir_programacion) if excluir_programacion else None,
+            },
+        )
+        row = result.mappings().first()
+        return dict(row) if row else None
+
+    async def crear_programacion(self, data: ProgramacionAuditoriaCrear) -> dict:
+        """Crea la programación, las relaciones con cada auditor y sus notificaciones en una transacción."""
+        id_programacion = uuid4()
+        fecha_programacion = data.fecha_inicio.date()
+
+        auditores_list = data.auditores or []
+        if not auditores_list:
+            raise HTTPException(status_code=422, detail="Debe indicar al menos un auditor.")
+
+        try:
+            # Valida la solicitud una sola vez.
+            solicitud_result = await self.db.execute(
+                text("""
+                    SELECT s.id_solicitud, s.estado, s.id_empresa
+                    FROM solicitud s
+                    WHERE s.id_solicitud = :id_solicitud
+                    FOR SHARE
+                """),
+                {"id_solicitud": str(data.id_solicitud)},
+            )
+            solicitud = solicitud_result.mappings().first()
+            if not solicitud:
+                raise HTTPException(status_code=404, detail="La solicitud no existe.")
+            if str(solicitud["estado"] or "").strip().upper() != "APROBADO":
+                raise HTTPException(status_code=409, detail="Solo se puede programar una solicitud aprobada.")
+
+            # Valida cada auditor y su asignación.
+            auditores_ok = []
+            for aud in auditores_list:
+                id_usuario = aud.id_usuario
+                rol_solicitado = aud.rol_auditor
+
+                auditor_result = await self.db.execute(
+                    text("""
+                        SELECT id_usuario, estado, estado_auditor
+                        FROM usuario
+                        WHERE id_usuario = :id_usuario
+                        FOR UPDATE
+                    """),
+                    {"id_usuario": str(id_usuario)},
+                )
+                auditor = auditor_result.mappings().first()
+                if not auditor:
+                    raise HTTPException(status_code=404, detail=f"El auditor {id_usuario} no existe.")
+                if str(auditor["estado"] or "").strip().upper() != "ACTIVO":
+                    raise HTTPException(status_code=409, detail=f"El auditor {id_usuario} fue desactivado y no puede programarse.")
+                if str(auditor["estado_auditor"] or "").strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
+                    raise HTTPException(status_code=409, detail=f"El auditor {id_usuario} no se encuentra aprobado/activo.")
+
+                asignacion_result = await self.db.execute(
+                    text("""
+                        SELECT especialidad, estado_asignacion
+                        FROM auditores_solicitud
+                        WHERE id_solicitud = :id_solicitud
+                          AND id_auditor = :id_usuario
+                          AND UPPER(TRIM(COALESCE(estado_asignacion, ''))) IN ('AGENDADA', 'PROGRAMADA', 'CONFIRMADO')
+                        LIMIT 1
+                    """),
+                    {"id_solicitud": str(data.id_solicitud), "id_usuario": str(id_usuario)},
+                )
+                asignacion = asignacion_result.mappings().first()
+                if not asignacion:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"El auditor {id_usuario} debe estar asignado a esta solicitud antes de programar la visita.",
+                    )
+
+                tiene_disponibilidad = await self._tiene_disponibilidad_fecha(
+                    id_usuario, fecha_programacion, data.fecha_inicio.time(), data.fecha_fin.time()
+                )
+                if not tiene_disponibilidad:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"El auditor {id_usuario} no tiene disponibilidad activa para la fecha seleccionada.",
+                    )
+
+                cruce = await self._buscar_cruce(id_usuario, data.fecha_inicio, data.fecha_fin)
+                if cruce:
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "mensaje": f"El auditor {id_usuario} ya tiene otra auditoría en ese horario.",
+                            "conflicto": cruce,
+                        },
+                    )
+
+                rol_final = rol_solicitado or (asignacion.get("especialidad") if isinstance(asignacion, dict) else asignacion["especialidad"]) or "Auditor"
+                auditores_ok.append((id_usuario, rol_final))
+
+            duracion_horas = Decimal(str((data.fecha_fin - data.fecha_inicio).total_seconds() / 3600))
+            nombre_empresa = await self._nombre_empresa(data.id_solicitud)
+
+            # La dirección y ciudad provienen de la empresa/sede: no se modifican manualmente.
+            empresa_result = await self.db.execute(
+                text("""
+                    SELECT direccion, ciudad FROM empresa
+                    WHERE id_empresa = :id_empresa
+                """),
+                {"id_empresa": str(solicitud["id_empresa"])},
+            )
+            empresa = empresa_result.mappings().first() or {}
+            direccion_empresa = str((empresa.get("direccion") if isinstance(empresa, dict) else empresa["direccion"])).strip()
+            ciudad_empresa = str((empresa.get("ciudad") if isinstance(empresa, dict) else empresa["ciudad"])).strip()
+
+            if data.id_sede:
+                sede_result = await self.db.execute(
+                    text("""
+                        SELECT direccion, ciudad, nombre_sede
+                        FROM sede_empresa
+                        WHERE id_sede = :id_sede
+                    """),
+                    {"id_sede": str(data.id_sede)},
+                )
+                sede = sede_result.mappings().first()
+                if not sede:
+                    raise HTTPException(status_code=404, detail="La sede seleccionada no existe.")
+                sede_direccion = str((sede.get("direccion") if isinstance(sede, dict) else sede["direccion"])).strip()
+                sede_ciudad = str((sede.get("ciudad") if isinstance(sede, dict) else sede["ciudad"])).strip()
+                if sede_direccion:
+                    direccion_empresa = sede_direccion
+                if sede_ciudad:
+                    ciudad_empresa = sede_ciudad
+
+            if not direccion_empresa:
+                direccion_empresa = data.direccion_servicio.strip()
+            if not ciudad_empresa:
+                ciudad_empresa = data.ciudad_servicio.strip()
+
+            # Inserta la programación una sola vez. La columna direccion_servicio solo
+            # existe si la migración ya se aplicó.
+            direccion_columna = await self._programacion_tiene_columna("direccion_servicio")
+            sede_columna = await self._programacion_tiene_columna("id_sede")
+            if direccion_columna and sede_columna:
+                columnas = "id_programacion, id_solicitud, id_empresa, id_sede, direccion_servicio, fecha_inicio, fecha_fin, modalidad, ciudad_servicio, estado, notificacion_enviada, anio_ciclo"
+                valores = ":id_programacion, :id_solicitud, :id_empresa, :id_sede, :direccion, :fecha_inicio, :fecha_fin, :modalidad, :ciudad, 'Programada', TRUE, :anio_ciclo"
+                params = {
+                    "id_programacion": str(id_programacion),
+                    "id_solicitud": str(data.id_solicitud),
+                    "id_empresa": str(solicitud["id_empresa"]),
+                    "id_sede": str(data.id_sede) if data.id_sede else None,
+                    "direccion": direccion_empresa,
+                    "fecha_inicio": data.fecha_inicio,
+                    "fecha_fin": data.fecha_fin,
+                    "modalidad": data.modalidad,
+                    "ciudad": ciudad_empresa,
+                    "anio_ciclo": fecha_programacion.year,
+                }
+            elif direccion_columna:
+                columnas = "id_programacion, id_solicitud, id_empresa, direccion_servicio, fecha_inicio, fecha_fin, modalidad, ciudad_servicio, estado, notificacion_enviada, anio_ciclo"
+                valores = ":id_programacion, :id_solicitud, :id_empresa, :direccion, :fecha_inicio, :fecha_fin, :modalidad, :ciudad, 'Programada', TRUE, :anio_ciclo"
+                params = {
+                    "id_programacion": str(id_programacion),
+                    "id_solicitud": str(data.id_solicitud),
+                    "id_empresa": str(solicitud["id_empresa"]),
+                    "direccion": direccion_empresa,
+                    "fecha_inicio": data.fecha_inicio,
+                    "fecha_fin": data.fecha_fin,
+                    "modalidad": data.modalidad,
+                    "ciudad": ciudad_empresa,
+                    "anio_ciclo": fecha_programacion.year,
+                }
+            else:
+                columnas = "id_programacion, id_solicitud, id_empresa, fecha_inicio, fecha_fin, modalidad, ciudad_servicio, estado, notificacion_enviada, anio_ciclo"
+                valores = ":id_programacion, :id_solicitud, :id_empresa, :fecha_inicio, :fecha_fin, :modalidad, :ciudad, 'Programada', TRUE, :anio_ciclo"
+                params = {
+                    "id_programacion": str(id_programacion),
+                    "id_solicitud": str(data.id_solicitud),
+                    "id_empresa": str(solicitud["id_empresa"]),
+                    "fecha_inicio": data.fecha_inicio,
+                    "fecha_fin": data.fecha_fin,
+                    "modalidad": data.modalidad,
+                    "ciudad": ciudad_empresa,
+                    "anio_ciclo": fecha_programacion.year,
+                }
+            await self.db.execute(text(f"INSERT INTO programacion_visita ({columnas}) VALUES ({valores})"), params)
+
+            # Un detalle por auditor.
+            for id_usuario, rol_final in auditores_ok:
+                id_detalle = uuid4()
+                await self.db.execute(
+                    text("""
+                        INSERT INTO detalle_programacion_auditor (
+                            id_detalle, id_programacion, id_usuario, rol_auditor, horas_asignadas
+                        ) VALUES (
+                            :id_detalle, :id_programacion, :id_usuario, :rol, :horas
+                        )
+                    """),
+                    {
+                        "id_detalle": str(id_detalle),
+                        "id_programacion": str(id_programacion),
+                        "id_usuario": str(id_usuario),
+                        "rol": self._normalizar_rol_agenda(rol_final),
+                        "horas": duracion_horas,
+                    },
+                )
+
+            # Una notificación por auditor.
+            for id_usuario, rol_final in auditores_ok:
+                await self._crear_notificacion(
+                    id_programacion=id_programacion,
+                    id_usuario=id_usuario,
+                    titulo="Nueva auditoría programada",
+                    mensaje=(
+                        f"Se programó una auditoría para {fecha_programacion.isoformat()} "
+                        f"de {data.fecha_inicio:%H:%M} a {data.fecha_fin:%H:%M}. "
+                        f"Empresa: {nombre_empresa}. "
+                        f"Dirección: {data.direccion_servicio.strip()}, {data.ciudad_servicio.strip()}."
+                    ),
+                )
+
+            await self.db.commit()
+            return {
+                "id_programacion": id_programacion,
+                "id_solicitud": data.id_solicitud,
+                "auditores": [str(a[0]) for a in auditores_ok],
+                "fecha_inicio": data.fecha_inicio,
+                "fecha_fin": data.fecha_fin,
+                "estado": "Programada",
+                "notificacion_creada": True,
+                "mensaje": f"Auditoría registrada en la agenda para {len(auditores_ok)} auditor(es).",
+            }
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al crear programación de auditoría: {type(exc).__name__}: {exc}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"No fue posible registrar la programación: {type(exc).__name__}: {exc}",
+            ) from exc
+
+    async def _nombre_empresa(self, id_solicitud: UUID) -> str:
+        result = await self.db.execute(
+            text("""
+                SELECT COALESCE(e.nombre, 'Empresa no especificada')
+                FROM solicitud s
+                LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+                WHERE s.id_solicitud = :id_solicitud
+            """),
+            {"id_solicitud": str(id_solicitud)},
+        )
+        return str(result.scalar() or "Empresa no especificada")
+
+    async def _crear_notificacion(
+        self,
+        id_programacion: UUID,
+        id_usuario: UUID,
+        titulo: str,
+        mensaje: str,
+    ):
+        if not await self._tabla_existe("notificacion_agenda_auditor"):
+            return
+        await self.db.execute(
+            text("""
+                INSERT INTO notificacion_agenda_auditor (
+                    id_notificacion, id_programacion, id_usuario, titulo, mensaje, leida
+                ) VALUES (
+                    :id_notificacion, :id_programacion, :id_usuario, :titulo, :mensaje, FALSE
+                )
+                ON CONFLICT (id_programacion, id_usuario)
+                DO UPDATE SET titulo = EXCLUDED.titulo,
+                              mensaje = EXCLUDED.mensaje,
+                              leida = FALSE,
+                              fecha_creacion = CURRENT_TIMESTAMP
+            """),
+            {
+                "id_notificacion": str(uuid4()),
+                "id_programacion": str(id_programacion),
+                "id_usuario": str(id_usuario),
+                "titulo": titulo,
+                "mensaje": mensaje,
+            },
+        )
+
+    async def _registrar_historial_disponibilidad(self, fila: dict, accion: str):
+        """Guarda una instantánea para auditoría de creación/edición de disponibilidad."""
+        await self.db.execute(text("""
+            INSERT INTO historial_disponibilidad_auditor (
+                id_historial, id_disponibilidad, id_usuario, accion,
+                tipo_registro, dia_semana, fecha_inicio, fecha_fin,
+                hora_inicio, hora_fin, motivo, estado, fecha_evento
+            ) VALUES (
+                :id_historial, :id_disponibilidad, :id_usuario, :accion,
+                :tipo_registro, :dia_semana, :fecha_inicio, :fecha_fin,
+                :hora_inicio, :hora_fin, :motivo, :estado, CURRENT_TIMESTAMP
+            )
+        """), {
+            "id_historial": str(uuid4()),
+            "id_disponibilidad": str(fila["id_disponibilidad"]),
+            "id_usuario": str(fila["id_usuario"]),
+            "accion": accion,
+            "tipo_registro": fila.get("tipo_registro"),
+            "dia_semana": fila.get("dia_semana"),
+            "fecha_inicio": fila.get("fecha_inicio"),
+            "fecha_fin": fila.get("fecha_fin"),
+            "hora_inicio": fila.get("hora_inicio"),
+            "hora_fin": fila.get("hora_fin"),
+            "motivo": fila.get("motivo"),
+            "estado": fila.get("estado"),
+        })
+
+    async def _obtener_auditor_bloqueado(self, id_usuario: UUID):
+        result = await self.db.execute(text("""
+            SELECT id_usuario, estado, estado_auditor
+            FROM usuario
+            WHERE id_usuario = :id_usuario
+            FOR UPDATE
+        """), {"id_usuario": str(id_usuario)})
+        auditor = result.mappings().first()
+        if not auditor:
+            raise HTTPException(status_code=404, detail="El auditor no existe.")
+        if str(auditor["estado"] or "").strip().upper() != "ACTIVO":
+            raise HTTPException(status_code=409, detail="El auditor está desactivado y no puede cambiar su disponibilidad.")
+        if str(auditor["estado_auditor"] or "").strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
+            raise HTTPException(status_code=409, detail="Solo un auditor aprobado/activo puede configurar disponibilidad.")
+        return auditor
+
+    @staticmethod
+    def _numero_dia_semana(dia: str | int | None) -> int | None:
+        """Mapeo ISO del campo integer dia_semana: lunes=1, ..., domingo=7."""
+        if dia is None:
+            return None
+        if isinstance(dia, int):
+            return dia
+        dia_norm = normalizar_dia(str(dia))
+        mapa = {"lunes": 1, "martes": 2, "miercoles": 3, "jueves": 4,
+                "viernes": 5, "sabado": 6, "domingo": 7}
+        if dia_norm not in mapa:
+            raise HTTPException(status_code=422, detail="Día de la semana no válido.")
+        return mapa[dia_norm]
+
+    @staticmethod
+    def _etiqueta_dia_semana(dia: int | str | None) -> str:
+        """Devuelve nombre del día para las filas de agenda mensual."""
+        nombres = {0: "domingo", 1: "lunes", 2: "martes", 3: "miércoles", 4: "jueves",
+                   5: "viernes", 6: "sábado", 7: "domingo"}
+        try:
+            return nombres.get(int(dia), "") if dia is not None else ""
+        except (TypeError, ValueError):
+            return normalizar_dia(str(dia))
+
+    async def _validar_solapamiento_disponibilidad(
+        self,
+        id_usuario: UUID,
+        dia_semana: str | None,
+        fecha_inicio: date,
+        fecha_fin: date | None,
+        hora_inicio: time | None,
+        hora_fin: time | None,
+        excluir_id: UUID | None = None,
+    ):
+        if not hora_inicio or not hora_fin:
+            return
+        params = {
+            "id_usuario": str(id_usuario),
+            "dia": self._numero_dia_semana(dia_semana) if dia_semana else None,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin or date(9999, 12, 31),
+            "hora_inicio": hora_inicio,
+            "hora_fin": hora_fin,
+            "excluir_id": str(excluir_id) if excluir_id else None,
+        }
+        result = await self.db.execute(text("""
+            SELECT id_disponibilidad
+            FROM disponibilidad_auditor da
+            WHERE da.id_usuario = :id_usuario
+              AND UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')
+              AND LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN
+                  ('disponible', 'disponibilidad', 'horario disponible', 'availability', 'semanal', 'horario semanal', 'disponibilidad extra')
+              AND (CAST(:dia AS INTEGER) IS NULL OR da.dia_semana = CAST(:dia AS INTEGER) OR (CAST(:dia AS INTEGER) = 7 AND da.dia_semana = 0))
+              AND CAST(da.fecha_inicio AS DATE) <= :fecha_fin
+              AND (da.fecha_fin IS NULL OR CAST(da.fecha_fin AS DATE) >= :fecha_inicio)
+              AND (da.hora_inicio IS NULL OR da.hora_inicio < :hora_fin)
+              AND (da.hora_fin IS NULL OR da.hora_fin > :hora_inicio)
+              AND (CAST(:excluir_id AS UUID) IS NULL OR da.id_disponibilidad <> CAST(:excluir_id AS UUID))
+            LIMIT 1
+        """), params)
+        if result.first():
+            raise HTTPException(
+                status_code=409,
+                detail=f"Ya existe un horario disponible superpuesto para {dia_semana or 'ese periodo'}.",
+            )
+
+    async def configurar_disponibilidad_semanal(
+        self, id_usuario: UUID, data: DisponibilidadSemanalCrear
+    ) -> dict:
+        """Crea una fila recurrente por cada día configurado."""
+        try:
+            if data.fecha_inicio < date.today():
+                raise HTTPException(status_code=422, detail="La vigencia semanal debe comenzar hoy o en una fecha futura.")
+            await self._obtener_auditor_bloqueado(id_usuario)
+            creados = []
+            inicio = datetime.combine(data.fecha_inicio, time.min)
+            fin = datetime.combine(data.fecha_fin, time.max) if data.fecha_fin else None
+            for dia in data.dias:
+                dia_norm = normalizar_dia(dia.dia_semana)
+                dia_numero = self._numero_dia_semana(dia_norm)
+                await self._validar_solapamiento_disponibilidad(
+                    id_usuario, dia_norm, data.fecha_inicio, data.fecha_fin,
+                    dia.hora_inicio, dia.hora_fin,
+                )
+                id_disp = uuid4()
+                params = {
+                    "id_disponibilidad": str(id_disp),
+                    "id_usuario": str(id_usuario),
+                    "tipo_registro": "Horario Semanal",
+                    "dia_semana": dia_numero,
+                    "fecha_inicio": inicio,
+                    "fecha_fin": fin,
+                    "hora_inicio": dia.hora_inicio,
+                    "hora_fin": dia.hora_fin,
+                    "motivo": data.motivo.strip() or "Disponibilidad semanal",
+                    "estado": "Activo",
+                }
+                result = await self.db.execute(text("""
+                    INSERT INTO disponibilidad_auditor (
+                        id_disponibilidad, id_usuario, tipo_registro, dia_semana,
+                        fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+                    ) VALUES (
+                        :id_disponibilidad, :id_usuario, :tipo_registro, :dia_semana,
+                        :fecha_inicio, :fecha_fin, :hora_inicio, :hora_fin, :motivo, :estado
+                    )
+                    RETURNING id_disponibilidad, id_usuario, tipo_registro, dia_semana,
+                              fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+                """), params)
+                row = dict(result.mappings().one())
+                await self._registrar_historial_disponibilidad(row, "CREADA")
+                creados.append(row)
+            await self.db.commit()
+            return {"mensaje": "Disponibilidad semanal configurada.", "registros": creados}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al configurar disponibilidad semanal: {type(exc).__name__}: {exc}")
+            raise HTTPException(status_code=500, detail="No fue posible configurar la disponibilidad semanal.") from exc
+
+    async def registrar_fecha_no_disponible(
+        self, id_usuario: UUID, data: FechaNoDisponibleCrear
+    ) -> dict:
+        """Registra uno o varios días completos como no disponibles."""
+        try:
+            if data.fecha_inicio < date.today():
+                raise HTTPException(status_code=422, detail="La fecha no disponible debe ser hoy o futura.")
+            await self._obtener_auditor_bloqueado(id_usuario)
+            fecha_fin = data.fecha_fin or data.fecha_inicio
+            inicio_dt = datetime.combine(data.fecha_inicio, time.min)
+            fin_dt = datetime.combine(fecha_fin, time.max)
+            cruce = await self._buscar_cruce(id_usuario, inicio_dt, fin_dt)
+            if cruce:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "mensaje": "No se puede bloquear la fecha porque el auditor ya tiene una auditoría programada en ese periodo.",
+                        "conflicto": cruce,
+                    },
+                )
+            id_disp = uuid4()
+            result = await self.db.execute(text("""
+                INSERT INTO disponibilidad_auditor (
+                    id_disponibilidad, id_usuario, tipo_registro, dia_semana,
+                    fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+                ) VALUES (
+                    :id_disponibilidad, :id_usuario, 'Bloqueo Fecha', :dia_semana,
+                    :fecha_inicio, :fecha_fin, NULL, NULL, :motivo, 'Activo'
+                )
+                RETURNING id_disponibilidad, id_usuario, tipo_registro, dia_semana,
+                          fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+            """), {
+                "id_disponibilidad": str(id_disp),
+                "id_usuario": str(id_usuario),
+                "fecha_inicio": inicio_dt,
+                "fecha_fin": fin_dt,
+                "motivo": data.motivo.strip(),
+                "dia_semana": data.fecha_inicio.weekday() + 1,
+            })
+            row = dict(result.mappings().one())
+            await self._registrar_historial_disponibilidad(row, "REGISTRADA_NO_DISPONIBLE")
+            await self.db.commit()
+            return {"mensaje": "Fecha(s) registrada(s) como no disponible(s).", "registro": row}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al registrar fecha no disponible: {type(exc).__name__}: {exc}")
+            raise HTTPException(status_code=500, detail="No fue posible registrar la fecha no disponible.") from exc
+
+    async def desbloquear_fecha_no_disponible(self, id_usuario: UUID, fecha: date) -> dict:
+        """Marca como inactivos los registros 'Bloqueo Fecha' que cubren la fecha indicada."""
+        try:
+            await self._obtener_auditor_bloqueado(id_usuario)
+            inicio_dt = datetime.combine(fecha, time.min)
+            fin_dt = datetime.combine(fecha, time.max)
+            result = await self.db.execute(text("""
+                UPDATE disponibilidad_auditor
+                SET estado = 'Cancelado'
+                WHERE id_usuario = :id_usuario
+                  AND tipo_registro = 'Bloqueo Fecha'
+                  AND estado = 'Activo'
+                  AND fecha_inicio <= :fin_dt
+                  AND fecha_fin >= :inicio_dt
+                RETURNING id_disponibilidad
+            """), {
+                "id_usuario": str(id_usuario),
+                "inicio_dt": inicio_dt,
+                "fin_dt": fin_dt,
+            })
+            rows = result.mappings().all()
+            await self.db.commit()
+            return {"mensaje": "Fecha desbloqueada correctamente.", "afectados": len(rows)}
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al desbloquear fecha: {type(exc).__name__}: {exc}")
+            raise HTTPException(status_code=500, detail="No fue posible desbloquear la fecha.") from exc
+
+    async def registrar_disponibilidad_extraordinaria(
+        self, id_usuario: UUID, data: DisponibilidadExtraordinariaCrear
+    ) -> dict:
+        """Registra una disponibilidad extraordinaria para un rango de fechas."""
+        try:
+            await self._obtener_auditor_bloqueado(id_usuario)
+            fecha_fin = data.fecha_fin or data.fecha_inicio
+            inicio_dt = datetime.combine(data.fecha_inicio, time.min)
+            fin_dt = datetime.combine(fecha_fin, time.max)
+            id_disp = uuid4()
+            result = await self.db.execute(text("""
+                INSERT INTO disponibilidad_auditor (
+                    id_disponibilidad, id_usuario, tipo_registro, dia_semana,
+                    fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+                ) VALUES (
+                    :id_disponibilidad, :id_usuario, 'Disponibilidad Extra', :dia_semana,
+                    :fecha_inicio, :fecha_fin, NULL, NULL, :motivo, 'Activo'
+                )
+                RETURNING id_disponibilidad, id_usuario, tipo_registro, dia_semana,
+                          fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+            """), {
+                "id_disponibilidad": str(id_disp),
+                "id_usuario": str(id_usuario),
+                "fecha_inicio": inicio_dt,
+                "fecha_fin": fin_dt,
+                "motivo": data.motivo.strip(),
+                "dia_semana": data.fecha_inicio.weekday() + 1,
+            })
+            row = dict(result.mappings().one())
+            await self._registrar_historial_disponibilidad(row, "REGISTRADA_EXTRAORDINARIA")
+            await self.db.commit()
+            return {"mensaje": "Disponibilidad extraordinaria registrada.", "registro": row}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al registrar disponibilidad extraordinaria: {type(exc).__name__}: {exc}")
+            raise HTTPException(status_code=500, detail="No fue posible registrar la disponibilidad extraordinaria.") from exc
+
+    async def eliminar_disponibilidad(self, id_usuario: UUID, id_disponibilidad: UUID) -> dict:
+        """Marca como cancelada una disponibilidad específica."""
+        try:
+            await self._obtener_auditor_bloqueado(id_usuario)
+            result = await self.db.execute(text("""
+                UPDATE disponibilidad_auditor
+                SET estado = 'Cancelado'
+                WHERE id_disponibilidad = :id_disponibilidad
+                  AND id_usuario = :id_usuario
+                RETURNING id_disponibilidad
+            """), {
+                "id_disponibilidad": str(id_disponibilidad),
+                "id_usuario": str(id_usuario),
+            })
+            row = result.mappings().first()
+            if not row:
+                raise HTTPException(status_code=404, detail="No se encontró la disponibilidad.")
+            await self.db.commit()
+            return {"mensaje": "Disponibilidad eliminada correctamente."}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al eliminar disponibilidad: {type(exc).__name__}: {exc}")
+            raise HTTPException(status_code=500, detail="No fue posible eliminar la disponibilidad.") from exc
+
+    async def editar_disponibilidad(
+        self, id_usuario: UUID, id_disponibilidad: UUID, data: DisponibilidadEditar
+    ) -> dict:
+        """Edita una regla futura y conserva instantáneas del antes y del después."""
+        try:
+            await self._obtener_auditor_bloqueado(id_usuario)
+            result = await self.db.execute(text("""
+                SELECT id_disponibilidad, id_usuario, tipo_registro, dia_semana,
+                       fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+                FROM disponibilidad_auditor
+                WHERE id_disponibilidad = :id_disponibilidad
+                  AND id_usuario = :id_usuario
+                FOR UPDATE
+            """), {"id_disponibilidad": str(id_disponibilidad), "id_usuario": str(id_usuario)})
+            actual = result.mappings().first()
+            if not actual:
+                raise HTTPException(status_code=404, detail="No se encontró el registro de disponibilidad para ese auditor.")
+            actual = dict(actual)
+            if str(actual.get("estado") or "").strip().upper() not in {"ACTIVO", "ACTIVA"}:
+                raise HTTPException(status_code=409, detail="Solo se pueden editar registros de disponibilidad activos.")
+            if str(actual.get("tipo_registro") or "").strip().lower() in {"no disponible", "no_disponible", "indisponible", "bloqueo"}:
+                raise HTTPException(status_code=409, detail="Los bloqueos de fechas no disponibles no se editan como horarios semanales; registre un nuevo bloqueo si necesita ampliar el periodo.")
+            fecha_fin_vigencia = actual.get("fecha_fin")
+            if fecha_fin_vigencia and fecha_fin_vigencia.date() < date.today():
+                raise HTTPException(status_code=409, detail="No se pueden editar registros cuya vigencia ya terminó.")
+            if data.fecha_inicio < date.today():
+                raise HTTPException(status_code=422, detail="La nueva vigencia debe comenzar hoy o en una fecha futura.")
+
+            await self._registrar_historial_disponibilidad(actual, "ANTES_DE_EDICION")
+            dia = self._numero_dia_semana(data.dia_semana) if data.dia_semana else actual.get("dia_semana")
+            dia_label = normalizar_dia(data.dia_semana) if data.dia_semana else self._etiqueta_dia_semana(actual.get("dia_semana"))
+            await self._validar_solapamiento_disponibilidad(
+                id_usuario,
+                dia_label,
+                data.fecha_inicio,
+                data.fecha_fin,
+                data.hora_inicio,
+                data.hora_fin,
+                excluir_id=id_disponibilidad,
+            )
+            fecha_inicio_dt = datetime.combine(data.fecha_inicio, time.min)
+            fecha_fin_dt = datetime.combine(data.fecha_fin, time.max) if data.fecha_fin else None
+            updated = await self.db.execute(text("""
+                UPDATE disponibilidad_auditor
+                SET fecha_inicio = :fecha_inicio,
+                    fecha_fin = :fecha_fin,
+                    dia_semana = :dia_semana,
+                    hora_inicio = :hora_inicio,
+                    hora_fin = :hora_fin,
+                    motivo = :motivo
+                WHERE id_disponibilidad = :id_disponibilidad
+                  AND id_usuario = :id_usuario
+                RETURNING id_disponibilidad, id_usuario, tipo_registro, dia_semana,
+                          fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+            """), {
+                "fecha_inicio": fecha_inicio_dt,
+                "fecha_fin": fecha_fin_dt,
+                "dia_semana": dia,
+                "hora_inicio": data.hora_inicio,
+                "hora_fin": data.hora_fin,
+                "motivo": data.motivo.strip(),
+                "id_disponibilidad": str(id_disponibilidad),
+                "id_usuario": str(id_usuario),
+            })
+            row = dict(updated.mappings().one())
+            await self._registrar_historial_disponibilidad(row, "EDITADA")
+            await self.db.commit()
+            return {"mensaje": "Disponibilidad futura actualizada y registrada en el historial.", "registro": row}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al editar disponibilidad: {type(exc).__name__}: {exc}")
+            raise HTTPException(status_code=500, detail="No fue posible editar la disponibilidad.") from exc
+
+    async def consultar_historial_disponibilidad(self, id_usuario: UUID):
+        """Devuelve historial de cambios y registros heredados sin eventos de historial."""
+        result = await self.db.execute(text("""
+            SELECT id_historial, id_disponibilidad, id_usuario, accion, tipo_registro,
+                   dia_semana, fecha_inicio, fecha_fin, hora_inicio, hora_fin,
+                   motivo, estado, fecha_evento
+            FROM historial_disponibilidad_auditor
+            WHERE id_usuario = :id_usuario
+            ORDER BY fecha_evento DESC
+        """), {"id_usuario": str(id_usuario)})
+        historial = [dict(row) for row in result.mappings().all()]
+        ids_con_historial = {str(row.get("id_disponibilidad")) for row in historial}
+        actuales = await self.consultar_agenda(id_usuario, incluir_inactivos=True)
+        for row in actuales:
+            if str(row.get("id_disponibilidad")) not in ids_con_historial:
+                historial.append({**row, "accion": "REGISTRO_EXISTENTE", "fecha_evento": None})
+        historial.sort(
+            key=lambda row: row.get("fecha_evento") or datetime.min,
+            reverse=True,
+        )
+        return historial
+
+    async def ver_disponibilidad_mensual(
+        self,
+        id_usuario: UUID,
+        anio: int,
+        mes: int,
+        ciudad: str | None = None,
+        modalidad: str | None = None,
+    ) -> dict:
+        """Entrega por día las reglas de disponibilidad y auditorías del mes."""
+        if mes < 1 or mes > 12:
+            raise HTTPException(status_code=422, detail="El mes debe estar entre 1 y 12.")
+        if anio < 2000 or anio > 2100:
+            raise HTTPException(status_code=422, detail="El año debe estar entre 2000 y 2100.")
+        primer_dia = date(anio, mes, 1)
+        ultimo_dia = date(anio, mes, calendar.monthrange(anio, mes)[1])
+
+        registros = await self.consultar_agenda(
+            id_usuario, desde=primer_dia, hasta=ultimo_dia, incluir_inactivos=False
+        )
+        auditorias = await self.consultar_auditorias_programadas(
+            id_usuario,
+            desde=primer_dia,
+            hasta=ultimo_dia,
+            ciudad=ciudad,
+            modalidad=modalidad,
+        )
+        dias = []
+        nombres_dia = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+        for numero in range(1, ultimo_dia.day + 1):
+            fecha_actual = date(anio, mes, numero)
+            dia_nombre = nombres_dia[fecha_actual.weekday()]
+            aplican = []
+            bloqueos = []
+            for registro in registros:
+                inicio = registro.get("fecha_inicio")
+                fin = registro.get("fecha_fin")
+                inicio_dia = inicio.date() if isinstance(inicio, datetime) else inicio
+                fin_dia = fin.date() if isinstance(fin, datetime) else fin
+                if inicio_dia and inicio_dia > fecha_actual:
+                    continue
+                if fin_dia and fin_dia < fecha_actual:
+                    continue
+                tipo = str(registro.get("tipo_registro") or "").strip().lower()
+                dia_registro = self._etiqueta_dia_semana(registro.get("dia_semana"))
+                if tipo in {"no disponible", "no_disponible", "indisponible", "bloqueo"}:
+                    bloqueos.append(registro)
+                elif not dia_registro or normalizar_dia(dia_registro) == dia_nombre:
+                    aplican.append(registro)
+            # El bloqueo de fecha tiene prioridad visual sobre la regla semanal.
+            if bloqueos:
+                aplican = bloqueos
+            auditorias_dia = [
+                item for item in auditorias
+                if isinstance(item.get("fecha_inicio"), datetime)
+                and item["fecha_inicio"].date() == fecha_actual
+            ]
+            dias.append({
+                "fecha": fecha_actual.isoformat(),
+                "dia_semana": dia_nombre,
+                "disponibilidad": aplican,
+                "auditorias": auditorias_dia,
+            })
+        return {
+            "id_usuario": id_usuario,
+            "anio": anio,
+            "mes": mes,
+            "ciudad": ciudad,
+            "modalidad": modalidad,
+            "dias": dias,
+        }
+
+    async def confirmar_programacion(self, id_programacion: UUID):
+        try:
+            result = await self.db.execute(text("""
+                UPDATE programacion_visita
+                SET estado = 'Confirmada'
+                WHERE id_programacion = :id
+                  AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
+                RETURNING id_programacion
+            """), {"id": str(id_programacion)})
+            if not result.first():
+                raise HTTPException(status_code=404, detail="Programación no encontrada o ya finalizada/cancelada.")
+            await self.db.commit()
+            return {"mensaje": "Programación confirmada."}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(status_code=500, detail="No fue posible confirmar la programación.")
+
+    async def cancelar_programacion(self, id_programacion: UUID, motivo: str):
+        if not motivo.strip():
+            raise HTTPException(status_code=422, detail="Debe indicar el motivo de cancelación.")
+        try:
+            result = await self.db.execute(text("""
+                UPDATE programacion_visita
+                SET estado = 'Cancelada', motivo_cancelacion = :motivo
+                WHERE id_programacion = :id
+                  AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('FINALIZADA', 'FINALIZADO')
+                RETURNING id_programacion
+            """), {"id": str(id_programacion), "motivo": motivo.strip()})
+            if not result.first():
+                raise HTTPException(status_code=404, detail="Programación no encontrada o ya finalizada.")
+            # Obtener auditores para notificarles.
+            detalles = await self.db.execute(text("""
+                SELECT d.id_usuario FROM detalle_programacion_auditor d
+                WHERE d.id_programacion = :id
+            """), {"id": str(id_programacion)})
+            auditores = [UUID(str(row[0])) for row in detalles.all()]
+            # Notificar a cada auditor.
+            for auditor_id in auditores:
+                await self._crear_notificacion(
+                    id_programacion,
+                    auditor_id,
+                    "Auditoría cancelada",
+                    f"La auditoría programada fue cancelada. Motivo: {motivo.strip()}.",
+                )
+            await self.db.commit()
+            return {"mensaje": "Programación cancelada; el intervalo ya no bloquea la agenda y se notificó a los auditores."}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(status_code=500, detail="No fue posible cancelar la programación.")
+
+    async def reprogramar_programacion(
+        self,
+        id_programacion: UUID,
+        fecha_inicio: datetime,
+        fecha_fin: datetime,
+        motivo: str,
+    ):
+        if fecha_fin <= fecha_inicio:
+            raise HTTPException(status_code=422, detail="La fecha/hora final debe ser posterior a la inicial.")
+        if not motivo.strip():
+            raise HTTPException(status_code=422, detail="Debe indicar el motivo de reprogramación.")
+        try:
+            detalles = await self.db.execute(text("""
+                SELECT d.id_usuario
+                FROM detalle_programacion_auditor d
+                WHERE d.id_programacion = :id
+                FOR UPDATE
+            """), {"id": str(id_programacion)})
+            auditores = [UUID(str(row[0])) for row in detalles.all()]
+            if not auditores:
+                raise HTTPException(status_code=404, detail="No se encontró la programación ni sus auditores.")
+            for auditor_id in sorted(auditores, key=str):
+                estado_result = await self.db.execute(text("""
+                    SELECT estado, estado_auditor
+                    FROM usuario
+                    WHERE id_usuario = :id_usuario
+                    FOR UPDATE
+                """), {"id_usuario": str(auditor_id)})
+                estado_row = estado_result.mappings().first()
+                if not estado_row or str(estado_row["estado"] or "").strip().upper() != "ACTIVO" or str(
+                    estado_row["estado_auditor"] or ""
+                ).strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
+                    raise HTTPException(status_code=409, detail="Uno de los auditores está desactivado o no aprobado.")
+            for auditor_id in auditores:
+                cruce = await self._buscar_cruce(auditor_id, fecha_inicio, fecha_fin, id_programacion)
+                if cruce:
+                    raise HTTPException(status_code=409, detail="El nuevo horario se cruza con otra auditoría del auditor.")
+                if not await self._tiene_disponibilidad_fecha(auditor_id, fecha_inicio.date(), fecha_inicio.time(), fecha_fin.time()):
+                    raise HTTPException(status_code=409, detail="Uno de los auditores no está disponible en la nueva fecha.")
+            result = await self.db.execute(text("""
+                UPDATE programacion_visita
+                SET fecha_inicio = :fecha_inicio,
+                    fecha_fin = :fecha_fin,
+                    estado = 'Reprogramada',
+                    motivo_reprogramacion = :motivo,
+                    notificacion_enviada = TRUE
+                WHERE id_programacion = :id
+                  AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
+                RETURNING id_programacion
+            """), {"id": str(id_programacion), "fecha_inicio": fecha_inicio, "fecha_fin": fecha_fin, "motivo": motivo.strip()})
+            if not result.first():
+                raise HTTPException(status_code=404, detail="Programación no encontrada o no reprogramable.")
+            for id_usuario in auditores:
+                await self._crear_notificacion(
+                    UUID(str(id_programacion)), UUID(str(id_usuario)),
+                    "Auditoría reprogramada",
+                    f"La auditoría fue reprogramada para {fecha_inicio:%d/%m/%Y %H:%M} a {fecha_fin:%H:%M}. Motivo: {motivo.strip()}.",
+                )
+            await self.db.commit()
+            return {"mensaje": "Programación reprogramada y notificación interna actualizada."}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al reprogramar auditoría: {type(exc).__name__}: {exc}")
+            raise HTTPException(status_code=500, detail="No fue posible reprogramar la auditoría.") from exc
+
+    async def editar_programacion(
+        self,
+        id_programacion: UUID,
+        modalidad: str | None,
+        ciudad_servicio: str | None,
+        fecha_inicio: datetime | None = None,
+        fecha_fin: datetime | None = None,
+        direccion_servicio: str | None = None,
+        observacion: str | None = None,
+    ):
+        """Edita datos de la visita y revalida si cambia el intervalo."""
+        try:
+            actual_result = await self.db.execute(text("""
+                SELECT id_programacion, fecha_inicio, fecha_fin, estado
+                FROM programacion_visita
+                WHERE id_programacion = :id
+                FOR UPDATE
+            """), {"id": str(id_programacion)})
+            actual = actual_result.mappings().first()
+            if not actual:
+                raise HTTPException(status_code=404, detail="Programación no encontrada.")
+
+            inicio_nuevo = fecha_inicio or actual["fecha_inicio"]
+            fin_nuevo = fecha_fin or actual["fecha_fin"]
+            cambio_fechas = fecha_inicio is not None or fecha_fin is not None
+            if fin_nuevo <= inicio_nuevo:
+                raise HTTPException(status_code=422, detail="La fecha/hora final debe ser posterior a la inicial.")
+            if str(actual["estado"] or "").strip().upper() in {"CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO"}:
+                raise HTTPException(status_code=409, detail="No se puede editar una programación cancelada o finalizada.")
+
+            if cambio_fechas:
+                detalles = await self.db.execute(text("""
+                    SELECT d.id_usuario
+                    FROM detalle_programacion_auditor d
+                    WHERE d.id_programacion = :id
+                    ORDER BY d.id_usuario
+                """), {"id": str(id_programacion)})
+                auditores = [UUID(str(row[0])) for row in detalles.all()]
+                if not auditores:
+                    raise HTTPException(status_code=409, detail="La programación no tiene auditores relacionados.")
+
+                # Bloquea los auditores en orden estable para reducir riesgos de carrera.
+                for auditor_id in sorted(auditores, key=str):
+                    await self.db.execute(text("""
+                        SELECT id_usuario
+                        FROM usuario
+                        WHERE id_usuario = :id_usuario
+                        FOR UPDATE
+                    """), {"id_usuario": str(auditor_id)})
+
+                for auditor_id in auditores:
+                    auditor_estado = await self.db.execute(text("""
+                        SELECT estado, estado_auditor
+                        FROM usuario
+                        WHERE id_usuario = :id_usuario
+                    """), {"id_usuario": str(auditor_id)})
+                    estado_row = auditor_estado.mappings().first()
+                    if not estado_row or str(estado_row["estado"] or "").strip().upper() != "ACTIVO" or str(
+                        estado_row["estado_auditor"] or ""
+                    ).strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
+                        raise HTTPException(status_code=409, detail="Uno de los auditores está desactivado o no aprobado.")
+                    if not await self._tiene_disponibilidad_fecha(auditor_id, inicio_nuevo.date(), inicio_nuevo.time(), fin_nuevo.time()):
+                        raise HTTPException(status_code=409, detail="Uno de los auditores no está disponible en la nueva fecha.")
+                    cruce = await self._buscar_cruce(auditor_id, inicio_nuevo, fin_nuevo, id_programacion)
+                    if cruce:
+                        raise HTTPException(status_code=409, detail="El nuevo horario se cruza con otra auditoría del auditor.")
+
+            await self.db.execute(text("""
+                UPDATE programacion_visita
+                SET modalidad = COALESCE(:modalidad, modalidad),
+                    ciudad_servicio = COALESCE(:ciudad, ciudad_servicio),
+                    direccion_servicio = COALESCE(:direccion, direccion_servicio),
+                    fecha_inicio = :fecha_inicio,
+                    fecha_fin = :fecha_fin,
+                    estado = CASE WHEN :cambio_fechas THEN 'Reprogramada' ELSE estado END,
+                    notificacion_enviada = CASE WHEN :cambio_fechas THEN TRUE ELSE notificacion_enviada END,
+                    motivo_reprogramacion = COALESCE(NULLIF(:observacion, ''), motivo_reprogramacion)
+                WHERE id_programacion = :id
+            """), {
+                "id": str(id_programacion),
+                "modalidad": modalidad,
+                "ciudad": ciudad_servicio,
+                "direccion": direccion_servicio,
+                "fecha_inicio": inicio_nuevo,
+                "fecha_fin": fin_nuevo,
+                "cambio_fechas": cambio_fechas,
+                "observacion": (observacion or "").strip(),
+            })
+
+            if cambio_fechas or (observacion or "").strip():
+                if "auditores" not in locals() or not auditores:
+                    detalles = await self.db.execute(text("""
+                        SELECT d.id_usuario
+                        FROM detalle_programacion_auditor d
+                        WHERE d.id_programacion = :id
+                    """), {"id": str(id_programacion)})
+                    auditores = [UUID(str(row[0])) for row in detalles.all()]
+                for auditor_id in auditores:
+                    mensaje_notif = f"La auditoría fue actualizada. "
+                    if cambio_fechas:
+                        mensaje_notif += f"Nueva fecha: {inicio_nuevo:%d/%m/%Y %H:%M} a {fin_nuevo:%H:%M}. "
+                    if (observacion or "").strip():
+                        mensaje_notif += f"Observación: {observacion.strip()}."
+                    await self._crear_notificacion(
+                        id_programacion,
+                        auditor_id,
+                        "Auditoría actualizada",
+                        mensaje_notif,
+                    )
+            await self.db.commit()
+            return {"mensaje": "Programación editada." if not cambio_fechas else "Programación reprogramada; se actualizó la agenda y la notificación interna."}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al editar programación: {type(exc).__name__}: {exc}")
+            raise HTTPException(status_code=500, detail=f"No fue posible editar la programación: {type(exc).__name__}: {exc}") from exc
+
+    async def consultar_notificaciones(self, id_usuario: UUID):
+        result = await self.db.execute(text("""
+            SELECT id_notificacion, id_programacion, titulo, mensaje, leida, fecha_creacion
+            FROM notificacion_agenda_auditor
+            WHERE id_usuario = :id_usuario
+            ORDER BY fecha_creacion DESC
+        """), {"id_usuario": str(id_usuario)})
+        return [dict(row) for row in result.mappings().all()]
+
+    async def notificar_programacion(self, id_programacion: UUID):
+        try:
+            result = await self.db.execute(text("""
+                SELECT d.id_usuario, p.fecha_inicio, p.fecha_fin,
+                       e.direccion AS direccion_servicio, p.ciudad_servicio, e.nombre AS empresa_nombre,
+                       p.motivo_reprogramacion
+                FROM programacion_visita p
+                INNER JOIN detalle_programacion_auditor d ON d.id_programacion = p.id_programacion
+                LEFT JOIN solicitud s ON s.id_solicitud = p.id_solicitud
+                LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+                WHERE p.id_programacion = :id
+            """), {"id": str(id_programacion)})
+            rows = result.mappings().all()
+            if not rows:
+                raise HTTPException(status_code=404, detail="Programación no encontrada.")
+            for row in rows:
+                await self._crear_notificacion(
+                    id_programacion, UUID(str(row["id_usuario"])),
+                    "Recordatorio de auditoría programada",
+                    f"Auditoría: {row['empresa_nombre'] or 'Empresa no especificada'}. "
+                    f"Fecha: {row['fecha_inicio']:%d/%m/%Y %H:%M} a {row['fecha_fin']:%H:%M}. "
+                    f"Lugar: {row['direccion_servicio']}, {row['ciudad_servicio']}. "
+                    f"Observación: {row.get('motivo_reprogramacion') or 'Sin observación.'}",
+                )
+            await self.db.execute(text("""
+                UPDATE programacion_visita
+                SET notificacion_enviada = TRUE
+                WHERE id_programacion = :id
+            """), {"id": str(id_programacion)})
+            await self.db.commit()
+            return {"mensaje": "Notificación interna registrada para el auditor."}
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            print(f"Error al notificar programación: {type(exc).__name__}: {exc}")
+            raise HTTPException(status_code=500, detail="No fue posible crear la notificación.") from exc

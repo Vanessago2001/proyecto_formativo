@@ -544,6 +544,10 @@
                     Banco de auditores
                 </a>
 
+                <a href="/conflictos-administrador">
+                    Consultar todos los conflictos
+                </a>
+
                 <a href="/comite">
                     Ir al Comité de certificación
                 </a>
@@ -1507,8 +1511,9 @@
                         .value;
 
 
+                // El backend registra estas rutas en /administradores/auditores.
                 let url =
-                    "/administrar-auditores/solicitudes";
+                    "/administradores/auditores/solicitudes";
 
 
                 if (estado) {
@@ -1544,11 +1549,11 @@
                         );
 
 
+                // Solo cerrar sesión si el token no es válido.
+                // Un 403 se muestra como error de permisos y no borra la sesión.
                 if (
                     response.status ===
-                    401 ||
-                    response.status ===
-                    403
+                    401
                 ) {
 
                     localStorage
@@ -1560,6 +1565,18 @@
                         "/login";
 
                     return;
+
+                }
+
+                if (
+                    response.status ===
+                    403
+                ) {
+
+                    throw new Error(
+                        data?.detail ||
+                        "No tiene permisos de administración para consultar el banco de auditores."
+                    );
 
                 }
 
@@ -2118,8 +2135,9 @@
 
             try {
 
+                // El backend registra estas rutas en /administradores/auditores.
                 const endpoint =
-                    `/administrar-auditores/solicitudes/${encodeURIComponent(
+                    `/administradores/auditores/solicitudes/${encodeURIComponent(
                         idPostulacion
                     )}/${configuracion.endpoint}`;
 

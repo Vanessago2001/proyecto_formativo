@@ -31,6 +31,11 @@ from modules.asignacion_auditores.asignacion_router import router as asignacion_
 
 from modules.administrar_auditores.administrar_auditores_router import router as administrar_auditores_router
 from modules.auditores.auditor_router import router as auditor_router
+from modules.competencias_auditor.competencias_router import router as competencias_auditor_router
+from modules.conflictos_auditor.conflictos_router import router as conflictos_auditor_router
+from modules.agenda_auditor.agenda_router import router as agenda_auditor_router
+from modules.perfiles_auditor.perfil_router import router as perfil_auditor_router
+from modules.reportes_auditor.reporte_router import router as reporte_auditor_router
 # Modulo heredado de otro proyecto: su tabla `tareas` no existe en esta base
 # de datos, asi que sus endpoints devolvian 500. El codigo se conserva en
 # modules/tareas/ por si se quiere reaprovechar; para reactivarlo hay que
@@ -255,6 +260,11 @@ app.include_router(mfa_router)
 app.include_router(system_router)
 app.include_router(asignacion_auditores_router)
 app.include_router(auditor_router)
+app.include_router(competencias_auditor_router)
+app.include_router(conflictos_auditor_router)
+app.include_router(agenda_auditor_router)
+app.include_router(perfil_auditor_router)
+app.include_router(reporte_auditor_router)
 # app.include_router(tarea_router)   # modulo heredado, ver nota arriba
 
 # M5 - Gestion de solicitudes
@@ -382,6 +392,10 @@ async def empresas_page(request: Request):
     return FileResponse("static/empresas.html")
 
 
+@app.get("/perfil-auditor", response_class=HTMLResponse)
+async def perfil_auditor_page():
+    return FileResponse("static/perfil_auditor.html")
+
 @app.get("/profile", response_class=HTMLResponse)
 async def profile_page(request: Request):
     return FileResponse("static/profile.html")
@@ -397,6 +411,42 @@ async def banco_auditores_page(request: Request):
     return FileResponse("static/banco_auditores.html")
 
 # detalle de una solicitud
+@app.get("/conflictos-auditor", response_class=HTMLResponse)
+async def conflictos_auditor():
+    return FileResponse("static/conflictos_auditor.html")
+
+@app.get("/catalogo-competencias-auditor", response_class=HTMLResponse)
+async def catalogo_competencias_auditor():
+    return FileResponse("static/catalogo_competencias_auditor.html")
+
+@app.get("/consultar-agenda-auditor-vista", response_class=HTMLResponse)
+async def consultar_agenda_auditor_vista():
+    return FileResponse("static/consultar_agenda_auditor_vista.html")
+
+@app.get("/notificaciones-auditor", response_class=HTMLResponse)
+async def notificaciones_auditor():
+    return FileResponse("static/notificaciones_auditor.html")
+
+@app.get("/disponibilidad-auditor", response_class=HTMLResponse)
+async def disponibilidad_auditor():
+    return FileResponse("static/disponibilidad_auditor.html")
+
+@app.get("/programaciones-futuras-auditor", response_class=HTMLResponse)
+async def programaciones_futuras_auditor_page():
+    return FileResponse("static/programaciones_futuras_auditor.html")
+
+@app.get("/consultar-auditorias-programadas", response_class=HTMLResponse)
+async def consultar_auditorias_programadas_page():
+    return FileResponse("static/consultar_auditorias_programadas.html")
+
+@app.get("/consultar-agenda-auditor", response_class=HTMLResponse)
+async def consultar_agenda_auditor():
+    return FileResponse("static/consultar_agenda_auditor.html")
+
+@app.get("/conflictos-administrador", response_class=HTMLResponse)
+async def conflictos_administrador():
+    return FileResponse("static/conflictos_administrador.html")
+
 @app.get("/banco-auditores/solicitud/{id_postulacion}")
 async def banco_auditores_solicitud(
     id_postulacion: UUID,

@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Disponibilidad semanal - Auditor</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        :root {
+            color-scheme: light;
+            --sena-green: #39a900;
+            --sena-green-dark: #256d00;
+            --sena-green-bright: #3baa01;
+            --sena-green-hover: #2f8f00;
+            --sena-green-light: #f1f8ed;
+            --bg: #f4f7f5;
+            --ink: #26352b;
+            --muted: #5f6f69;
+            --line: #dce5de;
+            --white: #fff;
+            --danger: #9d2b2b;
+            --shadow-card: 0 5px 20px rgba(32, 74, 25, .07);
+            --shadow-hover: 0 8px 24px rgba(32, 74, 25, .10);
+            --radius-card: 14px;
+            --radius-control: 8px;
+        }
+
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        /* =========================================================
+           HEADER
+        ========================================================= */
+        .login-header {
+            background: #3BAA01;
+            color: #fff;
+            padding: 20px clamp(18px, 4vw, 42px);
+        }
+
+        .login-header .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            max-width: 1360px;
+            margin: 0 auto;
+        }
+
+        .login-header .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .login-header .sena-blanco {
+            width: 72px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .login-header h1 {
+            margin: 0;
+            font-size: 26px;
+            line-height: 1.15;
+            letter-spacing: -.02em;
+        }
+
+        .login-header .subtitle {
+            margin: 4px 0 0;
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: .92;
+        }
+
+        .login-header .profile-link {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13.5px;
+            padding: 9px 15px;
+            border: 1px solid rgba(255, 255, 255, .35);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .08);
+            transition: .18s ease;
+        }
+
+        .login-header .profile-link:hover {
+            background: rgba(255, 255, 255, .18);
+            border-color: rgba(255, 255, 255, .55);
+        }
+
+        /* =========================================================
+           LAYOUT
+        ========================================================= */
+        .portal-shell {
+            width: 100%;
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 24px 24px 48px;
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 250px minmax(0, 1fr);
+            gap: 22px;
+            align-items: start;
+        }
+
+        /* =========================================================
+           SIDEBAR
+        ========================================================= */
+        .side {
+            position: sticky;
+            top: 20px;
+            align-self: start;
+            padding: 13px;
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+        }
+
+        .side h3 {
+            margin: 5px 12px 12px;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 800;
+        }
+
+        .side a {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 11px 12px;
+            margin: 2px 0;
+            color: #334155;
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.35;
+            border-left: 3px solid transparent;
+            border-radius: 0 9px 9px 0;
+            transition: background .18s ease, color .18s ease, border-color .18s ease;
+        }
+
+        .side a:hover {
+            background: #f6faf4;
+            color: var(--sena-green-dark);
+        }
+
+        .side a.active {
+            background: var(--sena-green-light);
+            color: var(--sena-green-dark);
+            border-left-color: var(--sena-green-bright);
+            font-weight: 750;
+        }
+
+        .side a .side-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 7px;
+            background: #eaf4e5;
+            color: var(--sena-green-dark);
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+            transition: .18s ease;
+        }
+
+        .side a.active .side-icon {
+            background: var(--sena-green-bright);
+            color: #fff;
+        }
+
+        /* =========================================================
+           CONTENIDO
+        ========================================================= */
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-width: 0;
+        }
+
+        .page-head {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .page-head-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--sena-green-dark);
+            background: #fff;
+            border: 1px solid #cfe3c5;
+            border-radius: 8px;
+            padding: 9px 15px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: .18s ease;
+        }
+
+        .back-link:hover {
+            background: var(--sena-green-light);
+            border-color: var(--sena-green);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(57, 169, 0, .10);
+        }
+
+        .page-head h1 {
+            margin: 0;
+            color: var(--sena-green-dark);
+            font-size: clamp(20px, 2vw, 25px);
+            font-weight: 800;
+            letter-spacing: -.02em;
+        }
+
+        .page-head p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13.5px;
+            line-height: 1.55;
+            max-width: 900px;
+        }
+
+        /* =========================================================
+           PANEL
+        ========================================================= */
+        .panel {
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            transition: box-shadow .25s ease, border-color .25s ease;
+        }
+
+        .panel:hover {
+            border-color: #d2e5c9;
+            box-shadow: var(--shadow-hover);
+        }
+
+        .panel-head {
+            padding: 17px 22px;
+            border-bottom: 1px solid #eef3ee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--sena-green-dark);
+            letter-spacing: -.01em;
+        }
+
+        .panel-head .pill {
+            display: inline-block;
+            background: #eaf4ed;
+            color: #205d35;
+            padding: 5px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: 750;
+        }
+
+        .panel-body {
+            padding: 22px;
+        }
+
+        /* =========================================================
+           FORM
+        ========================================================= */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .field.full { grid-column: 1 / -1; }
+
+        label {
+            font-weight: 700;
+            font-size: 12.5px;
+            color: #33483c;
+            letter-spacing: .005em;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            height: 42px;
+            min-height: 42px;
+            border: 1px solid #d2ddd4;
+            border-radius: var(--radius-control);
+            padding: 0 12px;
+            font: inherit;
+            font-size: 13.5px;
+            color: var(--ink);
+            background: #fff;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+
+        input:hover:not(:disabled):not([readonly]),
+        select:hover:not(:disabled),
+        textarea:hover:not(:disabled) {
+            border-color: #a9c59d;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: 3px solid rgba(59, 170, 1, .14);
+            border-color: var(--sena-green-bright);
+            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+        }
+
+        input[readonly], input:disabled, select:disabled, textarea:disabled {
+            background: #f5f7f5;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        /* Icono del calendario/reloj: tamaño consistente y cursor */
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: .65;
+            transition: opacity .15s ease;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover,
+        input[type="time"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+
+        textarea {
+            min-height: 82px;
+            resize: vertical;
+            padding: 10px 12px;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 11.5px;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* =========================================================
+           BOTONES
+        ========================================================= */
+        .actions {
+            display: flex;
+            gap: 9px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 18px;
+        }
+
+        button,
+        .btn-primary {
+            border: 0;
+            border-radius: var(--radius-control);
+            height: 42px;
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 18px;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-sizing: border-box;
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+            white-space: nowrap;
+        }
+
+        .btn-primary,
+        button[type="submit"] {
+            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            color: #fff;
+            box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
+        }
+
+        .btn-primary:hover,
+        button[type="submit"]:hover {
+            background: linear-gradient(135deg, #2f8f00, #256d00);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(37, 109, 0, .22);
+        }
+
+        button:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* =========================================================
+           SECTION NOTE
+        ========================================================= */
+        .section-note {
+            display: flex;
+            gap: 12px;
+            padding: 13px 15px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f6faf3, #fbfdf9);
+            border: 1px solid #dce8d8;
+            border-left: 4px solid var(--sena-green-bright);
+            color: #46604b;
+            font-size: 12.5px;
+            line-height: 1.6;
+            margin: 0 0 16px;
+        }
+
+        .section-note .note-icon {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: #e4f1dd;
+            color: var(--sena-green-dark);
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .section-note strong {
+            color: var(--sena-green-dark);
+            font-weight: 800;
+        }
+
+        /* =========================================================
+           WEEKDAY GRID (días de la semana)
+        ========================================================= */
+        .weekday-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .weekday-item {
+            padding: 12px 8px;
+            border: 1px solid #d2ddd4;
+            border-radius: 9px;
+            background: #fff;
+            text-align: center;
+            font-weight: 700;
+            font-size: 12.5px;
+            color: #475569;
+            transition: all .18s ease;
+            user-select: none;
+            min-height: 46px;
+        }
+
+        .weekday-item:hover {
+            border-color: #a9c59d;
+            background: #f8fbf6;
+            color: var(--sena-green-dark);
+        }
+
+        /* Checkbox reducido y alineado */
+        .weekday-item label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 12.5px;
+            color: inherit;
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .weekday-item input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            min-height: 14px;
+            margin: 0;
+            padding: 0;
+            flex: 0 0 14px;
+            accent-color: var(--sena-green-bright);
+            cursor: pointer;
+            vertical-align: middle;
+            border-radius: 4px;
+        }
+
+        /* Fila de horas: se apila verticalmente para no desbordar */
+        .weekday-item .time-row {
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px !important;
+            width: 100%;
+            padding: 0;
+        }
+
+        .weekday-item .time-row input[type="time"] {
+            flex: 1 1 100%;
+            width: 100%;
+            height: 28px;
+            min-height: 28px;
+            padding: 0 6px;
+            font-size: 11.5px;
+            border-radius: 5px;
+            border: 1px solid #d2ddd4;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        .weekday-item .time-row input[type="time"]:focus {
+            outline: 2px solid rgba(59, 170, 1, .18);
+            border-color: var(--sena-green-bright);
+        }
+
+        /* Cuando el día está seleccionado, resaltar tarjeta */
+        .weekday-item:has(input[type="checkbox"]:checked) {
+            background: #f1f8ed;
+            border-color: var(--sena-green-bright);
+            box-shadow: 0 3px 10px rgba(59, 170, 1, .18);
+            color: var(--sena-green-dark);
+        }
+
+        /* =========================================================
+           SECCIONES
+        ========================================================= */
+        .panel-section {
+            display: none;
+            animation: panelEntrar .22s ease both;
+        }
+
+        .panel-section.seccion-visible {
+            display: block;
+        }
+
+        @keyframes panelEntrar {
+            from { opacity: 0; transform: translateY(4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* =========================================================
+           HISTORIAL
+        ========================================================= */
+        .historial-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .historial-item {
+            padding: 12px 14px;
+            border: 1px solid #e1eae2;
+            border-left: 4px solid var(--sena-green-bright);
+            border-radius: 9px;
+            background: #f8fbf6;
+            color: #26352b;
+            font-size: 13px;
+            line-height: 1.55;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .historial-item:hover {
+            border-color: #c7ddbe;
+            border-left-color: var(--sena-green-bright);
+            box-shadow: 0 3px 10px rgba(15, 35, 22, .04);
+        }
+
+        .historial-tipo {
+            font-weight: 800;
+            color: var(--sena-green-dark);
+            margin-bottom: 4px;
+            font-size: 13.5px;
+        }
+
+        .historial-fechas {
+            color: #475569;
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+
+        .historial-motivo {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        /* =========================================================
+           RESPONSIVE
+        ========================================================= */
+        @media (max-width: 1000px) {
+            .portal-grid { grid-template-columns: 1fr; }
+
+            .side {
+                position: static;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 5px;
+            }
+
+            .side h3 { grid-column: 1 / -1; }
+
+            .side a {
+                margin: 0;
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 8px;
+            }
+
+            .side a.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--sena-green-bright);
+            }
+        }
+
+        @media (max-width: 700px) {
+            .portal-shell { padding: 16px 12px 32px; }
+            .grid { grid-template-columns: 1fr; }
+            .field.full { grid-column: auto; }
+            .panel-body { padding: 16px; }
+            .panel-head { padding: 14px 16px; }
+            .side { grid-template-columns: 1fr; }
+            .weekday-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .login-header .sena-blanco { width: 58px; }
+            .login-header h1 { font-size: 21px; }
+            .login-header .subtitle { font-size: 12px; }
+            .login-header .profile-link { font-size: 12px; padding: 7px 12px; }
+        }
+
+        @media (max-width: 400px) {
+            .weekday-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    </style>
+<style>
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+.modal-overlay.active {
+    display: flex;
+}
+.modal-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    text-align: center;
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.modal-box h3 {
+    margin-top: 0;
+    color: #256d00;
+}
+.modal-box p {
+    color: #334155;
+    margin-bottom: 20px;
+}
+.modal-box .btn-close {
+    background: #3baa01;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.modal-box.error h3 {
+    color: #dc2626;
+}
+.modal-box.success h3 {
+    color: #256d00;
+}
+</style>
+
+<style>
+.historial-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+.historial-tabla th, .historial-tabla td {
+    border: 1px solid #dbe4d4;
+    padding: 8px;
+    text-align: left;
+    font-size: 0.9rem;
+}
+.historial-tabla th {
+    background: #f1f8ed;
+    color: #256d00;
+    font-weight: bold;
+}
+.historial-tabla tr:hover {
+    background: #f9fbf9;
+}
+.btn-small {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 4px;
+}
+.btn-edit {
+    background: #3baa01;
+    color: #fff;
+}
+.btn-delete {
+    background: #dc2626;
+    color: #fff;
+}
+</style>
+</head>
+<body>
+
+    <header class="login-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Disponibilidad semanal - Auditor</p>
+                </div>
+            </div>
+            <a class="profile-link" href="/profile">Mi perfil</a>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <div class="portal-grid">
+
+            <!-- =========================================================
+                 MENÚ LATERAL
+            ========================================================= -->
+            <nav class="side" aria-label="Navegación de disponibilidad">
+                <h3>Gestión de disponibilidad</h3>
+
+                <a href="#configurar-horario" data-seccion="configurar-horario" class="active">
+                    <span class="side-icon">1</span>
+                    <span>Horario semanal</span>
+                </a>
+
+                <a href="#bloquear-fecha" data-seccion="bloquear-fecha">
+                    <span class="side-icon">2</span>
+                    <span>Bloquear fecha</span>
+                </a>
+
+                <a href="#desbloquear-fecha" data-seccion="desbloquear-fecha">
+                    <span class="side-icon">3</span>
+                    <span>Desbloquear fecha</span>
+                </a>
+
+                <a href="#disponibilidad-extraordinaria" data-seccion="disponibilidad-extraordinaria">
+                    <span class="side-icon">4</span>
+                    <span>Disponibilidad extraordinaria</span>
+                </a>
+
+                <a href="#historial-disponibilidad" data-seccion="historial-disponibilidad">
+                    <span class="side-icon">5</span>
+                    <span>Historial</span>
+                </a>
+            </nav>
+
+            <!-- =========================================================
+                 CONTENIDO
+            ========================================================= -->
+            <section class="content">
+
+                <div class="page-head">
+                    <div class="page-head-top">
+                        <a href="/auditor" class="back-link">
+                            <span aria-hidden="true">←</span> Regresar
+                        </a>
+                    </div>
+                    <h1 id="pageTitle">Configurar horario semanal</h1>
+                    <p id="pageSubtitle">Define los días de la semana y la vigencia en los que estás disponible para atender auditorías.</p>
+                </div>
+
+                <!-- ================================================
+                     SECCIÓN 1: CONFIGURAR HORARIO SEMANAL
+                ================================================= -->
+                <section id="configurar-horario" class="panel panel-section seccion-visible" data-seccion="configurar-horario">
+                    <div class="panel-head">
+                        <h2>1. Configurar horario semanal</h2>
+                        <span class="pill">Recurrente por día</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>¿Cómo funciona?</strong> Selecciona los días de la semana en los que puedes
+                                atender auditorías y define un rango de vigencia. El patrón se repetirá automáticamente
+                                dentro de ese rango.
+                            </span>
+                        </div>
+
+                        <form id="weeklyForm">
+                            <div class="grid">
+                                <div class="field">
+                                    <label for="weeklyFrom">Vigente desde</label>
+                                    <input type="date" id="weeklyFrom" required>
+                                </div>
+                                <div class="field">
+                                    <label for="weeklyUntil">Vigente hasta (opcional)</label>
+                                    <input type="date" id="weeklyUntil">
+                                </div>
+                            </div>
+
+                            <div class="field" style="margin-top:16px;">
+                                <label for="weeklyReason">Motivo / observación</label>
+                                <input id="weeklyReason" maxlength="500" placeholder="Ej. Disponibilidad semanal">
+                            </div>
+
+                            <div class="hint" style="margin-top:16px;">Selecciona los días de la semana disponibles:</div>
+                            <div class="weekday-grid" id="weekdayGrid"></div>
+
+                            <div class="actions">
+                                <button type="submit" class="btn-primary">Guardar disponibilidad semanal</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SECCIÓN 2: BLOQUEAR FECHA
+                ================================================= -->
+                <section id="bloquear-fecha" class="panel panel-section" data-seccion="bloquear-fecha">
+                    <div class="panel-head">
+                        <h2>2. Bloquear fecha del calendario</h2>
+                        <span class="pill">Bloqueo de día completo</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>Bloquea un día específico</strong> para indicar que no podrás atender
+                                auditorías (permisos, incapacidades, compromisos personales, etc.).
+                            </span>
+                        </div>
+
+                        <form id="blockForm">
+                            <div class="field">
+                                <label for="blockDate">Fecha a bloquear</label>
+                                <input type="date" id="blockDate" required>
+                            </div>
+                            <div class="field" style="margin-top:16px;">
+                                <label for="blockReason">Motivo</label>
+                                <input id="blockReason" maxlength="500" placeholder="Motivo del bloqueo">
+                            </div>
+                            <div class="actions">
+                                <button type="submit" class="btn-primary">Bloquear fecha</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SECCIÓN 3: DESBLOQUEAR FECHA
+                ================================================= -->
+                <section id="desbloquear-fecha" class="panel panel-section" data-seccion="desbloquear-fecha">
+                    <div class="panel-head">
+                        <h2>3. Desbloquear fecha del calendario</h2>
+                        <span class="pill">Liberar día</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>Libera un día previamente bloqueado</strong> para que vuelva a estar disponible
+                                para asignación de auditorías.
+                            </span>
+                        </div>
+
+                        <p class="hint" style="margin-bottom:16px;">Seleccione una fecha bloqueada para desbloquear.</p>
+
+                        <form id="unblockForm">
+                            <div class="field">
+                                <label for="unblockDate">Fecha a desbloquear</label>
+                                <input type="date" id="unblockDate" required>
+                            </div>
+                            <div class="actions">
+                                <button type="submit" class="btn-primary">Desbloquear fecha</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SECCIÓN 4: DISPONIBILIDAD EXTRAORDINARIA
+                ================================================= -->
+                <section id="disponibilidad-extraordinaria" class="panel panel-section" data-seccion="disponibilidad-extraordinaria">
+                    <div class="panel-head">
+                        <h2>4. Registrar disponibilidad extraordinaria</h2>
+                        <span class="pill">Excepción al horario</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>Registra una franja disponible fuera de tu horario habitual.</strong> Ideal para
+                                cubrir un rango de fechas que no sigue el patrón semanal (reemplazos, jornadas
+                                especiales, etc.).
+                            </span>
+                        </div>
+
+                        <form id="extraForm">
+                            <div class="grid">
+                                <div class="field">
+                                    <label for="extraFrom">Vigente desde</label>
+                                    <input type="date" id="extraFrom" required>
+                                </div>
+                                <div class="field">
+                                    <label for="extraUntil">Vigente hasta</label>
+                                    <input type="date" id="extraUntil" required>
+                                </div>
+                            </div>
+
+                            <div class="field" style="margin-top:16px;">
+                                <label for="extraReason">Motivo</label>
+                                <input id="extraReason" maxlength="500" placeholder="Motivo de disponibilidad extraordinaria">
+                            </div>
+
+                            <div class="actions">
+                                <button type="submit" class="btn-primary">Registrar disponibilidad</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SECCIÓN 5: HISTORIAL DE DISPONIBILIDAD
+                ================================================= -->
+                <section id="historial-disponibilidad" class="panel panel-section" data-seccion="historial-disponibilidad">
+                    <div class="panel-head">
+                        <h2>5. Historial de disponibilidad</h2>
+                        <span class="pill">Trazabilidad</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>Historial completo.</strong> Aquí se listarán todos los registros de
+                                disponibilidad, bloqueos y desbloqueos que has realizado.
+                            </span>
+                        </div>
+                        <p class="hint">Las disponibilidades registradas aparecerán aquí.</p>
+                    </div>
+                </section>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- =========================================================
+         LÓGICA ORIGINAL (con ajustes puntuales en formateo de fechas
+         y renderizado del historial)
+    ========================================================= -->
+    <div id="modalOverlay" class="modal-overlay">
+    <div id="modalBox" class="modal-box">
+        <h3 id="modalTitle">Mensaje</h3>
+        <p id="modalMessage"></p>
+        <button class="btn-close" onclick="closeModal()">Cerrar</button>
+    </div>
+</div>
+
+
+<div id="editModalOverlay" class="modal-overlay">
+    <div class="modal-box" style="max-width:500px;text-align:left;">
+        <h3>Editar disponibilidad</h3>
+        <form id="editForm">
+            <input type="hidden" id="editId">
+            <div class="field">
+                <label>Día de la semana</label>
+                <select id="editDia">
+                    <option value="lunes">Lunes</option>
+                    <option value="martes">Martes</option>
+                    <option value="miercoles">Miércoles</option>
+                    <option value="jueves">Jueves</option>
+                    <option value="viernes">Viernes</option>
+                    <option value="sabado">Sábado</option>
+                    <option value="domingo">Domingo</option>
+                </select>
+            </div>
+            <div class="grid two">
+                <div class="field">
+                    <label>Vigente desde</label>
+                    <input type="date" id="editDesde" required>
+                </div>
+                <div class="field">
+                    <label>Vigente hasta</label>
+                    <input type="date" id="editHasta">
+                </div>
+            </div>
+            <div class="grid two">
+                <div class="field">
+                    <label>Hora inicio</label>
+                    <input type="time" id="editHoraInicio">
+                </div>
+                <div class="field">
+                    <label>Hora fin</label>
+                    <input type="time" id="editHoraFin">
+                </div>
+            </div>
+            <div class="field">
+                <label>Motivo</label>
+                <input id="editMotivo" maxlength="255">
+            </div>
+            <div style="display:flex;gap:8px;margin-top:16px;">
+                <button type="submit" class="btn-primary">Guardar cambios</button>
+                <button type="button" class="btn-close" onclick="closeEditModal()">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    function showModal(message, type = 'success') {
+        const overlay = document.getElementById('modalOverlay');
+        const box = document.getElementById('modalBox');
+        const title = document.getElementById('modalTitle');
+        const msg = document.getElementById('modalMessage');
+        box.classList.remove('error', 'success');
+        box.classList.add(type === 'error' ? 'error' : 'success');
+        title.textContent = type === 'error' ? 'Error' : 'Éxito';
+        msg.textContent = message;
+        overlay.classList.add('active');
+    }
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+        if (e.target.id === 'modalOverlay') closeModal();
+    });
+    const editOverlay = document.getElementById('editModalOverlay');
+    if (editOverlay) {
+        editOverlay.addEventListener('click', (e) => {
+            if (e.target.id === 'editModalOverlay') closeEditModal();
+        });
+    }
+
+    // Obtener id_usuario del token
+    const token = localStorage.getItem('access_token');
+    let id_usuario = null;
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            id_usuario = payload.user_id || payload.id_usuario || payload.sub;
+        } catch (e) { console.error('Error decoding token', e); }
+    }
+    if (!id_usuario) {
+        id_usuario = "auditor-1234"; // fallback
+    }
+
+    // Generar grid de días de la semana con horarios
+    const diasSemana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+    const weekdayGrid = document.getElementById('weekdayGrid');
+    diasSemana.forEach((dia, idx) => {
+        const el = document.createElement('div');
+        el.className = 'weekday-item';
+        el.innerHTML = `<label><input type="checkbox" data-dia="${dia}" data-idx="${idx}"> ${dia}</label>
+            <div class="time-row" style="display:none; margin-top:4px;">
+                <input type="time" class="hora-inicio" value="08:00">
+                <input type="time" class="hora-fin" value="17:00">
+            </div>`;
+        const cb = el.querySelector('input[type="checkbox"]');
+        const timeRow = el.querySelector('.time-row');
+        cb.addEventListener('change', () => {
+            timeRow.style.display = cb.checked ? 'flex' : 'none';
+        });
+        weekdayGrid.appendChild(el);
+    });
+
+    const apiBase = `/agenda-auditor/${id_usuario}`;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    async function apiPOST(path, body) {
+        const res = await fetch(`${apiBase}${path}`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+            const err = await res.text();
+            showModal('Error: ' + err, 'error');
+        }
+        return res;
+    }
+
+    async function apiDELETE(path, params) {
+        const url = new URL(`${apiBase}${path}`, window.location.origin);
+        if (params) Object.keys(params).forEach(k => url.searchParams.append(k, params[k]));
+        const res = await fetch(url.toString(), {
+            method: 'DELETE',
+            headers: headers
+        });
+        if (!res.ok) {
+            const err = await res.text();
+            showModal('Error: ' + err, 'error');
+        }
+        return res;
+    }
+
+
+    async function apiPUT(path, body) {
+        const res = await fetch(`${apiBase}${path}`, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+            const err = await res.text();
+            showModal('Error: ' + err, 'error');
+        }
+        return res;
+    }
+
+    async function apiGET(path) {
+        const res = await fetch(`${apiBase}${path}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (!res.ok) {
+            const err = await res.text();
+            console.error('Error:', err);
+        }
+        return res;
+    }
+
+    // Form: disponibilidad semanal
+    document.getElementById('weeklyForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const desde = document.getElementById('weeklyFrom').value;
+        const hasta = document.getElementById('weeklyUntil').value || null;
+        const motivo = document.getElementById('weeklyReason').value;
+        const dias = [];
+        document.querySelectorAll('.weekday-item').forEach(item => {
+            const cb = item.querySelector('input[type="checkbox"]');
+            if (cb.checked) {
+                const dia = cb.dataset.dia;
+                const hi = item.querySelector('.hora-inicio').value;
+                const hf = item.querySelector('.hora-fin').value;
+                dias.push({ dia_semana: dia.toLowerCase(), hora_inicio: hi, hora_fin: hf });
+            }
+        });
+        if (dias.length === 0) {
+            showModal('Seleccione al menos un día.', 'error');
+            return;
+        }
+        const body = { fecha_inicio: desde, fecha_fin: hasta, dias: dias, motivo: motivo || 'Disponibilidad semanal' };
+        const res = await apiPOST('/disponibilidad-semanal', body);
+        if (res.ok) {
+            showModal('Disponibilidad semanal guardada correctamente.', 'success');
+            cargarHistorial();
+        }
+    });
+
+    // Form: bloquear fecha
+    document.getElementById('blockForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fecha = document.getElementById('blockDate').value;
+        const motivo = document.getElementById('blockReason').value;
+        const res = await apiPOST('/no-disponible', { fecha_inicio: fecha, motivo: motivo || 'Bloqueo de fecha' });
+        if (res.ok) {
+            showModal('Fecha bloqueada correctamente.', 'success');
+            cargarHistorial();
+        }
+    });
+
+    // Form: desbloquear fecha
+    document.getElementById('unblockForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fecha = document.getElementById('unblockDate').value;
+        const res = await apiDELETE('/no-disponible', { fecha: fecha });
+        if (res.ok) {
+            showModal('Fecha desbloqueada correctamente.', 'success');
+            cargarHistorial();
+        }
+    });
+
+    // Form: disponibilidad extraordinaria
+    document.getElementById('extraForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const desde = document.getElementById('extraFrom').value;
+        const hasta = document.getElementById('extraUntil').value || null;
+        const motivo = document.getElementById('extraReason').value;
+        const res = await apiPOST('/disponibilidad-extraordinaria', { fecha_inicio: desde, fecha_fin: hasta, motivo: motivo || 'Disponibilidad extraordinaria' });
+        if (res.ok) {
+            showModal('Disponibilidad extraordinaria registrada correctamente.', 'success');
+            cargarHistorial();
+        }
+    });
+
+    // ---- Formato seguro de fechas (evita desfase por zona horaria) ----
+    function formatearFechaHistorial(fechaStr) {
+        if (!fechaStr) return '';
+        const str = String(fechaStr).slice(0, 10);
+        if (str.startsWith('9999')) return ''; // No mostrar fechas indefinidas
+        const partes = str.split('-');
+        if (partes.length === 3 && partes[0].length === 4) {
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+        return str;
+    }
+
+    function nombreDiaSemana(num) {
+        const dias = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        return dias[num] || '';
+    }
+    function formatearHora(horaStr) {
+        if (!horaStr) return '';
+        return String(horaStr).slice(0, 5);
+    }
+
+    window.__historialData = [];
+
+    async function eliminarDisponibilidad(id) {
+        if (!confirm('¿Está seguro de eliminar esta disponibilidad?')) return;
+        const res = await apiDELETE(`/disponibilidad/${id}`, null);
+        // apiDELETE expects path with id, but our apiDELETE adds id_usuario base. Need adjust.
+        // Actually we need to call DELETE /agenda-auditor/{id_usuario}/disponibilidad/{id}
+        // apiDELETE currently does `${apiBase}${path}`. So path should be `/disponibilidad/${id}`.
+        // But apiDELETE signature is (path, params). We passed null for params. That's fine.
+        if (res && res.ok) {
+            showModal('Disponibilidad eliminada correctamente.', 'success');
+            cargarHistorial();
+        }
+    }
+
+    function editarDisponibilidad(id) {
+        const record = (window.__historialData || []).find(h => String(h.id_disponibilidad) === String(id));
+        if (!record) {
+            showModal('No se encontró el registro.', 'error');
+            return;
+        }
+        document.getElementById('editId').value = record.id_disponibilidad;
+        const diaMap = {1:'lunes',2:'martes',3:'miercoles',4:'jueves',5:'viernes',6:'sabado',7:'domingo'};
+        document.getElementById('editDia').value = diaMap[record.dia_semana] || 'lunes';
+        document.getElementById('editDesde').value = String(record.fecha_inicio || '').slice(0, 10);
+        document.getElementById('editHasta').value = String(record.fecha_fin || '').slice(0, 10);
+        document.getElementById('editHoraInicio').value = (record.hora_inicio || '').toString().slice(0, 5);
+        document.getElementById('editHoraFin').value = (record.hora_fin || '').toString().slice(0, 5);
+        document.getElementById('editMotivo').value = record.motivo || '';
+        document.getElementById('editModalOverlay').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModalOverlay').classList.remove('active');
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editId').value;
+        const dia = document.getElementById('editDia').value;
+        const desde = document.getElementById('editDesde').value;
+        const hasta = document.getElementById('editHasta').value || null;
+        const hi = document.getElementById('editHoraInicio').value || null;
+        const hf = document.getElementById('editHoraFin').value || null;
+        const motivo = document.getElementById('editMotivo').value;
+        const body = {
+            fecha_inicio: desde,
+            fecha_fin: hasta,
+            dia_semana: dia,
+            hora_inicio: hi,
+            hora_fin: hf,
+            motivo: motivo
+        };
+        const res = await apiPUT(`/disponibilidad/${id}`, body);
+        if (res && res.ok) {
+            showModal('Disponibilidad actualizada correctamente.', 'success');
+            closeEditModal();
+            cargarHistorial();
+        }
+    });
+
+    // Cargar historial (preserva la estructura del panel y formatea correctamente)
+    async function cargarHistorial() {
+        const cont = document.getElementById('historial-disponibilidad');
+        const res = await apiGET('/disponibilidades?incluir_inactivos=false');
+
+        let estructura = `
+            <div class="panel-head">
+                <h2>5. Historial de disponibilidad</h2>
+                <span class="pill">Trazabilidad</span>
+            </div>
+            <div class="panel-body">
+                <div class="section-note">
+                    <span class="note-icon" aria-hidden="true">ℹ</span>
+                    <span>
+                        <strong>Historial completo.</strong> Aquí se listarán todos los registros de
+                        disponibilidad, bloqueos y desbloqueos que has realizado.
+                    </span>
+                </div>`;
+
+        if (!res.ok) {
+            estructura += '<p class="hint">No se pudo cargar el historial.</p></div>';
+            cont.innerHTML = estructura;
+            return;
+        }
+
+        const data = await res.json();
+        const historialRaw = Array.isArray(data.disponibilidad) ? data.disponibilidad : [];
+        window.__historialData = historialRaw;
+        // Evitar duplicados consecutivos idénticos
+        const historial = historialRaw.filter((h, idx) => {
+            if (idx === 0) return true;
+            const prev = historialRaw[idx - 1];
+            return !(h.tipo_registro === prev.tipo_registro &&
+                     h.dia_semana === prev.dia_semana &&
+                     h.fecha_inicio === prev.fecha_inicio &&
+                     h.fecha_fin === prev.fecha_fin &&
+                     h.motivo === prev.motivo);
+        });
+
+        if (historial.length === 0) {
+            estructura += '<p class="hint">No hay registros de disponibilidad.</p>';
+        } else {
+            estructura += '<table class="historial-tabla"><thead><tr><th>Tipo</th><th>Día</th><th>Horas</th><th>Vigente desde</th><th>Vigente hasta</th><th>Motivo</th><th>Acciones</th></tr></thead><tbody>';
+            estructura += historial.map(h => {
+                const fechaInicio = formatearFechaHistorial(h.fecha_inicio);
+                const fechaFin = formatearFechaHistorial(h.fecha_fin);
+                const diaNombre = nombreDiaSemana(h.dia_semana);
+                const horaInicio = formatearHora(h.hora_inicio);
+                const horaFin = formatearHora(h.hora_fin);
+                const horas = horaInicio && horaFin ? `${horaInicio} - ${horaFin}` : '-';
+                return `
+                    <tr>
+                        <td>${h.tipo_registro || 'Registro'}</td>
+                        <td>${diaNombre || '-'}</td>
+                        <td>${horas}</td>
+                        <td>${fechaInicio || '-'}</td>
+                        <td>${fechaFin || '-'}</td>
+                        <td>${h.motivo || '-'}</td>
+                        <td>
+                            <button class="btn-small btn-edit" onclick="editarDisponibilidad('${h.id_disponibilidad}')">Editar</button>
+                            <button class="btn-small btn-delete" onclick="eliminarDisponibilidad('${h.id_disponibilidad}')">Eliminar</button>
+                        </td>
+                    </tr>`;
+            }).join('');
+            estructura += '</tbody></table>';
+            estructura += '</div>';
+        }
+        estructura += '</div>';
+        cont.innerHTML = estructura;
+    }
+
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', () => {
+        cargarHistorial();
+    });
+    cargarHistorial();
+</script>
+
+<!-- =========================================================
+     NAVEGACIÓN ENTRE SECCIONES (solo presentación)
+========================================================= -->
+<script>
+    (function () {
+        const secciones = {
+            'configurar-horario': {
+                titulo: 'Configurar horario semanal',
+                subtitulo: 'Define los días de la semana y la vigencia en los que estás disponible para atender auditorías.'
+            },
+            'bloquear-fecha': {
+                titulo: 'Bloquear fecha',
+                subtitulo: 'Marca un día específico como no disponible para atender auditorías.'
+            },
+            'desbloquear-fecha': {
+                titulo: 'Desbloquear fecha',
+                subtitulo: 'Libera un día previamente bloqueado para que vuelva a estar disponible.'
+            },
+            'disponibilidad-extraordinaria': {
+                titulo: 'Disponibilidad extraordinaria',
+                subtitulo: 'Registra una franja disponible fuera de tu horario habitual.'
+            },
+            'historial-disponibilidad': {
+                titulo: 'Historial de disponibilidad',
+                subtitulo: 'Consulta todos los cambios realizados sobre tu disponibilidad.'
+            }
+        };
+
+        function mostrarSeccion(clave, actualizarHash) {
+            if (!secciones[clave]) clave = 'configurar-horario';
+
+            document.querySelectorAll('.panel-section').forEach(panel => {
+                panel.classList.toggle('seccion-visible', panel.dataset.seccion === clave);
+            });
+
+            document.querySelectorAll('.side a[data-seccion]').forEach(a => {
+                a.classList.toggle('active', a.dataset.seccion === clave);
+            });
+
+            const info = secciones[clave];
+            const titleEl = document.getElementById('pageTitle');
+            const subEl = document.getElementById('pageSubtitle');
+            if (titleEl) titleEl.textContent = info.titulo;
+            if (subEl) subEl.textContent = info.subtitulo;
+
+            if (actualizarHash && window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', '#' + clave);
+            }
+        }
+
+        document.querySelectorAll('.side a[data-seccion]').forEach(a => {
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                mostrarSeccion(a.dataset.seccion, true);
+            });
+        });
+
+        const hash = (window.location.hash || '').replace('#', '');
+        mostrarSeccion(hash && secciones[hash] ? hash : 'configurar-horario', false);
+    })();
+</script>
+
+</body>
+</html>

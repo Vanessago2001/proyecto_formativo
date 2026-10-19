@@ -418,6 +418,43 @@
         }
 
 
+        .action-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-review {
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-approve {
+            background: #e8f5e2;
+            color: #1f7a1f;
+            border-color: #b7e0a5;
+        }
+
+        .btn-approve:hover {
+            background: #d6f0c8;
+        }
+
+        .btn-reject {
+            background: #feecec;
+            color: #b42318;
+            border-color: #f5c2c0;
+        }
+
+        .btn-reject:hover {
+            background: #fdd;
+        }
+
         .message {
 
             padding: 14px;
@@ -622,12 +659,16 @@
         <div>
 
 
-            <a
-                href="/banco-auditores"
-                class="back-button"
-            >
-                ← Volver al banco de auditores
-            </a>
+                        <div class="admin-header" style="margin-bottom: 14px;">
+                <a
+                    href="/banco-auditores"
+                    class="back-button"
+                >
+                    ← Volver al banco de auditores
+                </a>
+
+                <div id="fotoPerfilAdmin" class="profile-photo-thumb" style="width: 78px; height: 78px; border-radius: 12px; overflow: hidden; border: 1px solid #dbe3ea; flex: 0 0 78px;"></div>
+            </div>
 
 
             <div
@@ -1439,6 +1480,15 @@
                             )}
                         </td>
 
+                        <td>
+                            ${item.estado_validacion === "Pendiente" ? `
+                                <div class="action-group">
+                                    <button type="button" class="btn-review btn-approve" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
+                                    <button type="button" class="btn-review btn-reject" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Rechazado')">Rechazar</button>
+                                </div>
+                            ` : "<span class='status-badge status-default'>Revisado</span>"}
+                        </td>
+
                     </tr>
 
                 `;
@@ -1482,9 +1532,12 @@
                             </th>
 
                             <th>
-                                Validación
+                                Validaci��n
                             </th>
 
+                            <th>
+                                Acciones
+                            </th>
                         </tr>
 
                     </thead>
@@ -1659,11 +1712,19 @@
             );
 
 
+        const documentosVisibles = (
+            Array.isArray(
+                documentos
+            )
+        )
+            ? documentos
+            : [];
+
         if (
             !Array.isArray(
-                documentos
+                documentosVisibles
             ) ||
-            !documentos.length
+            !documentosVisibles.length
         ) {
 
             container.innerHTML = `
@@ -1682,12 +1743,30 @@
         let rows = "";
 
 
-        documentos.forEach(
+        documentosVisibles.forEach(
             (item) => {
 
                 const archivo =
                     item.url_archivo;
 
+                const esImagen =
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(
+                        String(archivo || "")
+                    );
+
+                const esPdf =
+                    /\.pdf$/i.test(
+                        String(archivo || "")
+                    );
+
+                const previewHtml =
+                    !archivo
+                        ? "-"
+                        : esImagen
+                            ? "<a href=\"" + escapeHtml(archivo) + "\" target=\"_blank\"><img src=\"" + escapeHtml(archivo) + "\" alt=\"Vista previa\" class=\"document-preview-thumb\" style=\"max-width: 92px; max-height: 92px; object-fit: contain; border: 1px solid #dbe3ea; border-radius: 6px;\"></a>"
+                            : esPdf
+                                ? "<embed src=\"" + escapeHtml(archivo) + "\" type=\"application/pdf\" style=\"width: 100%; max-width: 120px; height: 95px; border: 1px solid #dbe3ea; border-radius: 6px;\">"
+                                : "<a href=\"" + escapeHtml(archivo) + "\" target=\"_blank\" class=\"document-link\">Ver documento</a>";
 
                 rows += `
 
@@ -1740,6 +1819,18 @@
 
                         </td>
 
+                        <td>
+                            ${previewHtml}
+                        </td>
+                        <td>
+                            <div class="action-group">
+                            ${item.estado_revision === "Pendiente" ? `
+                                <button type="button" class="btn-review btn-approve" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
+                                <button type="button" class="btn-review btn-reject" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Rechazado')">Rechazar</button>
+                            ` : "<span class='status-badge status-default'>Revisado</span>"}
+                            </div>
+                        </td>
+
                     </tr>
 
                 `;
@@ -1776,6 +1867,13 @@
 
                             <th>
                                 Documento
+                            </th>
+                            <th>
+                                Vista previa
+                            </th>
+
+                            <th>
+                                Acciones
                             </th>
 
                         </tr>
@@ -1831,7 +1929,8 @@
             const response =
                 await fetch(
 
-                    "/administrar-auditores/solicitudes/" +
+                    // El backend registra estas rutas en /administradores/auditores.
+                    "/administradores/auditores/solicitudes/" +
                     encodeURIComponent(
                         idPostulacion
                     ),
@@ -1857,10 +1956,7 @@
 
 
             if (
-                response.status ===
-                    401 ||
-                response.status ===
-                    403
+                response.status === 401
             ) {
 
                 localStorage
@@ -1873,6 +1969,14 @@
 
                 return;
 
+            }
+
+            if (
+                response.status === 403
+            ) {
+                throw new Error(
+                    "No tiene permisos para consultar esta solicitud del banco de auditores."
+                );
             }
 
 
@@ -2050,6 +2154,47 @@
             data.perfil
         );
 
+        const fotoAdmin =
+            document.getElementById(
+                "fotoPerfilAdmin"
+            );
+
+        if (
+            fotoAdmin &&
+            data.perfil &&
+            data.perfil.foto_url
+        ) {
+
+            fotoAdmin.innerHTML = `
+                <a
+                    href="${escapeHtml(
+                        data.perfil.foto_url
+                    )}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <img
+                        alt="Foto profesional"
+                        src="${escapeHtml(
+                            data.perfil.foto_url
+                        )}"
+                        style="width: 100%; height: 100%; object-fit: cover;"
+                    >
+                </a>
+            `;
+
+        } else if (fotoAdmin) {
+
+            fotoAdmin.innerHTML = `
+                <span
+                    style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: #94a3b8; font-size: 11px;"
+                >
+                    Sin foto
+                </span>
+            `;
+
+        }
+
 
         renderCompetencias(
             data.competencias
@@ -2135,6 +2280,116 @@
 
         cargarSolicitud();
 
+    }
+
+    async function revisarCompetencia(idCompetencia, nuevoEstado) {
+        let observacion = "";
+
+        if (nuevoEstado === "Rechazado") {
+            observacion =
+                window.prompt(
+                    "Indique la observaci��n para rechazar esta competencia:"
+                );
+
+            if (!observacion) {
+                alert(
+                    "La observaci��n es obligatoria para rechazar la competencia."
+                );
+                return;
+            }
+        }
+
+        try {
+            const response = await fetch(
+                `/administradores/auditores/competencias/${encodeURIComponent(idCompetencia)}/revision`,
+                {
+                    method: "POST",
+                    headers: Object.assign(
+                        {},
+                        headers(),
+                        {
+                            "Content-Type":
+                                "application/json"
+                        }
+                    ),
+                    body: JSON.stringify({
+                        estado_validacion: nuevoEstado,
+                        observacion: observacion
+                    })
+                }
+            );
+
+            const data =
+                await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "No fue posible revisar la competencia."
+                );
+            }
+
+            await cargarSolicitud();
+        } catch (error) {
+            alert(
+                error.message ||
+                "No fue posible revisar la competencia."
+            );
+        }
+    }
+
+    async function revisarDocumentoSoporte(idDocumento, nuevoEstado) {
+        let observacion = "";
+
+        if (nuevoEstado === "Rechazado") {
+            observacion =
+                window.prompt(
+                    "Indique la observación para rechazar este documento:"
+                );
+
+            if (!observacion) {
+                alert("La observación es obligatoria para rechazar el documento.");
+                return;
+            }
+        }
+
+        try {
+            const response = await fetch(
+                `/administradores/auditores/documentos/${encodeURIComponent(idDocumento)}/revision`,
+                {
+                    method: "POST",
+                    headers: Object.assign(
+                        {},
+                        headers(),
+                        {
+                            "Content-Type":
+                                "application/json"
+                        }
+                    ),
+                    body: JSON.stringify({
+                        estado_revision: nuevoEstado,
+                        observacion: observacion
+                    })
+                }
+            );
+
+            const data =
+                await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "No fue posible revisar el documento."
+                );
+            }
+
+            await cargarSolicitud();
+        } catch (error) {
+            alert(
+                error.message ||
+                "No fue posible revisar el documento."
+            );
+        }
     }
 
 </script>

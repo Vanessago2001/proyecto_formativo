@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>CertiSENA · Ver solicitud de auditor</title>
+    <style>
+        :root {
+            --green: #15803d;
+            --dark: #16324f;
+            --bg: #f4f7f8;
+            --line: #dbe4e9;
+            --red: #b91c1c
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            font-family: Inter, Arial, sans-serif;
+            color: #1e293b
+        }
+
+        .top {
+            background: #16324f;
+            color: #fff;
+            padding: 18px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+
+        .top h1 {
+            margin: 0;
+            font-size: 20px
+        }
+
+        .wrap {
+            max-width: 1180px;
+            margin: 28px auto;
+            padding: 0 18px
+        }
+
+        .hero {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 8px 24px #0f172a0d
+        }
+
+        .hero-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: flex-start
+        }
+
+        .status {
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            background: #e2e8f0
+        }
+
+        .status.aprobado {
+            background: #dcfce7;
+            color: #166534
+        }
+
+        .status.rechazado {
+            background: #fee2e2;
+            color: #991b1b
+        }
+
+        .status.revision {
+            background: #fef3c7;
+            color: #92400e
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 16px
+        }
+
+        .field {
+            padding: 13px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #f8fafc
+        }
+
+        .field small {
+            display: block;
+            color: #64748b;
+            margin-bottom: 5px
+        }
+
+        .section {
+            margin-top: 18px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            overflow: hidden
+        }
+
+        .section summary {
+            padding: 16px 18px;
+            font-weight: 800;
+            cursor: pointer;
+            background: #f8fafc
+        }
+
+        .section-body {
+            padding: 18px
+        }
+
+        .doc {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px
+        }
+
+        .doc.approved {
+            border-left: 4px solid #16a34a
+        }
+
+        .doc.rejected {
+            border-left: 4px solid #dc2626;
+            background: #fffafa
+        }
+
+        .doc.pending {
+            border-left: 4px solid #d97706
+        }
+
+        .doc-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px
+        }
+
+        .btn {
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer
+        }
+
+        .btn.green {
+            background: var(--green);
+            border-color: var(--green);
+            color: #fff
+        }
+
+        .btn.red {
+            color: #b91c1c;
+            border-color: #fecaca
+        }
+
+        .obs {
+            margin-top: 10px;
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px
+        }
+
+        .review-box {
+            display: grid;
+            gap: 10px;
+            margin-top: 12px
+        }
+
+        .review-box textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px
+        }
+
+        .empty {
+            color: #64748b;
+            padding: 12px
+        }
+
+        .back {
+            color: #fff;
+            text-decoration: none
+        }
+
+        @media(max-width:720px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+
+            .hero-row {
+                flex-direction: column
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="top">
+        <h1>CertiSENA · Revisión de Auditor</h1><a class="back" href="/banco-auditores">← Banco de auditores</a>
+    </header>
+    <main class="wrap">
+        <section class="hero">
+            <div class="hero-row">
+                <div>
+                    <h2 id="nombre">Cargando...</h2>
+                    <p id="correo"></p><small id="postId"></small>
+                </div><span id="estado" class="status">Cargando</span>
+            </div>
+            <div id="datos" class="grid"></div>
+            <div id="observacionPost"></div>
+        </section>
+        <details class="section" open>
+            <summary>📄 Documentos de soporte · aprobación individual</summary>
+            <div class="section-body">
+                <p>Un documento aprobado queda bloqueado para el auditor. Un documento rechazado muestra el motivo y
+                    podrá ser reemplazado cuando la postulación esté en Correcciones.</p>
+                <div id="documentos"></div>
+            </div>
+        </details>
+        <details class="section">
+            <summary>🎓 Formación académica</summary>
+            <div class="section-body" id="titulos"></div>
+        </details>
+        <details class="section">
+            <summary>💼 Experiencia laboral</summary>
+            <div class="section-body" id="laboral"></div>
+        </details>
+        <details class="section">
+            <summary>🔎 Experiencia en auditoría</summary>
+            <div class="section-body" id="auditoria"></div>
+        </details>
+        <details class="section">
+            <summary>⚙️ Competencias</summary>
+            <div class="section-body" id="competencias"></div>
+        </details>
+        <details class="section">
+            <summary>⚠️ Conflictos de interés</summary>
+            <div class="section-body" id="conflictos"></div>
+        </details>
+        <section class="section">
+            <div class="section-body">
+                <h3>Decisión de la postulación</h3>
+                <div class="review-box"><textarea id="obs"
+                        placeholder="Observación general de la postulación"></textarea>
+                    <div class="actions"><button class="btn" onclick="cambiarEstado('En Revisión')">Poner en
+                            revisión</button><button class="btn" onclick="cambiarEstado('Correcciones')">Solicitar
+                            correcciones</button><button class="btn green" onclick="cambiarEstado('Aprobado')">Aprobar
+                            postulación</button><button class="btn red" onclick="cambiarEstado('Rechazado')">Rechazar
+                            postulación</button></div>
+                    <div id="msg"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script>
+        const token = localStorage.getItem('access_token');
+        const id = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop());
+        const H = { 'Authorization': 'Bearer ' + token };
+        const HJ = { ...H, 'Content-Type': 'application/json' };
+
+        const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[m]));
+
+        const json = async r => {
+            const t = await r.text();
+            try {
+                return t ? JSON.parse(t) : {}
+            } catch {
+                return { detail: t }
+            }
+        };
+
+        function statusClass(s) {
+            return s === 'Aprobado'
+                ? 'aprobado'
+                : s === 'Rechazado'
+                    ? 'rechazado'
+                    : s === 'En Revisión' || s === 'Correcciones'
+                        ? 'revision'
+                        : ''
+        }
+
+        let data = null;
+
+        async function load() {
+            const r = await fetch('/administradores/auditores/solicitudes/' + encodeURIComponent(id), {
+                headers: H
+            });
+
+            data = await json(r);
+
+            if (!r.ok) return show(data.detail || 'No fue posible cargar la solicitud.');
+
+            document.getElementById('nombre').textContent = data.nombre || 'Auditor';
+            document.getElementById('correo').textContent = data.correo || '';
+            document.getElementById('postId').textContent = 'Postulación: ' + data.id_postulacion;
+
+            const st = data.estado_postulacion || '';
+            const se = document.getElementById('estado');
+
+            se.textContent = st;
+            se.className = 'status ' + statusClass(st);
+
+            document.getElementById('datos').innerHTML = `
+            <div class="field">
+                <small>Documento</small>
+                ${esc(data.tipo_doc)} ${esc(data.num_doc)}
+            </div>
+            <div class="field">
+                <small>Estado auditor</small>
+                ${esc(data.estado_auditor)}
+            </div>
+            <div class="field">
+                <small>Fecha postulación</small>
+                ${esc(data.fecha_postulacion || '-')}
+            </div>
+            <div class="field">
+                <small>Fecha revisión</small>
+                ${esc(data.fecha_revision || '-')}
+            </div>
+        `;
+
+            document.getElementById('observacionPost').innerHTML = data.observaciones_tecnicas
+                ? `
+                <div class="obs">
+                    <strong>Observación general</strong><br>
+                    ${esc(data.observaciones_tecnicas)}
+                </div>
+            `
+                : '';
+
+            renderDocs();
+            renderSimple('titulos', data.titulos || [], 'titulo');
+            renderSimple('laboral', data.experiencias_laborales || [], 'empresa');
+            renderSimple('auditoria', data.experiencias_auditoria || [], 'organizacion');
+            renderSimple('competencias', data.competencias || [], 'tipo_competencia');
+            renderConflictos()
+        }
+
+        function renderSimple(id, items, label) {
+            const c = document.getElementById(id);
+
+            if (!items.length) {
+                c.innerHTML = '<div class="empty">No hay registros.</div>';
+                return
+            }
+
+            c.innerHTML = items.map(x => `
+            <div class="field">
+                <strong>${esc(x[label] || x.titulo || '-')}</strong>
+                <div>${esc(x.institucion || x.cargo || x.rol_auditoria || x.descripcion || '')}</div>
+            </div>
+        `).join('')
+        }
+
+        function renderConflictos() {
+            const c = document.getElementById('conflictos');
+
+            c.innerHTML = data.conflictos?.length
+                ? data.conflictos.map(x => `
+                <div class="field">
+                    <strong>${esc(x.tipo_conflicto)}</strong>
+                    <div>${esc(x.descripcion)}</div>
+                </div>
+            `).join('')
+                : '<div class="field">Declara no tener conflicto de interés.'
+        }
+
+        function renderDocs() {
+            const c = document.getElementById('documentos');
+            const docs = data.documentos || [];
+
+            if (!docs.length) {
+                c.innerHTML = '<div class="empty">No hay documentos.</div>';
+                return
+            }
+
+            c.innerHTML = docs.map(d => {
+                const st = d.estado_revision || 'Pendiente';
+                const cls = st === 'Aprobado'
+                    ? 'approved'
+                    : st === 'Rechazado'
+                        ? 'rejected'
+                        : 'pending';
+
+                const locked = st === 'Aprobado';
+
+                return `
+                <article class="doc ${cls}">
+                    <div class="doc-head">
+                        <div>
+                            <strong>${esc(d.nombre_archivo)}</strong>
+                            <div>
+                                ${esc(d.tipo_documento)} · ${esc(d.categoria_documento || 'Soporte')}
+                            </div>
+                        </div>
+                        <strong>${esc(st)}</strong>
+                    </div>
+
+                    ${st === 'Rechazado' && d.observacion_revision
+                        ? `
+                            <div class="obs">
+                                <strong>Motivo del rechazo</strong><br>
+                                ${esc(d.observacion_revision)}
+                            </div>
+                        `
+                        : ''}
+
+                    <div class="doc-actions">
+                        <button class="btn" onclick="window.open('${esc(d.url_archivo)}','_blank')">
+                            👁 Ver
+                        </button>
+
+                        ${locked
+                        ? ''
+                        : `
+                                <button class="btn green" onclick="revisar('${esc(d.id_documento)}','Aprobado')">
+                                    ✓ Aprobar
+                                </button>
+                                <button class="btn red" onclick="revisar('${esc(d.id_documento)}','Rechazado')">
+                                    ✕ Rechazar
+                                </button>
+                            `}
+                    </div>
+                </article>
+            `
+            }).join('')
+        }
+
+        async function revisar(docId, estado) {
+            let obs = '';
+
+            if (estado === 'Rechazado') {
+                obs = prompt('Escriba la observación del rechazo del documento:', '');
+
+                if (obs === null) return;
+
+                if (!obs.trim()) return alert('La observación es obligatoria.')
+            }
+
+            const r = await fetch('/administradores/auditores/documentos/' + docId + '/revision', {
+                method: 'POST',
+                headers: HJ,
+                body: JSON.stringify({
+                    estado_revision: estado,
+                    observacion: obs
+                })
+            });
+
+            const d = await json(r);
+
+            if (!r.ok) return alert(d.detail || 'No fue posible revisar el documento.');
+
+            await load()
+        }
+
+        async function cambiarEstado(estado) {
+            let obs = document.getElementById('obs').value.trim();
+
+            if ((estado === 'Rechazado' || estado === 'Correcciones') && !obs) {
+                return alert('Debe indicar una observación.');
+            }
+
+            const r = await fetch('/administradores/auditores/solicitudes/' + id + '/estado', {
+                method: 'POST',
+                headers: HJ,
+                body: JSON.stringify({
+                    nuevo_estado: estado,
+                    observaciones: obs
+                })
+            });
+
+            const d = await json(r);
+
+            if (!r.ok) return alert(d.detail || 'No fue posible cambiar el estado.');
+
+            alert(d.mensaje || 'Estado actualizado.');
+            await load()
+        }
+
+        function show(x) {
+            document.getElementById('msg').textContent = x
+        }
+
+        if (!token) location.href = '/login'; else load();
+    </script>
+</body>
+
+</html>

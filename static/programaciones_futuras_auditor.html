@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Programaciones futuras del auditor</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .portal-shell { max-width:1100px; margin:0 auto; padding:28px; }
+        .header-logo { display:flex; align-items:center; gap:16px; }
+        .header-logo img { width:76px; height:auto; }
+        .header-logo h1 { font-size:30px; margin:0; }
+        .header-logo p { font-size:13px; opacity:.92; margin-top:6px; }
+        .card { background:#fff; border:1px solid #dbe4d4; border-radius:12px; padding:22px; margin-bottom:22px; box-shadow:0 2px 8px rgba(37,109,0,.06); }
+        .card-title { color:#256d00; font-size:20px; margin:0 0 14px; }
+        .help-text { color:#5f6f69; font-size:13px; margin-bottom:12px; }
+        .record-table-wrap { overflow-x:auto; border-radius:8px; border:1px solid #e5f0e1; }
+        .badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; }
+        .badge.programada { background:#e0f2fe; color:#0369a1; }
+        .badge.cancelada { background:#fee2e2; color:#991b1b; }
+        .back-button { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:6px; background:#e9eeea; color:#3f4942; text-decoration:none; font-weight:600; font-size:13px; }
+        .empty { text-align:center; padding:24px; color:#64748b; }
+        .mini-btn { padding:6px 10px; border-radius:6px; border:none; cursor:pointer; font-weight:600; font-size:11px; background:#3baa01; color:#fff; }
+        .footer { text-align:center; padding:18px 0; color:#64748b; font-size:12px; border-top:1px solid #dbe4d4; margin-top:28px; }
+        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); align-items:center; justify-content:center; z-index:9999; padding:18px; }
+        .modal.show { display:flex; }
+        .modal-card { background:#fff; border-radius:12px; width:min(600px,100%); max-height:90vh; overflow:auto; padding:24px; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+        .modal-card h3 { color:#256d00; margin:0 0 14px; }
+        .modal-field { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb; }
+        .modal-field:last-child { border-bottom:0; }
+        .modal-field label { font-weight:700; color:#256d00; font-size:13px; }
+        .modal-field span { color:#334155; font-size:13px; text-align:right; max-width:60%; word-break:break-word; }
+    </style>
+</head>
+<body>
+    <header class="login-header">
+        <div class="header-content header-logo">
+            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+            <div>
+                <h1>CertiSENA</h1>
+                <p class="subtitle">Programaciones futuras del auditor</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <div style="margin-bottom:18px;">
+            <a class="back-button" href="/auditor">Volver al Dashboard</a>
+        </div>
+
+        <div id="mensaje" style="display:none;padding:12px 14px;border-radius:8px;margin-bottom:16px;font-weight:600;"></div>
+
+        <section class="card">
+            <h2 class="card-title">Solicitudes asignadas sin programar</h2>
+            <p class="help-text">Aquí verás las solicitudes aprobadas donde ya estás asignado como auditor y aún no tienen programación de visita.</p>
+            <div class="record-table-wrap">
+                <table class="record-table">
+                    <thead>
+                        <tr>
+                            <th>Solicitud aprobada / empresa</th>
+                            <th>Tu rol</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+            </div>
+            <p id="resumen" class="help-text" style="margin-top:12px;"></p>
+        </section>
+    </main>
+
+    <div class="modal" id="modalDetalle">
+        <div class="modal-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <h3>Detalle de la solicitud asignada</h3>
+                <button type="button" onclick="cerrarModal()" style="border:none;background:#94a3b8;color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;">Cerrar</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        © 2026 CertiSENA - SENA. Todos los derechos reservados.
+    </footer>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        let usuarioId = null;
+
+        function escapeHtml(v){ return (v===null||v===undefined)?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+        async function resolverUsuario() {
+            if (usuarioId) return usuarioId;
+            if (!token) return null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
+                return usuarioId;
+            } catch { return null; }
+        }
+
+        function mostrarMensaje(texto, tipo) {
+            const el = document.getElementById('mensaje');
+            el.textContent = texto;
+            el.style.display = 'block';
+            el.style.background = tipo === 'ok' ? '#e6f5e9' : '#fff0ef';
+            el.style.color = tipo === 'ok' ? '#17582c' : '#8a2020';
+            el.style.border = tipo === 'ok' ? '1px solid #b8dfc0' : '1px solid #e7bfbb';
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+
+        async function cargarProgramaciones() {
+            const uid = await resolverUsuario();
+            if (!uid) { mostrarMensaje('No se pudo identificar al auditor.', 'error'); return; }
+            try {
+                const [asignacionesRes, programadasRes] = await Promise.all([
+                    fetch('/agenda-auditor/solicitudes-asignadas/' + encodeURIComponent(uid), { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } }),
+                    fetch('/agenda-auditor/' + encodeURIComponent(uid) + '/auditorias-programadas', { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } })
+                ]);
+                const asignacionesData = await asignacionesRes.json().catch(() => ({}));
+                const programadasData = await programadasRes.json().catch(() => ({}));
+
+                const programadas = Array.isArray(programadasData.auditorias) ? programadasData.auditorias : [];
+                const solicitudesProgramadas = new Set(programadas.map((item) => String(item.id_solicitud)));
+
+                const sourceRows = Array.isArray(asignacionesData.asignaciones) ? asignacionesData.asignaciones : [];
+                const grouped = new Map();
+                sourceRows.forEach((row, index) => {
+                    const requestId = row.id_solicitud || row.solicitud_id || row.idSolicitud || '';
+                    const key = requestId ? String(requestId) : `sin-solicitud-${index}`;
+                    if (!grouped.has(key)) {
+                        grouped.set(key, { ...row, id_solicitud: requestId || row.id_solicitud, auditores: [] });
+                    }
+                    const group = grouped.get(key);
+                    const nestedAuditors = Array.isArray(row.auditores) ? row.auditores : [row];
+                    nestedAuditors.forEach((auditor) => {
+                        const idUsuario = auditor.id_usuario || auditor.id_auditor || auditor.id_usuario_auditor;
+                        if (!idUsuario) return;
+                        if (!group.auditores.some((existing) => String(existing.id_usuario) === String(idUsuario))) {
+                            group.auditores.push({
+                                ...auditor,
+                                id_usuario: idUsuario,
+                                auditor_nombre: auditor.auditor_nombre || auditor.nombre || 'Auditor sin nombre',
+                                auditor_correo: auditor.auditor_correo || auditor.correo || '',
+                                auditor_tipo_doc: auditor.auditor_tipo_doc || auditor.tipo_doc || auditor.tipo_documento || '',
+                                auditor_num_doc: auditor.auditor_num_doc || auditor.num_doc || auditor.numero_documento || auditor.numero_doc || '',
+                                rol_auditor: auditor.rol_auditor || auditor.rol || 'Auditor',
+                                estado_asignacion: auditor.estado_asignacion || row.estado_asignacion || 'Agendada'
+                            });
+                        }
+                    });
+                });
+
+                const misSolicitudes = Array.from(grouped.values()).filter((group) => {
+                    const auditores = group.auditores || [];
+                    return auditores.some((auditor) => String(auditor.id_usuario) === String(uid)) && !solicitudesProgramadas.has(String(group.id_solicitud));
+                });
+
+                window.__programacionesFuturas = misSolicitudes;
+                const tbody = document.getElementById('rows');
+                if (!misSolicitudes.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty">No tienes solicitudes asignadas sin programar.</td></tr>';
+                    document.getElementById('resumen').textContent = '';
+                    return;
+                }
+                tbody.innerHTML = misSolicitudes.map((group) => {
+                    const auditor = (group.auditores || []).find((item) => String(item.id_usuario) === String(uid)) || {};
+                    return `<tr>
+                        <td>${escapeHtml(group.numero_radicado || group.id_solicitud || '-')}<br><span class="help-text">${escapeHtml(group.empresa_nombre || '-')}</span></td>
+                        <td>${escapeHtml(auditor.rol_auditor || 'Auditor')}</td>
+                        <td><span class="badge programada">${escapeHtml(auditor.estado_asignacion || 'Agendada')}</span></td>
+                        <td class="row-actions">
+                            <button class="mini-btn" type="button" onclick="verDetalle('${escapeHtml(group.id_solicitud)}')">Ver</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+                document.getElementById('resumen').textContent = `Total: ${misSolicitudes.length} solicitud(es) asignada(s) sin programar.`;
+            } catch (error) {
+                console.error('No fue posible cargar las programaciones:', error);
+                document.getElementById('rows').innerHTML = '<tr><td colspan="4" class="empty">No se pudieron cargar las programaciones.</td></tr>';
+            }
+        }
+
+        function verDetalle(idSolicitud) {
+            const group = (window.__programacionesFuturas || []).find((item) => String(item.id_solicitud) === String(idSolicitud));
+            const modal = document.getElementById('modalDetalle');
+            const body = document.getElementById('modalBody');
+            if (!group) {
+                body.innerHTML = '<p class="help-text">No se encontró la información de la solicitud.</p>';
+                modal.classList.add('show');
+                return;
+            }
+            const auditor = (group.auditores || []).find((item) => String(item.id_usuario) === String(usuarioId)) || {};
+            body.innerHTML = `
+                <div class="modal-field"><label>Solicitud</label><span>${escapeHtml(group.numero_radicado || group.id_solicitud || '-')}</span></div>
+                <div class="modal-field"><label>Empresa</label><span>${escapeHtml(group.empresa_nombre || '-')}</span></div>
+                <div class="modal-field"><label>Tu rol</label><span>${escapeHtml(auditor.rol_auditor || 'Auditor')}</span></div>
+                <div class="modal-field"><label>Estado</label><span>${escapeHtml(auditor.estado_asignacion || 'Agendada')}</span></div>
+                <div class="modal-field"><label>Documento</label><span>${escapeHtml((auditor.auditor_tipo_doc || '') + ' ' + (auditor.auditor_num_doc || '-'))}</span></div>
+                <div class="modal-field"><label>Dirección de la empresa</label><span>${escapeHtml(group.empresa_direccion || '-')}</span></div>
+                <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(group.empresa_ciudad || '-')}</span></div>
+            `;
+            modal.classList.add('show');
+        }
+
+        (async function init() {
+            const uid = await resolverUsuario();
+            if (!uid) { mostrarMensaje('No se pudo identificar al auditor.', 'error'); return; }
+            await cargarProgramaciones();
+        })();
+    </script>
+</body>
+</html>

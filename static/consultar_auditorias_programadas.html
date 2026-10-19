@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Consultar auditorías programadas</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        :root {
+            color-scheme: light;
+            --sena-green: #39a900;
+            --sena-green-dark: #256d00;
+            --sena-green-bright: #3baa01;
+            --sena-green-hover: #2f8f00;
+            --sena-green-light: #f1f8ed;
+            --bg: #f4f7f5;
+            --ink: #26352b;
+            --muted: #5f6f69;
+            --line: #dce5de;
+            --white: #fff;
+            --danger: #9d2b2b;
+            --shadow-card: 0 5px 20px rgba(32, 74, 25, .07);
+            --shadow-hover: 0 8px 24px rgba(32, 74, 25, .10);
+            --radius-card: 14px;
+            --radius-control: 8px;
+        }
+
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        /* =========================================================
+           HEADER
+        ========================================================= */
+        .login-header {
+            background: #3BAA01;
+            color: #fff;
+            padding: 20px clamp(18px, 4vw, 42px);
+        }
+
+        .login-header .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            max-width: 1360px;
+            margin: 0 auto;
+        }
+
+        .login-header .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .login-header .sena-blanco {
+            width: 72px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .login-header h1 {
+            margin: 0;
+            font-size: 26px;
+            line-height: 1.15;
+            letter-spacing: -.02em;
+        }
+
+        .login-header .subtitle {
+            margin: 4px 0 0;
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: .92;
+        }
+
+        .login-header .profile-link {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13.5px;
+            padding: 9px 15px;
+            border: 1px solid rgba(255, 255, 255, .35);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .08);
+            transition: .18s ease;
+        }
+
+        .login-header .profile-link:hover {
+            background: rgba(255, 255, 255, .18);
+            border-color: rgba(255, 255, 255, .55);
+        }
+
+        /* =========================================================
+           LAYOUT
+        ========================================================= */
+        .portal-shell {
+            width: 100%;
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 24px 24px 48px;
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 250px minmax(0, 1fr);
+            gap: 22px;
+            align-items: start;
+        }
+
+        /* =========================================================
+           SIDEBAR
+        ========================================================= */
+        .side {
+            position: sticky;
+            top: 20px;
+            align-self: start;
+            padding: 13px;
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+        }
+
+        .side h3 {
+            margin: 5px 12px 12px;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 800;
+        }
+
+        .side a {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 11px 12px;
+            margin: 2px 0;
+            color: #334155;
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.35;
+            border-left: 3px solid transparent;
+            border-radius: 0 9px 9px 0;
+            transition: background .18s ease, color .18s ease, border-color .18s ease;
+        }
+
+        .side a:hover {
+            background: #f6faf4;
+            color: var(--sena-green-dark);
+        }
+
+        .side a.active {
+            background: var(--sena-green-light);
+            color: var(--sena-green-dark);
+            border-left-color: var(--sena-green-bright);
+            font-weight: 750;
+        }
+
+        .side a .side-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 7px;
+            background: #eaf4e5;
+            color: var(--sena-green-dark);
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+            transition: .18s ease;
+        }
+
+        .side a.active .side-icon {
+            background: var(--sena-green-bright);
+            color: #fff;
+        }
+
+        .side .logout-link {
+            margin-top: 10px;
+            border-top: 1px solid #e8eee8;
+            padding-top: 14px;
+            color: #b42318;
+        }
+
+        .side .logout-link:hover {
+            background: #fff1f0;
+            color: #9f1d16;
+        }
+
+        .side .logout-link .side-icon {
+            background: #fde8e8;
+            color: #b42318;
+        }
+
+        /* =========================================================
+           CONTENIDO
+        ========================================================= */
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-width: 0;
+        }
+
+        .page-head {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .page-head-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--sena-green-dark);
+            background: #fff;
+            border: 1px solid #cfe3c5;
+            border-radius: 8px;
+            padding: 9px 15px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: .18s ease;
+        }
+
+        .back-link:hover {
+            background: var(--sena-green-light);
+            border-color: var(--sena-green);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(57, 169, 0, .10);
+        }
+
+        .page-head h1 {
+            margin: 0;
+            color: var(--sena-green-dark);
+            font-size: clamp(20px, 2vw, 25px);
+            font-weight: 800;
+            letter-spacing: -.02em;
+        }
+
+        .page-head p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13.5px;
+            line-height: 1.55;
+            max-width: 900px;
+        }
+
+        /* =========================================================
+           PANEL
+        ========================================================= */
+        .panel {
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            transition: box-shadow .25s ease, border-color .25s ease;
+        }
+
+        .panel:hover {
+            border-color: #d2e5c9;
+            box-shadow: var(--shadow-hover);
+        }
+
+        .panel-head {
+            padding: 17px 22px;
+            border-bottom: 1px solid #eef3ee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--sena-green-dark);
+            letter-spacing: -.01em;
+        }
+
+        .panel-head .pill {
+            display: inline-block;
+            background: #eaf4ed;
+            color: #205d35;
+            padding: 5px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: 750;
+        }
+
+        .panel-body {
+            padding: 22px;
+        }
+
+        .help-text {
+            color: var(--muted);
+            font-size: 12.5px;
+            line-height: 1.55;
+            margin: 0 0 14px;
+        }
+
+        /* =========================================================
+           FILTROS
+        ========================================================= */
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .filter-item label {
+            font-weight: 700;
+            font-size: 12.5px;
+            color: #33483c;
+            letter-spacing: .005em;
+        }
+
+        .form-control {
+            width: 100%;
+            height: 42px;
+            min-height: 42px;
+            padding: 0 12px;
+            border: 1px solid #d2ddd4;
+            border-radius: var(--radius-control);
+            font: inherit;
+            font-size: 13.5px;
+            color: var(--ink);
+            background: #fff;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+
+        .form-control:hover:not(:disabled) {
+            border-color: #a9c59d;
+        }
+
+        .form-control:focus {
+            outline: 3px solid rgba(59, 170, 1, .14);
+            border-color: var(--sena-green-bright);
+            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+        }
+
+        input[type="date"].form-control {
+            cursor: pointer;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: .65;
+            transition: opacity .15s ease;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+
+        /* =========================================================
+           BOTONES
+        ========================================================= */
+        .filter-actions {
+            display: flex;
+            gap: 9px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        button,
+        .mini-btn {
+            height: 42px;
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 18px;
+            border: 0;
+            border-radius: var(--radius-control);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-sizing: border-box;
+            white-space: nowrap;
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+        }
+
+        button.mini-btn,
+        .mini-btn {
+            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            color: #fff;
+            box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
+        }
+
+        button.mini-btn:hover,
+        .mini-btn:hover {
+            background: linear-gradient(135deg, #2f8f00, #256d00);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(37, 109, 0, .22);
+        }
+
+        button.mini-btn:disabled,
+        .mini-btn:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Botón "Limpiar" gris */
+        button.mini-btn[style*="94a3b8"] {
+            background: #94a3b8 !important;
+            box-shadow: 0 3px 8px rgba(100, 116, 139, .18);
+        }
+
+        button.mini-btn[style*="94a3b8"]:hover {
+            background: #7d8ea3 !important;
+        }
+
+        /* Botón "Ver" de la tabla */
+        .mini-btn.view {
+            height: 32px;
+            min-height: 32px;
+            padding: 0 14px;
+            font-size: 11.5px;
+            background: var(--sena-green-bright);
+            box-shadow: 0 3px 8px rgba(59, 170, 1, .20);
+        }
+
+        .mini-btn.view:hover {
+            background: var(--sena-green-dark);
+            box-shadow: 0 4px 12px rgba(37, 109, 0, .24);
+        }
+
+        /* =========================================================
+           TABLA
+        ========================================================= */
+        .record-table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            scrollbar-width: thin;
+            scrollbar-color: #b8cdb0 #f3f6f1;
+        }
+
+        table.record-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1150px;
+        }
+
+        .record-table thead {
+            background: #f7faf8;
+        }
+
+        .record-table th {
+            padding: 12px 14px;
+            text-align: left;
+            color: #44574a;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .record-table td {
+            padding: 13px 14px;
+            color: #374151;
+            border-bottom: 1px solid #edf0ed;
+            font-size: 13px;
+            line-height: 1.5;
+            vertical-align: top;
+        }
+
+        .record-table tbody tr:hover {
+            background: #fafcf9;
+        }
+
+        .record-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .record-table .cell-meta {
+            display: block;
+            color: var(--muted);
+            font-size: 11.5px;
+            line-height: 1.45;
+            margin-top: 2px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 32px 20px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        /* =========================================================
+           BADGES
+        ========================================================= */
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 750;
+            white-space: nowrap;
+            letter-spacing: .01em;
+        }
+
+        .badge.programada {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .badge.confirmada {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge.reprogramada {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge.cancelada {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge.ejecutada {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        /* =========================================================
+           MENSAJES
+        ========================================================= */
+        #mensaje {
+            display: none;
+            padding: 12px 15px;
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        /* =========================================================
+           PAGINACIÓN
+        ========================================================= */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            min-width: 38px;
+            height: 38px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd9cf;
+            background: #fff;
+            color: var(--sena-green-dark);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: .15s ease;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--sena-green-light);
+            border-color: var(--sena-green-bright);
+        }
+
+        .pagination button:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        .pagination span {
+            font-size: 13px;
+            color: var(--sena-green-dark);
+            font-weight: 700;
+            padding: 0 6px;
+        }
+
+        .pagination span.pagination-ellipsis {
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        /* =========================================================
+           MODAL
+        ========================================================= */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 35, 22, .55);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 18px;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal.show {
+            display: flex;
+            animation: fadeIn .18s ease both;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-card {
+            background: #fff;
+            border-radius: 14px;
+            width: min(700px, 100%);
+            max-height: 90vh;
+            overflow: auto;
+            padding: 0;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+            animation: popIn .22s ease both;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes popIn {
+            from { transform: translateY(8px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 22px;
+            border-bottom: 1px solid #e8eee8;
+            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            border-top-left-radius: 14px;
+            border-top-right-radius: 14px;
+        }
+
+        .modal-head h3 {
+            color: var(--sena-green-dark);
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -.01em;
+        }
+
+        .modal-close {
+            flex: 0 0 auto;
+            border: 0;
+            background: #f1f5f3;
+            color: #5f6f69;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: .15s ease;
+        }
+
+        .modal-close:hover {
+            background: #ffe2e2;
+            color: #b42318;
+        }
+
+        .modal-body {
+            padding: 20px 22px 22px;
+        }
+
+        .modal-field {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px 0;
+            border-bottom: 1px solid #edf0ed;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .modal-field:last-child {
+            border-bottom: 0;
+        }
+
+        .modal-field label {
+            font-weight: 700;
+            color: var(--sena-green-dark);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            flex: 0 0 auto;
+            min-width: 130px;
+        }
+
+        .modal-field span {
+            color: #263238;
+            font-size: 13px;
+            text-align: right;
+            flex: 1;
+            overflow-wrap: anywhere;
+            font-weight: 600;
+        }
+
+        /* =========================================================
+           FOOTER
+        ========================================================= */
+        .footer {
+            text-align: center;
+            padding: 18px 0;
+            color: #8a928c;
+            font-size: 12px;
+            border-top: 1px solid var(--line);
+            margin-top: 28px;
+        }
+
+        /* =========================================================
+           RESPONSIVE
+        ========================================================= */
+        @media (max-width: 1000px) {
+            .portal-grid { grid-template-columns: 1fr; }
+
+            .side {
+                position: static;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 5px;
+            }
+
+            .side h3 { grid-column: 1 / -1; }
+
+            .side a {
+                margin: 0;
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 8px;
+            }
+
+            .side a.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--sena-green-bright);
+            }
+
+            .side .logout-link {
+                border-top: 0;
+                margin-top: 0;
+                padding-top: 11px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .portal-shell { padding: 16px 12px 32px; }
+            .filters { grid-template-columns: 1fr; }
+            .panel-body { padding: 16px; }
+            .panel-head { padding: 14px 16px; }
+            .side { grid-template-columns: 1fr; }
+            .login-header .sena-blanco { width: 58px; }
+            .login-header h1 { font-size: 21px; }
+            .login-header .subtitle { font-size: 12px; }
+            .login-header .profile-link { font-size: 12px; padding: 7px 12px; }
+            .modal-field { flex-direction: column; gap: 4px; }
+            .modal-field span { text-align: left; }
+            .modal-field label { min-width: 0; }
+            .filter-actions button { width: 100%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    </style>
+
+<style>
+.modal-section { margin-bottom: 14px; padding: 10px; border: 1px solid #dbe4d4; border-radius: 8px; background: #f9fbf9; }
+.modal-section h4 { margin: 0 0 8px 0; color: #256d00; font-size: 14px; border-bottom: 1px solid #dbe4d4; padding-bottom: 4px; }
+.modal-field { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e2e8f0; }
+.modal-field label { font-weight: bold; color: #334155; font-size: 0.85rem; }
+.modal-field span { color: #555; font-size: 0.85rem; text-align: right; max-width: 60%; }
+.modal-auditor { padding: 8px; margin-bottom: 8px; border: 1px solid #dbe4d4; border-radius: 6px; background: #fff; }
+.modal-auditor strong { color: #256d00; }
+</style>
+
+<style>
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.modal-actions button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+    font-size: 0.85rem;
+}
+.modal-actions button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+.btn-ver { background: linear-gradient(135deg, #3baa01, #256d00); }
+.btn-editar { background: linear-gradient(135deg, #2563eb, #1e40af); }
+.btn-cancelar { background: linear-gradient(135deg, #dc2626, #991b1b); }
+</style>
+</head>
+<body>
+    <header class="login-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle" id="subtitulo">Consultar auditorías programadas</p>
+                </div>
+            </div>
+            <a class="profile-link" href="/profile">Mi perfil</a>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <div class="portal-grid">
+
+            <!-- =========================================================
+                 MENÚ LATERAL
+            ========================================================= -->
+            <nav class="side" aria-label="Navegación de auditorías">
+                <h3>Consulta de agenda</h3>
+
+                <a href="/consultar-auditorias-programadas" class="active">
+                    <span class="side-icon">1</span>
+                    <span>Consultar auditorías</span>
+                </a>
+            </nav>
+
+            <!-- =========================================================
+                 CONTENIDO
+            ========================================================= -->
+            <section class="content">
+
+                <div class="page-head">
+                    <div class="page-head-top">
+                        <a href="/auditor" class="back-link" id="btnRegresar">
+                            <span aria-hidden="true">←</span> Volver al Dashboard
+                        </a>
+                    </div>
+                    <h1>Consultar auditorías programadas</h1>
+                    <p>Consulta las auditorías que te han asignado o, si eres administrador, todas las programaciones
+                        registradas en el sistema.</p>
+                </div>
+
+                <div id="mensaje"></div>
+
+                <!-- ================================================
+                     FILTROS
+                ================================================= -->
+                <section class="panel">
+                    <div class="panel-head">
+                        <h2>Filtros de búsqueda</h2>
+                        <span class="pill">Refinar resultados</span>
+                    </div>
+                    <div class="panel-body">
+                        <p class="help-text">
+                            Ajusta los criterios para filtrar las auditorías programadas según estado, modalidad,
+                            ciudad o rango de fechas.
+                        </p>
+                        <div class="filters">
+                            <div class="filter-item">
+                                <label for="filtroEstado">Estado</label>
+                                <select id="filtroEstado" class="form-control">
+                                    <option value="">Todos</option>
+                                    <option value="Programada">Programada</option>
+                                    <option value="Confirmada">Confirmada</option>
+                                    <option value="Reprogramada">Reprogramada</option>
+                                    <option value="Cancelada">Cancelada</option>
+                                    <option value="Ejecutada">Ejecutada</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroModalidad">Modalidad</label>
+                                <select id="filtroModalidad" class="form-control">
+                                    <option value="">Todas</option>
+                                    <option value="Presencial">Presencial</option>
+                                    <option value="Remota">Remota</option>
+                                    <option value="Híbrida">Híbrida</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroCiudad">Ciudad</label>
+                                <input id="filtroCiudad" class="form-control" placeholder="Filtrar por ciudad">
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroDesde">Desde</label>
+                                <input id="filtroDesde" type="date" class="form-control">
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroHasta">Hasta</label>
+                                <input id="filtroHasta" type="date" class="form-control">
+                            </div>
+                        </div>
+                        <div class="filter-actions">
+                            <button type="button" class="mini-btn" onclick="cargarDatos()">Aplicar filtros</button>
+                            <button type="button" class="mini-btn" style="background:#94a3b8;" onclick="limpiarFiltros()">Limpiar</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     LISTADO
+                ================================================= -->
+                <section class="panel">
+                    <div class="panel-head">
+                        <h2 id="tituloLista">Auditorías programadas</h2>
+                        <span class="pill" id="pillContador">Listado</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="record-table-wrap">
+                            <table class="record-table">
+                                <thead>
+                                    <tr>
+                                        <th>Solicitud aprobada / empresa</th>
+                                        <th>Auditor</th>
+                                        <th>Documento</th>
+                                        <th>Lugar</th>
+                                        <th>Inicio</th>
+                                        <th>Fin</th>
+                                        <th>Modalidad</th>
+                                        <th>Estado</th>
+                                        <th>Observación</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rows"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="paginacion"></div>
+                        <p id="resumen" class="help-text" style="margin-top:12px;margin-bottom:0;"></p>
+                    </div>
+                </section>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- =========================================================
+         MODAL DE DETALLE
+    ========================================================= -->
+    <div class="modal" id="modalDetalle">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3>Detalle de la auditoría</h3>
+                <button type="button" class="modal-close" onclick="cerrarModal()" aria-label="Cerrar detalle">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        © 2026 CertiSENA - SENA. Todos los derechos reservados.
+    </footer>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        let usuarioId = null;
+        let esAdmin = false;
+        let todosLosDatos = [];
+        let paginaActual = 1;
+        const porPagina = 10;
+
+        function escapeHtml(v){ return (v===null||v===undefined)?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+        function formatDateTime(v) {
+            if (!v) return '-';
+            const d = new Date(v);
+            if (Number.isNaN(d.getTime())) return String(v);
+            return d.toLocaleString('es-CO', { dateStyle:'medium', timeStyle:'short' });
+        }
+
+        function mostrarMensaje(texto, tipo) {
+            const el = document.getElementById('mensaje');
+            el.textContent = texto;
+            el.style.display = 'block';
+            el.style.background = tipo === 'ok' ? '#e6f5e9' : '#fff0ef';
+            el.style.color = tipo === 'ok' ? '#17582c' : '#8a2020';
+            el.style.border = tipo === 'ok' ? '1px solid #b8dfc0' : '1px solid #e7bfbb';
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+
+        async function resolverUsuario() {
+            if (usuarioId) return usuarioId;
+            if (!token) return null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
+                esAdmin = (payload.role_name || '').toLowerCase().includes('admin') || (payload.role_name || '').toLowerCase().includes('super');
+                return usuarioId;
+            } catch { return null; }
+        }
+
+        async function cargarDatos() {
+            const uid = await resolverUsuario();
+            if (!uid) { mostrarMensaje('No se pudo identificar al usuario.', 'error'); return; }
+
+            // Adjust UI based on role
+            const titulo = document.getElementById('tituloLista');
+            const subtitulo = document.getElementById('subtitulo');
+            const btnRegresar = document.getElementById('btnRegresar');
+            if (esAdmin) {
+                titulo.textContent = 'Auditorías programadas (vista administrador)';
+                subtitulo.textContent = 'Consulta todas las auditorías programadas en el sistema.';
+                btnRegresar.href = '/dashboard';
+                btnRegresar.innerHTML = '<span aria-hidden="true">←</span> Volver al Dashboard';
+            } else {
+                titulo.textContent = 'Mis auditorías programadas';
+                subtitulo.textContent = 'Consulta las auditorías que te han asignado.';
+                btnRegresar.href = '/auditor';
+                btnRegresar.innerHTML = '<span aria-hidden="true">←</span> Volver al portal';
+            }
+
+            const params = new URLSearchParams();
+            const estado = document.getElementById('filtroEstado').value;
+            const modalidad = document.getElementById('filtroModalidad').value;
+            const ciudad = document.getElementById('filtroCiudad').value.trim();
+            const desde = document.getElementById('filtroDesde').value;
+            const hasta = document.getElementById('filtroHasta').value;
+            if (estado) params.set('estado', estado);
+            if (modalidad) params.set('modalidad', modalidad);
+            if (ciudad) params.set('ciudad', ciudad);
+            if (desde) params.set('desde', desde);
+            if (hasta) params.set('hasta', hasta);
+
+            try {
+                let url;
+                if (esAdmin) {
+                    url = '/agenda-auditor/programaciones' + (params.toString() ? '?' + params.toString() : '');
+                } else {
+                    url = '/agenda-auditor/' + encodeURIComponent(uid) + '/auditorias-programadas' + (params.toString() ? '?' + params.toString() : '');
+                }
+                const res = await fetch(url, {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                let items = esAdmin ? (Array.isArray(data.programaciones) ? data.programaciones : []) : (Array.isArray(data.auditorias) ? data.auditorias : []);
+
+                // For auditor, filter to only their own (already filtered by endpoint, but safety)
+                if (!esAdmin) {
+                    items = items.filter(a => String(a.id_usuario) === String(uid));
+                }
+
+                // Agrupar por id_programacion para reunir todos los auditores
+                const grupos = {};
+                items.forEach(r => {
+                    const key = r.id_programacion || r.id_solicitud + '|' + r.fecha_inicio;
+                    if (!grupos[key]) {
+                        grupos[key] = { ...r, auditores: [] };
+                    }
+                    grupos[key].auditores.push({
+                        nombre: r.auditor_nombre,
+                        correo: r.auditor_correo,
+                        tipo_doc: r.auditor_tipo_doc,
+                        num_doc: r.auditor_num_doc,
+                        rol: r.rol_auditor
+                    });
+                });
+                items = Object.values(grupos);
+                // Ordenar: Programadas primero
+                items.sort((a, b) => {
+                    const estadoA = String(a.estado || '').toLowerCase();
+                    const estadoB = String(b.estado || '').toLowerCase();
+                    const isProgA = estadoA.includes('programad');
+                    const isProdB = estadoB.includes('programad');
+                    if (isProgA && !isProdB) return -1;
+                    if (!isProgA && isProdB) return 1;
+                    return 0;
+                });
+                todosLosDatos = items;
+                paginaActual = 1;
+                renderizarPagina();
+            } catch (e) {
+                document.getElementById('rows').innerHTML = '<tr><td colspan="10" class="empty">No se pudieron cargar las auditorías.</td></tr>';
+                document.getElementById('resumen').textContent = '';
+                document.getElementById('pillContador').textContent = 'Sin datos';
+            }
+        }
+
+        function limpiarFiltros() {
+            document.getElementById('filtroEstado').value = '';
+            document.getElementById('filtroModalidad').value = '';
+            document.getElementById('filtroCiudad').value = '';
+            document.getElementById('filtroDesde').value = '';
+            document.getElementById('filtroHasta').value = '';
+            cargarDatos();
+        }
+
+        function renderizarPagina() {
+            const inicio = (paginaActual - 1) * porPagina;
+            const fin = inicio + porPagina;
+            const items = todosLosDatos.slice(inicio, fin);
+            const tbody = document.getElementById('rows');
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay auditorías programadas.</td></tr>';
+            } else {
+                tbody.innerHTML = items.map((r, idx) => `
+                    <tr>
+                        <td>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}${r.empresa_nombre ? '<span class="cell-meta">' + escapeHtml(r.empresa_nombre) + '</span>' : ''}</td>
+                        <td>${escapeHtml((r.auditores_programados || []).join(', ') || r.auditor_nombre || '-')}</td>
+                        <td>${escapeHtml(r.auditor_tipo_doc ? r.auditor_tipo_doc + ' ' + (r.auditor_num_doc || '') : (r.auditor_nombre || '-'))}</td>
+                        <td>${escapeHtml(r.direccion_servicio || '-')}<span class="cell-meta">${escapeHtml(r.ciudad_servicio || '')}</span></td>
+                        <td>${escapeHtml(formatDateTime(r.fecha_inicio))}</td>
+                        <td>${escapeHtml(formatDateTime(r.fecha_fin))}</td>
+                        <td>${escapeHtml(r.modalidad || '-')}</td>
+                        <td><span class="badge ${String(r.estado||'').toLowerCase()}">${escapeHtml(r.estado || '-')}</span></td>
+                        <td>${escapeHtml(r.motivo_reprogramacion || r.motivo_cancelacion || '-')}</td>
+                        <td class="row-actions">
+                            <button class="mini-btn view" type="button" onclick="verDetalle(${inicio + idx})">Ver</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            const totalPaginas = Math.max(1, Math.ceil(todosLosDatos.length / porPagina));
+            document.getElementById('resumen').textContent = `Mostrando ${items.length} de ${todosLosDatos.length} auditorías. Página ${paginaActual} de ${totalPaginas}.`;
+            document.getElementById('pillContador').textContent = `${todosLosDatos.length} ${todosLosDatos.length === 1 ? 'auditoría' : 'auditorías'}`;
+            renderizarPaginacion(totalPaginas);
+        }
+
+        function renderizarPaginacion(totalPaginas) {
+            const cont = document.getElementById('paginacion');
+            if (totalPaginas <= 1) { cont.innerHTML = ''; return; }
+            let html = '';
+            html += `<button onclick="cambiarPagina(${paginaActual - 1})" ${paginaActual <= 1 ? 'disabled' : ''}>Anterior</button>`;
+            for (let i = 1; i <= totalPaginas; i++) {
+                if (i === paginaActual) {
+                    html += `<span style="font-weight:700;color:#256d00;padding:0 6px;">${i}</span>`;
+                } else if (i === 1 || i === totalPaginas || Math.abs(i - paginaActual) <= 2) {
+                    html += `<button onclick="cambiarPagina(${i})">${i}</button>`;
+                } else if (Math.abs(i - paginaActual) === 3) {
+                    html += `<span class="pagination-ellipsis" style="padding:0 4px;">...</span>`;
+                }
+            }
+            html += `<button onclick="cambiarPagina(${paginaActual + 1})" ${paginaActual >= totalPaginas ? 'disabled' : ''}>Siguiente</button>`;
+            cont.innerHTML = html;
+        }
+
+        function cambiarPagina(n) {
+            const totalPaginas = Math.max(1, Math.ceil(todosLosDatos.length / porPagina));
+            if (n < 1 || n > totalPaginas) return;
+            paginaActual = n;
+            renderizarPagina();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function verDetalle(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            const auditores = (r.auditores || []).map(a =>
+                `<div class="modal-auditor">
+                    <strong>${escapeHtml(a.nombre || '-')}</strong><br>
+                    <span class="cell-meta">${escapeHtml(a.tipo_doc || '')} ${escapeHtml(a.num_doc || '')}</span><br>
+                    <span class="cell-meta">${escapeHtml(a.correo || '')}</span><br>
+                    <span class="cell-meta">Rol: ${escapeHtml(a.rol || 'Auditor')}</span>
+                </div>`
+            ).join('') || '<span>-</span>';
+            const modal = document.getElementById('modalDetalle');
+            const body = document.getElementById('modalBody');
+            body.innerHTML = `
+                <div class="modal-section">
+                    <h4>Empresa</h4>
+                    <div class="modal-field"><label>Nombre</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
+                    <div class="modal-field"><label>Dirección</label><span>${escapeHtml(r.empresa_direccion || '-')}</span></div>
+                    <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(r.empresa_ciudad || '-')}</span></div>
+                </div>
+                <div class="modal-section">
+                    <h4>Solicitud</h4>
+                    <div class="modal-field"><label>N° Radicado</label><span>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}</span></div>
+                    <div class="modal-field"><label>Dirección servicio</label><span>${escapeHtml(r.direccion_servicio || '-')}</span></div>
+                    <div class="modal-field"><label>Ciudad servicio</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                </div>
+                <div class="modal-section">
+                    <h4>Programación</h4>
+                    <div class="modal-field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                    <div class="modal-field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                    <div class="modal-field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                    <div class="modal-field"><label>Estado</label><span><span class="badge ${String(r.estado||'').toLowerCase()}">${escapeHtml(r.estado || '-')}</span></span></div>
+                    <div class="modal-field"><label>Observación</label><span>${escapeHtml(r.motivo_reprogramacion || r.motivo_cancelacion || '-')}</span></div>
+                </div>
+                <div class="modal-section">
+                    <h4>Auditores asignados</h4>
+                    ${auditores}
+                </div>
+                <div class="modal-section">
+                    <h4>Seleccionar auditor para exportar</h4>
+                    <select id="selectAuditorExport" style="width:100%;padding:6px;border:1px solid #dbe4d4;border-radius:6px;">
+                        <option value="all">Todos los auditores</option>
+                        ${(r.auditores || []).map((a, i) => `<option value="${i}">${escapeHtml(a.nombre || 'Auditor ' + (i+1))}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="modal-actions" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                    <button class="btn-small btn-ver" onclick="imprimirProgramacion(${idx})">Imprimir programación de visitas</button>
+                    <button class="btn-small btn-editar" onclick="exportarAgendaIndividual(${idx})">Exportar agenda individual</button>
+                    <button class="btn-small btn-cancelar" onclick="exportarProgramacionAgenda(${idx})">Exportar programación de agenda</button>
+                </div>
+            `;
+            modal.classList.add('show');
+        }
+
+        function generarHTMLImpresion(titulo, contenido) {
+            return `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>${titulo}</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; color: #26352b; }
+        .header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #3baa01; padding-bottom: 12px; margin-bottom: 20px; }
+        .header img { height: 50px; }
+        .header h1 { margin: 0; color: #256d00; font-size: 22px; }
+        .header p { margin: 0; color: #5f6f69; font-size: 12px; }
+        .section { margin-bottom: 16px; padding: 12px; border: 1px solid #dbe4d4; border-radius: 8px; background: #f9fbf9; }
+        .section h3 { margin: 0 0 8px 0; color: #256d00; font-size: 14px; border-bottom: 1px solid #dbe4d4; padding-bottom: 4px; }
+        .field { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e2e8f0; }
+        .field label { font-weight: bold; color: #334155; font-size: 0.9rem; }
+        .field span { color: #555; font-size: 0.9rem; text-align: right; max-width: 60%; }
+        .auditor-card { padding: 8px; margin-bottom: 6px; border: 1px solid #dbe4d4; border-radius: 6px; background: #fff; }
+        .auditor-card strong { color: #256d00; }
+        .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #dbe4d4; padding-top: 8px; }
+        @media print { body { margin: 0; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="/static/sena_blanco.png" alt="SENA" onerror="this.style.display='none'">
+        <div>
+            <h1>CertiSENA</h1>
+            <p>Sistema de Auditoría - Programación de Visitas</p>
+        </div>
+    </div>
+    ${contenido}
+    <div class="footer">Documento generado el ${new Date().toLocaleString()} - CertiSENA © 2026</div>
+</body>
+</html>`;
+        }
+
+        function imprimirProgramacion(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            const auditores = (r.auditores || []).map(a =>
+                `<div class="auditor-card"><strong>${escapeHtml(a.nombre || '-')}</strong><br><span>${escapeHtml(a.tipo_doc || '')} ${escapeHtml(a.num_doc || '')}</span><br><span>${escapeHtml(a.correo || '')}</span><br><span>Rol: ${escapeHtml(a.rol || 'Auditor')}</span></div>`
+            ).join('') || '<span>-</span>';
+            const contenido = `
+                <div class="section"><h3>Empresa</h3>
+                    <div class="field"><label>Nombre</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
+                    <div class="field"><label>Dirección</label><span>${escapeHtml(r.empresa_direccion || '-')}</span></div>
+                    <div class="field"><label>Ciudad</label><span>${escapeHtml(r.empresa_ciudad || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Solicitud</h3>
+                    <div class="field"><label>N° Radicado</label><span>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}</span></div>
+                    <div class="field"><label>Dirección servicio</label><span>${escapeHtml(r.direccion_servicio || '-')}</span></div>
+                    <div class="field"><label>Ciudad servicio</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Programación</h3>
+                    <div class="field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                    <div class="field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                    <div class="field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                    <div class="field"><label>Estado</label><span>${escapeHtml(r.estado || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Auditores asignados</h3>${auditores}</div>
+            `;
+            const w = window.open('', '_blank');
+            w.document.write(generarHTMLImpresion('Programación de visita', contenido));
+            w.document.close();
+            w.print();
+        }
+
+        function exportarAgendaIndividual(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            const select = document.getElementById('selectAuditorExport');
+            const selected = select ? select.value : 'all';
+            let auditoresSeleccionados = r.auditores || [];
+            if (selected !== 'all') {
+                const i = parseInt(selected);
+                auditoresSeleccionados = [r.auditores[i]];
+            }
+            const auditores = auditoresSeleccionados.map(a => `${a.nombre} (${a.tipo_doc} ${a.num_doc}) - ${a.correo} - Rol: ${a.rol}`).join('\\n');
+            const contenido = `
+                <div class="section"><h3>Empresa</h3>
+                    <div class="field"><label>Nombre</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
+                    <div class="field"><label>Dirección</label><span>${escapeHtml(r.empresa_direccion || '-')}</span></div>
+                    <div class="field"><label>Ciudad</label><span>${escapeHtml(r.empresa_ciudad || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Solicitud</h3>
+                    <div class="field"><label>N° Radicado</label><span>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}</span></div>
+                    <div class="field"><label>Dirección servicio</label><span>${escapeHtml(r.direccion_servicio || '-')}</span></div>
+                    <div class="field"><label>Ciudad servicio</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Programación</h3>
+                    <div class="field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                    <div class="field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                    <div class="field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                    <div class="field"><label>Estado</label><span>${escapeHtml(r.estado || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Auditores asignados</h3>
+                    <pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(auditores)}</pre>
+                </div>
+            `;
+            const w = window.open('', '_blank');
+            w.document.write(generarHTMLImpresion('Agenda Individual', contenido));
+            w.document.close();
+            w.print();
+        }
+
+        function exportarProgramacionAgenda(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            const auditores = (r.auditores || []).map(a => `${a.nombre} (${a.tipo_doc} ${a.num_doc}) - ${a.correo} - Rol: ${a.rol}`).join('\\n');
+            const contenido = `
+                <div class="section"><h3>Programación de Agenda</h3>
+                    <div class="field"><label>ID Programación</label><span>${escapeHtml(r.id_programacion || '-')}</span></div>
+                    <div class="field"><label>Estado</label><span>${escapeHtml(r.estado || '-')}</span></div>
+                    <div class="field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                    <div class="field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                    <div class="field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                    <div class="field"><label>Ciudad</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Auditores</h3>
+                    <pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(auditores)}</pre>
+                </div>
+            `;
+            const w = window.open('', '_blank');
+            w.document.write(generarHTMLImpresion('Programación de Agenda', contenido));
+            w.document.close();
+            w.print();
+        }
+
+        function cerrarModal() { document.getElementById('modalDetalle').classList.remove('show'); }
+
+        // Cerrar modal con clic fuera o tecla Escape
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('modalDetalle');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'modalDetalle') cerrarModal();
+                });
+            }
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') cerrarModal();
+            });
+        });
+
+        (async function init() {
+            const uid = await resolverUsuario();
+            if (!uid) { mostrarMensaje('No se puede identificar al usuario.', 'error'); return; }
+            await cargarDatos();
+        })();
+    </script>
+</body>
+</html>

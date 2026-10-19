@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Conflictos de interés del auditor</title>
+
+    <link rel="stylesheet" href="/static/styles.css">
+
+    <style>
+        :root {
+            --sena-green: #39a900;
+            --sena-green-dark: #256d00;
+            --sena-green-hover: #2f8f00;
+            --sena-green-light: #f1f8ed;
+            --surface: #ffffff;
+            --surface-soft: #f8fafc;
+            --border-color: #e1e9df;
+            --text-primary: #26352b;
+            --text-secondary: #5f6f69;
+            --shadow-card: 0 5px 20px rgba(32, 74, 25, 0.07);
+            --shadow-hover: 0 8px 24px rgba(32, 74, 25, 0.10);
+            --radius-card: 14px;
+            --radius-control: 8px;
+        }
+
+        /* BASE */
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+
+        .portal-shell {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 24px 40px;
+        }
+
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            min-width: 0;
+        }
+
+        /* ENCABEZADO */
+
+        .login-header {
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-header .header-content {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .login-header .sena-blanco {
+            width: 72px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .login-header h1 {
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .login-header .subtitle {
+            margin: 6px 0 0;
+            line-height: 1.5;
+        }
+
+        /* BARRA SUPERIOR Y REGRESO */
+
+        .top-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 22px;
+            min-width: 0;
+        }
+
+        .page-context {
+            min-width: 0;
+        }
+
+        .page-context p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .acciones {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            flex-shrink: 0;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            min-height: 42px;
+            padding: 10px 18px;
+            color: var(--sena-green-dark);
+            background: #fff;
+            border: 1px solid #cfe3c5;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.4;
+            text-align: center;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background-color 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .back-button:hover {
+            color: var(--sena-green-dark);
+            background: var(--sena-green-light);
+            border-color: var(--sena-green);
+            box-shadow: 0 3px 10px rgba(57, 169, 0, 0.10);
+            transform: translateY(-1px);
+        }
+
+        /* TARJETAS */
+
+        .section-card {
+            min-width: 0;
+            padding: 26px;
+            margin: 0;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            transition: box-shadow 0.25s ease,
+                border-color 0.25s ease;
+        }
+
+        .section-card:hover {
+            border-color: #d2e5c9;
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* TÍTULOS */
+
+        .section-title {
+            color: var(--sena-green-dark);
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.45;
+            margin: 0 0 14px;
+        }
+
+        .section-card>.section-title:first-child {
+            padding-bottom: 14px;
+            border-bottom: 1px solid #eaf0e7;
+        }
+
+        h3.section-title {
+            margin-top: 25px;
+            padding-bottom: 0;
+            border-bottom: 0;
+        }
+
+        /* TEXTOS AUXILIARES */
+
+        .help-text {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.7;
+            margin: 0 0 16px;
+        }
+
+        .section-card>.help-text {
+            max-width: 850px;
+        }
+
+        /* FORMULARIOS */
+
+        .form-section {
+            width: 100%;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 22px;
+            align-items: start;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        .form-control {
+            display: block;
+            width: 100%;
+            min-width: 0;
+            min-height: 44px;
+            padding: 11px 13px;
+            color: var(--text-primary);
+            background: #fff;
+            border: 1px solid #d5dfd3;
+            border-radius: var(--radius-control);
+            outline: none;
+            font: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                background-color 0.2s ease;
+        }
+
+        .form-control::placeholder {
+            color: #929d95;
+            opacity: 1;
+        }
+
+        .form-control:hover {
+            border-color: #a8c99c;
+        }
+
+        .form-control:focus {
+            border-color: var(--sena-green);
+            box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.13);
+            background-color: #fff;
+        }
+
+        textarea.form-control {
+            min-height: 115px;
+            resize: vertical;
+        }
+
+        .form-group .help-text {
+            margin: 0;
+        }
+
+        /* BOTONES PRINCIPALES */
+
+        .btn-save-section,
+        .btn-main {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 43px;
+            padding: 11px 20px;
+            color: #fff;
+            background: var(--sena-green);
+            border: 1px solid var(--sena-green);
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.4;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .btn-save-section {
+            margin-top: 20px;
+        }
+
+        .btn-main:hover,
+        .btn-save-section:hover {
+            color: #fff;
+            background: var(--sena-green-hover);
+            border-color: var(--sena-green-hover);
+            box-shadow: 0 4px 12px rgba(57, 169, 0, 0.20);
+            transform: translateY(-1px);
+        }
+
+        .btn-main:active,
+        .btn-save-section:active {
+            transform: translateY(0);
+        }
+
+        .btn-main:focus-visible,
+        .btn-save-section:focus-visible,
+        .btn-review:focus-visible,
+        .back-button:focus-visible {
+            outline: 3px solid rgba(57, 169, 0, 0.30);
+            outline-offset: 3px;
+        }
+
+        /* ALINEACIÓN DEL FORMULARIO DE VALIDACIÓN */
+
+        #formConflicto>.btn-save-section {
+            align-self: flex-start;
+        }
+
+        .validation-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: end;
+            gap: 16px;
+        }
+
+        .validation-grid .form-group {
+            min-width: 0;
+        }
+
+        .validation-grid .btn-save-section {
+            min-width: 190px;
+            margin-top: 0;
+            white-space: nowrap;
+        }
+
+        /* TABLA */
+
+        .record-table-wrap {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            margin-top: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff;
+            scrollbar-width: thin;
+            scrollbar-color: #b8cdb0 #f3f6f1;
+        }
+
+        .record-table {
+            width: 100%;
+            min-width: 850px;
+            border-collapse: separate;
+            border-spacing: 0;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .record-table thead {
+            color: #fff;
+            background: var(--sena-green);
+        }
+
+        .record-table th {
+            padding: 15px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.5;
+            white-space: nowrap;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .record-table th:first-child {
+            border-top-left-radius: 8px;
+        }
+
+        .record-table th:last-child {
+            border-top-right-radius: 8px;
+        }
+
+        .record-table td {
+            padding: 14px;
+            color: #45534a;
+            line-height: 1.6;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+            border-bottom: 1px solid #edf1eb;
+        }
+
+        .record-table tbody tr {
+            background: #fff;
+            transition: background-color 0.2s ease;
+        }
+
+        .record-table tbody tr:nth-child(even) {
+            background: #f8faf7;
+        }
+
+        .record-table tbody tr:hover {
+            background: var(--sena-green-light);
+        }
+
+        .record-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        /* COLUMNA DE ACCIONES */
+
+        .record-table th:last-child {
+            min-width: 230px;
+        }
+
+        /* --- BOTONES DE ACCIÓN: AHORA EN FILA Y MÁS PEQUEÑOS --- */
+
+        .action-group {
+            display: flex;
+            flex-direction: row;          /* uno al lado del otro */
+            align-items: center;
+            justify-content: center;
+            gap: 6px;                     /* separación reducida */
+            min-width: 0;                 /* ya no fuerza ancho grande */
+            flex-wrap: nowrap;
+        }
+
+        .btn-review {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;                  /* ancho según contenido */
+            min-height: 30px;             /* más pequeño */
+            padding: 5px 9px;             /* más compacto */
+            border: 1px solid transparent;
+            border-radius: 6px;
+            font-size: 11px;              /* letra un poco menor */
+            font-weight: 600;
+            line-height: 1.35;
+            text-align: center;
+            white-space: nowrap;          /* no partir el texto */
+            cursor: pointer;
+            transition: background-color 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .btn-approve {
+            color: #286b08;
+            background: #edf8e8;
+            border-color: #d2eac6;
+        }
+
+        .btn-approve:hover {
+            background: #dff1d5;
+            border-color: #b7dda5;
+            box-shadow: 0 2px 6px rgba(37, 109, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .btn-reject {
+            color: #a52c2c;
+            background: #fff0f0;
+            border-color: #f2d1d1;
+        }
+
+        .btn-reject:hover {
+            background: #ffe2e2;
+            border-color: #eab7b7;
+            box-shadow: 0 2px 6px rgba(165, 44, 44, 0.08);
+            transform: translateY(-1px);
+        }
+
+        /* RESULTADO DE VALIDACIÓN */
+
+        #validacion {
+            margin-top: 18px;
+            margin-bottom: 0;
+            padding: 13px 16px;
+            background: #f5f8f3;
+            border: 1px solid #e0eadb;
+            border-left: 4px solid var(--sena-green);
+            border-radius: 7px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.7;
+            overflow-wrap: anywhere;
+        }
+
+        /* TABLETAS */
+
+        @media (max-width: 768px) {
+            .portal-shell {
+                padding: 22px 16px 30px;
+            }
+
+            .content {
+                gap: 18px;
+            }
+
+            .section-card {
+                padding: 21px 18px;
+                border-radius: 12px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 18px;
+            }
+
+            .form-group.full-width {
+                grid-column: auto;
+            }
+
+            .section-title {
+                font-size: 20px;
+            }
+
+            .btn-save-section {
+                width: 100%;
+            }
+
+            .validation-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .validation-grid .btn-save-section {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .record-table {
+                min-width: 850px;
+            }
+
+            .login-header .header-content {
+                gap: 14px;
+            }
+
+            .top-navigation {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .acciones {
+                width: 100%;
+            }
+        }
+
+        /* TELÉFONOS */
+
+        @media (max-width: 480px) {
+            .portal-shell {
+                padding: 16px 11px 24px;
+            }
+
+            .section-card {
+                padding: 18px 14px;
+            }
+
+            .login-header .header-content {
+                gap: 10px;
+            }
+
+            .login-header .sena-blanco {
+                width: 58px !important;
+            }
+
+            .login-header h1 {
+                font-size: 22px;
+            }
+
+            .login-header .subtitle {
+                font-size: 12px;
+            }
+
+            .section-title {
+                font-size: 19px;
+            }
+
+            .form-control {
+                font-size: 14px;
+            }
+
+            .back-button {
+                width: 100%;
+            }
+
+            .record-table {
+                min-width: 850px;
+            }
+        }
+
+        /* MOVIMIENTO REDUCIDO */
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="login-header">
+        <div class="header-content" style="justify-content: flex-start;">
+            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco" style="width: 72px;">
+
+            <div>
+                <h1>CertiSENA</h1>
+                <p class="subtitle">Conflictos de interés del auditor</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <section class="content">
+
+            <!-- REGRESAR AL PORTAL: AHORA ARRIBA -->
+            <nav class="top-navigation" aria-label="Navegación de la página">
+                <div class="page-context">
+                    <p>Portal del auditor / Gestión de conflictos</p>
+                </div>
+
+                <div class="acciones">
+                    <a href="/auditor" class="back-button">
+                        <span aria-hidden="true">←</span>
+                        Regresar al portal
+                    </a>
+                </div>
+            </nav>
+
+            <!-- DECLARACIÓN DE CONFLICTOS -->
+            <section class="section-card">
+                <h2 class="section-title">Gestión de conflictos</h2>
+
+                <p class="help-text">
+                    Registre, actualice y elimine conflictos antes de su asignación.
+                    Toda acción se vincula a su postulación activa.
+                </p>
+
+                <h3 class="section-title">Declaración de conflicto</h3>
+
+                <form id="formConflicto" class="form-section" onsubmit="return guardarConflicto(event)">
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="id_empresa">Empresa relacionada</label>
+
+                            <select id="id_empresa" class="form-control" required>
+                                <option value="">Cargando empresas...</option>
+                            </select>
+
+                            <span class="help-text">
+                                Seleccione la empresa asociada al conflicto.
+                            </span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tipo_conflicto">Tipo de conflicto</label>
+
+                            <select id="tipo_conflicto" class="form-control" required>
+                                <option value="">Seleccione el tipo</option>
+                                <option value="Exempleado">Exempleado</option>
+                                <option value="Asesoría Previa">Asesoría Previa</option>
+                                <option value="Parentesco">Parentesco</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="descripcion">Descripción breve</label>
+
+                            <textarea id="descripcion" class="form-control" required
+                                placeholder="Detalle la relación que podría generar el conflicto"></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-save-section btn-main">
+                        Guardar conflicto
+                    </button>
+                </form>
+            </section>
+
+            <!-- CONFLICTOS REGISTRADOS -->
+            <section class="section-card">
+                <h2 class="section-title">Conflictos registrados</h2>
+
+                <div class="record-table-wrap">
+                    <table class="record-table">
+                        <thead>
+                            <tr>
+                                <th>Empresa</th>
+                                <th>NIT</th>
+                                <th>Tipo</th>
+                                <th>Encuentra conflicto</th>
+                                <th>Estado</th>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="rows"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VALIDACIÓN ANTES DE ASIGNACIÓN -->
+            <section class="section-card">
+                <h2 class="section-title">Validación antes de asignación</h2>
+
+                <div class="validation-grid">
+                    <div class="form-group">
+                        <label for="empresa_validar">Empresa a validar</label>
+
+                        <input id="empresa_validar" class="form-control" placeholder="Ingrese ID de empresa">
+                    </div>
+
+                    <div class="form-group">
+                        <button type="button" class="btn-save-section btn-main" onclick="validarConflicto()">
+                            Validar conflicto
+                        </button>
+                    </div>
+                </div>
+
+                <div id="validacion" class="help-text">
+                    Ingrese una empresa para validar si existe bloqueo.
+                </div>
+            </section>
+
+        </section>
+    </main>
+
+    <script>
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        const token = localStorage.getItem('access_token');
+        let usuarioId = null;
+        let idConflictoActual = null;
+
+        async function resolverUsuario() {
+            if (!token) return null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
+                return usuarioId;
+            } catch {
+                return null;
+            }
+        }
+
+        async function cargarConflictos() {
+            const uid = await resolverUsuario();
+            if (!uid) return;
+            const tbody = document.getElementById('rows');
+            try {
+                const res = await fetch('/conflictos-auditor/usuario/' + uid, {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                const items = Array.isArray(data.conflictos) ? data.conflictos : [];
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="7">No hay conflictos registrados.</td></tr>';
+                    return;
+                }
+                window._conflictosActivos = {};
+                tbody.innerHTML = items.map(item => {
+                    window._conflictosActivos[item.id_conflicto] = item;
+                    return `<tr>
+                        <td>${item.empresa || item.id_empresa || '-'}</td>
+                        <td>${item.nit || '-'}</td>
+                        <td>${item.tipo_conflicto || '-'}</td>
+                        <td>${item.bloquea_asignacion}</td>
+                        <td>${item.estado || '-'}</td>
+                        <td>${item.descripcion || '-'}</td>
+                        <td class="action-group">
+                            <button type="button" class="btn-review btn-approve" onclick="actualizarConflicto('${item.id_conflicto}')">Actualizar conflicto de interés</button>
+                            <button type="button" class="btn-review btn-reject" onclick="eliminarConflicto('${item.id_conflicto}')">Eliminar conflicto antes de asignación</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7">No se pudo cargar la información.</td></tr>';
+            }
+        }
+
+        async function guardarConflicto(event) {
+            event.preventDefault();
+            const uid = await resolverUsuario();
+            if (!uid) return false;
+            let payload = {
+                id_empresa: document.getElementById('id_empresa').value.trim(),
+                tipo_conflicto: document.getElementById('tipo_conflicto').value.trim(),
+                descripcion: document.getElementById('descripcion').value.trim(),
+                bloquea_asignacion: true
+            };
+            try {
+                const res = await fetch('/auditores/registro/' + uid + '/conflictos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No fue posible guardar el conflicto.');
+                alert(data.mensaje || 'Conflicto guardado correctamente.');
+                await cargarConflictos();
+                document.getElementById('formConflicto').reset();
+            } catch (error) {
+                alert(error.message || 'No fue posible guardar el conflicto.');
+            }
+            return false;
+        }
+
+        async function actualizarConflicto(idConflicto) {
+            const item = (window._conflictosActivos || {})[idConflicto] || {};
+            const nuevoTipo = prompt('Tipo de conflicto (Exempleado, Asesoría Previa, Parentesco):', item.tipo_conflicto || '');
+            if (!nuevoTipo) return;
+            if (!["Exempleado", "Asesoría Previa", "Parentesco"].includes(nuevoTipo.trim())) {
+                alert("Tipo de conflicto no permitido. Use: Exempleado, Asesoría Previa o Parentesco.");
+                return;
+            }
+            const nuevaDescripcion = prompt('Descripción:', item.descripcion || '');
+            if (!nuevaDescripcion) return;
+            const uid = await resolverUsuario();
+            if (!uid) return;
+            try {
+                const res = await fetch('/auditores/registro/' + uid + '/conflictos/' + idConflicto, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({
+                        id_empresa: item.id_empresa,
+                        tipo_conflicto: nuevoTipo,
+                        descripcion: nuevaDescripcion,
+                        bloquea_asignacion: item.bloquea_asignacion
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No fue posible actualizar el conflicto.');
+                alert(data.mensaje || 'Conflicto actualizado correctamente.');
+                await cargarConflictos();
+            } catch (error) {
+                alert(error.message || 'No fue posible actualizar el conflicto.');
+            }
+        }
+
+        async function eliminarConflicto(idConflicto) {
+            const uid = await resolverUsuario();
+            if (!uid) return;
+            if (!confirm('¿Está seguro de eliminar este conflicto? Esto debe hacerse antes de la asignación.')) return;
+            try {
+                const res = await fetch('/conflictos-auditor/' + idConflicto + '?id_usuario=' + encodeURIComponent(uid), {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No fue posible eliminar el conflicto.');
+                alert(data.mensaje || 'Conflicto eliminado correctamente.');
+                await cargarConflictos();
+            } catch (error) {
+                alert(error.message || 'No fue posible eliminar el conflicto.');
+            }
+        }
+
+        async function validarConflicto() {
+            const uid = await resolverUsuario();
+            const empresaId = document.getElementById('empresa_validar').value.trim();
+            if (!uid || !empresaId) {
+                document.getElementById('validacion').textContent = 'Debe indicar una empresa.';
+                return;
+            }
+            try {
+                const res = await fetch('/conflictos-auditor/validar-asignacion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ id_usuario: uid, id_empresa: empresaId })
+                });
+                const data = await res.json().catch(() => ({}));
+                document.getElementById('validacion').textContent =
+                    data.tiene_conflicto ? ' conflicto detectado.' : 'Sin conflicto bloqueante para esta empresa.';
+            } catch {
+                document.getElementById('validacion').textContent = 'No fue posible validar el conflicto.';
+            }
+        }
+
+        async function cargarEmpresas() {
+            try {
+                const res = await fetch('/auditores/catalogos/empresas');
+                const empresas = await res.json().catch(() => []);
+                const select = document.getElementById('id_empresa');
+                if (!select) return;
+                if (!Array.isArray(empresas) || empresas.length === 0) {
+                    select.innerHTML = '<option value="">No hay empresas registradas</option>';
+                    return;
+                }
+                select.innerHTML = '<option value="">Seleccione una empresa</option>' +
+                    empresas.map(e =>
+                        '<option value="' + escapeHtml(String(e.id_empresa || e.id)) + '">' +
+                        escapeHtml((e.nombre || 'Empresa') + ' - ' + (e.nit || '')) + '</option>'
+                    ).join('');
+            } catch {
+                const select = document.getElementById('id_empresa');
+                if (select) select.innerHTML = '<option value="">No se pudieron cargar empresas</option>';
+            }
+        }
+
+        cargarEmpresas();
+        cargarConflictos();
+    </script>
+</body>
+
+</html>

@@ -30,3 +30,10 @@ storage/
 
 # Scripts locales con credenciales (no subir)
 query_db.py
+
+# Uploads de usuarios
+uploads/
+
+# Temporales
+*.py.tmp
+temp_*.py

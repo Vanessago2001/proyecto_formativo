@@ -1,0 +1,2482 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CertiSENA | Agenda y disponibilidad del auditor</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --sena-green: #39a900;
+            --sena-green-dark: #256d00;
+            --sena-green-bright: #3baa01;
+            --sena-green-hover: #2f8f00;
+            --sena-green-light: #f1f8ed;
+            --bg: #f4f7f5;
+            --ink: #26352b;
+            --muted: #5f6f69;
+            --line: #dce5de;
+            --white: #fff;
+            --danger: #9d2b2b;
+            --good: #256d00;
+            --warn: #875b07;
+            --pale: #edf5ef;
+            --shadow-card: 0 5px 20px rgba(32, 74, 25, .07);
+            --shadow-hover: 0 8px 24px rgba(32, 74, 25, .10);
+            --radius-card: 14px;
+            --radius-control: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        /* =========================================================
+           HEADER
+        ========================================================= */
+        .login-header {
+            background: #3BAA01;
+            color: #fff;
+            padding: 20px clamp(18px, 4vw, 42px);
+        }
+
+        .login-header .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            max-width: 1360px;
+            margin: 0 auto;
+        }
+
+        .login-header .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .login-header .sena-blanco {
+            width: 72px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .login-header h1 {
+            margin: 0;
+            font-size: 26px;
+            line-height: 1.15;
+            letter-spacing: -.02em;
+        }
+
+        .login-header .subtitle {
+            margin: 4px 0 0;
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: .92;
+        }
+
+        .login-header .profile-link {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13.5px;
+            padding: 9px 15px;
+            border: 1px solid rgba(255, 255, 255, .35);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .08);
+            transition: .18s ease;
+        }
+
+        .login-header .profile-link:hover {
+            background: rgba(255, 255, 255, .18);
+            border-color: rgba(255, 255, 255, .55);
+        }
+
+        /* =========================================================
+           LAYOUT GENERAL
+        ========================================================= */
+        .portal-shell {
+            width: 100%;
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 24px 24px 48px;
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 250px minmax(0, 1fr);
+            gap: 22px;
+            align-items: start;
+        }
+
+        /* =========================================================
+           SIDEBAR
+        ========================================================= */
+        .side {
+            position: sticky;
+            top: 20px;
+            align-self: start;
+            padding: 13px;
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+        }
+
+        .side h3 {
+            margin: 5px 12px 12px;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 800;
+        }
+
+        .side a {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 11px 12px;
+            margin: 2px 0;
+            color: #334155;
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.35;
+            border-left: 3px solid transparent;
+            border-radius: 0 9px 9px 0;
+            transition: background .18s ease, color .18s ease, border-color .18s ease;
+        }
+
+        .side a:hover {
+            background: #f6faf4;
+            color: var(--sena-green-dark);
+        }
+
+        .side a.active {
+            background: var(--sena-green-light);
+            color: var(--sena-green-dark);
+            border-left-color: var(--sena-green-bright);
+            font-weight: 750;
+        }
+
+        .side a .side-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 7px;
+            background: #eaf4e5;
+            color: var(--sena-green-dark);
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+            transition: .18s ease;
+        }
+
+        .side a.active .side-icon {
+            background: var(--sena-green-bright);
+            color: #fff;
+        }
+
+        /* =========================================================
+           CONTENIDO PRINCIPAL
+        ========================================================= */
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-width: 0;
+        }
+
+        .page-head {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .page-head-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--sena-green-dark);
+            background: #fff;
+            border: 1px solid #cfe3c5;
+            border-radius: 8px;
+            padding: 9px 15px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: .18s ease;
+        }
+
+        .back-link:hover {
+            background: var(--sena-green-light);
+            border-color: var(--sena-green);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(57, 169, 0, .10);
+        }
+
+        .page-head h1 {
+            margin: 0;
+            color: var(--sena-green-dark);
+            font-size: clamp(20px, 2vw, 25px);
+            font-weight: 800;
+            letter-spacing: -.02em;
+        }
+
+        .page-head p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13.5px;
+            line-height: 1.55;
+            max-width: 900px;
+        }
+
+        /* =========================================================
+           PANEL / CARD
+        ========================================================= */
+        .panel {
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            transition: box-shadow .25s ease, border-color .25s ease;
+        }
+
+        .panel:hover {
+            border-color: #d2e5c9;
+            box-shadow: var(--shadow-hover);
+        }
+
+        .panel-head {
+            padding: 17px 22px;
+            border-bottom: 1px solid #eef3ee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--sena-green-dark);
+            letter-spacing: -.01em;
+        }
+
+        .panel-head h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--sena-green-dark);
+        }
+
+        .panel-body {
+            padding: 22px;
+        }
+
+        /* =========================================================
+           GRID Y FORMULARIOS
+        ========================================================= */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .grid.three {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .grid.four {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .field.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-weight: 700;
+            font-size: 12.5px;
+            color: #33483c;
+            letter-spacing: .005em;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid #d2ddd4;
+            border-radius: var(--radius-control);
+            padding: 10px 12px;
+            font: inherit;
+            font-size: 13.5px;
+            color: var(--ink);
+            background: #fff;
+            outline: none;
+            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+
+        input:hover:not(:disabled):not([readonly]),
+        select:hover:not(:disabled),
+        textarea:hover:not(:disabled) {
+            border-color: #a9c59d;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: 3px solid rgba(59, 170, 1, .14);
+            border-color: var(--sena-green-bright);
+            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+        }
+
+        input[readonly],
+        input:disabled,
+        select:disabled,
+        textarea:disabled {
+            background: #f5f7f5;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        textarea {
+            min-height: 82px;
+            resize: vertical;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 11.5px;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        /* =========================================================
+           ACCIONES
+        ========================================================= */
+        .actions {
+            display: flex;
+            gap: 9px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 18px;
+        }
+
+        button {
+            border: 0;
+            border-radius: var(--radius-control);
+            padding: 10px 16px;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            color: #fff;
+            box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
+        }
+
+        button.primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #2f8f00, #256d00);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(37, 109, 0, .22);
+        }
+
+        button.secondary {
+            background: #edf3ef;
+            color: var(--sena-green-dark);
+            border: 1px solid #cbd9cf;
+        }
+
+        button.secondary:hover:not(:disabled) {
+            background: #e2ede6;
+            transform: translateY(-1px);
+        }
+
+        button.danger {
+            background: #fff0ef;
+            color: var(--danger);
+            border: 1px solid #e7bfbb;
+        }
+
+        button.danger:hover:not(:disabled) {
+            background: #ffe2e2;
+        }
+
+        button:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* =========================================================
+           NOTICES
+        ========================================================= */
+        .notice {
+            display: none;
+            padding: 12px 15px;
+            margin: 0 0 16px;
+            border-radius: 9px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .notice.show {
+            display: block;
+        }
+
+        .notice.ok {
+            background: #e6f5e9;
+            color: #17582c;
+            border: 1px solid #b8dfc0;
+        }
+
+        .notice.error {
+            background: #fff0ef;
+            color: #8a2020;
+            border: 1px solid #e7bfbb;
+        }
+
+        .notice.info {
+            background: #eef4ff;
+            color: #244f89;
+            border: 1px solid #c6d5ef;
+        }
+
+        /* =========================================================
+           PILLS
+        ========================================================= */
+        .pill {
+            display: inline-block;
+            background: #eaf4ed;
+            color: #205d35;
+            padding: 5px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: 750;
+            letter-spacing: .01em;
+        }
+
+        .pill.blocked {
+            background: #fff0ef;
+            color: #8a2020;
+        }
+
+        .pill.audit {
+            background: #edf2ff;
+            color: #2b4e93;
+        }
+
+        /* =========================================================
+           TABLA
+        ========================================================= */
+        .table-wrap {
+            overflow: auto;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            margin-top: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1120px;
+        }
+
+        th,
+        td {
+            padding: 13px 14px;
+            text-align: left;
+            border-bottom: 1px solid #e7eee9;
+            vertical-align: top;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        th {
+            color: #44574a;
+            background: #f7faf8;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        tr:last-child td {
+            border-bottom: 0;
+        }
+
+        tbody tr:hover {
+            background: #fafcf9;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 26px 20px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            min-width: 240px;
+        }
+
+        .row-actions button {
+            padding: 7px 11px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .cell-strong {
+            font-weight: 700;
+            color: var(--sena-green-dark);
+            font-size: 13px;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .cell-meta {
+            display: block;
+            color: var(--muted);
+            font-size: 11.5px;
+            line-height: 1.45;
+        }
+
+        .cell-line {
+            display: block;
+            color: #374151;
+            font-size: 12.5px;
+            line-height: 1.55;
+        }
+
+        .cell-line+.cell-line {
+            margin-top: 3px;
+        }
+
+        /* =========================================================
+           SECTION NOTE
+        ========================================================= */
+        .section-note {
+            display: flex;
+            gap: 12px;
+            padding: 13px 15px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f6faf3, #fbfdf9);
+            border: 1px solid #dce8d8;
+            border-left: 4px solid var(--sena-green-bright);
+            color: #46604b;
+            font-size: 12.5px;
+            line-height: 1.6;
+            margin: 0 0 16px;
+        }
+
+        .section-note .note-icon {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: #e4f1dd;
+            color: var(--sena-green-dark);
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .section-note strong {
+            color: var(--sena-green-dark);
+            font-weight: 800;
+        }
+
+        /* =========================================================
+           SECCIONES
+        ========================================================= */
+        .panel-section {
+            display: none;
+            animation: panelEntrar .22s ease both;
+        }
+
+        .panel-section.seccion-visible {
+            display: block;
+        }
+
+        @keyframes panelEntrar {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Anclas JS (ocultas, mantienen la lógica del sistema) */
+        .hidden-js-anchor {
+            display: none !important;
+        }
+
+        /* =========================================================
+           MODAL DE DETALLE DE PROGRAMACIÓN
+        ========================================================= */
+        .programacion-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 35, 22, .55);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(2px);
+        }
+
+        .programacion-modal.show {
+            display: flex;
+            animation: fadeIn .18s ease both;
+        }
+
+        .programacion-modal-card {
+            background: #fff;
+            border-radius: 14px;
+            width: min(820px, 100%);
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+            animation: popIn .22s ease both;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .programacion-modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 20px 22px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .programacion-modal-head h3 {
+            margin: 2px 0 0;
+            color: var(--sena-green-dark);
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -.01em;
+        }
+
+        .modal-eyebrow {
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+
+        .modal-close {
+            flex: 0 0 auto;
+            border: 0;
+            background: #f1f5f3;
+            color: #5f6f69;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            transition: .15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: #ffe2e2;
+            color: var(--danger);
+        }
+
+        .programacion-modal-body {
+            padding: 22px;
+        }
+
+        .programacion-modal-foot {
+            padding: 16px 22px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: flex-end;
+            gap: 9px;
+            background: #fbfdf9;
+            position: sticky;
+            bottom: 0;
+        }
+
+        .modal-section-group {
+            margin-bottom: 20px;
+        }
+
+        .modal-section-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-section-label {
+            margin: 0 0 10px;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--sena-green-dark);
+            text-transform: uppercase;
+            letter-spacing: .09em;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e6ede6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-section-label::before {
+            content: "";
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sena-green-bright);
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .detail-grid.three {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .detail-item {
+            padding: 12px 14px;
+            border: 1px solid #e6ede6;
+            border-radius: 10px;
+            background: #fbfdfb;
+            min-width: 0;
+        }
+
+        .detail-item.full {
+            grid-column: 1 / -1;
+        }
+
+        .detail-item span {
+            display: block;
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            margin-bottom: 4px;
+        }
+
+        .detail-item strong {
+            font-size: 13.5px;
+            color: #26352b;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+            display: block;
+            line-height: 1.4;
+        }
+
+        .auditores-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .auditores-list li {
+            padding: 11px 14px;
+            border: 1px solid #e1eae2;
+            border-radius: 9px;
+            background: #fbfdfb;
+            color: #374151;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .auditores-list li::before {
+            content: "";
+            flex: 0 0 8px;
+            width: 8px;
+            height: 8px;
+            margin-top: 6px;
+            border-radius: 50%;
+            background: var(--sena-green-bright);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes popIn {
+            from {
+                transform: translateY(8px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* =========================================================
+           RESPONSIVE
+        ========================================================= */
+        @media (max-width: 1000px) {
+            .portal-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .side {
+                position: static;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 5px;
+            }
+
+            .side h3 {
+                grid-column: 1 / -1;
+            }
+
+            .side a {
+                margin: 0;
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 8px;
+            }
+
+            .side a.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--sena-green-bright);
+            }
+        }
+
+        @media (max-width: 900px) {
+
+            .grid.three,
+            .grid.four {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .detail-grid.three {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 620px) {
+            .portal-shell {
+                padding: 16px 12px 32px;
+            }
+
+            .grid,
+            .grid.three,
+            .grid.four {
+                grid-template-columns: 1fr;
+            }
+
+            .field.full {
+                grid-column: auto;
+            }
+
+            .panel-body {
+                padding: 16px;
+            }
+
+            .panel-head {
+                padding: 14px 16px;
+            }
+
+            .side {
+                grid-template-columns: 1fr;
+            }
+
+            .login-header .sena-blanco {
+                width: 58px;
+            }
+
+            .login-header h1 {
+                font-size: 21px;
+            }
+
+            .login-header .subtitle {
+                font-size: 12px;
+            }
+
+            .login-header .profile-link {
+                font-size: 12px;
+                padding: 7px 12px;
+            }
+
+            .detail-grid,
+            .detail-grid.three {
+                grid-template-columns: 1fr;
+            }
+
+            .programacion-modal-body,
+            .programacion-modal-head,
+            .programacion-modal-foot {
+                padding: 16px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="login-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Agenda y disponibilidad del auditor</p>
+                </div>
+            </div>
+            <a class="profile-link" href="/profile">Mi perfil</a>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <div class="portal-grid">
+            <!-- =========================================================
+                 MENÚ LATERAL
+            ========================================================= -->
+            <nav class="side" aria-label="Navegación de la agenda">
+                <h3>Gestión de agenda</h3>
+
+                <a href="#schedule" data-seccion="schedule" class="active">
+                    <span class="side-icon">1</span>
+                    <span>Programar una auditoría</span>
+                </a>
+
+                <a href="#assignments" data-seccion="assignments">
+                    <span class="side-icon">2</span>
+                    <span>Solicitudes con auditores asignados</span>
+                </a>
+
+                <a href="#weekly" data-seccion="weekly">
+                    <span class="side-icon">3</span>
+                    <span>Disponibilidad semanal</span>
+                </a>
+
+                <a href="#blocked" data-seccion="blocked">
+                    <span class="side-icon">4</span>
+                    <span>Registrar fecha no disponible</span>
+                </a>
+
+                <a href="#availability" data-seccion="availability">
+                    <span class="side-icon">5</span>
+                    <span>Consultar y editar disponibilidad</span>
+                </a>
+
+                <a href="#month" data-seccion="month">
+                    <span class="side-icon">6</span>
+                    <span>Disponibilidad mensual y auditorías</span>
+                </a>
+
+                <a href="#history" data-seccion="history">
+                    <span class="side-icon">7</span>
+                    <span>Historial de disponibilidad</span>
+                </a>
+            </nav>
+
+            <!-- =========================================================
+                 CONTENIDO
+            ========================================================= -->
+            <section class="content">
+                <div class="page-head">
+                    <div class="page-head-top">
+                        <a href="/asignacion-auditores" class="back-link">
+                            <span aria-hidden="true">←</span> Regresar
+                        </a>
+                    </div>
+                    <h1 id="pageTitle">Programar una auditoría</h1>
+                    <p id="pageSubtitle">Programa una solicitud aprobada y registra el mismo horario para todos los
+                        auditores que ya fueron asignados a esa empresa.</p>
+                </div>
+
+                <div id="globalNotice" class="notice" role="status" aria-live="polite"></div>
+
+                <!-- =========================================================
+                     Anclas JS ocultas: mantienen la lógica existente
+                     (auditorSelect, auditorUuid, refreshAll, busyState)
+                     sin mostrar la tarjeta "Auditor a consultar"
+                ========================================================== -->
+                <div id="auditorAnchors" class="hidden-js-anchor" aria-hidden="true">
+                    <select id="auditorSelect"></select>
+                    <input id="auditorUuid" type="hidden">
+                    <button type="button" id="refreshAll"></button>
+                    <span id="busyState"></span>
+                </div>
+
+                <!-- ================================================
+                     SECCIÓN 1: PROGRAMAR UNA AUDITORÍA
+                ================================================= -->
+                <section class="panel panel-section seccion-visible" data-seccion="schedule">
+                    <div class="panel-head">
+                        <h2>1. Programar una auditoría</h2>
+                        <span class="pill">Prevención de cruces</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>¿Qué hace esta sección?</strong> Selecciona la solicitud de la empresa una sola
+                                vez. El sistema muestra todos los auditores asignados y registra la misma fecha,
+                                modalidad y franja horaria en la agenda de cada uno. Antes de guardar, comprueba la
+                                disponibilidad de todos los integrantes del equipo.
+                            </span>
+                        </div>
+
+                        <div id="scheduleNotice" class="notice" role="status" aria-live="polite"></div>
+                        <form id="scheduleForm">
+                            <div class="grid two">
+                                <div class="field full">
+                                    <label for="assignmentSelect">Solicitud aprobada / empresa</label>
+                                    <select id="assignmentSelect" required>
+                                        <option value="">Cargando solicitudes...</option>
+                                    </select>
+                                    <p class="hint">Cada solicitud aparece una sola vez, aunque tenga varios auditores
+                                        asignados.</p>
+                                </div>
+                                <div class="field">
+                                    <label for="scheduleCompany">Empresa</label>
+                                    <input id="scheduleCompany" readonly placeholder="Se carga desde la solicitud">
+                                </div>
+                                <div class="field">
+                                    <label for="scheduleAuditor">Auditores asignados (se programarán todos)</label>
+                                    <textarea id="scheduleAuditor" rows="3" readonly
+                                        placeholder="Se cargarán los auditores asignados a la solicitud"></textarea>
+                                </div>
+                                <div class="field full">
+                                    <label for="scheduleSede">Sede de la empresa (opcional)</label>
+                                    <select id="scheduleSede">
+                                        <option value="">Dirección principal de la empresa</option>
+                                    </select>
+                                    <p class="hint">Si la empresa tiene varias sedes, elige en cuál se realizará la auditoría.</p>
+                                </div>
+                                <div class="field full">
+                                    <label for="scheduleAddress">Dirección de la auditoría</label>
+                                    <input id="scheduleAddress" readonly minlength="5" maxlength="500" required
+                                        placeholder="Dirección establecida por la empresa">
+                                </div>
+                                <div class="field">
+                                    <label for="scheduleCity">Ciudad / municipio</label>
+                                    <input id="scheduleCity" readonly minlength="2" maxlength="100" required
+                                        placeholder="Ciudad establecida por la empresa">
+                                </div>
+                                <div class="field full">
+                                    <label for="scheduleObservacion">Observación del cambio (opcional)</label>
+                                    <textarea id="scheduleObservacion" rows="3" placeholder="Motivo o detalle del cambio realizado"></textarea>
+                                </div>
+                                <div class="field">
+                                    <label for="scheduleModality">Modalidad</label>
+                                    <select id="scheduleModality">
+                                        <option value="Presencial">Presencial</option>
+                                        <option value="Remota">Remota</option>
+                                        <option value="Híbrida">Híbrida</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label for="scheduleDate">Fecha</label>
+                                    <input id="scheduleDate" type="date" required>
+                                </div>
+                                <div class="field">
+                                    <label for="scheduleStart">Hora de inicio</label>
+                                    <input id="scheduleStart" type="time" required>
+                                </div>
+                                <div class="field">
+                                    <label for="scheduleEnd">Hora final</label>
+                                    <input id="scheduleEnd" type="time" required>
+                                </div>
+                            </div>
+                            <p id="schedulePeriodSummary" class="hint" aria-live="polite" style="margin-top:12px;">
+                                Selecciona una solicitud para consultar si ya tiene un periodo programado.</p>
+                            <div class="actions">
+                                <button type="button" class="secondary" id="checkScheduleAvailability">Comprobar
+                                    disponibilidad</button>
+                                <button type="submit" class="primary" id="scheduleSave">Programar auditoría (todos los
+                                    auditores)</button>
+                                <button type="button" class="secondary hidden" id="scheduleCancelEdit">Salir de
+                                    edición</button>
+                            </div>
+                        </form>
+
+                        <h3
+                            style="margin:28px 0 12px;font-size:15px;color:var(--sena-green-dark);display:flex;align-items:center;gap:8px;">
+                            <span
+                                style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--sena-green-bright);"></span>
+                            Programaciones de la solicitud seleccionada
+                        </h3>
+                        <div id="scheduleList" class="table-wrap">
+                            <div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SECCIÓN 2: DISPONIBILIDAD SEMANAL
+                ================================================= -->
+                <section class="panel panel-section" data-seccion="assignments" id="assignmentsPanel">
+                    <div class="panel-head">
+                        <h2>2. Solicitudes con auditores asignados</h2>
+                        <span class="pill">Listas para programar</span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="assignmentsNotice" class="notice" role="status" aria-live="polite"></div>
+                        <div class="record-table-wrap">
+                            <table class="record-table">
+                                <thead>
+                                    <tr>
+                                        <th>Solicitud</th>
+                                        <th>Empresa</th>
+                                        <th>Auditores asignados</th>
+                                        <th>Estado</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="assignmentsRows"></tbody>
+                            </table>
+                        </div>
+                        <p id="assignmentsSummary" class="help-text" style="margin-top:12px;"></p>
+                    </div>
+                </section>
+
+                <section class="panel panel-section" data-seccion="weekly" id="weeklyPanel">
+                    <div class="panel-head">
+                        <h2>3. Configurar disponibilidad semanal</h2>
+                        <span class="pill">Recurrente por día</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>¿Cómo funciona?</strong> Marca los días de la semana en los que puedes atender
+                                auditorías y define una franja horaria para cada uno. El rango de vigencia indica desde
+                                cuándo y hasta cuándo se repetirá este patrón. Puedes configurar varios días en una
+                                sola operación.
+                            </span>
+                        </div>
+
+                        <div id="weeklyNotice" class="notice" role="status" aria-live="polite"></div>
+                        <form id="weeklyForm">
+                            <div class="grid three">
+                                <div class="field">
+                                    <label for="weeklyFrom">Vigente desde</label>
+                                    <input id="weeklyFrom" type="date" required>
+                                </div>
+                                <div class="field">
+                                    <label for="weeklyUntil">Vigente hasta (opcional)</label>
+                                    <input id="weeklyUntil" type="date">
+                                </div>
+                                <div class="field">
+                                    <label for="weeklyReason">Motivo / observación</label>
+                                    <input id="weeklyReason" maxlength="500" value="Disponibilidad semanal">
+                                </div>
+                            </div>
+                            <div class="weekday-grid" id="weekdayGrid"
+                                style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px;">
+                                <div class="weekday"
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
+                                            id="day-lunes" type="checkbox"
+                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
+                                            for="day-lunes"
+                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Lunes</label>
+                                    </div>
+                                    <div class="field"><label for="start-lunes">Desde</label><input id="start-lunes"
+                                            type="time" value="08:00" disabled></div>
+                                    <div class="field" style="margin-top:8px;"><label
+                                            for="end-lunes">Hasta</label><input id="end-lunes" type="time" value="17:00"
+                                            disabled></div>
+                                </div>
+                                <div class="weekday"
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
+                                            id="day-martes" type="checkbox"
+                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
+                                            for="day-martes"
+                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Martes</label>
+                                    </div>
+                                    <div class="field"><label for="start-martes">Desde</label><input id="start-martes"
+                                            type="time" value="08:00" disabled></div>
+                                    <div class="field" style="margin-top:8px;"><label
+                                            for="end-martes">Hasta</label><input id="end-martes" type="time"
+                                            value="17:00" disabled></div>
+                                </div>
+                                <div class="weekday"
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
+                                            id="day-miércoles" type="checkbox"
+                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
+                                            for="day-miércoles"
+                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Miércoles</label>
+                                    </div>
+                                    <div class="field"><label for="start-miércoles">Desde</label><input
+                                            id="start-miércoles" type="time" value="08:00" disabled></div>
+                                    <div class="field" style="margin-top:8px;"><label
+                                            for="end-miércoles">Hasta</label><input id="end-miércoles" type="time"
+                                            value="17:00" disabled></div>
+                                </div>
+                                <div class="weekday"
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
+                                            id="day-jueves" type="checkbox"
+                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
+                                            for="day-jueves"
+                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Jueves</label>
+                                    </div>
+                                    <div class="field"><label for="start-jueves">Desde</label><input id="start-jueves"
+                                            type="time" value="08:00" disabled></div>
+                                    <div class="field" style="margin-top:8px;"><label
+                                            for="end-jueves">Hasta</label><input id="end-jueves" type="time"
+                                            value="17:00" disabled></div>
+                                </div>
+                                <div class="weekday"
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
+                                            id="day-viernes" type="checkbox"
+                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
+                                            for="day-viernes"
+                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Viernes</label>
+                                    </div>
+                                    <div class="field"><label for="start-viernes">Desde</label><input id="start-viernes"
+                                            type="time" value="08:00" disabled></div>
+                                    <div class="field" style="margin-top:8px;"><label
+                                            for="end-viernes">Hasta</label><input id="end-viernes" type="time"
+                                            value="17:00" disabled></div>
+                                </div>
+                                <div class="weekday"
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
+                                            id="day-sábado" type="checkbox"
+                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
+                                            for="day-sábado"
+                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Sábado</label>
+                                    </div>
+                                    <div class="field"><label for="start-sábado">Desde</label><input id="start-sábado"
+                                            type="time" value="08:00" disabled></div>
+                                    <div class="field" style="margin-top:8px;"><label
+                                            for="end-sábado">Hasta</label><input id="end-sábado" type="time"
+                                            value="12:00" disabled></div>
+                                </div>
+                                <div class="weekday"
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
+                                            id="day-domingo" type="checkbox"
+                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
+                                            for="day-domingo"
+                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Domingo</label>
+                                    </div>
+                                    <div class="field"><label for="start-domingo">Desde</label><input id="start-domingo"
+                                            type="time" value="08:00" disabled></div>
+                                    <div class="field" style="margin-top:8px;"><label
+                                            for="end-domingo">Hasta</label><input id="end-domingo" type="time"
+                                            value="12:00" disabled></div>
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <button class="primary" id="weeklySave" type="submit">Guardar disponibilidad
+                                    semanal</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SECCIÓN 3: REGISTRAR FECHA NO DISPONIBLE
+                ================================================= -->
+                <section class="panel panel-section" data-seccion="blocked">
+                    <div class="panel-head">
+                        <h2>4. Registrar fecha no disponible</h2>
+                        <span class="pill blocked">Bloqueo de día completo</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>Bloquea fechas completas</strong> para indicar que no podrás atender auditorías
+                                (permisos, incapacidades, vacaciones, etc.). El sistema verificará que no exista una
+                                auditoría programada en esas fechas antes de guardar el bloqueo.
+                            </span>
+                        </div>
+
+                        <div id="blockedNotice" class="notice" role="status" aria-live="polite"></div>
+                        <form id="blockedForm">
+                            <div class="grid three">
+                                <div class="field">
+                                    <label for="blockedFrom">Fecha desde</label>
+                                    <input id="blockedFrom" type="date" required>
+                                </div>
+                                <div class="field">
+                                    <label for="blockedUntil">Fecha hasta (opcional)</label>
+                                    <input id="blockedUntil" type="date">
+                                </div>
+                                <div class="field">
+                                    <label for="blockedReason">Motivo</label>
+                                    <input id="blockedReason" required minlength="3" maxlength="255"
+                                        placeholder="Ej. Permiso, incapacidad, vacaciones">
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <button class="primary" type="submit" id="blockedSave">Registrar fecha no
+                                    disponible</button>
+                            </div>
+                            <p class="hint" style="margin-top:10px;">No se permitirá registrar un bloqueo que se cruce
+                                con una auditoría ya programada.</p>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SECCIÓN 4: CONSULTAR Y EDITAR DISPONIBILIDAD
+                ================================================= -->
+                <section class="panel panel-section" data-seccion="availability">
+                    <div class="panel-head">
+                        <h2>5. Consultar y editar disponibilidad futura</h2>
+                        <button type="button" id="reloadAvailability" class="secondary">Consultar
+                            disponibilidad</button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>Filtra y edita registros vigentes.</strong> Puedes consultar la disponibilidad
+                                por rango de fechas, tipo de registro o estado. Solo se pueden editar registros activos
+                                cuya vigencia no haya terminado; cada cambio guarda una instantánea en el historial.
+                            </span>
+                        </div>
+
+                        <div id="availabilityNotice" class="notice" role="status" aria-live="polite"></div>
+                        <div class="grid four">
+                            <div class="field">
+                                <label for="availabilityFrom">Desde</label>
+                                <input id="availabilityFrom" type="date">
+                            </div>
+                            <div class="field">
+                                <label for="availabilityUntil">Hasta</label>
+                                <input id="availabilityUntil" type="date">
+                            </div>
+                            <div class="field">
+                                <label for="availabilityType">Tipo de registro</label>
+                                <select id="availabilityType">
+                                    <option value="">Todos</option>
+                                    <option value="Semanal">Semanal</option>
+                                    <option value="No disponible">No disponible</option>
+                                    <option value="Disponible">Disponible</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="availabilityActive">Estado</label>
+                                <select id="availabilityActive">
+                                    <option value="true">Activos e históricos</option>
+                                    <option value="false">Solo activos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="primary" id="applyAvailabilityFilter">Consultar</button>
+                        </div>
+                        <div class="table-wrap" id="availabilityTable">
+                            <div class="empty">Selecciona un auditor para consultar sus registros.</div>
+                        </div>
+
+                        <div id="editAvailabilityPanel" class="hidden"
+                            style="margin-top:22px;border-top:1px solid var(--line);padding-top:20px">
+                            <h3 style="margin:0 0 12px;font-size:15px;color:var(--sena-green-dark);">Editar registro
+                                futuro seleccionado</h3>
+                            <p class="hint" style="margin-bottom:12px;">Solo se editan registros activos cuya vigencia
+                                no haya terminado. Se conservará una instantánea antes y después del cambio en el
+                                historial.</p>
+                            <div id="editNotice" class="notice" role="status" aria-live="polite"></div>
+                            <form id="editAvailabilityForm">
+                                <input id="editAvailabilityId" type="hidden">
+                                <div class="grid three">
+                                    <div class="field">
+                                        <label for="editFrom">Vigente desde</label>
+                                        <input id="editFrom" type="date" required>
+                                    </div>
+                                    <div class="field">
+                                        <label for="editUntil">Vigente hasta (opcional)</label>
+                                        <input id="editUntil" type="date">
+                                    </div>
+                                    <div class="field">
+                                        <label for="editDay">Día semanal</label>
+                                        <select id="editDay">
+                                            <option value="">Todos los días / registro puntual</option>
+                                            <option value="lunes">Lunes</option>
+                                            <option value="martes">Martes</option>
+                                            <option value="miercoles">Miércoles</option>
+                                            <option value="jueves">Jueves</option>
+                                            <option value="viernes">Viernes</option>
+                                            <option value="sabado">Sábado</option>
+                                            <option value="domingo">Domingo</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label for="editStart">Hora inicio (opcional)</label>
+                                        <input id="editStart" type="time">
+                                    </div>
+                                    <div class="field">
+                                        <label for="editEnd">Hora final (opcional)</label>
+                                        <input id="editEnd" type="time">
+                                    </div>
+                                    <div class="field">
+                                        <label for="editReason">Motivo (máximo 255 caracteres)</label>
+                                        <input id="editReason" maxlength="255">
+                                    </div>
+                                </div>
+                                <div class="actions">
+                                    <button class="primary" type="submit">Guardar cambios</button>
+                                    <button class="secondary" type="button" id="cancelEdit">Cerrar editor</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SECCIÓN 5: DISPONIBILIDAD MENSUAL Y AUDITORÍAS
+                ================================================= -->
+                <section class="panel panel-section" data-seccion="month">
+                    <div class="panel-head">
+                        <h2>6. Disponibilidad mensual y auditorías</h2>
+                        <span class="pill">Filtros geográficos</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>Vista mensual en calendario.</strong> Consulta las auditorías programadas y los
+                                registros de disponibilidad de un mes específico. Puedes filtrar por ciudad o modalidad
+                                para enfocarte en una región o tipo de visita.
+                            </span>
+                        </div>
+
+                        <div id="monthNotice" class="notice" role="status" aria-live="polite"></div>
+                        <div class="grid four">
+                            <div class="field">
+                                <label for="monthSelect">Mes</label>
+                                <select id="monthSelect">
+                                    <option value="1">Enero</option>
+                                    <option value="2">Febrero</option>
+                                    <option value="3">Marzo</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Mayo</option>
+                                    <option value="6">Junio</option>
+                                    <option value="7">Julio</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="yearSelect">Año</label>
+                                <input id="yearSelect" type="number" min="2000" max="2100" required>
+                            </div>
+                            <div class="field">
+                                <label for="cityFilter">Ciudad / municipio</label>
+                                <input id="cityFilter" maxlength="150" placeholder="Todas las ciudades">
+                            </div>
+                            <div class="field">
+                                <label for="modalityFilter">Modalidad de auditoría</label>
+                                <select id="modalityFilter">
+                                    <option value="">Todas</option>
+                                    <option value="Presencial">Presencial</option>
+                                    <option value="Remota">Remota</option>
+                                    <option value="Híbrida">Híbrida</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="primary" id="loadMonth">Ver mes</button>
+                            <button type="button" class="secondary" id="clearMonthFilters">Limpiar filtros</button>
+                        </div>
+                        <div id="monthlyCalendar" class="calendar-wrap"
+                            style="margin-top:16px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;">
+                            <div class="empty" style="grid-column:1/-1;">Selecciona un auditor y pulsa "Ver mes".</div>
+                        </div>
+                        <h3 style="margin:25px 0 12px;font-size:15px;color:var(--sena-green-dark);">Auditorías del
+                            periodo filtrado</h3>
+                        <div id="monthlyAuditTable" class="table-wrap">
+                            <div class="empty">No hay datos mensuales consultados.</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SECCIÓN 6: HISTORIAL DE DISPONIBILIDAD
+                ================================================= -->
+                <section class="panel panel-section" data-seccion="history">
+                    <div class="panel-head">
+                        <h2>7. Historial de disponibilidad</h2>
+                        <button type="button" id="loadHistory" class="secondary">Consultar historial</button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="section-note">
+                            <span class="note-icon" aria-hidden="true">ℹ</span>
+                            <span>
+                                <strong>Trazabilidad completa.</strong> Revisa todos los cambios que se han realizado
+                                sobre la disponibilidad del auditor. Cada registro muestra qué acción se realizó,
+                                cuándo, y el estado anterior y posterior del registro.
+                            </span>
+                        </div>
+
+                        <div id="historyNotice" class="notice" role="status" aria-live="polite"></div>
+                        <div class="table-wrap" id="historyTable">
+                            <div class="empty">Selecciona un auditor para consultar su historial.</div>
+                        </div>
+                    </div>
+                </section>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- =========================================================
+         MODAL DE DETALLE DE PROGRAMACIÓN (nuevo, no toca la lógica existente)
+    ========================================================= -->
+    <div id="programacionModal" class="programacion-modal" role="dialog" aria-modal="true"
+        aria-labelledby="programacionModalTitle">
+        <div class="programacion-modal-card">
+            <div class="programacion-modal-head">
+                <div>
+                    <span class="modal-eyebrow">Detalle de programación</span>
+                    <h3 id="programacionModalTitle">Programación</h3>
+                </div>
+                <button type="button" class="modal-close" onclick="cerrarProgramacionModal()"
+                    aria-label="Cerrar detalle">×</button>
+            </div>
+            <div class="programacion-modal-body" id="programacionModalBody"></div>
+            <div class="programacion-modal-foot">
+                <button type="button" class="secondary" onclick="cerrarProgramacionModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.API_BASE || "";
+        const $ = (id) => document.getElementById(id);
+        let auditors = [];
+        let assignments = [];
+        let programacionActual = null;
+        let programacionEnEdicion = false;
+        let availabilityRows = [];
+        let editingRow = null;
+
+        function showNotice(id, message, kind = "ok") {
+            const node = $(id);
+            node.textContent = message;
+            node.className = `notice show ${kind}`;
+        }
+        function clearNotice(id) {
+            const node = $(id); if (node) { node.textContent = ""; node.className = "notice"; }
+        }
+        function setBusy(message = "") { $("busyState").textContent = message; }
+        async function api(path, options = {}) {
+            const token = localStorage.getItem("access_token") || localStorage.getItem("accessToken") || localStorage.getItem("token");
+            const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+            if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
+            const response = await fetch(`${API_BASE}/agenda-auditor${path}`, {
+                ...options, credentials: "include", headers
+            });
+            const contentType = response.headers.get("content-type") || "";
+            const payload = contentType.includes("application/json") ? await response.json() : await response.text();
+            if (!response.ok) {
+                let message = payload && payload.detail ? payload.detail : `Error HTTP ${response.status}`;
+                if (typeof message !== "string") message = JSON.stringify(message);
+                throw new Error(message);
+            }
+            return payload;
+        }
+        function esc(value) {
+            return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+        }
+        function asDateInput(value) { const result = value ? String(value).slice(0, 10) : ""; return result.startsWith("9999-12-31") ? "" : result; }
+        function asTimeInput(value) { return value ? String(value).slice(0, 5) : ""; }
+        function asDateTimeInput(value) { return value ? String(value).slice(0, 16).replace(' ', 'T') : ""; }
+        function timeFromDateTime(value) { const raw = String(value || ""); return raw.length >= 16 && raw.includes("T") ? raw.slice(11, 16) : asTimeInput(value); }
+        function dayLabel(value) { const n = Number(value); return ({ 0: "Domingo", 1: "Lunes", 2: "Martes", 3: "Miércoles", 4: "Jueves", 5: "Viernes", 6: "Sábado", 7: "Domingo" })[n] || (value || "Todos los días / fecha puntual"); }
+        function localDateNow() {
+            const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        }
+        function selectedAuditorId() { return $("auditorSelect").value || ""; }
+        function currentAssignment() {
+            const selected = $("assignmentSelect").value;
+            if (selected === "") return null;
+            const index = Number(selected);
+            return Number.isInteger(index) ? (assignments[index] || null) : null;
+        }
+        async function cargarSedes(idEmpresa) {
+            const select = $("scheduleSede");
+            if (!select) return;
+            select.innerHTML = '<option value="">Dirección principal de la empresa</option>';
+            if (!idEmpresa) return;
+            try {
+                const token = localStorage.getItem("access_token") || localStorage.getItem("accessToken") || localStorage.getItem("token");
+                const response = await fetch(`/api/empresas/${encodeURIComponent(idEmpresa)}/sedes`, { headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" } });
+                const data = await response.json().catch(() => ({}));
+                const sedes = Array.isArray(data) ? data : (Array.isArray(data.sedes) ? data.sedes : (Array.isArray(data.items) ? data.items : []));
+                sedes.forEach((sede) => {
+                    const option = document.createElement("option");
+                    option.value = sede.id_sede;
+                    option.textContent = `${sede.nombre_sede || "Sede"} - ${sede.ciudad || ""} - ${sede.direccion || ""}`;
+                    option.dataset.direccion = sede.direccion || "";
+                    option.dataset.ciudad = sede.ciudad || "";
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error("No fue posible cargar las sedes:", error);
+            }
+        }
+        const scheduleSedeSelect = $("scheduleSede");
+        if (scheduleSedeSelect) {
+            scheduleSedeSelect.addEventListener("change", () => {
+                const select = $("scheduleSede");
+                const option = select.options[select.selectedIndex];
+                if (option && option.value) {
+                    $("scheduleAddress").value = option.dataset.direccion || $("scheduleAddress").value;
+                    $("scheduleCity").value = option.dataset.ciudad || $("scheduleCity").value;
+                } else {
+                    const group = currentAssignment();
+                    $("scheduleAddress").value = group?.empresa_direccion || "";
+                    $("scheduleCity").value = group?.empresa_ciudad || "";
+                }
+            });
+        }
+        function documentLabel(auditor) {
+            const tipo = auditor?.auditor_tipo_doc || auditor?.tipo_doc || auditor?.tipo_documento || auditor?.tipo_identificacion || "";
+            const numero = auditor?.auditor_num_doc || auditor?.num_doc || auditor?.numero_documento || auditor?.numero_doc || auditor?.documento_identidad || auditor?.documento || "";
+            const value = [tipo, numero].filter(part => String(part || "").trim()).join(" ").trim();
+            return value || "Documento no disponible";
+        }
+        function auditorLabel(auditor, includeRole = true) {
+            const name = auditor?.auditor_nombre || auditor?.nombre || "Auditor sin nombre";
+            const role = auditor?.rol_auditor || auditor?.rol || "Auditor";
+            return `${name}${includeRole ? ` (${role})` : ""} · Documento: ${documentLabel(auditor)}`;
+        }
+        function normalizedStatus(value) {
+            return String(value || "").trim().toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+        function isTerminalSchedule(row) {
+            return ["cancelada", "cancelado", "finalizada", "finalizado", "terminada", "terminado"].includes(normalizedStatus(row?.estado));
+        }
+        function dateTimeParts(value) {
+            if (!value) return { date: "", time: "" };
+            const raw = String(value).replace(" ", "T");
+            return { date: raw.slice(0, 10), time: raw.length >= 16 ? raw.slice(11, 16) : "" };
+        }
+        function setScheduleFormMode(locked, editing = false) {
+            ["scheduleModality", "scheduleDate", "scheduleStart", "scheduleEnd"].forEach(id => { $(id).disabled = Boolean(locked); });
+            $("scheduleCity").readOnly = true;
+            $("scheduleAddress").readOnly = true;
+            $("scheduleSave").disabled = Boolean(locked);
+            $("scheduleSave").textContent = editing ? "Guardar cambios" : "Programar auditoría (todos los auditores)";
+            $("scheduleCancelEdit").classList.toggle("hidden", !editing);
+        }
+        function prepareNewScheduleForm(group) {
+            programacionActual = null;
+            programacionEnEdicion = false;
+            $("scheduleDate").value = "";
+            $("scheduleStart").value = "";
+            $("scheduleEnd").value = "";
+            $("scheduleModality").value = "Presencial";
+            $("scheduleAddress").value = group?.empresa_direccion || "";
+            $("scheduleCity").value = group?.empresa_ciudad || "";
+            $("scheduleObservacion").value = "";
+            $("schedulePeriodSummary").textContent = "Esta solicitud no tiene una programación activa. Seleccione fecha y horas para crearla.";
+            setScheduleFormMode(false, false);
+            clearNotice("scheduleNotice");
+        }
+        function applyExistingSchedule(row, editing = false) {
+            if (!row) return;
+            programacionActual = row;
+            programacionEnEdicion = Boolean(editing);
+            const start = dateTimeParts(row.fecha_inicio);
+            const end = dateTimeParts(row.fecha_fin);
+            $("scheduleDate").value = start.date;
+            $("scheduleStart").value = start.time;
+            $("scheduleEnd").value = end.time;
+            if (row.modalidad) $("scheduleModality").value = row.modalidad;
+            if (row.direccion_servicio) $("scheduleAddress").value = row.direccion_servicio;
+            if (row.ciudad_servicio) $("scheduleCity").value = row.ciudad_servicio;
+            $("scheduleObservacion").value = row.motivo_reprogramacion || "";
+            $("schedulePeriodSummary").textContent = `Periodo actualmente guardado — Fecha/hora de inicio: ${formatDateTime(row.fecha_inicio)} · Fecha/hora de fin: ${formatDateTime(row.fecha_fin)}.`;
+            setScheduleFormMode(!editing, editing);
+            if (editing) {
+                showNotice("scheduleNotice", "Modo de edición activado. Revise las fechas, horas y modalidad; el cambio solo se guardará al confirmar.", "info");
+            } else {
+                showNotice("scheduleNotice", "Esta solicitud ya está programada. La fecha de inicio y fin se muestran en modo de solo lectura. Para modificarlas, use el botón Editar de la programación.", "info");
+            }
+        }
+        function formatDateTime(value) {
+            if (!value) return "—";
+            const dateObj = new Date(value);
+            if (Number.isNaN(dateObj.getTime())) return String(value);
+            return dateObj.toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
+        }
+        function canonicalDay(day) {
+            const value = String(day ?? "").trim();
+            const n = Number(value);
+            if (n >= 0 && n <= 7) return ({ 0: "domingo", 1: "lunes", 2: "martes", 3: "miercoles", 4: "jueves", 5: "viernes", 6: "sabado", 7: "domingo" })[n];
+            const lower = value.toLocaleLowerCase("es");
+            return ({ "miércoles": "miercoles", "sábado": "sabado" })[lower] || lower;
+        }
+
+        async function loadAuditors() {
+            try {
+                const data = await api("/auditores"); auditors = data.auditores || [];
+                const select = $("auditorSelect"); select.innerHTML = '<option value="">Seleccione un auditor</option>';
+                auditors.forEach(a => {
+                    const option = document.createElement("option"); option.value = a.id_usuario;
+                    option.textContent = `${a.nombre} · ${a.correo || "Sin correo"}`;
+                    select.appendChild(option);
+                });
+                if (!auditors.length) showNotice("globalNotice", "No se encontraron auditores activos/aprobados.", "error");
+            } catch (error) {
+                $("auditorSelect").innerHTML = '<option value="">No fue posible cargar auditores</option>';
+                showNotice("globalNotice", `Error al consultar auditores: ${error.message}`, "error");
+            }
+        }
+        async function loadAssignments() {
+            try {
+                const data = await api("/solicitudes-disponibles");
+                const sourceRows = data.asignaciones || [];
+                const grouped = new Map();
+
+                sourceRows.forEach((row, index) => {
+                    const requestId = row.id_solicitud || row.solicitud_id || row.idSolicitud || "";
+                    const key = requestId ? String(requestId) : `sin-solicitud-${index}`;
+                    if (!grouped.has(key)) {
+                        grouped.set(key, { ...row, id_solicitud: requestId || row.id_solicitud, auditores: [] });
+                    }
+                    const group = grouped.get(key);
+                    const nestedAuditors = Array.isArray(row.auditores) ? row.auditors : [row];
+                    nestedAuditors.forEach(auditor => {
+                        const idUsuario = auditor.id_usuario || auditor.id_usuario_auditor;
+                        if (!idUsuario) return;
+                        if (!group.auditores.some(existing => String(existing.id_usuario) === String(idUsuario))) {
+                            group.auditores.push({
+                                ...auditor,
+                                id_usuario: idUsuario,
+                                auditor_nombre: auditor.auditor_nombre || auditor.nombre || "Auditor sin nombre",
+                                auditor_correo: auditor.auditor_correo || auditor.correo || "",
+                                auditor_tipo_doc: auditor.auditor_tipo_doc || auditor.tipo_doc || auditor.tipo_documento || auditor.tipo_identificacion || "",
+                                auditor_num_doc: auditor.auditor_num_doc || auditor.num_doc || auditor.numero_documento || auditor.numero_doc || auditor.documento_identidad || auditor.documento || "",
+                                rol_auditor: auditor.rol_auditor || auditor.rol || "Auditor"
+                            });
+                        }
+                    });
+                });
+
+                assignments = Array.from(grouped.values()).filter(group => group.auditores.length > 0);
+                const select = $("assignmentSelect");
+                select.innerHTML = '<option value="">Seleccione una solicitud / empresa</option>';
+                assignments.forEach((group, index) => {
+                    const option = document.createElement("option");
+                    option.value = String(index);
+                    const radicado = group.numero_radicado || group.id_solicitud || "Solicitud";
+                    option.textContent = `${radicado} · ${group.empresa_nombre || "Empresa"} · ${group.auditores.length} auditor(es) asignado(s)`;
+                    select.appendChild(option);
+                });
+                if (!assignments.length) select.innerHTML = '<option value="">No hay solicitudes con auditores asignados</option>';
+            } catch (error) {
+                $("assignmentSelect").innerHTML = '<option value="">No fue posible cargar solicitudes</option>';
+                showNotice("scheduleNotice", `Error al cargar asignaciones: ${error.message}`, "error");
+            }
+        }
+        async function onAuditorChanged() {
+            const id = selectedAuditorId(); $("auditorUuid").value = id;
+            if (!id) return;
+            await Promise.all([loadAvailability(), loadHistory(), loadMonth()]);
+        }
+        function availabilityTypeName(row) {
+            const type = String(row.tipo_registro || "").toLowerCase();
+            return type.includes("no disponible") || type.includes("no_disponible") || type === "bloqueo" || type === "indisponible" ? "No disponible" : (row.tipo_registro || "Disponibilidad");
+        }
+        function renderAvailability(rows) {
+            availabilityRows = rows;
+            if (!rows.length) { $("availabilityTable").innerHTML = '<div class="empty">No hay registros con estos filtros.</div>'; return; }
+            const body = rows.map(row => {
+                const blocked = availabilityTypeName(row) === "No disponible";
+                const canEdit = !blocked && ["activo", "activa"].includes(String(row.estado || "").toLowerCase());
+                const dayText = blocked ? "Fecha completa" : (row.dia_semana !== null && row.dia_semana !== undefined ? dayLabel(row.dia_semana) : "Todos los días / fecha puntual");
+                return `<tr>
+        <td>${esc(availabilityTypeName(row))}</td><td>${esc(dayText)}</td>
+        <td>${esc(asDateInput(row.fecha_inicio))}</td><td>${esc(asDateInput(row.fecha_fin) || "Sin fecha final")}</td>
+        <td>${esc(asTimeInput(row.hora_inicio) || "Todo el día")}–${esc(asTimeInput(row.hora_fin) || "Todo el día")}</td>
+        <td>${esc(row.motivo || "—")}</td><td><span class="pill ${blocked ? "blocked" : ""}">${esc(row.estado || "—")}</span></td>
+        <td>${canEdit ? `<button class="secondary" type="button" data-edit-id="${esc(row.id_disponibilidad)}">Editar</button>` : "—"}</td>
+      </tr>`;
+            }).join("");
+            $("availabilityTable").innerHTML = `<table><thead><tr><th>Tipo</th><th>Día</th><th>Desde</th><th>Hasta</th><th>Horario</th><th>Motivo</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${body}</tbody></table>`;
+            $("availabilityTable").querySelectorAll("[data-edit-id]").forEach(button => button.addEventListener("click", () => openEditAvailability(button.dataset.editId)));
+        }
+        async function loadAvailability() {
+            const id = selectedAuditorId(); if (!id) return;
+            clearNotice("availabilityNotice");
+            const query = new URLSearchParams();
+            if ($("availabilityFrom").value) query.set("desde", $("availabilityFrom").value);
+            if ($("availabilityUntil").value) query.set("hasta", $("availabilityUntil").value);
+            if ($("availabilityType").value) query.set("tipo_registro", $("availabilityType").value);
+            query.set("incluir_inactivos", $("availabilityActive").value);
+            try {
+                const data = await api(`/${encodeURIComponent(id)}/disponibilidades?${query}`);
+                renderAvailability(data.disponibilidad || []);
+            } catch (error) {
+                showNotice("availabilityNotice", `No se pudo consultar la disponibilidad: ${error.message}`, "error");
+            }
+        }
+        function openEditAvailability(id) {
+            const row = availabilityRows.find(x => String(x.id_disponibilidad) === String(id));
+            if (!row) return;
+            editingRow = row; $("editAvailabilityId").value = row.id_disponibilidad;
+            const today = localDateNow();
+            const effectiveStart = asDateInput(row.fecha_inicio);
+            $("editFrom").value = effectiveStart && effectiveStart < today ? today : effectiveStart;
+            $("editUntil").value = asDateInput(row.fecha_fin);
+            $("editDay").value = canonicalDay(row.dia_semana);
+            $("editStart").value = asTimeInput(row.hora_inicio);
+            $("editEnd").value = asTimeInput(row.hora_fin);
+            $("editReason").value = row.motivo || "";
+            $("editAvailabilityPanel").classList.remove("hidden");
+            $("editAvailabilityPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        async function loadHistory() {
+            const id = selectedAuditorId(); if (!id) return;
+            clearNotice("historyNotice");
+            try {
+                const data = await api(`/${encodeURIComponent(id)}/historial-disponibilidad`);
+                const rows = data.historial || [];
+                if (!rows.length) { $("historyTable").innerHTML = '<div class="empty">No hay historial registrado.</div>'; return; }
+                const body = rows.map(row => `<tr>
+        <td>${esc(row.fecha_evento ? formatDateTime(row.fecha_evento) : "Registro anterior a la trazabilidad")}</td>
+        <td>${esc(row.accion || "—")}</td><td>${esc(row.tipo_registro || "—")}</td>
+        <td>${esc(availabilityTypeName(row) === "No disponible" ? "Fecha completa" : (row.dia_semana !== null && row.dia_semana !== undefined ? dayLabel(row.dia_semana) : "—"))}</td><td>${esc(asDateInput(row.fecha_inicio))} – ${esc(asDateInput(row.fecha_fin) || "Sin final")}</td>
+        <td>${esc(asTimeInput(row.hora_inicio) || "Todo el día")}–${esc(asTimeInput(row.hora_fin) || "Todo el día")}</td>
+        <td>${esc(row.motivo || "—")}</td><td>${esc(row.estado || "—")}</td>
+      </tr>`).join("");
+                $("historyTable").innerHTML = `<table><thead><tr><th>Fecha del evento</th><th>Acción</th><th>Tipo</th><th>Día</th><th>Vigencia</th><th>Horario</th><th>Motivo</th><th>Estado</th></tr></thead><tbody>${body}</tbody></table>`;
+            } catch (error) {
+                showNotice("historyNotice", `No se pudo consultar el historial: ${error.message}`, "error");
+            }
+        }
+        function renderAudits(items) {
+            if (!items.length) { $("monthlyAuditTable").innerHTML = '<div class="empty">No hay auditorías para los filtros seleccionados.</div>'; return; }
+            const rows = items.map(item => `<tr><td>${esc(item.numero_radicado || item.id_solicitud || "—")}</td><td>${esc(item.empresa_nombre || "—")}</td><td>${esc(item.direccion_servicio || "—")}<br><span class="hint">${esc(item.ciudad_servicio || "")}</span></td><td>${esc(formatDateTime(item.fecha_inicio))}</td><td>${esc(formatDateTime(item.fecha_fin))}</td><td>${esc(item.modalidad || "—")}</td><td><span class="pill audit">${esc(item.estado || "—")}</span></td></tr>`).join("");
+            $("monthlyAuditTable").innerHTML = `<table><thead><tr><th>Solicitud</th><th>Empresa</th><th>Lugar</th><th>Inicio</th><th>Fin</th><th>Modalidad</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+        }
+        function renderMonth(data) {
+            const days = data.dias || [];
+            if (!days.length) { $("monthlyCalendar").innerHTML = '<div class="empty" style="grid-column:1/-1;">No hay información mensual.</div>'; renderAudits([]); return; }
+            const firstDay = new Date(`${days[0].fecha}T12:00:00`).getDay();
+            const mondayOffset = (firstDay + 6) % 7;
+            let html = '<div class="calendar" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;grid-column:1/-1;"><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Lun</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Mar</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Mié</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Jue</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Vie</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Sáb</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Dom</div>';
+            for (let i = 0; i < mondayOffset; i++) html += '<div class="day blank" style="border:0;background:transparent;"></div>';
+            const allAudits = [];
+            days.forEach(d => {
+                html += `<div class="day" style="min-height:126px;border:1px solid var(--line);border-radius:9px;padding:8px;background:#fff;"><div class="num" style="font-weight:800;font-size:13px;margin-bottom:6px;color:var(--sena-green-dark);">${Number(d.fecha.slice(-2))}</div>`;
+                (d.disponibilidad || []).forEach(r => {
+                    const blocked = availabilityTypeName(r) === "No disponible";
+                    html += `<div class="event" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 6px;border-radius:6px;background:${blocked ? "#fff0ef" : "#edf5ef"};color:${blocked ? "#8a2020" : "#205d35"};">${blocked ? "No disponible" : "Disponible"}<small style="display:block;opacity:.85;margin-top:2px;">${esc(asTimeInput(r.hora_inicio) || "Todo el día")}–${esc(asTimeInput(r.hora_fin) || "Todo el día")}</small></div>`;
+                });
+                (d.auditorias || []).forEach(a => {
+                    allAudits.push(a);
+                    html += `<div class="event visit" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 6px;border-radius:6px;background:#edf2ff;color:#2b4e93;">Auditoría<small style="display:block;opacity:.85;margin-top:2px;">${esc(timeFromDateTime(a.fecha_inicio) || formatDateTime(a.fecha_inicio))} · ${esc(a.modalidad || "")}</small><small style="display:block;opacity:.85;margin-top:2px;">${esc(a.empresa_nombre || a.numero_radicado || "")}</small></div>`;
+                });
+                html += '</div>';
+            });
+            html += '</div>';
+            $("monthlyCalendar").innerHTML = html;
+            renderAudits(allAudits);
+        }
+        async function loadMonth() {
+            const id = selectedAuditorId(); if (!id) return;
+            clearNotice("monthNotice");
+            const month = Number($("monthSelect").value), year = Number($("yearSelect").value);
+            const query = new URLSearchParams({ mes: String(month), anio: String(year) });
+            if ($("cityFilter").value.trim()) query.set("ciudad", $("cityFilter").value.trim());
+            if ($("modalityFilter").value) query.set("modalidad", $("modalityFilter").value);
+            try {
+                const data = await api(`/${encodeURIComponent(id)}/disponibilidad-mensual?${query}`);
+                renderMonth(data);
+            } catch (error) {
+                showNotice("monthNotice", `No se pudo cargar el mes: ${error.message}`, "error");
+            }
+        }
+        async function loadScheduleList(group) {
+            if (!group || !Array.isArray(group.auditores) || !group.auditores.length) {
+                window.__programacionesActuales = [];
+                $("scheduleList").innerHTML = '<div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>';
+                prepareNewScheduleForm(group);
+                return;
+            }
+            try {
+                const responses = await Promise.allSettled(group.auditores.map(async auditor => {
+                    const data = await api(`/${encodeURIComponent(auditor.id_usuario)}/auditorias-programadas`);
+                    return (data.auditorias || []).map(row => {
+                        const idAuditor = row.id_usuario || row.id_usuario_auditor;
+                        const assignedAuditor = group.auditores.find(item => String(item.id_usuario) === String(idAuditor)) || auditor;
+                        return {
+                            ...row,
+                            __auditorNombre: auditorLabel({
+                                auditor_nombre: assignedAuditor.auditor_nombre || auditor.auditor_nombre,
+                                rol_auditor: row.rol_auditor || assignedAuditor.rol_auditor,
+                                auditor_tipo_doc: assignedAuditor.auditor_tipo_doc,
+                                auditor_num_doc: assignedAuditor.auditor_num_doc
+                            })
+                        };
+                    });
+                }));
+                const failures = responses.filter(result => result.status === "rejected");
+                const allRows = responses.filter(result => result.status === "fulfilled").flatMap(result => result.value);
+                const sourceRows = allRows.filter(row => {
+                    if (group.id_solicitud && row.id_solicitud && String(row.id_solicitud) !== String(group.id_solicitud)) return false;
+                    if (group.numero_radicado && row.numero_radicado && String(row.numero_radicado) !== String(group.numero_radicado)) return false;
+                    return true;
+                });
+                if (!sourceRows.length && failures.length === responses.length) {
+                    throw new Error(failures[0].reason?.message || "No fue posible consultar las agendas de los auditores.");
+                }
+
+                const consolidated = new Map();
+                sourceRows.forEach(row => {
+                    const key = row.id_programacion
+                        ? String(row.id_programacion)
+                        : [group.id_solicitud || row.id_solicitud || row.numero_radicado || "", row.fecha_inicio || "", row.fecha_fin || "", row.modalidad || "", row.ciudad_servicio || ""].join("|");
+                    if (!consolidated.has(key)) consolidated.set(key, { ...row, auditores_programados: [] });
+                    const item = consolidated.get(key);
+                    if (row.__auditorNombre && !item.auditores_programados.includes(row.__auditorNombre)) item.auditores_programados.push(row.__auditorNombre);
+                });
+                const rows = Array.from(consolidated.values()).sort((a, b) => String(a.fecha_inicio || "").localeCompare(String(b.fecha_inicio || "")));
+                window.__programacionesActuales = rows;
+                if (!rows.length) {
+                    $("scheduleList").innerHTML = '<div class="empty">No hay auditorías programadas para esta solicitud.</div>';
+                    prepareNewScheduleForm(group);
+                    return;
+                }
+
+                const tableRows = rows.map((row, idx) => {
+                    const terminal = isTerminalSchedule(row);
+                    const id = row.id_programacion || "";
+                    const auditoresHtml = (row.auditores_programados || []).map(a => `<span class="cell-line">${esc(a)}</span>`).join("") || '<span class="cell-meta">—</span>';
+                    return `<tr>
+                        <td><span class="cell-strong">${esc(row.numero_radicado || row.id_solicitud || group.numero_radicado || "—")}</span></td>
+                        <td><span class="cell-line">${esc(row.empresa_nombre || group.empresa_nombre || "—")}</span></td>
+                        <td>${auditoresHtml}</td>
+                        <td><span class="cell-line">${esc(row.direccion_servicio || group.empresa_direccion || "—")}</span><span class="cell-meta">${esc(row.ciudad_servicio || group.empresa_ciudad || "")}</span></td>
+                        <td><span class="cell-line">${esc(formatDateTime(row.fecha_inicio))}</span></td>
+                        <td><span class="cell-line">${esc(formatDateTime(row.fecha_fin))}</span></td>
+                        <td><span class="cell-line">${esc(row.modalidad || "—")}</span></td>
+                        <td><span class="pill ${terminal ? "blocked" : "audit"}">${esc(row.estado || "—")}</span></td>
+                        <td><span class="cell-line">${esc(row.motivo_cancelacion || row.motivo_reprogramacion || "—")}</span></td>
+                        <td class="row-actions">
+                            <button class="secondary" type="button" data-program-action="view" data-program-index="${idx}" title="Ver detalle completo">Ver</button>
+                            <button class="secondary" type="button" data-program-action="edit" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Editar programación">Editar</button>
+                            <button class="danger" type="button" data-program-action="cancel" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Cancelar programación">Cancelar</button>
+                        </td>
+                    </tr>`;
+                }).join("");
+                $("scheduleList").innerHTML = `<table><thead><tr><th>Solicitud</th><th>Empresa</th><th>Auditores asignados</th><th>Lugar</th><th>Inicio</th><th>Fin</th><th>Modalidad</th><th>Estado</th><th>Observación</th><th>Acciones</th></tr></thead><tbody>${tableRows}</tbody></table>`;
+
+                $("scheduleList").querySelectorAll('[data-program-action="view"]').forEach(button => {
+                    button.addEventListener("click", () => verProgramacion(Number(button.dataset.programIndex)));
+                });
+                $("scheduleList").querySelectorAll('[data-program-action="edit"]').forEach(button => {
+                    button.addEventListener("click", () => editarProgramacion(button.dataset.programId));
+                });
+                $("scheduleList").querySelectorAll('[data-program-action="cancel"]').forEach(button => {
+                    button.addEventListener("click", () => cancelarProgramacion(button.dataset.programId));
+                });
+
+                const activeRows = rows.filter(row => !isTerminalSchedule(row) && row.id_programacion);
+                if (activeRows.length) {
+                    applyExistingSchedule(activeRows[0], false);
+                } else {
+                    prepareNewScheduleForm(group);
+                }
+            } catch (error) {
+                window.__programacionesActuales = [];
+                $("scheduleList").innerHTML = `<div class="empty">Error consultando las programaciones: ${esc(error.message)}</div>`;
+            }
+        }
+
+        async function editarProgramacion(idProgramacion) {
+            const row = (window.__programacionesActuales || []).find(item => String(item.id_programacion) === String(idProgramacion));
+            if (!row || isTerminalSchedule(row)) {
+                showNotice("scheduleNotice", "Esta programación no se puede editar porque ya fue cancelada o finalizada.", "error");
+                return;
+            }
+            if (!confirm("Advertencia: va a habilitar la edición de una programación existente. Revise los cambios antes de guardarlos. ¿Desea continuar?")) return;
+            applyExistingSchedule(row, true);
+            $("scheduleForm").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        async function cancelarProgramacion(idProgramacion) {
+            const row = (window.__programacionesActuales || []).find(item => String(item.id_programacion) === String(idProgramacion));
+            if (!row || isTerminalSchedule(row)) {
+                showNotice("scheduleNotice", "Esta programación ya está cancelada o finalizada.", "error");
+                return;
+            }
+            const motivo = prompt("Advertencia: cancelar la programación la marcará como cancelada para los auditores asignados. Indique el motivo de la cancelación:", "Cancelación administrativa");
+            if (motivo === null) return;
+            if (!motivo.trim()) {
+                showNotice("scheduleNotice", "Debe indicar el motivo de la cancelación.", "error");
+                return;
+            }
+            const confirmar = confirm(`Va a cancelar la programación del ${formatDateTime(row.fecha_inicio)} al ${formatDateTime(row.fecha_fin)}. Esta acción afectará a todos los auditores vinculados. ¿Confirma la cancelación?`);
+            if (!confirmar) return;
+            try {
+                const result = await api(`/programacion/${encodeURIComponent(idProgramacion)}/cancelar`, {
+                    method: "POST",
+                    body: JSON.stringify({ motivo: motivo.trim() })
+                });
+                showNotice("scheduleNotice", result.mensaje || "Programación cancelada correctamente.", "ok");
+                const group = currentAssignment();
+                if (group) await loadScheduleList(group);
+            } catch (error) {
+                showNotice("scheduleNotice", `No fue posible cancelar la programación: ${error.message}`, "error");
+            }
+        }
+
+        $("assignmentSelect").addEventListener("change", async () => {
+            const group = currentAssignment();
+            clearNotice("scheduleNotice");
+            $("scheduleCompany").value = group ? `${group.empresa_nombre || ""} — NIT: ${group.empresa_nit || ""}`.trim() : "";
+            $("scheduleAuditor").value = group
+                ? group.auditores.map(auditor => auditorLabel(auditor)).join("\n")
+                : "";
+            $("scheduleAddress").value = group?.empresa_direccion || "";
+            $("scheduleCity").value = group?.empresa_ciudad || "";
+            await cargarSedes(group?.id_empresa);
+            if (group) {
+                await loadScheduleList(group);
+            } else {
+                window.__programacionesActuales = [];
+                $("scheduleList").innerHTML = '<div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>';
+                prepareNewScheduleForm(null);
+            }
+        });
+
+        $("scheduleCancelEdit").addEventListener("click", () => {
+            if (!programacionActual || !programacionEnEdicion) return;
+            if (!confirm("¿Desea descartar los cambios sin guardar y volver a mostrar la programación actual?")) return;
+            applyExistingSchedule(programacionActual, false);
+        });
+
+        $("checkScheduleAvailability").addEventListener("click", async () => {
+            if (programacionActual && !programacionEnEdicion) {
+                showNotice("scheduleNotice", "La solicitud ya está programada. Use Editar para modificar el periodo y luego compruebe la disponibilidad.", "info");
+                return;
+            }
+            await checkCurrentScheduleAvailability();
+        });
+
+        async function checkCurrentScheduleAvailability() {
+            clearNotice("scheduleNotice");
+            const group = currentAssignment();
+            if (!group) { showNotice("scheduleNotice", "Selecciona la solicitud que vas a programar.", "error"); return false; }
+            const fecha = $("scheduleDate").value, inicio = $("scheduleStart").value, fin = $("scheduleEnd").value;
+            if (!fecha || !inicio || !fin || fin <= inicio) {
+                showNotice("scheduleNotice", "Verifica la fecha y que la hora final sea posterior a la inicial.", "error");
+                return false;
+            }
+            const query = new URLSearchParams({ fecha, hora_inicio: inicio, hora_fin: fin });
+            try {
+                const results = await Promise.all(group.auditores.map(async auditor => {
+                    const result = await api(`/${encodeURIComponent(auditor.id_usuario)}/disponibilidad?${query}`);
+                    return { auditor, result };
+                }));
+                const unavailable = results.filter(item => !item.result.disponible);
+                if (unavailable.length) {
+                    const details = unavailable.map(item => `${item.auditor.auditor_nombre}: ${item.result.motivo || "horario no disponible"}`).join("\n");
+                    showNotice("scheduleNotice", `No se puede programar a todos los auditores en este horario:\n${details}`, "error");
+                    return false;
+                }
+                showNotice("scheduleNotice", "Todos los auditores asignados tienen disponibilidad para el horario seleccionado.", "ok");
+                return true;
+            } catch (error) {
+                showNotice("scheduleNotice", `No se pudo verificar la disponibilidad de todos los auditores: ${error.message}`, "error");
+                return false;
+            }
+        }
+
+        $("scheduleForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            clearNotice("scheduleNotice");
+            const group = currentAssignment();
+            if (!group) { showNotice("scheduleNotice", "Selecciona una solicitud / empresa.", "error"); return; }
+            const editing = Boolean(programacionActual && programacionEnEdicion);
+            if (programacionActual && !editing) {
+                showNotice("scheduleNotice", "Esta solicitud ya tiene programación. Los datos están bloqueados; use el botón Editar de la tabla para modificarlos.", "error");
+                return;
+            }
+            if (!group.auditores?.length) { showNotice("scheduleNotice", "La solicitud no tiene auditores asignados.", "error"); return; }
+            if (!$('scheduleDate').value || !$('scheduleStart').value || !$('scheduleEnd').value || $('scheduleEnd').value <= $('scheduleStart').value) {
+                showNotice("scheduleNotice", "Verifica la fecha y que la hora final sea posterior a la inicial.", "error");
+                return;
+            }
+            if (editing && !programacionActual.id_programacion) {
+                showNotice("scheduleNotice", "No se encontró el identificador de la programación para guardar los cambios.", "error");
+                return;
+            }
+            if (!editing) {
+                const available = await checkCurrentScheduleAvailability();
+                if (!available) return;
+            }
+            const confirmMessage = editing
+                ? "Advertencia: va a modificar una programación existente para el equipo completo de auditores. ¿Desea guardar los cambios?"
+                : "Advertencia: va a registrar la programación de la solicitud para todos los auditores asignados. ¿Desea continuar?";
+            if (!confirm(confirmMessage)) return;
+
+            const fechaInicio = `${$("scheduleDate").value}T${$("scheduleStart").value}:00`;
+            const fechaFin = `${$("scheduleDate").value}T${$("scheduleEnd").value}:00`;
+            const commonPayload = {
+                modalidad: $("scheduleModality").value,
+                ciudad_servicio: $("scheduleCity").value.trim(),
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin
+            };
+            const payload = editing ? {
+                ...commonPayload,
+                observacion: $("scheduleObservacion").value.trim()
+            } : {
+                id_solicitud: group.id_solicitud,
+                id_sede: $("scheduleSede").value || null,
+                auditores: group.auditores.map(auditor => ({ id_usuario: auditor.id_usuario, rol_auditor: auditor.rol_auditor || "Auditor" })),
+                direccion_servicio: $("scheduleAddress").value.trim(),
+                ...commonPayload
+            };
+            $("scheduleSave").disabled = true;
+            try {
+                const result = editing
+                    ? await api(`/programacion/${encodeURIComponent(programacionActual.id_programacion)}`, { method: "PUT", body: JSON.stringify(payload) })
+                    : await api("/", { method: "POST", body: JSON.stringify(payload) });
+                showNotice("scheduleNotice", result.mensaje || (editing ? "Programación actualizada correctamente." : "Programación registrada correctamente."), "ok");
+                programacionEnEdicion = false;
+                await loadScheduleList(group);
+            } catch (error) {
+                showNotice("scheduleNotice", `No fue posible ${editing ? "editar" : "programar"}: ${error.message}`, "error");
+            } finally {
+                if (programacionEnEdicion) $("scheduleSave").disabled = false;
+            }
+        });
+
+        $("auditorSelect").addEventListener("change", onAuditorChanged);
+        $("refreshAll").addEventListener("click", async () => {
+            await Promise.all([onAuditorChanged(), loadAssignments()]);
+            const group = currentAssignment();
+            if (group) await loadScheduleList(group);
+        });
+
+        function mostrarSeccionAgenda(clave) {
+            document.querySelectorAll(".panel-section").forEach((seccion) => {
+                seccion.classList.toggle("seccion-visible", seccion.dataset.seccion === clave);
+            });
+            document.querySelectorAll(".side a[data-seccion]").forEach((enlace) => {
+                enlace.classList.toggle("active", enlace.dataset.seccion === clave);
+            });
+        }
+
+        document.querySelectorAll(".side a[data-seccion]").forEach((enlace) => {
+            enlace.addEventListener("click", (event) => {
+                event.preventDefault();
+                mostrarSeccionAgenda(enlace.dataset.seccion);
+            });
+        });
+
+        async function cargarAsignaciones() {
+            const tbody = $("assignmentsRows");
+            if (!tbody) return;
+            try {
+                const [data, programacionesData] = await Promise.all([
+                    api("/solicitudes-disponibles"),
+                    api("/programaciones").catch(() => ({ programaciones: [] }))
+                ]);
+                const sourceRows = Array.isArray(data.asignaciones) ? data.asignaciones : [];
+                const programadas = new Set((Array.isArray(programacionesData.programaciones) ? programacionesData.programaciones : []).map((item) => String(item.id_solicitud)));
+                const grouped = new Map();
+                sourceRows.forEach((row, index) => {
+                    const requestId = row.id_solicitud || row.solicitud_id || row.idSolicitud || "";
+                    const key = requestId ? String(requestId) : `sin-solicitud-${index}`;
+                    if (!grouped.has(key)) {
+                        grouped.set(key, { ...row, id_solicitud: requestId || row.id_solicitud, auditores: [] });
+                    }
+                    const group = grouped.get(key);
+                    const nestedAuditors = Array.isArray(row.auditores) ? row.auditores : [row];
+                    nestedAuditors.forEach((auditor) => {
+                        const idUsuario = auditor.id_usuario || auditor.id_auditor || auditor.id_usuario_auditor;
+                        if (!idUsuario) return;
+                        if (!group.auditores.some((existing) => String(existing.id_usuario) === String(idUsuario))) {
+                            group.auditores.push({
+                                ...auditor,
+                                id_usuario: idUsuario,
+                                auditor_nombre: auditor.auditor_nombre || auditor.nombre || "Auditor sin nombre",
+                                auditor_correo: auditor.auditor_correo || auditor.correo || "",
+                                auditor_tipo_doc: auditor.auditor_tipo_doc || auditor.tipo_doc || auditor.tipo_documento || auditor.tipo_identificacion || "",
+                                auditor_num_doc: auditor.auditor_num_doc || auditor.num_doc || auditor.numero_documento || auditor.numero_doc || auditor.documento_identidad || auditor.documento || "",
+                                rol_auditor: auditor.rol_auditor || auditor.rol || "Auditor"
+                            });
+                        }
+                    });
+                });
+                const groups = Array.from(grouped.values()).filter(group => group.auditores.length > 0);
+                window.__solicitudesAsignadas = groups;
+                if (!groups.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay solicitudes con auditores asignados.</td></tr>';
+                    $("assignmentsSummary").textContent = "";
+                    return;
+                }
+                tbody.innerHTML = groups.map((group, index) => {
+                    const auditores = (group.auditores || [])
+                        .map((auditor) => `${auditor.auditor_nombre || auditor.nombre || "Auditor"} (${auditor.rol_auditor || "Auditor"})${auditor.auditor_tipo_doc || auditor.auditor_num_doc ? ` · Doc: ${auditor.auditor_tipo_doc || ""} ${auditor.auditor_num_doc || ""}`.trim() : ""}`)
+                        .join("<br>");
+                    const yaProgramada = programadas.has(String(group.id_solicitud));
+                    const estado = yaProgramada ? "Programada" : (group.auditores?.[0]?.estado_asignacion || "Agendada");
+                    return `<tr>
+                        <td>${esc(group.numero_radicado || group.id_solicitud || "-")}</td>
+                        <td>${esc(group.empresa_nombre || "-")}</td>
+                        <td>${auditores || "Sin auditores"}</td>
+                        <td>${esc(estado)}</td>
+                        <td class="row-actions">
+                            <button class="mini-btn" type="button" onclick="programarSolicitud(${index})" ${yaProgramada ? "disabled" : ""}>Programar</button>
+                        </td>
+                    </tr>`;
+                }).join("");
+                $("assignmentsSummary").textContent = `Total: ${groups.length} solicitud(es) con auditores asignados.`;
+            } catch (error) {
+                console.error("No fue posible cargar las asignaciones:", error);
+                tbody.innerHTML = '<tr><td colspan="5" class="empty">No se pudieron cargar las asignaciones.</td></tr>';
+            }
+        }
+
+        function programarSolicitud(index) {
+            const groups = window.__solicitudesAsignadas || [];
+            const group = groups[index];
+            if (!group) return;
+            const assignmentIndex = assignments.findIndex(
+                (item) => String(item.id_solicitud) === String(group.id_solicitud)
+            );
+            if (assignmentIndex === -1) return;
+            assignmentSelect.value = String(assignmentIndex);
+            assignmentSelect.dispatchEvent(new Event("change"));
+            mostrarSeccionAgenda("schedule");
+        }
+
+        (async function init() {
+            const today = localDateNow();
+            ["scheduleDate"].forEach(id => { const el = $(id); if (el) el.min = today; });
+            await loadAssignments();
+            await cargarAsignaciones();
+            prepareNewScheduleForm(null);
+        })();
+
+    </script>
+
+    <script>
+        /* =========================================================
+           MODAL DE DETALLE DE PROGRAMACIÓN (nuevo, no altera la lógica existente)
+        ========================================================= */
+        function verProgramacion(index) {
+            const rows = window.__programacionesActuales || [];
+            const row = rows[index];
+            if (!row) return;
+
+            const group = currentAssignment();
+
+            const solicitud = row.numero_radicado || row.id_solicitud || group?.numero_radicado || '—';
+            const empresa = row.empresa_nombre || group?.empresa_nombre || '—';
+            const nit = row.nit || row.empresa_nit || group?.empresa_nit || group?.nit || '—';
+            const direccion = row.direccion_servicio || group?.empresa_direccion || '—';
+            const ciudad = row.ciudad_servicio || group?.empresa_ciudad || '—';
+            const modalidad = row.modalidad || '—';
+            const inicio = formatDateTime(row.fecha_inicio);
+            const fin = formatDateTime(row.fecha_fin);
+            const estado = row.estado || '—';
+            const auditores = row.auditores_programados || [];
+            const terminal = isTerminalSchedule(row);
+
+            const body = document.getElementById('programacionModalBody');
+            body.innerHTML = `
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Datos de la solicitud</h4>
+                    <div class="detail-grid three">
+                        <div class="detail-item">
+                            <span>Solicitud</span>
+                            <strong>${esc(solicitud)}</strong>
+                        </div>
+                        <div class="detail-item">
+                            <span>Empresa</span>
+                            <strong>${esc(empresa)}</strong>
+                        </div>
+                        <div class="detail-item">
+                            <span>NIT</span>
+                            <strong>${esc(nit)}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Ubicación y modalidad</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item full">
+                            <span>Dirección</span>
+                            <strong>${esc(direccion)}</strong>
+                        </div>
+                        <div class="detail-item">
+                            <span>Ciudad / municipio</span>
+                            <strong>${esc(ciudad)}</strong>
+                        </div>
+                        <div class="detail-item">
+                            <span>Modalidad</span>
+                            <strong>${esc(modalidad)}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Programación</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span>Fecha y hora de inicio</span>
+                            <strong>${esc(inicio)}</strong>
+                        </div>
+                        <div class="detail-item">
+                            <span>Fecha y hora de fin</span>
+                            <strong>${esc(fin)}</strong>
+                        </div>
+                        <div class="detail-item full">
+                            <span>Estado</span>
+                            <strong><span class="pill ${terminal ? 'blocked' : 'audit'}" style="font-size:12px;">${esc(estado)}</span></strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Auditores programados (${auditores.length})</h4>
+                    ${auditores.length
+                    ? `<ul class="auditores-list">${auditores.map(a => `<li>${esc(a)}</li>`).join('')}</ul>`
+                    : `<div class="auditores-list"><li>Sin auditores registrados para esta programación.</li></div>`}
+                </div>
+            `;
+
+            document.getElementById('programacionModalTitle').textContent = 'Programación · ' + solicitud;
+            document.getElementById('programacionModal').classList.add('show');
+        }
+
+        function cerrarProgramacionModal() {
+            const modal = document.getElementById('programacionModal');
+            if (modal) modal.classList.remove('show');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('programacionModal');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'programacionModal') cerrarProgramacionModal();
+                });
+            }
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') cerrarProgramacionModal();
+            });
+        });
+    </script>
+
+    <script src="/static/session.js"></script>
+</body>
+
+</html>

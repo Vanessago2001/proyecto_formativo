@@ -2,9 +2,14 @@ from fastapi import Depends, HTTPException, status
 from core.security import get_current_user
 
 
+# Roles que pueden gestionar el banco de auditores y solicitudes de postulación.
+# Se incluyen las variantes en español para coincidir con los roles reales
+# de la base de datos (Administrador, Super Administrador, etc.).
 ROLES_PERMITIDOS_LOGS = {
     "superadmin",
+    "super administrador",
     "admin",
+    "administrador",
     "auxiliar",
 }
 

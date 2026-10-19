@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Notificaciones</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .portal-shell { max-width:900px; margin:0 auto; padding:28px; }
+        .header-logo { display:flex; align-items:center; gap:16px; }
+        .header-logo img { width:76px; height:auto; }
+        .header-logo h1 { font-size:30px; margin:0; }
+        .header-logo p { font-size:13px; opacity:.92; margin-top:6px; }
+        .section-card { background:#f8fafc; border-radius:10px; padding:22px; margin-bottom:28px; border:1px solid #e5f0e1; }
+        .section-title { color:#256d00; font-size:20px; margin-bottom:14px; }
+        .help-text { color:#5f6f69; font-size:13px; margin-bottom:12px; }
+        .notif-card { background:#fff; border:1px solid #dbe4d4; border-radius:10px; padding:16px; margin-bottom:12px; }
+        .notif-card.unread { border-left:4px solid #3baa01; background:#f7fcf4; }
+        .notif-card h4 { margin:0 0 8px; color:#256d00; font-size:16px; }
+        .notif-card p { margin:0 0 8px; color:#334155; font-size:14px; white-space:pre-wrap; }
+        .notif-card .fecha { color:#64748b; font-size:12px; }
+        .notif-card .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+        .badge.unread { background:#3baa01; color:#fff; }
+        .badge.read { background:#94a3b8; color:#fff; }
+        .mini-button { padding:8px 12px; border-radius:6px; background:#3baa01; color:#fff; border:none; cursor:pointer; font-weight:600; font-size:12px; }
+        .mini-button.secondary { background:#94a3b8; }
+        .back-button { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:6px; background:#e9eeea; color:#3f4942; text-decoration:none; font-weight:600; font-size:13px; }
+    </style>
+</head>
+<body>
+    <header class="login-header">
+        <div class="header-content header-logo">
+            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+            <div>
+                <h1>CertiSENA</h1>
+                <p class="subtitle">Notificaciones del auditor</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <div style="margin-bottom:18px;">
+            <a class="back-button" href="/auditor">Regresar al portal</a>
+        </div>
+
+        <section class="section-card">
+            <h2 class="section-title">Mis notificaciones</h2>
+            <p class="help-text">Aquí verás las auditorías programadas y reprogramaciones que el administrador te ha asignado.</p>
+            <div id="notificaciones"></div>
+            <p id="resumen" class="help-text"></p>
+        </section>
+    </main>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        let usuarioId = null;
+
+        async function resolverUsuario() {
+            if (usuarioId) return usuarioId;
+            if (!token) return null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
+                return usuarioId;
+            } catch { return null; }
+        }
+
+        function escapeHtml(v) { return (v===null||v===undefined)?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+        async function cargarNotificaciones() {
+            const uid = await resolverUsuario();
+            if (!uid) {
+                document.getElementById('notificaciones').innerHTML = '<p class="help-text">No se pudo identificar al auditor.</p>';
+                return;
+            }
+            try {
+                const res = await fetch('/auditores/' + encodeURIComponent(uid) + '/notificaciones', {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                const items = Array.isArray(data.notificaciones) ? data.notificaciones : [];
+                const container = document.getElementById('notificaciones');
+                if (!items.length) {
+                    container.innerHTML = '<p class="help-text">No tienes notificaciones pendientes.</p>';
+                    document.getElementById('resumen').textContent = '';
+                    return;
+                }
+                const noLeidas = items.filter(n => !n.leida).length;
+                document.getElementById('resumen').textContent = `Total: ${items.length} · No leídas: ${noLeidas}`;
+                container.innerHTML = items.map(n => `
+                    <div class="notif-card ${n.leida ? '' : 'unread'}">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <h4>${escapeHtml(n.titulo || 'Notificación')}</h4>
+                            <span class="badge ${n.leida ? 'read' : 'unread'}">${n.leida ? 'Leída' : 'Nueva'}</span>
+                        </div>
+                        <p>${escapeHtml(n.mensaje || '')}</p>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span class="fecha">${escapeHtml(n.fecha_creacion || '')}</span>
+                            ${!n.leida ? `<button class="mini-button secondary" onclick="marcarLeida('${escapeHtml(n.id_notificacion)}')">Marcar como leída</button>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch {
+                document.getElementById('notificaciones').innerHTML = '<p class="help-text">No se pudieron cargar las notificaciones.</p>';
+            }
+        }
+
+        async function marcarLeida(idNotif) {
+            const uid = await resolverUsuario();
+            if (!uid) return;
+            try {
+                await fetch('/auditores/' + encodeURIComponent(uid) + '/notificaciones/' + encodeURIComponent(idNotif) + '/leer', {
+                    method: 'PATCH',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+                });
+                await cargarNotificaciones();
+            } catch {
+                alert('No se pudo marcar como leída.');
+            }
+        }
+
+        cargarNotificaciones();
+    </script>
+</body>
+</html>
