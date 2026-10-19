@@ -1172,6 +1172,299 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     font-size: 12px;
 }
 
+/* =========================
+   GESTION DE CERTIFICADOS (M9)
+========================== */
+
+.certificados-nav-anchor {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+
+.certificados-nav-anchor:hover {
+    color: var(--comite-green-dark);
+    text-decoration: none;
+}
+
+.certificados-page [hidden] {
+    display: none !important;
+}
+
+.cert-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.cert-metric {
+    display: grid;
+    gap: 8px;
+    min-height: 82px;
+    padding: 14px 16px;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #3baa01;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.cert-metric span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.cert-metric strong {
+    color: #1f2937;
+    font-size: 22px;
+}
+
+.cert-metric-alert {
+    border-left-color: #d49b12;
+}
+
+.cert-create-panel {
+    margin-bottom: 18px;
+    border-top: 3px solid #3baa01;
+}
+
+.cert-leader-panel {
+    margin-bottom: 18px;
+    border-top: 3px solid #256d00;
+}
+
+.cert-leader-form {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.cert-form-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1.2fr) minmax(180px, .8fr) auto;
+    gap: 14px;
+    align-items: end;
+}
+
+.cert-field {
+    display: grid;
+    min-width: 0;
+    gap: 7px;
+}
+
+.cert-field select,
+.cert-field input,
+.cert-field textarea {
+    font: inherit;
+}
+
+.cert-form-action {
+    display: flex;
+    align-items: end;
+}
+
+.cert-signature-note {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-left: 3px solid #d49b12;
+    background: #fff8e5;
+    color: #684d0b;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.cert-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(310px, .75fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.cert-list-panel,
+.cert-detail-panel {
+    min-width: 0;
+}
+
+.certificados-page .comite-content {
+    container-name: cert-content;
+    container-type: inline-size;
+}
+
+.cert-list-panel {
+    container-name: cert-list;
+    container-type: inline-size;
+}
+
+.cert-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(155px, .6fr) auto auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 14px;
+}
+
+.cert-toolbar .comite-button {
+    min-height: 38px;
+}
+
+.cert-table {
+    min-width: 790px;
+}
+
+.cert-code-button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #256d00;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.cert-code-button:hover {
+    text-decoration: underline;
+}
+
+.cert-code-button:focus-visible {
+    outline: 3px solid rgba(59, 170, 1, .25);
+    outline-offset: 2px;
+}
+
+.cert-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cert-action-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.cert-action-list .comite-button {
+    white-space: normal;
+}
+
+.cert-history {
+    margin-top: 18px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 14px;
+}
+
+.cert-history-list {
+    display: grid;
+    gap: 10px;
+    margin: 12px 0 0;
+    padding-left: 22px;
+}
+
+.cert-history-list li {
+    display: grid;
+    gap: 3px;
+    color: #334155;
+    font-size: 12px;
+}
+
+.cert-history-list small {
+    color: #64748b;
+}
+
+.cert-secondary-view {
+    min-height: 240px;
+}
+
+.cert-inline-control,
+.cert-public-search {
+    display: flex;
+    align-items: end;
+    gap: 10px;
+}
+
+.cert-inline-control label {
+    display: grid;
+    gap: 6px;
+}
+
+.cert-inline-control select {
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: #fff;
+    color: #1f2937;
+    font: inherit;
+}
+
+.cert-public-search {
+    max-width: 680px;
+}
+
+.cert-public-search .cert-field {
+    flex: 1;
+}
+
+.cert-public-result {
+    margin-top: 18px;
+}
+
+.cert-public-facts {
+    max-width: 760px;
+}
+
+.cert-dialog {
+    width: min(480px, calc(100vw - 32px));
+    padding: 22px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #1f2937;
+}
+
+.cert-dialog::backdrop {
+    background: rgba(15, 23, 42, .45);
+}
+
+.cert-dialog h3 {
+    margin-bottom: 8px;
+    font-size: 18px;
+}
+
+.cert-dialog .cert-field {
+    margin-top: 16px;
+}
+
+@media (max-width: 1550px) {
+    .cert-workspace {
+        grid-template-columns: 1fr;
+    }
+}
+
+@container cert-content (max-width: 1240px) {
+    .cert-workspace {
+        grid-template-columns: 1fr;
+    }
+}
+
+@container cert-list (max-width: 760px) {
+    .cert-toolbar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cert-toolbar .cert-field:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .cert-toolbar .comite-button {
+        width: 100%;
+        padding-right: 8px;
+        padding-left: 8px;
+        white-space: normal;
+    }
+}
+
 @media (max-width: 1000px) {
     .comite-toolbar,
     .comite-workspace {
@@ -1180,6 +1473,18 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
 
     .comite-toolbar {
         display: grid;
+    }
+
+    .cert-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .cert-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cert-leader-form {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -1230,6 +1535,24 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     .comite-header-user .comite-logout {
         min-height: 34px;
         padding: 8px 10px;
+    }
+
+    .cert-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cert-toolbar {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .cert-toolbar .cert-field:first-child,
+    .cert-toolbar .comite-button {
+        grid-column: 1 / -1;
+    }
+
+    .cert-public-search {
+        align-items: stretch;
+        flex-direction: column;
     }
 }
 
@@ -1289,6 +1612,44 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
 
     .comite-decision-actions .comite-button {
         width: 100%;
+    }
+
+    .cert-metrics {
+        gap: 8px;
+    }
+
+    .cert-metric {
+        min-height: 74px;
+        padding: 11px;
+    }
+
+    .cert-metric strong {
+        font-size: 19px;
+    }
+
+    .cert-form-grid,
+    .cert-toolbar,
+    .cert-facts,
+    .cert-public-facts {
+        grid-template-columns: 1fr;
+    }
+
+    .cert-toolbar .cert-field:first-child,
+    .cert-toolbar .comite-button {
+        grid-column: auto;
+    }
+
+    .cert-form-action .comite-button,
+    .cert-action-list .comite-button,
+    .cert-inline-control .comite-button,
+    .cert-dialog-actions .comite-button {
+        width: 100%;
+    }
+
+    .cert-inline-control,
+    .cert-dialog-actions {
+        align-items: stretch;
+        flex-direction: column;
     }
 }
 

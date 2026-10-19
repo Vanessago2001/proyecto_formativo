@@ -357,6 +357,7 @@ PAGINAS_PUBLICAS = [
 ENLACES_DEL_MENU = [
     "/buscar_empresa",
     "/",
+    "/verificar-certificado",
     "/consulta-norma",
     "/vigencia",
     "/validar",

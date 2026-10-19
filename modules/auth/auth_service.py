@@ -408,7 +408,7 @@ class AuthService:
                         bloqueado_hasta=NULL,
                         intentos_fallidos=0,
                         ultimo_intento=NULL
-                    id_usuario=:id_usuario
+                    WHERE id_usuario=:id_usuario
                 """),
                 {
                     "id_usuario": user["id_usuario"],

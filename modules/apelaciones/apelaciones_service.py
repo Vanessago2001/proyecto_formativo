@@ -1,126 +1,273 @@
+from datetime import datetime, timezone
+from pathlib import Path
+from uuid import UUID, uuid4
+
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from modules.solicitudes.solicitud_service import SolicitudService
+
+
+APELACION_EDITABLE = {"ENVIADA", "EN_REVISION", "INFORMACION_SOLICITADA"}
+APELACION_FINAL = {"APROBADA", "RECHAZADA", "CANCELADA"}
+RAIZ_PROYECTO = Path(__file__).resolve().parent.parent.parent
+CARPETA_EVIDENCIAS = RAIZ_PROYECTO / "storage" / "apelaciones"
+EXTENSIONES_EVIDENCIA = {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"}
+TAMANO_MAXIMO_EVIDENCIA = 10 * 1024 * 1024
 
 
 class ApelacionesService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def create_apelacion(self, data: dict) -> dict:
+    async def _generar_radicado(self) -> str:
+        result = await self.db.execute(text("SELECT nextval('apelacion_radicado_seq') AS siguiente;"))
+        siguiente = result.scalar() or 1
+        anio = datetime.now(timezone.utc).year
+        return f"APE-{anio}-{siguiente:06d}"
+
+    async def create_apelacion(self, data: dict, usuario: dict) -> dict:
+        id_solicitud = UUID(str(data["id_solicitud"]))
+        solicitudes = SolicitudService(self.db)
+        solicitud = await solicitudes.consultar(id_solicitud, usuario)
+        await solicitudes._exigir_propiedad(solicitud, usuario)
+        if str(solicitud.get("estado", "")).strip().lower() != "rechazada":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Solo se puede apelar una solicitud en estado Rechazada.",
+            )
+
+        existente = await self.db.execute(
+            text("SELECT id FROM apelacion WHERE id_solicitud = :id_solicitud;"),
+            {"id_solicitud": id_solicitud},
+        )
+        if existente.scalar() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Esta solicitud ya tiene una apelación registrada.",
+            )
+
+        codigo = await self._generar_radicado()
+        usuario_id = UUID(str(usuario["id_usuario"]))
+        razones_rechazo = solicitud.get("observaciones") or data.get("razones_rechazo")
         payload = {
-            "id_solicitud": data.get("id_solicitud"),
-            "estado": data.get("estado") or "RADICADA",
+            "id_solicitud": id_solicitud,
+            "id_usuario_presenta": usuario_id,
+            "id_empresa": UUID(str(solicitud["id_empresa"])),
+            "estado": "ENVIADA",
+            "radicado": codigo,
             "motivo": data.get("motivo"),
-            "fallo": data.get("fallo"),
+            "razones_rechazo": razones_rechazo or data.get("fallo"),
+            "fallo": bool(data.get("fallo", False)),
         }
 
         query = text("""
-            INSERT INTO apelacion (id_solicitud, estado, fecha, motivo, fallo)
-            VALUES (:id_solicitud, :estado, CURRENT_TIMESTAMP, :motivo, :fallo)
-            RETURNING id, id_solicitud, estado, fecha, motivo, fallo;
+            INSERT INTO apelacion (
+                id_solicitud, id_usuario_presenta, id_empresa, estado, radicado,
+                fecha, motivo, razones_rechazo, fallo
+            )
+            VALUES (
+                :id_solicitud, :id_usuario_presenta, :id_empresa, :estado, :radicado,
+                CURRENT_TIMESTAMP, :motivo, :razones_rechazo, :fallo
+            )
+            RETURNING id, id_solicitud, id_empresa, estado,
+                      radicado, fecha, motivo, razones_rechazo, fallo;
         """)
-        result = await self.db.execute(query, payload)
+        try:
+            result = await self.db.execute(query, payload)
+        except IntegrityError as exc:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La solicitud ya tiene una apelación registrada.",
+            ) from exc
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None
 
-    async def add_evidence(self, id_apelacion: int, data: dict) -> dict:
+    async def add_evidence(
+        self,
+        id_apelacion: UUID,
+        archivo: UploadFile,
+        descripcion: str | None,
+        usuario: dict,
+    ) -> dict:
+        apelacion = await self.get_apelacion_by_id(id_apelacion, usuario)
+        if not apelacion:
+            return None
+        if apelacion.get("estado") not in APELACION_EDITABLE:
+            raise HTTPException(status_code=409, detail="La apelación ya no admite evidencias.")
+
+        nombre = Path(archivo.filename or "evidencia").name
+        extension = Path(nombre).suffix.lower()
+        contenido = await archivo.read()
+        if extension not in EXTENSIONES_EVIDENCIA:
+            raise HTTPException(status_code=415, detail="Formato no permitido para evidencia.")
+        if not contenido:
+            raise HTTPException(status_code=400, detail="El archivo está vacío.")
+        if len(contenido) > TAMANO_MAXIMO_EVIDENCIA:
+            raise HTTPException(status_code=413, detail="El tamaño máximo permitido es 10 MB.")
+
+        carpeta = CARPETA_EVIDENCIAS / str(id_apelacion)
+        carpeta.mkdir(parents=True, exist_ok=True)
+        nombre_disco = f"{uuid4()}{extension}"
+        destino = carpeta / nombre_disco
+        destino.write_bytes(contenido)
+        ruta_relativa = str(destino.relative_to(RAIZ_PROYECTO))
         payload = {
             "id_apelacion": id_apelacion,
-            "id_usuario": data.get("id_usuario"),
-            "nombre_archivo": data.get("nombre_archivo"),
-            "tipo_evidencia": data.get("tipo_evidencia"),
-            "url_archivo": data.get("url_archivo"),
-            "descripcion": data.get("descripcion"),
+            "id_usuario": UUID(str(usuario["id_usuario"])),
+            "nombre_archivo": nombre,
+            "tipo_evidencia": extension.lstrip(".") or "documento",
+            "url_archivo": ruta_relativa,
+            "descripcion": descripcion,
         }
 
         query = text("""
             INSERT INTO evidencia_apelacion (
-                id_apelacion, id_usuario, nombre_archivo, tipo_evidencia, url_archivo, descripcion, fecha_subida
+                id_apelacion, id_usuario, nombre_archivo, tipo_evidencia,
+                url_archivo, descripcion, fecha_subida
             )
             VALUES (
-                :id_apelacion, :id_usuario, :nombre_archivo, :tipo_evidencia, :url_archivo, :descripcion, CURRENT_TIMESTAMP
+                :id_apelacion, :id_usuario, :nombre_archivo, :tipo_evidencia,
+                :url_archivo, :descripcion, CURRENT_TIMESTAMP
             )
-            RETURNING id_evidencia, id_apelacion, id_usuario, nombre_archivo, tipo_evidencia, url_archivo, descripcion, fecha_subida;
+            RETURNING id_evidencia, id_apelacion, id_usuario,
+                      nombre_archivo, tipo_evidencia, url_archivo, descripcion, fecha_subida;
         """)
-        result = await self.db.execute(query, payload)
-        await self.db.commit()
-        row = result.mappings().first()
-        return dict(row) if row else None
+        try:
+            result = await self.db.execute(query, payload)
+            await self.db.commit()
+            row = result.mappings().first()
+            return dict(row) if row else None
+        except Exception:
+            destino.unlink(missing_ok=True)
+            await self.db.rollback()
+            raise
 
-    async def update_apelacion(self, id_apelacion: int, data: dict) -> dict:
-        existing = await self.get_apelacion_by_id(id_apelacion)
+    async def update_apelacion(self, id_apelacion: UUID, data: dict, usuario: dict) -> dict:
+        existing = await self.get_apelacion_by_id(id_apelacion, usuario)
         if not existing:
             return None
-
-        allowed_states = {"RADICADA", "PENDIENTE_REVISION", "EN_REVISION"}
-        if existing.get("estado") not in allowed_states:
+        if existing.get("estado") not in APELACION_EDITABLE:
             return None
 
         payload = {
             "id": id_apelacion,
-            "id_solicitud": data.get("id_solicitud", existing.get("id_solicitud")),
             "motivo": data.get("motivo", existing.get("motivo")),
-            "fallo": data.get("fallo", existing.get("fallo")),
-            "estado": data.get("estado", existing.get("estado")),
         }
 
         query = text("""
             UPDATE apelacion
-            SET id_solicitud = :id_solicitud,
-                motivo = :motivo,
-                fallo = :fallo,
-                estado = :estado
+            SET motivo = :motivo
             WHERE id = :id
-            RETURNING id, id_solicitud, estado, fecha, motivo, fallo;
+            RETURNING id, id_solicitud, id_empresa,
+                      estado, radicado, fecha, motivo, razones_rechazo, fallo;
         """)
         result = await self.db.execute(query, payload)
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None
 
-    async def get_all_apelaciones(self) -> list[dict]:
-        result = await self.db.execute(text("""
-            SELECT id, id_solicitud, estado, fecha, motivo, fallo
-            FROM apelacion
-            ORDER BY fecha DESC, id DESC;
-        """))
+    async def get_all_apelaciones(self, usuario: dict) -> list[dict]:
+        from modules.solicitudes.solicitud_permissions import normalizar_rol, ROL_EMP
+
+        filtro_empresa = normalizar_rol(usuario.get("role_name")) == ROL_EMP
+        query = text("""
+            SELECT a.id, a.id_solicitud,
+                   a.id_empresa, a.estado, a.radicado, a.fecha, a.motivo,
+                   a.razones_rechazo, a.fallo
+            FROM apelacion a
+            WHERE NOT :filtro_empresa OR a.id_solicitud IN (
+                SELECT s.id_solicitud
+                FROM solicitud s
+                JOIN user_empresa ue ON ue.id_empresa = s.id_empresa
+                WHERE ue.id_usuario = :id_usuario AND ue.estado = 'Activo'
+            )
+            ORDER BY a.fecha DESC, a.id DESC;
+        """)
+        result = await self.db.execute(query, {
+            "filtro_empresa": filtro_empresa,
+            "id_usuario": str(usuario.get("id_usuario")),
+        })
         return [dict(row) for row in result.mappings().all()]
 
-    async def get_apelacion_by_id(self, id_apelacion: int) -> dict:
+    async def get_apelacion_by_id(self, id_apelacion: UUID, usuario: dict | None = None) -> dict:
         query = text("""
-            SELECT id, id_solicitud, estado, fecha, motivo, fallo
+            SELECT id, id_solicitud,
+                   id_empresa, id_auditor_evaluador, estado, radicado, fecha,
+                   motivo, razones_rechazo, fallo, observaciones, fecha_decision
             FROM apelacion
             WHERE id = :id_apelacion;
         """)
         result = await self.db.execute(query, {"id_apelacion": id_apelacion})
         row = result.mappings().first()
-        return dict(row) if row else None
+        appeal = dict(row) if row else None
+        if appeal and usuario and appeal.get("id_solicitud"):
+            try:
+                await SolicitudService(self.db).consultar(UUID(str(appeal["id_solicitud"])), usuario)
+            except (ValueError, HTTPException):
+                return None
+        return appeal
 
-    async def cancelar_apelacion(self, id_apelacion: int, estado: str = "CANCELADA") -> dict:
+    async def assign_committee(self, id_apelacion: UUID, miembros_comite: list[UUID], id_auditor_evaluador: UUID | None = None) -> dict:
+        if not miembros_comite:
+            raise ValueError("Debe indicar al menos un miembro del comité.")
+        if id_auditor_evaluador is not None and any(miembro == id_auditor_evaluador for miembro in miembros_comite):
+            raise ValueError("No se puede asignar un auditor que evaluó la solicitud original al comité de apelación.")
+
+        await self.db.execute(
+            text("DELETE FROM apelacion_comite WHERE id_apelacion = :id_apelacion;"),
+            {"id_apelacion": id_apelacion},
+        )
+
+        for miembro in miembros_comite:
+            await self.db.execute(
+                text("""
+                    INSERT INTO apelacion_comite (id_apelacion, id_usuario, asignado_en)
+                    VALUES (:id_apelacion, :id_usuario, CURRENT_TIMESTAMP)
+                """),
+                {"id_apelacion": id_apelacion, "id_usuario": miembro},
+            )
+
+        await self.db.execute(
+            text("""
+                UPDATE apelacion
+                SET id_auditor_evaluador = :id_auditor_evaluador,
+                    estado = CASE
+                        WHEN estado IN ('ENVIADA', 'INFORMACION_SOLICITADA') THEN 'EN_REVISION'
+                        ELSE estado
+                    END
+                WHERE id = :id_apelacion;
+            """),
+            {"id_apelacion": id_apelacion, "id_auditor_evaluador": id_auditor_evaluador},
+        )
+
+        await self.db.commit()
+        return {"id_apelacion": id_apelacion, "miembros_comite": miembros_comite}
+
+    async def cancelar_apelacion(self, id_apelacion: UUID, usuario: dict) -> dict:
+        current = await self.get_apelacion_by_id(id_apelacion, usuario)
+        if not current:
+            return None
+        if current.get("estado") in APELACION_FINAL:
+            return None
         query = text("""
             UPDATE apelacion
-            SET estado = :estado
+            SET estado = 'CANCELADA'
             WHERE id = :id_apelacion
-            RETURNING id, id_solicitud, estado, fecha, motivo, fallo;
+              AND estado IN ('ENVIADA', 'EN_REVISION', 'INFORMACION_SOLICITADA')
+            RETURNING id, id_solicitud, id_empresa, estado, radicado, fecha, motivo, razones_rechazo, fallo;
         """)
-        result = await self.db.execute(query, {"id_apelacion": id_apelacion, "estado": estado})
+        result = await self.db.execute(query, {"id_apelacion": id_apelacion})
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None
 
-    async def registrar_hilo_legal(self, id_apelacion: int, observaciones: str) -> dict:
-        query = text("""
-            INSERT INTO hilo_legal_apelacion (apelacion_id, observaciones)
-            VALUES (:id_apelacion, :observaciones)
-            RETURNING id_hilo, apelacion_id, observaciones, fecha;
-        """)
-        result = await self.db.execute(query, {"id_apelacion": id_apelacion, "observaciones": observaciones})
-        await self.db.commit()
-        return dict(result.mappings().first())
-
-    async def get_historial(self, id_apelacion: int) -> list[dict]:
-        apelacion = await self.get_apelacion_by_id(id_apelacion)
+    async def get_historial(self, id_apelacion: UUID, usuario: dict) -> list[dict]:
+        apelacion = await self.get_apelacion_by_id(id_apelacion, usuario)
         if not apelacion:
             return []
 
@@ -137,60 +284,88 @@ class ApelacionesService:
         historial.extend(evidencias)
         return historial
 
-    async def get_evidencias_previas(self, id_apelacion: int) -> list[dict]:
+    async def get_evidencias_previas(self, id_apelacion: UUID, usuario: dict) -> list[dict]:
+        if not await self.get_apelacion_by_id(id_apelacion, usuario):
+            return []
         query = text("""
-            SELECT id_evidencia, id_apelacion, id_usuario, nombre_archivo, tipo_evidencia, url_archivo, descripcion, fecha_subida
+            SELECT id_evidencia, id_apelacion, id_usuario,
+                   nombre_archivo, tipo_evidencia, url_archivo, descripcion, fecha_subida
             FROM evidencia_apelacion
             WHERE id_apelacion = :id_apelacion;
         """)
         result = await self.db.execute(query, {"id_apelacion": id_apelacion})
         return [dict(row) for row in result.mappings().all()]
 
-    async def registrar_analisis_juridico(self, id_apelacion: int, analisis: str) -> dict:
+    async def solicitar_info_adicional(self, id_apelacion: UUID, requerimiento: str, usuario: dict) -> dict:
+        apelacion = await self.get_apelacion_by_id(id_apelacion, usuario)
+        if not apelacion or apelacion.get("estado") not in APELACION_EDITABLE:
+            return None
         query = text("""
-            INSERT INTO analisis_juridico (apelacion_id, contenido)
-            VALUES (:id_apelacion, :analisis)
-            RETURNING id_analisis, apelacion_id, contenido;
-        """)
-        result = await self.db.execute(query, {"id_apelacion": id_apelacion, "analisis": analisis})
-        await self.db.commit()
-        return dict(result.mappings().first())
-
-    async def solicitar_info_adicional(self, id_apelacion: int, requerimiento: str) -> dict:
-        query = text("""
-            INSERT INTO requerimiento_apelacion (apelacion_id, descripcion, estado)
-            VALUES (:id_apelacion, :requerimiento, 'SOLICITADO')
-            RETURNING id_requerimiento, apelacion_id, descripcion, estado;
+            UPDATE apelacion
+            SET estado = 'INFORMACION_SOLICITADA', observaciones = :requerimiento, fecha_decision = CURRENT_TIMESTAMP
+            WHERE id = :id_apelacion
+              AND estado IN ('ENVIADA', 'EN_REVISION', 'INFORMACION_SOLICITADA')
+            RETURNING id, estado, observaciones;
         """)
         result = await self.db.execute(query, {"id_apelacion": id_apelacion, "requerimiento": requerimiento})
         await self.db.commit()
-        return dict(result.mappings().first())
+        row = result.mappings().first()
+        return dict(row) if row else None
 
-    async def registrar_decision_final(self, id_apelacion: int, decision: str) -> dict:
+    async def registrar_decision_final(self, id_apelacion: UUID, decision: str, observaciones: str | None, usuario: dict) -> dict:
+        if not await self.get_apelacion_by_id(id_apelacion, usuario):
+            return None
         query = text("""
             UPDATE apelacion
-            SET estado = 'DECISION_REGISTRADA'
+            SET estado = :decision,
+                observaciones = :observaciones,
+                fallo = (:decision = 'RECHAZADA'),
+                fecha_decision = CURRENT_TIMESTAMP
             WHERE id = :id_apelacion
-            RETURNING id, estado;
+              AND estado IN ('ENVIADA', 'EN_REVISION', 'INFORMACION_SOLICITADA')
+            RETURNING id, estado, observaciones, fecha_decision;
         """)
-        result = await self.db.execute(query, {"id_apelacion": id_apelacion})
+        result = await self.db.execute(query, {"id_apelacion": id_apelacion, "decision": decision, "observaciones": observaciones})
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None
 
-    async def cambiar_estado_dictamen(self, id_apelacion: int, nuevo_estado: str) -> dict:
+    async def cambiar_estado_dictamen(self, id_apelacion: UUID, nuevo_estado: str, usuario: dict) -> dict:
+        apelacion = await self.get_apelacion_by_id(id_apelacion, usuario)
+        transiciones = {
+            "APROBADA": APELACION_EDITABLE,
+            "RECHAZADA": APELACION_EDITABLE,
+            "NOTIFICADA": {"APROBADA", "RECHAZADA"},
+            "CERRADA": {"NOTIFICADA"},
+        }
+        estados_anteriores = transiciones.get(nuevo_estado)
+        if not estados_anteriores:
+            raise ValueError("El dictamen no es válido.")
+        if not apelacion or apelacion.get("estado") not in estados_anteriores:
+            return None
         query = text("""
             UPDATE apelacion
-            SET estado = :nuevo_estado
+            SET estado = :nuevo_estado,
+                fallo = CASE
+                    WHEN :nuevo_estado = 'APROBADA' THEN FALSE
+                    WHEN :nuevo_estado = 'RECHAZADA' THEN TRUE
+                    ELSE fallo
+                END,
+                fecha_decision = CURRENT_TIMESTAMP
             WHERE id = :id_apelacion
-            RETURNING id, estado;
+              AND estado = :estado_anterior
+            RETURNING id, estado, fallo, fecha_decision;
         """)
-        result = await self.db.execute(query, {"id_apelacion": id_apelacion, "nuevo_estado": nuevo_estado})
+        result = await self.db.execute(query, {
+            "id_apelacion": id_apelacion,
+            "nuevo_estado": nuevo_estado,
+            "estado_anterior": apelacion["estado"],
+        })
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None
 
-    async def registrar_bitacora_cierre(self, id_apelacion: int, detalle: str) -> dict:
+    async def registrar_bitacora_cierre(self, id_apelacion: UUID, detalle: str) -> dict:
         query = text("""
             INSERT INTO bitacora_apelacion (apelacion_id, detalle)
             VALUES (:id_apelacion, :detalle)
@@ -199,3 +374,19 @@ class ApelacionesService:
         result = await self.db.execute(query, {"id_apelacion": id_apelacion, "detalle": detalle})
         await self.db.commit()
         return dict(result.mappings().first())
+
+    async def obtener_archivo_evidencia(self, id_apelacion: UUID, id_evidencia: UUID, usuario: dict) -> tuple[Path, str] | None:
+        if not await self.get_apelacion_by_id(id_apelacion, usuario):
+            return None
+        result = await self.db.execute(text("""
+            SELECT nombre_archivo, url_archivo
+            FROM evidencia_apelacion
+            WHERE id_apelacion = :id_apelacion AND id_evidencia = :id_evidencia;
+        """), {"id_apelacion": id_apelacion, "id_evidencia": id_evidencia})
+        evidence = result.mappings().first()
+        if not evidence:
+            return None
+        ruta = (RAIZ_PROYECTO / evidence["url_archivo"]).resolve()
+        if not ruta.is_relative_to(CARPETA_EVIDENCIAS.resolve()) or not ruta.is_file():
+            return None
+        return ruta, evidence["nombre_archivo"]

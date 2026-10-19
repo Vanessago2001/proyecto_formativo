@@ -317,3 +317,83 @@ El frontend existente contiene varias implementaciones locales del mismo concept
 - Tablas con encabezado verde en una pagina y gris claro en otra sin una razon funcional.
 
 Estas diferencias pueden corregirse gradualmente. Para funcionalidades nuevas, usar primero los patrones de esta guia y centralizar los componentes que se reutilicen.
+
+## 14. Modulo de certificados (M9)
+
+La pantalla de referencia vive en `static/certificados.html`. Conserva el
+encabezado y la grilla lateral del Comite mediante `.login-header`,
+`.header-content`, `.comite-shell`, `.comite-layout`, `.comite-sidebar`,
+`.comite-content`, `.comite-panel`, `.comite-button` y `.comite-status`.
+
+Los componentes propios de M9 estan delimitados por clases `cert-*` en
+`static/styles.css`; deben seguir siendo locales al modulo:
+
+- `.cert-metrics`: resumen de conteos, con cuatro columnas amplias y dos en
+  movil.
+- `.cert-leader-panel`: asignacion administrativa del lider y estado visible
+  de quien tiene la firma pendiente.
+- `.cert-form-grid`: formulario de emision; la solicitud aprobada determina
+  dinamicamente las opciones de alcance.
+- `.cert-workspace`: listado y detalle; en pantallas estrechas se apilan.
+- `.cert-toolbar` y `.cert-table`: filtros compactos y tabla con scroll
+  horizontal dentro de `.comite-table-wrap`.
+- `.cert-dialog`: motivo, renovacion o cambio de alcance con confirmacion
+  explicita y cancelacion.
+- `.cert-public-search`: consulta por codigo sin sesion.
+
+Las acciones visibles se derivan del rol autenticado y de la matriz CER, pero
+el servidor siempre vuelve a validar cada permiso. La interfaz no reemplaza la
+autorizacion del endpoint. La asignacion del lider solo la administran
+Superadmin/Administrador; mostrar su estado a los demas roles sin exponer su
+correo o UUID. El boton para firmar aparece unicamente cuando el API confirma
+que la cuenta actual es el lider y la asignacion del certificado coincide.
+Aunque CER-010 marca `F` para el rol Comité en general, existe una excepcion por
+asignacion individual; el backend compara el UUID autenticado con el lider
+activo antes de firmar. Las celdas `REQ` deben conservar el aviso de aprobacion
+en la respuesta y en el mensaje de resultado. Las acciones que registran
+motivos (CER-018/019) no deben confundirse con suspender o cancelar.
+
+La vista publica se sirve en `/verificar-certificado` usando la misma plantilla
+con un modo sin autenticacion. En ese modo no se muestran listado interno,
+exportaciones, administracion ni UUID; solo el resultado publico del codigo.
+No mostrar correo, URL de almacenamiento ni motivos internos. Limitar por IP
+las consultas por codigo y devolver solo registros publicados, vigentes y no
+vencidos.
+
+Cuando se agrega una ruta publica al menu, actualizar tanto escritorio como
+movil en todas las plantillas que comparten ese menu: `index.html`, `login.html`,
+`register.html` y `buscar_e.html`. Actualizar tambien
+`tests/test_consultas_publicas.py`, que comprueba los cuatro menus y que las
+rutas enlazadas existan.
+
+No llamar "oficial" o "firmado" a un PDF sin validacion criptografica. M9 firma
+el PDF PAdES con el PKCS#12 externo del lider, exige una raiz CA configurada y
+guarda por separado la huella del PDF y la del certificado X.509. Sin esos
+secretos/configuracion, el certificado permanece pendiente; no simular una
+firma ni permitir su publicacion. Tras cambiar alcance, la UI debe explicar que
+se invalida la firma/publicacion anteriores y se requiere una nueva firma.
+Pedir fechas de vencimiento explicitas si la regla del ciclo no esta definida;
+no asumir un periodo anual.
+
+Las exportaciones CSV deben proteger las celdas cuyo contenido pueda iniciar
+una formula de hoja de calculo. Los motivos y cambios de estado deben indicar
+carga, resultado y error junto a la accion; al cambiar el alcance de un
+certificado, explicar que se requiere una nueva firma.
+
+## 15. Verificacion de pantallas con permisos
+
+Ademas de revisar una vista de Superadministrador, probar al menos un rol con
+menos privilegios y la vista publica. Confirmar que:
+
+- Los botones de la pantalla corresponden a la matriz CER; por ejemplo,
+  Empresa no debe ver renovar, suspender ni cancelar, y solo Superadministrador
+  puede retirar del portal o cambiar alcance.
+- Comite puede registrar el motivo de suspension si CER-018 lo permite, sin
+  obtener por eso permiso para suspender.
+- Una busqueda publica muestra solo campos publicables y no obliga a iniciar
+  sesion.
+- Escritorio y movil no tienen overflow horizontal, las tablas conservan su
+  scroll local y los formularios dependientes muestran los estados vacios,
+  cargando y error.
+- Dialogos de cambio requieren los datos necesarios, mantienen el foco y no
+  cierran ante un error de la API.
