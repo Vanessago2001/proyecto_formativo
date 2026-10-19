@@ -196,6 +196,15 @@ async def eliminar_disponibilidad(
     return await AgendaAuditorService(db).eliminar_disponibilidad(id_usuario, id_disponibilidad)
 
 
+@router.get("/{id_usuario}/bitacora-validacion")
+async def consultar_bitacora_validacion(
+    id_usuario: UUID,
+    usuario: dict = Depends(_validar_admin_o_propio_auditor),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AgendaAuditorService(db).consultar_bitacora_validacion(id_usuario)
+
+
 @router.get("/{id_usuario}/historial-disponibilidad")
 async def historial_disponibilidad(
     id_usuario: UUID,

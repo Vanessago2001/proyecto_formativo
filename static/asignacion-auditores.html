@@ -1689,7 +1689,7 @@
                   <div id="checkNorma" class="validation-item neutral">Competencia en norma</div>
                   <div id="checkSector" class="validation-item neutral">Experiencia sectorial</div>
                   <div id="checkConflicto" class="validation-item neutral">Sin conflicto de interés</div>
-                  <div id="checkDisponibilidad" class="validation-item neutral">Disponibilidad: se valida en Agenda
+                  <div id="checkDisponibilidad" class="validation-item neutral">Disponibilidad real: se valida en Agenda
                   </div>
                   <div id="checkAgenda" class="validation-item neutral">Cruces horarios: se validan en Agenda</div>
                 </div>
@@ -2300,7 +2300,7 @@
           { texto: "Auditor aprobado", estado: ["Activo", "Aprobada", "Aprobado"].includes(auditor.estado_auditor) },
           { texto: "Competencia en norma: " + normaTexto, estado: auditor.competencia_norma === true },
           { texto: "Sin conflicto de interés", estado: auditor.conflicto_interes === false },
-          { texto: "Disponibilidad: se valida en Agenda", estado: null },
+          { texto: "Disponibilidad real: se valida en Agenda", estado: null },
           { texto: "Cruces horarios: se validan en Agenda", estado: null },
         ];
         return `

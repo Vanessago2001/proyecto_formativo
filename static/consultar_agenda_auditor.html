@@ -1012,6 +1012,17 @@
             }
         }
     </style>
+
+<style>
+.modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:9999; }
+.modal-overlay.active { display:flex; }
+.modal-box { background:#fff; border-radius:12px; padding:24px; max-width:400px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center; }
+.modal-box h3 { margin-top:0; color:#256d00; }
+.modal-box p { color:#334155; margin-bottom:20px; }
+.modal-box .btn-close { background:#3baa01; color:#fff; border:none; padding:8px 20px; border-radius:6px; cursor:pointer; font-weight:bold; }
+.modal-box.error h3 { color:#dc2626; }
+.modal-box.success h3 { color:#256d00; }
+</style>
 </head>
 
 <body>
@@ -1069,6 +1080,11 @@
                 <a href="#history" data-seccion="history">
                     <span class="side-icon">7</span>
                     <span>Historial de disponibilidad</span>
+                </a>
+
+                <a href="#bitacora" data-seccion="bitacora">
+                    <span class="side-icon">8</span>
+                    <span>Bitácora de validación</span>
                 </a>
             </nav>
 
@@ -1252,6 +1268,12 @@
 
                         <div id="weeklyNotice" class="notice" role="status" aria-live="polite"></div>
                         <form id="weeklyForm">
+                            <div class="field" style="margin-bottom:12px;">
+                                <label>Auditorías programadas vigentes</label>
+                                <div id="weeklyProgramacionTable" class="table-wrap">
+                                    <div class="empty">Cargando programaciones...</div>
+                                </div>
+                            </div>
                             <div class="grid three">
                                 <div class="field">
                                     <label for="weeklyFrom">Vigente desde</label>
@@ -1623,6 +1645,21 @@
                     </div>
                 </section>
 
+                <!-- ================================================
+                     SECCIÓN 8: BITÁCORA DE VALIDACIÓN
+                ================================================= -->
+                <section class="panel panel-section" data-seccion="bitacora">
+                    <div class="panel-head">
+                        <h2>8. Bitácora de validación</h2>
+                        <button type="button" id="loadBitacora" class="secondary" onclick="loadBitacora()">Consultar bitácora</button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="table-wrap" id="bitacoraTable">
+                            <div class="empty">Selecciona un auditor para consultar su bitácora.</div>
+                        </div>
+                    </div>
+                </section>
+
             </section>
         </div>
     </main>
@@ -1648,7 +1685,35 @@
         </div>
     </div>
 
-    <script>
+    
+<div id="modalOverlay" class="modal-overlay">
+    <div id="modalBox" class="modal-box">
+        <h3 id="modalTitle">Mensaje</h3>
+        <p id="modalMessage"></p>
+        <button class="btn-close" onclick="closeModal()">Cerrar</button>
+    </div>
+</div>
+
+
+<script>
+    function showModal(message, type = 'success') {
+        const overlay = document.getElementById('modalOverlay');
+        const box = document.getElementById('modalBox');
+        const title = document.getElementById('modalTitle');
+        const msg = document.getElementById('modalMessage');
+        box.classList.remove('error', 'success');
+        box.classList.add(type === 'error' ? 'error' : 'success');
+        title.textContent = type === 'error' ? 'Error' : 'Éxito';
+        msg.textContent = message;
+        overlay.classList.add('active');
+    }
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+        if (e.target.id === 'modalOverlay') closeModal();
+    });
+
         const API_BASE = window.API_BASE || "";
         const $ = (id) => document.getElementById(id);
         let auditors = [];
@@ -1882,7 +1947,7 @@
         async function onAuditorChanged() {
             const id = selectedAuditorId(); $("auditorUuid").value = id;
             if (!id) return;
-            await Promise.all([loadAvailability(), loadHistory(), loadMonth()]);
+            await Promise.all([loadAvailability(), loadHistory(), loadMonth(), loadBitacora(), loadWeeklyProgramaciones()]);
         }
         function availabilityTypeName(row) {
             const type = String(row.tipo_registro || "").toLowerCase();
@@ -1955,6 +2020,203 @@
                 showNotice("historyNotice", `No se pudo consultar el historial: ${error.message}`, "error");
             }
         }
+        async function loadBitacora() {
+            const id = selectedAuditorId(); if (!id) return;
+            try {
+                const data = await api(`/${encodeURIComponent(id)}/bitacora-validacion`);
+                const rows = Array.isArray(data) ? data : [];
+                if (!rows.length) { $("bitacoraTable").innerHTML = '<div class="empty">No hay registros en la bitácora.</div>'; return; }
+                const body = rows.map(row => `<tr>
+                    <td>${esc(row.fecha_validacion ? formatDateTime(row.fecha_validacion) : "-")}</td>
+                    <td>${esc(row.tipo_validacion || "-")}</td>
+                    <td>${row.resultado_validacion ? "✅" : "❌"}</td>
+                    <td>${esc(row.detalle_resultado || "-")}</td>
+                    <td>${esc(row.id_programacion || "-")}</td>
+                </tr>`).join("");
+                $("bitacoraTable").innerHTML = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Resultado</th><th>Detalle</th><th>Programación</th></tr></thead><tbody>${body}</tbody></table>`;
+            } catch (error) {
+                $("bitacoraTable").innerHTML = `<div class="empty">No se pudo consultar la bitácora: ${esc(error.message)}</div>`;
+            }
+        }
+
+        async function loadWeeklyProgramaciones() {
+            const cont = $("weeklyProgramacionTable");
+            if (!cont) return;
+            cont.innerHTML = '<div class="empty">Cargando programaciones...</div>';
+            try {
+                const data = await api(`/programaciones`);
+                let rows = Array.isArray(data.programaciones) ? data.programaciones : (Array.isArray(data.auditorias) ? data.auditorias : (Array.isArray(data) ? data : []));
+                // Filtrar solo vigentes (no canceladas)
+                rows = rows.filter(r => String(r.estado || '').toLowerCase() !== 'cancelada' && String(r.estado || '').toLowerCase() !== 'cancelado');
+                // Eliminar duplicados por id_programacion
+                const seen = new Set();
+                rows = rows.filter(r => {
+                    const key = r.id_programacion || r.id_solicitud + '|' + r.fecha_inicio;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+                if (!rows.length) {
+                    cont.innerHTML = '<div class="empty">No hay programaciones vigentes.</div>';
+                    return;
+                }
+                let html = '<table><thead><tr><th>Seleccionar</th><th>Solicitud</th><th>Inicio</th><th>Fin</th><th>Ciudad</th><th>Modalidad</th><th>Estado</th></tr></thead><tbody>';
+                html += rows.map(r => `
+                    <tr>
+                        <td><input type="radio" name="weeklyProgRadio" value="${r.id_programacion || ''}" data-inicio="${r.fecha_inicio || ''}" data-fin="${r.fecha_fin || ''}" data-auditor="${r.id_usuario || (r.auditores && r.auditores[0] ? r.auditores[0].id_usuario : '')}" onchange="onWeeklyProgSelect(this)"></td>
+                        <td>${esc(r.numero_radicado || r.id_solicitud || '-')}</td>
+                        <td>${esc(formatDateTime(r.fecha_inicio))}</td>
+                        <td>${esc(formatDateTime(r.fecha_fin))}</td>
+                        <td>${esc(r.ciudad_servicio || '-')}</td>
+                        <td>${esc(r.modalidad || '-')}</td>
+                        <td>${esc(r.estado || '-')}</td>
+                    </tr>
+                `).join('');
+                html += '</tbody></table>';
+                cont.innerHTML = html;
+            } catch (e) {
+                console.error('Error cargando programaciones:', e);
+                cont.innerHTML = '<div class="empty">Error cargando programaciones.</div>';
+            }
+        }
+        function actualizarDiasPorRango() {
+            const desde = $("weeklyFrom").value;
+            const hasta = $("weeklyUntil").value || desde;
+            if (!desde) return;
+            const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+            const diasEnRango = new Set();
+            const start = new Date(desde);
+            const end = new Date(hasta);
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                diasEnRango.add(diasSemana[d.getDay()]);
+            }
+            ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].forEach(dia => {
+                const cb = document.getElementById(`day-${dia}`);
+                const startInput = document.getElementById(`start-${dia}`);
+                const endInput = document.getElementById(`end-${dia}`);
+                if (!cb) return;
+                if (diasEnRango.has(dia)) {
+                    cb.checked = true;
+                    cb.disabled = false;
+                    if (startInput) startInput.disabled = false;
+                    if (endInput) endInput.disabled = false;
+                } else {
+                    cb.checked = false;
+                    cb.disabled = true;
+                    if (startInput) startInput.disabled = true;
+                    if (endInput) endInput.disabled = true;
+                }
+            });
+        }
+
+        function onWeeklyProgSelect(radio) {
+            const inicio = radio.dataset.inicio;
+            const fin = radio.dataset.fin;
+            if (inicio) $("weeklyFrom").value = asDateInput(inicio);
+            if (fin) $("weeklyUntil").value = asDateInput(fin);
+
+            // Calcular días dentro del rango y auto-marcar
+            const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+            const diaLabels = { 'lunes': 'Lunes', 'martes': 'Martes', 'miercoles': 'Miércoles', 'jueves': 'Jueves', 'viernes': 'Viernes', 'sabado': 'Sábado', 'domingo': 'Domingo' };
+            const diasEnRango = new Set();
+            if (inicio && fin) {
+                const start = new Date(inicio);
+                const end = new Date(fin);
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    diasEnRango.add(diasSemana[d.getDay()]);
+                }
+            }
+            // Establecer horas desde la programación
+            let horaInicio = '';
+            let horaFin = '';
+            if (inicio) {
+                const t = new Date(inicio);
+                horaInicio = t.toTimeString().slice(0,5);
+            }
+            if (fin) {
+                const t = new Date(fin);
+                horaFin = t.toTimeString().slice(0,5);
+            }
+
+            Object.keys(diaLabels).forEach(dia => {
+                const cb = document.getElementById(`day-${dia}`);
+                const startInput = document.getElementById(`start-${dia}`);
+                const endInput = document.getElementById(`end-${dia}`);
+                if (!cb) return;
+                if (diasEnRango.has(dia)) {
+                    cb.checked = true;
+                    cb.disabled = false;
+                    if (startInput) { startInput.disabled = false; if (horaInicio) startInput.value = horaInicio; }
+                    if (endInput) { endInput.disabled = false; if (horaFin) endInput.value = horaFin; }
+                } else {
+                    cb.checked = false;
+                    cb.disabled = true;
+                    if (startInput) { startInput.disabled = true; }
+                    if (endInput) { endInput.disabled = true; }
+                }
+            });
+        }
+
+        $("weeklyForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            let id = selectedAuditorId();
+            const radio = document.querySelector('input[name="weeklyProgRadio"]:checked');
+            if (!id && radio && radio.dataset.auditor) {
+                id = radio.dataset.auditor;
+            }
+            if (!id) { showModal("Selecciona un auditor o una programación con auditor.", "error"); return; }
+            const desde = $("weeklyFrom").value;
+            const hasta = $("weeklyUntil").value || null;
+            const motivo = $("weeklyReason").value || "Disponibilidad semanal";
+            const dias = [];
+            ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].forEach(dia => {
+                const cb = document.getElementById(`day-${dia}`);
+                if (cb && cb.checked) {
+                    dias.push({
+                        dia_semana: dia,
+                        hora_inicio: document.getElementById(`start-${dia}`).value || "08:00",
+                        hora_fin: document.getElementById(`end-${dia}`).value || "17:00",
+                    });
+                }
+            });
+            if (!desde) { showModal("La fecha Vigente desde es obligatoria.", "error"); return; }
+            if (dias.length === 0) { showModal("Selecciona al menos un día.", "error"); return; }
+            try {
+                await api(`/${encodeURIComponent(id)}/disponibilidad-semanal`, {
+                    method: "POST",
+                    body: JSON.stringify({ fecha_inicio: desde, fecha_fin: hasta, dias, motivo }),
+                });
+                showModal("Disponibilidad guardada correctamente.", "success");
+                // Si hay programación seleccionada, actualizar y notificar
+                const radio = document.querySelector('input[name="weeklyProgRadio"]:checked');
+                if (radio && radio.value) {
+                    const progId = radio.value;
+                    const inicio = radio.dataset.inicio;
+                    const fin = radio.dataset.fin;
+                    const horaInicio = inicio ? new Date(inicio).toTimeString().slice(0,8) : "08:00:00";
+                    const horaFin = fin ? new Date(fin).toTimeString().slice(0,8) : "17:00:00";
+                    const fechaInicio = `${desde}T${horaInicio}`;
+                    const fechaFin = `${(hasta || desde)}T${horaFin}`;
+                    try {
+                        await api(`/programacion/${progId}`, {
+                            method: "PUT",
+                            body: JSON.stringify({
+                                fecha_inicio: fechaInicio,
+                                fecha_fin: fechaFin,
+                                observacion: motivo,
+                            }),
+                        });
+                        showModal("Disponibilidad guardada, programación actualizada y auditores notificados.", "success");
+                    } catch (e) {
+                        showModal("Disponibilidad guardada, pero no se pudo actualizar la programación: " + e.message, "error");
+                    }
+                }
+                await loadWeeklyProgramaciones();
+            } catch (error) {
+                showModal(`Error: ${error.message}`, "error");
+            }
+        });
+
         function renderAudits(items) {
             if (!items.length) { $("monthlyAuditTable").innerHTML = '<div class="empty">No hay auditorías para los filtros seleccionados.</div>'; return; }
             const rows = items.map(item => `<tr><td>${esc(item.numero_radicado || item.id_solicitud || "—")}</td><td>${esc(item.empresa_nombre || "—")}</td><td>${esc(item.direccion_servicio || "—")}<br><span class="hint">${esc(item.ciudad_servicio || "")}</span></td><td>${esc(formatDateTime(item.fecha_inicio))}</td><td>${esc(formatDateTime(item.fecha_fin))}</td><td>${esc(item.modalidad || "—")}</td><td><span class="pill audit">${esc(item.estado || "—")}</span></td></tr>`).join("");
@@ -2149,7 +2411,18 @@
                 window.__programacionesActuales = [];
                 $("scheduleList").innerHTML = '<div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>';
                 prepareNewScheduleForm(null);
-            }
+            // Habilitar/deshabilitar inputs de hora al marcar/desmarcar día
+            ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].forEach(dia => {
+                const cb = document.getElementById(`day-${dia}`);
+                const start = document.getElementById(`start-${dia}`);
+                const end = document.getElementById(`end-${dia}`);
+                if (cb && start && end) {
+                    cb.addEventListener('change', () => {
+                        start.disabled = !cb.checked;
+                        end.disabled = !cb.checked;
+                    });
+                }
+            });            }
         });
 
         $("scheduleCancelEdit").addEventListener("click", () => {
@@ -2362,6 +2635,11 @@
             ["scheduleDate"].forEach(id => { const el = $(id); if (el) el.min = today; });
             await loadAssignments();
             await cargarAsignaciones();
+            await loadWeeklyProgramaciones();
+            const weeklyFromInput = $("weeklyFrom");
+            const weeklyUntilInput = $("weeklyUntil");
+            if (weeklyFromInput) weeklyFromInput.addEventListener("change", actualizarDiasPorRango);
+            if (weeklyUntilInput) weeklyUntilInput.addEventListener("change", actualizarDiasPorRango);
             prepareNewScheduleForm(null);
         })();
 

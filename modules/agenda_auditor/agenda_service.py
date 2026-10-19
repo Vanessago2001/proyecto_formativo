@@ -713,6 +713,37 @@ class AgendaAuditorService(AuditorService):
             },
         )
 
+    async def _registrar_bitacora_validacion(
+        self,
+        id_programacion: UUID | None,
+        id_usuario: UUID | None,
+        tipo_validacion: str,
+        resultado: bool,
+        detalle: str,
+    ) -> None:
+        """Registra una validaci��n en la bitacora_validacion_agenda."""
+        try:
+            await self.db.execute(text("""
+                INSERT INTO bitacora_validacion_agenda (
+                    id_bitacora, id_programacion, id_usuario, tipo_validacion,
+                    resultado_validacion, detalle_resultado, fecha_validacion
+                ) VALUES (
+                    :id_bitacora, :id_programacion, :id_usuario, :tipo_validacion,
+                    :resultado_validacion, :detalle_resultado, CURRENT_TIMESTAMP
+                )
+            """), {
+                "id_bitacora": str(uuid4()),
+                "id_programacion": str(id_programacion) if id_programacion else None,
+                "id_usuario": str(id_usuario) if id_usuario else None,
+                "tipo_validacion": tipo_validacion,
+                "resultado_validacion": resultado,
+                "detalle_resultado": detalle,
+            })
+            await self.db.commit()
+        except Exception as exc:
+            print(f"Error al registrar bitacora validacion: {type(exc).__name__}: {exc}")
+            await self.db.rollback()
+
     async def _registrar_historial_disponibilidad(self, fila: dict, accion: str):
         """Guarda una instantánea para auditoría de creación/edición de disponibilidad."""
         await self.db.execute(text("""
@@ -817,6 +848,10 @@ class AgendaAuditorService(AuditorService):
             LIMIT 1
         """), params)
         if result.first():
+            await self._registrar_bitacora_validacion(
+                None, id_usuario, "Cruce horario", False,
+                f"Ya existe un horario disponible superpuesto para {dia_semana or 'ese periodo'}.",
+            )
             raise HTTPException(
                 status_code=409,
                 detail=f"Ya existe un horario disponible superpuesto para {dia_semana or 'ese periodo'}.",
@@ -890,6 +925,10 @@ class AgendaAuditorService(AuditorService):
             fin_dt = datetime.combine(fecha_fin, time.max)
             cruce = await self._buscar_cruce(id_usuario, inicio_dt, fin_dt)
             if cruce:
+                await self._registrar_bitacora_validacion(
+                    None, id_usuario, "Bloqueo fecha", False,
+                    "No se puede bloquear la fecha porque el auditor ya tiene una auditoría programada en ese periodo.",
+                )
                 raise HTTPException(
                     status_code=409,
                     detail={
@@ -1098,6 +1137,16 @@ class AgendaAuditorService(AuditorService):
             await self.db.rollback()
             print(f"Error al editar disponibilidad: {type(exc).__name__}: {exc}")
             raise HTTPException(status_code=500, detail="No fue posible editar la disponibilidad.") from exc
+
+    async def consultar_bitacora_validacion(self, id_usuario: UUID):
+        result = await self.db.execute(text("""
+            SELECT id_bitacora, id_programacion, id_usuario, tipo_validacion,
+                   resultado_validacion, detalle_resultado, fecha_validacion
+            FROM bitacora_validacion_agenda
+            WHERE id_usuario = :id_usuario
+            ORDER BY fecha_validacion DESC
+        """), {"id_usuario": str(id_usuario)})
+        return [dict(row) for row in result.mappings().all()]
 
     async def consultar_historial_disponibilidad(self, id_usuario: UUID):
         """Devuelve historial de cambios y registros heredados sin eventos de historial."""
