@@ -93,43 +93,11 @@ async def ensure_login_security_schema(session) -> None:
 
 
 async def ensure_apelaciones_schema(session) -> None:
-    await session.execute(text("""
-        DO $$
-        DECLARE tipo_id TEXT;
-        BEGIN
-            SELECT udt_name INTO tipo_id
-            FROM information_schema.columns
-            WHERE table_schema = current_schema()
-              AND table_name = 'apelacion'
-              AND column_name = 'id';
-
-            IF tipo_id IS NOT NULL AND (
-                tipo_id <> 'uuid'
-                OR EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_schema = current_schema()
-                      AND table_name IN ('apelacion', 'apelacion_comite', 'evidencia_apelacion')
-                      AND column_name IN (
-                          'id', 'id_solicitud', 'id_usuario_presenta', 'id_empresa',
-                          'id_auditor_evaluador', 'id_asignacion', 'id_apelacion',
-                          'id_usuario', 'id_evidencia'
-                      )
-                      AND udt_name <> 'uuid'
-                )
-                OR EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_schema = current_schema()
-                      AND table_name = 'apelacion'
-                      AND column_name = 'fallo'
-                      AND data_type <> 'boolean'
-                )
-            ) THEN
-                DROP TABLE IF EXISTS evidencia_apelacion;
-                DROP TABLE IF EXISTS apelacion_comite;
-                DROP TABLE IF EXISTS apelacion;
-            END IF;
-        END $$;
-    """))
+    # Aqui habia un bloque DO $$ que, si encontraba una columna con un tipo
+    # distinto al esperado, hacia DROP TABLE de apelacion, apelacion_comite y
+    # evidencia_apelacion, borrando sus datos sin aviso. Se elimino: los ajustes
+    # de esquema de apelaciones se hacen directamente en la base de datos.
+    # Lo que queda abajo solo crea lo que falte; nunca borra ni altera datos.
 
     await session.execute(text("""
         CREATE SEQUENCE IF NOT EXISTS apelacion_radicado_seq START WITH 1;

@@ -15,6 +15,18 @@ APELACION_FINAL = {"APROBADA", "RECHAZADA", "CANCELADA"}
 RAIZ_PROYECTO = Path(__file__).resolve().parent.parent.parent
 CARPETA_EVIDENCIAS = RAIZ_PROYECTO / "storage" / "apelaciones"
 EXTENSIONES_EVIDENCIA = {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"}
+
+# La base solo admite estos tipos (restriccion chk_tipo_evidencia), asi que se
+# traduce la extension del archivo a uno de ellos.
+TIPOS_EVIDENCIA = {
+    ".pdf": "Documento PDF",
+    ".jpg": "Fotografía",
+    ".jpeg": "Fotografía",
+    ".png": "Fotografía",
+    ".doc": "Informe Técnico",
+    ".docx": "Informe Técnico",
+}
+TIPO_EVIDENCIA_POR_DEFECTO = "Otro"
 TAMANO_MAXIMO_EVIDENCIA = 10 * 1024 * 1024
 
 
@@ -65,11 +77,11 @@ class ApelacionesService:
 
         query = text("""
             INSERT INTO apelacion (
-                id_solicitud, id_usuario_presenta, id_empresa, estado, radicado,
+                id, id_solicitud, id_usuario_presenta, id_empresa, estado, radicado,
                 fecha, motivo, razones_rechazo, fallo
             )
             VALUES (
-                :id_solicitud, :id_usuario_presenta, :id_empresa, :estado, :radicado,
+                gen_random_uuid(), :id_solicitud, :id_usuario_presenta, :id_empresa, :estado, :radicado,
                 CURRENT_TIMESTAMP, :motivo, :razones_rechazo, :fallo
             )
             RETURNING id, id_solicitud, id_empresa, estado,
@@ -79,10 +91,15 @@ class ApelacionesService:
             result = await self.db.execute(query, payload)
         except IntegrityError as exc:
             await self.db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="La solicitud ya tiene una apelación registrada.",
-            ) from exc
+            # Solo es duplicado si choca con la unicidad por solicitud; cualquier
+            # otro fallo de integridad se deja ver tal cual, en vez de disfrazarlo.
+            origen = getattr(exc, "orig", None)
+            if getattr(origen, "sqlstate", None) == "23505":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="La solicitud ya tiene una apelación registrada.",
+                ) from exc
+            raise
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None
@@ -118,23 +135,23 @@ class ApelacionesService:
         ruta_relativa = str(destino.relative_to(RAIZ_PROYECTO))
         payload = {
             "id_apelacion": id_apelacion,
-            "id_usuario": UUID(str(usuario["id_usuario"])),
+            "id_usuario_subio": UUID(str(usuario["id_usuario"])),
             "nombre_archivo": nombre,
-            "tipo_evidencia": extension.lstrip(".") or "documento",
+            "tipo_evidencia": TIPOS_EVIDENCIA.get(extension, TIPO_EVIDENCIA_POR_DEFECTO),
             "url_archivo": ruta_relativa,
             "descripcion": descripcion,
         }
 
         query = text("""
             INSERT INTO evidencia_apelacion (
-                id_apelacion, id_usuario, nombre_archivo, tipo_evidencia,
+                id_apelacion, id_usuario_subio, nombre_archivo, tipo_evidencia,
                 url_archivo, descripcion, fecha_subida
             )
             VALUES (
-                :id_apelacion, :id_usuario, :nombre_archivo, :tipo_evidencia,
+                :id_apelacion, :id_usuario_subio, :nombre_archivo, :tipo_evidencia,
                 :url_archivo, :descripcion, CURRENT_TIMESTAMP
             )
-            RETURNING id_evidencia, id_apelacion, id_usuario,
+            RETURNING id_evidencia, id_apelacion, id_usuario_subio AS id_usuario,
                       nombre_archivo, tipo_evidencia, url_archivo, descripcion, fecha_subida;
         """)
         try:
@@ -218,6 +235,16 @@ class ApelacionesService:
         if id_auditor_evaluador is not None and any(miembro == id_auditor_evaluador for miembro in miembros_comite):
             raise ValueError("No se puede asignar un auditor que evaluó la solicitud original al comité de apelación.")
 
+        existe = await self.db.execute(
+            text("SELECT 1 FROM apelacion WHERE id = :id_apelacion;"),
+            {"id_apelacion": id_apelacion},
+        )
+        if existe.scalar() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="La apelación no existe.",
+            )
+
         await self.db.execute(
             text("DELETE FROM apelacion_comite WHERE id_apelacion = :id_apelacion;"),
             {"id_apelacion": id_apelacion},
@@ -272,7 +299,8 @@ class ApelacionesService:
             return []
 
         query = text("""
-            SELECT id_evidencia, id_apelacion, id_usuario, nombre_archivo, tipo_evidencia, url_archivo, descripcion, fecha_subida
+            SELECT id_evidencia, id_apelacion, id_usuario_subio AS id_usuario,
+                   nombre_archivo, tipo_evidencia, url_archivo, descripcion, fecha_subida
             FROM evidencia_apelacion
             WHERE id_apelacion = :id_apelacion
             ORDER BY fecha_subida DESC;
@@ -288,7 +316,7 @@ class ApelacionesService:
         if not await self.get_apelacion_by_id(id_apelacion, usuario):
             return []
         query = text("""
-            SELECT id_evidencia, id_apelacion, id_usuario,
+            SELECT id_evidencia, id_apelacion, id_usuario_subio AS id_usuario,
                    nombre_archivo, tipo_evidencia, url_archivo, descripcion, fecha_subida
             FROM evidencia_apelacion
             WHERE id_apelacion = :id_apelacion;
@@ -302,12 +330,19 @@ class ApelacionesService:
             return None
         query = text("""
             UPDATE apelacion
-            SET estado = 'INFORMACION_SOLICITADA', observaciones = :requerimiento, fecha_decision = CURRENT_TIMESTAMP
+            SET estado = 'INFORMACION_SOLICITADA',
+                observaciones = :requerimiento,
+                id_usuario_revisa = :id_usuario,
+                fecha_decision = CURRENT_TIMESTAMP
             WHERE id = :id_apelacion
               AND estado IN ('ENVIADA', 'EN_REVISION', 'INFORMACION_SOLICITADA')
             RETURNING id, estado, observaciones;
         """)
-        result = await self.db.execute(query, {"id_apelacion": id_apelacion, "requerimiento": requerimiento})
+        result = await self.db.execute(query, {
+            "id_apelacion": id_apelacion,
+            "requerimiento": requerimiento,
+            "id_usuario": usuario.get("id_usuario"),
+        })
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None
@@ -317,15 +352,21 @@ class ApelacionesService:
             return None
         query = text("""
             UPDATE apelacion
-            SET estado = :decision,
+            SET estado = CAST(:decision AS VARCHAR),
                 observaciones = :observaciones,
-                fallo = (:decision = 'RECHAZADA'),
+                fallo = (CAST(:decision AS VARCHAR) = 'RECHAZADA'),
+                id_usuario_revisa = :id_usuario,
                 fecha_decision = CURRENT_TIMESTAMP
             WHERE id = :id_apelacion
               AND estado IN ('ENVIADA', 'EN_REVISION', 'INFORMACION_SOLICITADA')
             RETURNING id, estado, observaciones, fecha_decision;
         """)
-        result = await self.db.execute(query, {"id_apelacion": id_apelacion, "decision": decision, "observaciones": observaciones})
+        result = await self.db.execute(query, {
+            "id_apelacion": id_apelacion,
+            "decision": decision,
+            "observaciones": observaciones,
+            "id_usuario": usuario.get("id_usuario"),
+        })
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None
@@ -345,12 +386,13 @@ class ApelacionesService:
             return None
         query = text("""
             UPDATE apelacion
-            SET estado = :nuevo_estado,
+            SET estado = CAST(:nuevo_estado AS VARCHAR),
                 fallo = CASE
-                    WHEN :nuevo_estado = 'APROBADA' THEN FALSE
-                    WHEN :nuevo_estado = 'RECHAZADA' THEN TRUE
+                    WHEN CAST(:nuevo_estado AS VARCHAR) = 'APROBADA' THEN FALSE
+                    WHEN CAST(:nuevo_estado AS VARCHAR) = 'RECHAZADA' THEN TRUE
                     ELSE fallo
                 END,
+                id_usuario_revisa = :id_usuario,
                 fecha_decision = CURRENT_TIMESTAMP
             WHERE id = :id_apelacion
               AND estado = :estado_anterior
@@ -360,20 +402,11 @@ class ApelacionesService:
             "id_apelacion": id_apelacion,
             "nuevo_estado": nuevo_estado,
             "estado_anterior": apelacion["estado"],
+            "id_usuario": usuario.get("id_usuario"),
         })
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None
-
-    async def registrar_bitacora_cierre(self, id_apelacion: UUID, detalle: str) -> dict:
-        query = text("""
-            INSERT INTO bitacora_apelacion (apelacion_id, detalle)
-            VALUES (:id_apelacion, :detalle)
-            RETURNING id_bitacora, apelacion_id, detalle, fecha;
-        """)
-        result = await self.db.execute(query, {"id_apelacion": id_apelacion, "detalle": detalle})
-        await self.db.commit()
-        return dict(result.mappings().first())
 
     async def obtener_archivo_evidencia(self, id_apelacion: UUID, id_evidencia: UUID, usuario: dict) -> tuple[Path, str] | None:
         if not await self.get_apelacion_by_id(id_apelacion, usuario):
