@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 import calendar
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -68,11 +68,20 @@ class AgendaAuditorService(AuditorService):
     async def listar_auditores_activos(self):
         """Lista auditores activos/aprobados para administrar su agenda."""
         result = await self.db.execute(text("""
-            SELECT id_usuario, nombre, correo, estado, estado_auditor
-            FROM usuario
-            WHERE UPPER(TRIM(COALESCE(estado, ''))) = 'ACTIVO'
-              AND UPPER(TRIM(COALESCE(estado_auditor, ''))) IN ('ACTIVO', 'APROBADO', 'APROBADA')
-            ORDER BY nombre
+            SELECT u.id_usuario, u.nombre, u.correo, u.estado, u.estado_auditor, u.tipo_doc, u.num_doc,
+                   (
+                       SELECT a2.especialidad
+                       FROM auditores_solicitud a2
+                       WHERE a2.id_auditor = u.id_usuario
+                         AND a2.especialidad IS NOT NULL
+                         AND UPPER(TRIM(COALESCE(a2.estado_asignacion, ''))) IN ('AGENDADA', 'PROGRAMADA', 'CONFIRMADO')
+                       ORDER BY a2.fecha_asignacion DESC NULLS LAST
+                       LIMIT 1
+                   ) AS rol_auditor
+            FROM usuario u
+            WHERE UPPER(TRIM(COALESCE(u.estado, ''))) = 'ACTIVO'
+              AND UPPER(TRIM(COALESCE(u.estado_auditor, ''))) IN ('ACTIVO', 'APROBADO', 'APROBADA')
+            ORDER BY u.nombre
         """))
         return [dict(row) for row in result.mappings().all()]
 
@@ -162,6 +171,17 @@ class AgendaAuditorService(AuditorService):
                     d.id_usuario,
                     d.rol_auditor,
                     d.horas_asignadas,
+                    COALESCE(d.confirmado, FALSE) AS auditor_confirmado,
+                    d.fecha_confirmacion,
+                    (
+                        SELECT COUNT(*) FROM detalle_programacion_auditor dc
+                        WHERE dc.id_programacion = p.id_programacion
+                          AND COALESCE(dc.confirmado, FALSE) = TRUE
+                    ) AS auditores_confirmados,
+                    (
+                        SELECT COUNT(*) FROM detalle_programacion_auditor dt
+                        WHERE dt.id_programacion = p.id_programacion
+                    ) AS auditores_total,
                     p.id_solicitud,
                     s.numero_radicado,
                     e.nombre AS empresa_nombre,
@@ -179,7 +199,30 @@ class AgendaAuditorService(AuditorService):
                     p.estado,
                     p.notificacion_enviada,
                     p.motivo_reprogramacion,
-                    p.motivo_cancelacion
+                    p.motivo_cancelacion,
+                    bloq.id_disponibilidad AS bloqueo_id,
+                    bloq.motivo AS bloqueo_motivo,
+                    (bloq.id_disponibilidad IS NOT NULL) AS dia_no_disponible,
+                    p.estado_solicitud_reprogramacion,
+                    p.motivo_solicitud_reprogramacion,
+                    CASE
+                        WHEN UPPER(TRIM(COALESCE(p.estado_solicitud_reprogramacion, ''))) = 'RECHAZADA'
+                            THEN 'Reprogramación rechazada' || CASE
+                                WHEN p.motivo_solicitud_reprogramacion IS NOT NULL
+                                    THEN ': ' || p.motivo_solicitud_reprogramacion
+                                ELSE '' END
+                        WHEN UPPER(TRIM(COALESCE(p.estado_solicitud_reprogramacion, ''))) = 'APROBADA'
+                            THEN 'Reprogramación resuelta' || CASE
+                                WHEN p.motivo_solicitud_reprogramacion IS NOT NULL
+                                    THEN ': ' || p.motivo_solicitud_reprogramacion
+                                ELSE '' END
+                        ELSE p.motivo_reprogramacion
+                    END AS observacion_auditor,
+                    p.id_usuario_solicitante_reprogramacion,
+                    (SELECT u2.nombre FROM usuario u2
+                      WHERE u2.id_usuario = p.id_usuario_solicitante_reprogramacion) AS solicitante_nombre,
+                    (SELECT u2.correo FROM usuario u2
+                      WHERE u2.id_usuario = p.id_usuario_solicitante_reprogramacion) AS solicitante_correo
                 FROM detalle_programacion_auditor d
                 INNER JOIN programacion_visita p
                     ON p.id_programacion = d.id_programacion
@@ -189,6 +232,17 @@ class AgendaAuditorService(AuditorService):
                     ON e.id_empresa = s.id_empresa
                 LEFT JOIN usuario u
                     ON u.id_usuario = d.id_usuario
+                LEFT JOIN LATERAL (
+                    SELECT da.id_disponibilidad, da.motivo
+                    FROM disponibilidad_auditor da
+                    WHERE da.id_usuario = d.id_usuario
+                      AND da.tipo_registro = 'Bloqueo Fecha'
+                      AND UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                      AND CAST(da.fecha_inicio AS DATE) <= CAST(p.fecha_fin AS DATE)
+                      AND CAST(COALESCE(da.fecha_fin, da.fecha_inicio) AS DATE) >= CAST(p.fecha_inicio AS DATE)
+                    ORDER BY da.fecha_inicio DESC
+                    LIMIT 1
+                ) bloq ON TRUE
                 {where}
                 ORDER BY p.fecha_inicio DESC
             """),
@@ -227,6 +281,17 @@ class AgendaAuditorService(AuditorService):
                     d.id_usuario,
                     d.rol_auditor,
                     d.horas_asignadas,
+                    COALESCE(d.confirmado, FALSE) AS auditor_confirmado,
+                    d.fecha_confirmacion,
+                    (
+                        SELECT COUNT(*) FROM detalle_programacion_auditor dc
+                        WHERE dc.id_programacion = p.id_programacion
+                          AND COALESCE(dc.confirmado, FALSE) = TRUE
+                    ) AS auditores_confirmados,
+                    (
+                        SELECT COUNT(*) FROM detalle_programacion_auditor dt
+                        WHERE dt.id_programacion = p.id_programacion
+                    ) AS auditores_total,
                     p.id_solicitud,
                     s.numero_radicado,
                     e.nombre AS empresa_nombre,
@@ -238,7 +303,25 @@ class AgendaAuditorService(AuditorService):
                     p.estado,
                     p.notificacion_enviada,
                     p.motivo_reprogramacion,
-                    p.motivo_cancelacion
+                    p.motivo_cancelacion,
+                    p.estado_solicitud_reprogramacion,
+                    p.motivo_solicitud_reprogramacion,
+                    CASE
+                        WHEN UPPER(TRIM(COALESCE(p.estado_solicitud_reprogramacion, ''))) = 'RECHAZADA'
+                            THEN 'Reprogramación rechazada' || CASE
+                                WHEN p.motivo_solicitud_reprogramacion IS NOT NULL
+                                    THEN ': ' || p.motivo_solicitud_reprogramacion
+                                ELSE '' END
+                        WHEN UPPER(TRIM(COALESCE(p.estado_solicitud_reprogramacion, ''))) = 'APROBADA'
+                            THEN 'Reprogramación resuelta' || CASE
+                                WHEN p.motivo_solicitud_reprogramacion IS NOT NULL
+                                    THEN ': ' || p.motivo_solicitud_reprogramacion
+                                ELSE '' END
+                        ELSE p.motivo_reprogramacion
+                    END AS observacion_auditor,
+                    bloq.id_disponibilidad AS bloqueo_id,
+                    bloq.motivo AS bloqueo_motivo,
+                    (bloq.id_disponibilidad IS NOT NULL) AS dia_no_disponible
                 FROM detalle_programacion_auditor d
                 INNER JOIN programacion_visita p
                     ON p.id_programacion = d.id_programacion
@@ -246,6 +329,17 @@ class AgendaAuditorService(AuditorService):
                     ON s.id_solicitud = p.id_solicitud
                 LEFT JOIN empresa e
                     ON e.id_empresa = s.id_empresa
+                LEFT JOIN LATERAL (
+                    SELECT da.id_disponibilidad, da.motivo
+                    FROM disponibilidad_auditor da
+                    WHERE da.id_usuario = d.id_usuario
+                      AND da.tipo_registro = 'Bloqueo Fecha'
+                      AND UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                      AND CAST(da.fecha_inicio AS DATE) <= CAST(p.fecha_fin AS DATE)
+                      AND CAST(COALESCE(da.fecha_fin, da.fecha_inicio) AS DATE) >= CAST(p.fecha_inicio AS DATE)
+                    ORDER BY da.fecha_inicio DESC
+                    LIMIT 1
+                ) bloq ON TRUE
                 WHERE {' AND '.join(filtros)}
                 ORDER BY p.fecha_inicio DESC
             """),
@@ -912,6 +1006,126 @@ class AgendaAuditorService(AuditorService):
             print(f"Error al configurar disponibilidad semanal: {type(exc).__name__}: {exc}")
             raise HTTPException(status_code=500, detail="No fue posible configurar la disponibilidad semanal.") from exc
 
+    @staticmethod
+    def _serializar_conflicto(conflicto: dict | None) -> dict | None:
+        """Convierte el cruce a tipos serializables en JSON (UUID, datetime, date)."""
+        if not conflicto:
+            return None
+        serializable = {}
+        for clave, valor in conflicto.items():
+            if isinstance(valor, datetime):
+                serializable[clave] = valor.isoformat()
+            elif isinstance(valor, date):
+                serializable[clave] = valor.isoformat()
+            elif isinstance(valor, UUID):
+                serializable[clave] = str(valor)
+            else:
+                serializable[clave] = valor
+        return serializable
+
+    async def _retirar_auditor_por_bloqueo(
+        self,
+        id_programacion: UUID,
+        id_usuario: UUID,
+        fecha_bloqueo: date,
+        motivo: str,
+    ) -> dict:
+        """
+        Registra la indisponibilidad de un auditor en un día de la programación.
+
+        El auditor NO se elimina de la visita: conserva la agenda programmed y
+        el día bloqueado queda marcado como "No disponible" en las consultas.
+        La programación tampoco se cancela, de modo que los demás auditores
+        continúan con la visita.
+        """
+        prog = await self.db.execute(text("""
+            SELECT id_programacion, fecha_inicio, fecha_fin, estado
+            FROM programacion_visita
+            WHERE id_programacion = :id
+        """), {"id": str(id_programacion)})
+        actual = prog.mappings().first()
+        if not actual:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "La programación no existe.")
+        if str(actual["estado"] or "").strip().upper() in {"CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO"}:
+            raise HTTPException(status.HTTP_409_CONFLICT, "La programación ya está cancelada o finalizada.")
+
+        detalle = await self.db.execute(text("""
+            SELECT 1 FROM detalle_programacion_auditor
+            WHERE id_programacion = :id AND id_usuario = :usuario
+        """), {"id": str(id_programacion), "usuario": str(id_usuario)})
+        if not detalle.first():
+            raise HTTPException(status.HTTP_409_CONFLICT, "El auditor no está asignado a esta programación.")
+        await self.db.commit()
+        return {
+            "mensaje": "El día quedó bloqueado para el auditor; conserva su agenda y los demás continúan con la visita.",
+            "quedan_auditores": True,
+            "programacion_cancelada": False,
+        }
+
+    async def listar_bloqueos_activos(self):
+        """Lista los bloqueos de fecha vigentes con los datos del auditor."""
+        result = await self.db.execute(text("""
+            SELECT da.id_disponibilidad, da.id_usuario,
+                   u.nombre, u.correo, u.tipo_doc, u.num_doc,
+                   da.fecha_inicio, da.fecha_fin, da.motivo
+            FROM disponibilidad_auditor da
+            INNER JOIN usuario u ON u.id_usuario = da.id_usuario
+            WHERE da.tipo_registro = 'Bloqueo Fecha'
+              AND UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')
+            ORDER BY da.fecha_inicio DESC, u.nombre
+        """))
+        return [dict(row) for row in result.mappings().all()]
+
+    async def consultar_dias_programacion(self, id_usuario: UUID, id_programacion: UUID) -> dict:
+        """Detalla, día por día, el estado de disponibilidad del auditor en una programación."""
+        result = await self.db.execute(text("""
+            SELECT p.fecha_inicio, p.fecha_fin, p.estado
+            FROM programacion_visita p
+            WHERE p.id_programacion = :id
+        """), {"id": str(id_programacion)})
+        prog = result.mappings().first()
+        if not prog:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "La programación no existe.")
+
+        auditor = await self.db.execute(text("""
+            SELECT id_usuario, nombre, correo, tipo_doc, num_doc
+            FROM usuario WHERE id_usuario = :u
+        """), {"u": str(id_usuario)})
+        datos = dict(auditor.mappings().first() or {})
+
+        inicio = prog["fecha_inicio"].date()
+        fin = prog["fecha_fin"].date()
+        dias = []
+        actual = inicio
+        while actual <= fin:
+            registros = await self.db.execute(text("""
+                SELECT tipo_registro, motivo, hora_inicio, hora_fin
+                FROM disponibilidad_auditor
+                WHERE id_usuario = :u
+                  AND UPPER(TRIM(COALESCE(estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                  AND CAST(fecha_inicio AS DATE) <= :d
+                  AND CAST(COALESCE(fecha_fin, fecha_inicio) AS DATE) >= :d
+            """), {"u": str(id_usuario), "d": actual})
+            filas = registros.mappings().all()
+            bloqueo = next((f for f in filas if str(f["tipo_registro"] or "").lower() == "bloqueo fecha"), None)
+            horario = next((f for f in filas if str(f["tipo_registro"] or "").lower() in ("horario semanal", "disponibilidad extra")), None)
+            franja = None
+            if horario and horario["hora_inicio"] and horario["hora_fin"]:
+                franja = f"{horario['hora_inicio'].strftime('%H:%M')} - {horario['hora_fin'].strftime('%H:%M')}"
+            dias.append({
+                "fecha": actual.isoformat(),
+                "dia_semana": self._etiqueta_dia_semana(actual.weekday() + 1),
+                "estado": "bloqueado" if bloqueo else "disponible",
+                "motivo": bloqueo["motivo"] if bloqueo else None,
+                "horario": franja,
+            })
+            actual += timedelta(days=1)
+        return {"dias": dias, "auditor": datos, "programacion": {
+            "fecha_inicio": prog["fecha_inicio"].isoformat(),
+            "fecha_fin": prog["fecha_fin"].isoformat(),
+            "estado": prog["estado"],
+        }}
+
     async def registrar_fecha_no_disponible(
         self, id_usuario: UUID, data: FechaNoDisponibleCrear
     ) -> dict:
@@ -923,19 +1137,58 @@ class AgendaAuditorService(AuditorService):
             fecha_fin = data.fecha_fin or data.fecha_inicio
             inicio_dt = datetime.combine(data.fecha_inicio, time.min)
             fin_dt = datetime.combine(fecha_fin, time.max)
+            retiro_info = None
             cruce = await self._buscar_cruce(id_usuario, inicio_dt, fin_dt)
             if cruce:
-                await self._registrar_bitacora_validacion(
-                    None, id_usuario, "Bloqueo fecha", False,
-                    "No se puede bloquear la fecha porque el auditor ya tiene una auditoría programada en ese periodo.",
+                # Si el conflicto es con la MISMA programación que originó el
+                # bloqueo, se cancela automáticamente: esa es la intención del
+                # bloqueo. Con otras programaciones se requiere autorización
+                # explícita (cancelar_programacion).
+                id_cruce = UUID(str(cruce.get("id_programacion")))
+                es_programacion_seleccionada = bool(
+                    data.id_programacion and id_cruce == UUID(str(data.id_programacion))
                 )
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "mensaje": "No se puede bloquear la fecha porque el auditor ya tiene una auditoría programada en ese periodo.",
-                        "conflicto": cruce,
-                    },
+                puede_cancelar = es_programacion_seleccionada or bool(data.cancelar_programacion)
+                if not puede_cancelar:
+                    await self._registrar_bitacora_validacion(
+                        None, id_usuario, "Bloqueo fecha", False,
+                        "No se puede bloquear la fecha porque el auditor ya tiene una auditoría programada en ese periodo.",
+                    )
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "mensaje": "No se puede bloquear la fecha porque el auditor ya tiene una auditoría programada en ese periodo.",
+                            "conflicto": self._serializar_conflicto(cruce),
+                        },
+                    )
+                motivo_cancelacion = (
+                    f"Bloqueo de disponibilidad: {data.motivo.strip()}"
                 )
+                if es_programacion_seleccionada:
+                    # Se retira al auditor únicamente del día bloqueado: los demás
+                    # auditores de la visita continúan y el retirado es notificado.
+                    try:
+                        retiro = await self._retirar_auditor_por_bloqueo(
+                            id_cruce, id_usuario, data.fecha_inicio, motivo_cancelacion
+                        )
+                        retiro_info = retiro
+                    except HTTPException:
+                        await self.db.rollback()
+                        raise
+                    await self._registrar_bitacora_validacion(
+                        id_cruce, id_usuario, "Bloqueo fecha", True,
+                        "Bloqueo registrado: el auditor fue retirado del día bloqueado. " + retiro["mensaje"],
+                    )
+                else:
+                    try:
+                        await self.cancelar_programacion(id_cruce, motivo_cancelacion)
+                    except HTTPException:
+                        await self.db.rollback()
+                        raise
+                    await self._registrar_bitacora_validacion(
+                        id_cruce, id_usuario, "Bloqueo fecha", True,
+                        "Bloqueo registrado y auditoría programada cancelada: " + motivo_cancelacion,
+                    )
             id_disp = uuid4()
             result = await self.db.execute(text("""
                 INSERT INTO disponibilidad_auditor (
@@ -957,8 +1210,30 @@ class AgendaAuditorService(AuditorService):
             })
             row = dict(result.mappings().one())
             await self._registrar_historial_disponibilidad(row, "REGISTRADA_NO_DISPONIBLE")
+            # Notificar al auditor del bloqueo (requiere la programación de referencia).
+            if data.id_programacion:
+                mensaje = (
+                    f"Se registró el bloqueo de disponibilidad del {data.fecha_inicio.strftime('%d/%m/%Y')}"
+                    f"{' al ' + fecha_fin.strftime('%d/%m/%Y') if fecha_fin != data.fecha_inicio else ''}. "
+                    f"Motivo: {data.motivo.strip()}."
+                )
+                if retiro_info:
+                    mensaje += (
+                        " Además, usted fue retirado de la auditoría programada de ese día "
+                        "y el resto de auditores continúan con la visita."
+                    )
+                await self._crear_notificacion(
+                    data.id_programacion,
+                    id_usuario,
+                    "Día no disponible",
+                    mensaje,
+                )
             await self.db.commit()
-            return {"mensaje": "Fecha(s) registrada(s) como no disponible(s).", "registro": row}
+            return {
+                "mensaje": "Fecha(s) registrada(s) como no disponible(s).",
+                "registro": row,
+                "notificado": bool(data.id_programacion),
+            }
         except HTTPException:
             await self.db.rollback()
             raise
@@ -1149,26 +1424,198 @@ class AgendaAuditorService(AuditorService):
         return [dict(row) for row in result.mappings().all()]
 
     async def consultar_historial_disponibilidad(self, id_usuario: UUID):
-        """Devuelve historial de cambios y registros heredados sin eventos de historial."""
+        """
+        Devuelve la trazabilidad completa del auditor.
+
+        Cada registro incluye:
+          - accion: CREADA, EDITADA, REGISTRADA_NO_DISPONIBLE,
+                    REGISTRADA_EXTRAORDINARIA, REGISTRO_EXISTENTE
+          - fecha_evento: cuándo ocurrió
+          - antes: estado del registro antes de la acción (si existe)
+          - despues: estado del registro después de la acción
+        """
         result = await self.db.execute(text("""
             SELECT id_historial, id_disponibilidad, id_usuario, accion, tipo_registro,
                    dia_semana, fecha_inicio, fecha_fin, hora_inicio, hora_fin,
                    motivo, estado, fecha_evento
             FROM historial_disponibilidad_auditor
             WHERE id_usuario = :id_usuario
-            ORDER BY fecha_evento DESC
+            ORDER BY fecha_evento ASC NULLS FIRST,
+                     CASE WHEN accion = 'ANTES_DE_EDICION' THEN 0 ELSE 1 END
         """), {"id_usuario": str(id_usuario)})
         historial = [dict(row) for row in result.mappings().all()]
+
+        # Agrupar por registro de disponibilidad para calcular antes/después
+        grupos: dict[str, list] = {}
+        orden: list[str] = []
+        for row in historial:
+            clave = str(row.get("id_disponibilidad"))
+            if clave not in grupos:
+                grupos[clave] = []
+                orden.append(clave)
+            grupos[clave].append(row)
+
+        procesado: list = []
+        for clave in orden:
+            eventos = grupos[clave]
+            indice = 0
+            while indice < len(eventos):
+                actual = eventos[indice]
+                accion = str(actual.get("accion") or "")
+                if accion == "ANTES_DE_EDICION" and indice + 1 < len(eventos):
+                    # ANTES_DE_EDICION guarda el estado previo; el siguiente
+                    # evento (EDITADA) guarda el estado posterior.
+                    posterior = eventos[indice + 1]
+                    procesado.append({
+                        **posterior,
+                        "accion": "EDITADA",
+                        "antes": actual,
+                        "despues": posterior,
+                    })
+                    indice += 2
+                    continue
+                procesado.append({
+                    **actual,
+                    "antes": eventos[indice - 1] if indice > 0 else None,
+                    "despues": actual,
+                })
+                indice += 1
+
+        # Registros vigentes que no tienen eventos de historial
         ids_con_historial = {str(row.get("id_disponibilidad")) for row in historial}
         actuales = await self.consultar_agenda(id_usuario, incluir_inactivos=True)
         for row in actuales:
             if str(row.get("id_disponibilidad")) not in ids_con_historial:
-                historial.append({**row, "accion": "REGISTRO_EXISTENTE", "fecha_evento": None})
-        historial.sort(
+                procesado.append({
+                    **row,
+                    "accion": "REGISTRO_EXISTENTE",
+                    "fecha_evento": None,
+                    "antes": None,
+                    "despues": None,
+                })
+
+        procesado.sort(
             key=lambda row: row.get("fecha_evento") or datetime.min,
             reverse=True,
         )
-        return historial
+        return procesado
+
+    async def ver_disponibilidad_mensual_general(
+        self,
+        anio: int,
+        mes: int,
+        ciudad: str | None = None,
+        modalidad: str | None = None,
+    ) -> dict:
+        """Vista administrativa: auditorías y disponibilidad de todo el sistema en un mes."""
+        if mes < 1 or mes > 12:
+            raise HTTPException(status_code=422, detail="El mes debe estar entre 1 y 12.")
+        if anio < 2000 or anio > 2100:
+            raise HTTPException(status_code=422, detail="El año debe estar entre 2000 y 2100.")
+        primer_dia = date(anio, mes, 1)
+        ultimo_dia = date(anio, mes, calendar.monthrange(anio, mes)[1])
+
+        filtros = [
+            "UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')",
+            "CAST(da.fecha_inicio AS DATE) <= :ultimo",
+            "CAST(COALESCE(da.fecha_fin, da.fecha_inicio) AS DATE) >= :primer",
+        ]
+        params = {
+            "primer": primer_dia,
+            "ultimo": ultimo_dia,
+            "ciudad": f"%{ciudad.strip().lower()}%" if ciudad and ciudad.strip() else None,
+            "modalidad": modalidad.strip() if modalidad and modalidad.strip() else None,
+        }
+        where = " AND ".join(filtros)
+
+        # Disponibilidad de todos los auditores dentro del mes
+        result = await self.db.execute(text(f"""
+            SELECT da.id_disponibilidad, da.id_usuario, da.tipo_registro, da.dia_semana,
+                   da.fecha_inicio, da.fecha_fin, da.hora_inicio, da.hora_fin,
+                   da.motivo, da.estado,
+                   u.nombre AS auditor_nombre, u.correo AS auditor_correo
+            FROM disponibilidad_auditor da
+            INNER JOIN usuario u ON u.id_usuario = da.id_usuario
+            WHERE {where}
+            ORDER BY da.fecha_inicio, u.nombre
+        """), params)
+        disponibilidades = [dict(row) for row in result.mappings().all()]
+
+        # Auditorías programadas del mes con sus auditores
+        filtros_aud = [
+            "CAST(p.fecha_inicio AS DATE) <= :ultimo",
+            "CAST(p.fecha_fin AS DATE) >= :primer",
+            "UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')",
+        ]
+        if ciudad and ciudad.strip():
+            filtros_aud.append("LOWER(COALESCE(p.ciudad_servicio, '')) LIKE :ciudad")
+        if modalidad and modalidad.strip():
+            filtros_aud.append("LOWER(COALESCE(p.modalidad, '')) = LOWER(:modalidad)")
+        result_aud = await self.db.execute(text(f"""
+            SELECT p.id_programacion, p.id_solicitud, p.fecha_inicio, p.fecha_fin,
+                   p.modalidad, p.ciudad_servicio, p.estado AS estado_programacion,
+                   p.direccion_servicio, p.motivo_reprogramacion, p.motivo_cancelacion,
+                   d.id_usuario, d.rol_auditor,
+                   s.numero_radicado, e.nombre AS empresa_nombre, e.nit AS empresa_nit,
+                   u.nombre AS auditor_nombre, u.correo AS auditor_correo
+            FROM programacion_visita p
+            INNER JOIN detalle_programacion_auditor d ON d.id_programacion = p.id_programacion
+            INNER JOIN usuario u ON u.id_usuario = d.id_usuario
+            LEFT JOIN solicitud s ON s.id_solicitud = p.id_solicitud
+            LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+            WHERE {' AND '.join(filtros_aud)}
+            ORDER BY p.fecha_inicio, u.nombre
+        """), params)
+        auditorias = [dict(row) for row in result_aud.mappings().all()]
+
+        # Armar el calendario día por día
+        nombres_dia = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+        por_dia_aud = {}
+        for item in auditorias:
+            if not isinstance(item.get("fecha_inicio"), datetime):
+                continue
+            inicio = item["fecha_inicio"].date()
+            fin = item.get("fecha_fin")
+            fin = fin.date() if isinstance(fin, datetime) else inicio
+            dia_actual = inicio
+            while dia_actual <= fin:
+                por_dia_aud.setdefault(dia_actual.isoformat(), []).append(item)
+                dia_actual += timedelta(days=1)
+        dias = []
+        for numero in range(1, ultimo_dia.day + 1):
+            fecha_actual = date(anio, mes, numero)
+            iso = fecha_actual.isoformat()
+            dia_nombre = nombres_dia[fecha_actual.weekday()]
+            aplican = []
+            for registro in disponibilidades:
+                inicio = registro.get("fecha_inicio")
+                fin = registro.get("fecha_fin")
+                inicio_dia = inicio.date() if isinstance(inicio, datetime) else inicio
+                fin_dia = fin.date() if isinstance(fin, datetime) else fin
+                if inicio_dia and inicio_dia > fecha_actual:
+                    continue
+                if fin_dia and fin_dia < fecha_actual:
+                    continue
+                tipo = str(registro.get("tipo_registro") or "").strip().lower()
+                dia_registro = self._etiqueta_dia_semana(registro.get("dia_semana"))
+                if tipo in {"no disponible", "no_disponible", "indisponible", "bloqueo", "bloqueo fecha"}:
+                    aplican.append(registro)
+                elif not dia_registro or normalizar_dia(dia_registro) == dia_nombre:
+                    aplican.append(registro)
+            dias.append({
+                "fecha": iso,
+                "dia_semana": dia_nombre,
+                "disponibilidad": aplican,
+                "auditorias": por_dia_aud.get(iso, []),
+            })
+        return {
+            "anio": anio,
+            "mes": mes,
+            "ciudad": ciudad,
+            "modalidad": modalidad,
+            "dias": dias,
+            "auditorias": auditorias,
+        }
 
     async def ver_disponibilidad_mensual(
         self,
@@ -1224,7 +1671,11 @@ class AgendaAuditorService(AuditorService):
             auditorias_dia = [
                 item for item in auditorias
                 if isinstance(item.get("fecha_inicio"), datetime)
-                and item["fecha_inicio"].date() == fecha_actual
+                and item["fecha_inicio"].date() <= fecha_actual
+                and (
+                    not isinstance(item.get("fecha_fin"), datetime)
+                    or item["fecha_fin"].date() >= fecha_actual
+                )
             ]
             dias.append({
                 "fecha": fecha_actual.isoformat(),
@@ -1241,25 +1692,369 @@ class AgendaAuditorService(AuditorService):
             "dias": dias,
         }
 
-    async def confirmar_programacion(self, id_programacion: UUID):
+    async def _auditores_de_programacion(self, id_programacion: UUID):
+        result = await self.db.execute(text("""
+            SELECT d.id_usuario, u.nombre, u.correo
+            FROM detalle_programacion_auditor d
+            LEFT JOIN usuario u ON u.id_usuario = d.id_usuario
+            WHERE d.id_programacion = :id
+            ORDER BY u.nombre
+        """), {"id": str(id_programacion)})
+        return [dict(row) for row in result.mappings().all()]
+
+    async def confirmar_programacion(
+        self,
+        id_programacion: UUID,
+        id_usuario_solicitante: UUID | None = None,
+        es_admin: bool = False,
+    ):
+        """Confirma la programación. Puede hacerlo un administrador o un auditor asignado."""
         try:
-            result = await self.db.execute(text("""
-                UPDATE programacion_visita
-                SET estado = 'Confirmada'
+            programacion = await self.db.execute(text("""
+                SELECT id_programacion, estado FROM programacion_visita
                 WHERE id_programacion = :id
-                  AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
-                RETURNING id_programacion
             """), {"id": str(id_programacion)})
-            if not result.first():
-                raise HTTPException(status_code=404, detail="Programación no encontrada o ya finalizada/cancelada.")
+            actual = programacion.mappings().first()
+            if not actual:
+                raise HTTPException(status_code=404, detail="Programación no encontrada.")
+            estado = str(actual["estado"] or "").strip().upper()
+            if estado in {"CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO", "EJECUTADA"}:
+                raise HTTPException(status_code=409, detail="La programación ya está cancelada, ejecutada o finalizada.")
+            if estado == "CONFIRMADA":
+                return {"mensaje": "La programación ya estaba confirmada.", "estado": "Confirmada"}
+            if not es_admin:
+                auditores = await self._auditores_de_programacion(id_programacion)
+                if not auditores:
+                    raise HTTPException(status_code=409, detail="La programación no tiene auditores asignados.")
+                if not id_usuario_solicitante or not any(
+                    str(a["id_usuario"]) == str(id_usuario_solicitante) for a in auditores
+                ):
+                    raise HTTPException(status_code=403, detail="Solo un auditor asignado puede confirmar esta programación.")
+            # La confirmación es INDIVIDUAL: solo queda confirmado el auditor
+            # que la realiza; el resto del equipo debe confirmar por separado.
+            if id_usuario_solicitante:
+                await self.db.execute(text("""
+                    UPDATE detalle_programacion_auditor
+                    SET confirmado = TRUE, fecha_confirmacion = CURRENT_TIMESTAMP
+                    WHERE id_programacion = :id AND id_usuario = :usuario
+                """), {"id": str(id_programacion), "usuario": str(id_usuario_solicitante)})
+            else:
+                # El administrador confirma en nombre del equipo completo.
+                await self.db.execute(text("""
+                    UPDATE detalle_programacion_auditor
+                    SET confirmado = TRUE, fecha_confirmacion = CURRENT_TIMESTAMP
+                    WHERE id_programacion = :id
+                """), {"id": str(id_programacion)})
+            # El estado global solo pasa a 'Confirmada' cuando TODO el equipo confirmó.
+            pendientes = await self.db.execute(text("""
+                SELECT COUNT(*) FROM detalle_programacion_auditor
+                WHERE id_programacion = :id AND COALESCE(confirmado, FALSE) = FALSE
+            """), {"id": str(id_programacion)})
+            faltantes = pendientes.scalar() or 0
+            total = await self.db.execute(text("""
+                SELECT COUNT(*) FROM detalle_programacion_auditor WHERE id_programacion = :id
+            """), {"id": str(id_programacion)})
+            total_auditores = total.scalar() or 0
+            if faltantes == 0 and total_auditores > 0:
+                await self.db.execute(text("""
+                    UPDATE programacion_visita SET estado = 'Confirmada'
+                    WHERE id_programacion = :id
+                      AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO', 'EJECUTADA')
+                """), {"id": str(id_programacion)})
             await self.db.commit()
-            return {"mensaje": "Programación confirmada."}
+            if faltantes == 0 and total_auditores > 0:
+                return {
+                    "mensaje": "Programación confirmada por todo el equipo.",
+                    "estado": "Confirmada",
+                    "confirmados": total_auditores,
+                    "pendientes": 0,
+                }
+            return {
+                "mensaje": (
+                    "Su confirmación quedó registrada. Los demás auditores de la visita deben confirmarla individualmente."
+                ),
+                "estado": "Programada",
+                "confirmados": total_auditores - faltantes,
+                "pendientes": faltantes,
+            }
         except HTTPException:
             await self.db.rollback()
             raise
         except Exception:
             await self.db.rollback()
             raise HTTPException(status_code=500, detail="No fue posible confirmar la programación.")
+
+    async def solicitar_reprogramacion(
+        self,
+        id_programacion: UUID,
+        id_usuario_solicitante: UUID | None = None,
+        es_admin: bool = False,
+        motivo: str = "",
+    ) -> dict:
+        """
+        El auditor solicita formalmente la reprogramación de una visita indicando el motivo.
+
+        La visita queda en estado 'Reprogramada' con el motivo de la solicitud y se
+        notifica al resto de auditores del equipo y al solicitante.
+        """
+        if len(motivo.strip()) < 10:
+            raise HTTPException(status_code=422, detail="Debe indicar el motivo de la reprogramación (mínimo 10 caracteres).")
+        try:
+            programacion = await self.db.execute(text("""
+                SELECT id_programacion, id_solicitud, estado, fecha_inicio, fecha_fin
+                FROM programacion_visita WHERE id_programacion = :id
+            """), {"id": str(id_programacion)})
+            actual = programacion.mappings().first()
+            if not actual:
+                raise HTTPException(status_code=404, detail="Programación no encontrada.")
+            estado = str(actual["estado"] or "").strip().upper()
+            if estado in {"CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO", "EJECUTADA"}:
+                raise HTTPException(status_code=409, detail="La programación ya está cancelada, ejecutada o finalizada.")
+            auditores = await self._auditores_de_programacion(id_programacion)
+            if not auditores:
+                raise HTTPException(status_code=409, detail="La programación no tiene auditores asignados.")
+            solicitante = None
+            if not es_admin:
+                if not id_usuario_solicitante or not any(
+                    str(a["id_usuario"]) == str(id_usuario_solicitante) for a in auditores
+                ):
+                    raise HTTPException(status_code=403, detail="Solo un auditor asignado puede solicitar la reprogramación.")
+                solicitante = next(
+                    (a for a in auditores if str(a["id_usuario"]) == str(id_usuario_solicitante)), None
+                )
+            detalle_motivo = f"Solicitud de reprogramación: {motivo.strip()}"
+            await self.db.execute(text("""
+                UPDATE programacion_visita
+                SET estado = 'Reprogramada',
+                    motivo_reprogramacion = :motivo,
+                    estado_solicitud_reprogramacion = 'Pendiente',
+                    id_usuario_solicitante_reprogramacion = :solicitante,
+                    motivo_solicitud_reprogramacion = :motivo_solicitud
+                WHERE id_programacion = :id
+            """), {
+                "motivo": detalle_motivo,
+                "id": str(id_programacion),
+                "solicitante": str(solicitante["id_usuario"]) if solicitante else None,
+                "motivo_solicitud": motivo.strip(),
+            })
+            mensaje = f"Se solicitó formalmente la reprogramación de la visita. Motivo: {motivo.strip()}."
+            for auditor in auditores:
+                if solicitante and str(auditor["id_usuario"]) == str(solicitante["id_usuario"]):
+                    continue
+                await self._crear_notificacion(
+                    id_programacion,
+                    auditor["id_usuario"],
+                    "Solicitud de reprogramación",
+                    mensaje,
+                )
+            await self.db.commit()
+            return {
+                "mensaje": "Solicitud de reprogramación registrada con el motivo indicado.",
+                "estado": "Reprogramada",
+                "motivo": detalle_motivo,
+            }
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(status_code=500, detail="No fue posible registrar la solicitud de reprogramación.")
+
+    async def _notificar_solicitante(
+        self,
+        id_programacion: UUID,
+        id_solicitante: UUID | None,
+        titulo: str,
+        mensaje: str,
+    ) -> None:
+        """Notifica al auditor que realizo la solicitud de reprogramacion."""
+        if not id_solicitante:
+            return
+        try:
+            await self._crear_notificacion(id_programacion, id_solicitante, titulo, mensaje)
+        except Exception as exc:  # pragma: no cover - la notificacion no bloquea la decision
+            print(f"No se pudo notificar al solicitante: {type(exc).__name__}: {exc}")
+
+    async def _estado_final_programacion(self, id_programacion: UUID) -> str:
+        """Calcula el estado final de la visita segun las confirmaciones del equipo."""
+        total = await self.db.execute(
+            text("SELECT COUNT(*) FROM detalle_programacion_auditor WHERE id_programacion = :id"),
+            {"id": str(id_programacion)},
+        )
+        total_auditores = total.scalar() or 0
+        pendientes = await self.db.execute(
+            text("""
+                SELECT COUNT(*) FROM detalle_programacion_auditor
+                WHERE id_programacion = :id AND COALESCE(confirmado, FALSE) = FALSE
+            """),
+            {"id": str(id_programacion)},
+        )
+        faltantes = pendientes.scalar() or 0
+        if total_auditores > 0 and faltantes == 0:
+            return "Confirmada"
+        return "Programada"
+
+    async def rechazar_solicitud_reprogramacion(
+        self,
+        id_programacion: UUID,
+        motivo: str,
+    ) -> dict:
+        """El administrador rechaza la solicitud formal de reprogramacion."""
+        if not motivo.strip():
+            raise HTTPException(status_code=422, detail="Debe indicar el motivo del rechazo.")
+        try:
+            result = await self.db.execute(text("""
+                SELECT id_programacion, estado, estado_solicitud_reprogramacion,
+                       id_usuario_solicitante_reprogramacion, motivo_solicitud_reprogramacion
+                FROM programacion_visita WHERE id_programacion = :id
+            """), {"id": str(id_programacion)})
+            actual = result.mappings().first()
+            if not actual:
+                raise HTTPException(status_code=404, detail="La programación no existe.")
+            estado_solicitud = str(actual["estado_solicitud_reprogramacion"] or "").strip().upper()
+            if estado_solicitud != "PENDIENTE":
+                raise HTTPException(status_code=409, detail="La visita no tiene una solicitud de reprogramación pendiente.")
+            estado_final = await self._estado_final_programacion(id_programacion)
+            await self.db.execute(text("""
+                UPDATE programacion_visita
+                SET estado = :estado,
+                    motivo_reprogramacion = NULL,
+                    estado_solicitud_reprogramacion = 'Rechazada',
+                    motivo_solicitud_reprogramacion = :motivo
+                WHERE id_programacion = :id
+            """), {
+                "estado": estado_final,
+                "motivo": motivo.strip(),
+                "id": str(id_programacion),
+            })
+            await self.db.commit()
+            await self._notificar_solicitante(
+                id_programacion,
+                actual["id_usuario_solicitante_reprogramacion"],
+                "Solicitud de reprogramación rechazada",
+                f"Se rechazó su solicitud de reprogramación. Motivo: {motivo.strip()}.",
+            )
+            await self.db.commit()
+            return {
+                "mensaje": "Solicitud de reprogramación rechazada y notificada al auditor.",
+                "estado": estado_final,
+            }
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(status_code=500, detail="No fue posible rechazar la solicitud.")
+
+    async def resolver_solicitud_reprogramacion(
+        self,
+        id_programacion: UUID,
+        accion: str,
+        id_usuario: UUID | None = None,
+        fecha: date | None = None,
+        motivo: str = "",
+    ) -> dict:
+        """
+        Resuelve la solicitud de reprogramacion.
+
+        accion = 'bloquear_dia'  -> registra el dia como no disponible para el auditor.
+        accion = 'retirar_auditor' -> retira al auditor de la programacion.
+        """
+        if accion not in {"bloquear_dia", "retirar_auditor"}:
+            raise HTTPException(status_code=422, detail="Acción de resolución no válida.")
+        try:
+            result = await self.db.execute(text("""
+                SELECT id_programacion, estado, estado_solicitud_reprogramacion,
+                       id_usuario_solicitante_reprogramacion, motivo_solicitud_reprogramacion,
+                       fecha_inicio, fecha_fin
+                FROM programacion_visita WHERE id_programacion = :id
+            """), {"id": str(id_programacion)})
+            actual = result.mappings().first()
+            if not actual:
+                raise HTTPException(status_code=404, detail="La programación no existe.")
+            estado_solicitud = str(actual["estado_solicitud_reprogramacion"] or "").strip().upper()
+            if estado_solicitud != "PENDIENTE":
+                raise HTTPException(status_code=409, detail="La visita no tiene una solicitud de reprogramación pendiente.")
+            solicitante = actual["id_usuario_solicitante_reprogramacion"]
+            if not id_usuario:
+                id_usuario = solicitante
+            if not id_usuario:
+                raise HTTPException(status_code=422, detail="Debe indicar el auditor afectado.")
+            detalle = ""
+
+            if accion == "bloquear_dia":
+                if not fecha:
+                    raise HTTPException(status_code=422, detail="Debe indicar la fecha a bloquear.")
+                if fecha < date.today():
+                    raise HTTPException(status_code=422, detail="No se puede bloquear una fecha que ya pasó.")
+                existe = await self.db.execute(text("""
+                    SELECT 1 FROM detalle_programacion_auditor
+                    WHERE id_programacion = :id AND id_usuario = :usuario
+                """), {"id": str(id_programacion), "usuario": str(id_usuario)})
+                if not existe.first():
+                    raise HTTPException(status_code=409, detail="El auditor no está asignado a esta programación.")
+                await self.db.execute(text("""
+                    INSERT INTO disponibilidad_auditor (
+                        id_disponibilidad, id_usuario, tipo_registro, dia_semana,
+                        fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+                    ) VALUES (
+                        :id, :usuario, 'Bloqueo Fecha', :dia,
+                        :fecha_inicio, :fecha_fin, NULL, NULL, :motivo, 'Activo'
+                    )
+                """), {
+                    "id": str(uuid4()),
+                    "usuario": str(id_usuario),
+                    "dia": fecha.weekday() + 1,
+                    "fecha_inicio": datetime.combine(fecha, time.min),
+                    "fecha_fin": datetime.combine(fecha, time.max),
+                    "motivo": motivo.strip() or "Bloqueo por solicitud de reprogramación",
+                })
+                detalle = f"Se bloqueó el día {fecha.strftime('%d/%m/%Y')} para el auditor."
+            else:
+                existe = await self.db.execute(text("""
+                    SELECT 1 FROM detalle_programacion_auditor
+                    WHERE id_programacion = :id AND id_usuario = :usuario
+                """), {"id": str(id_programacion), "usuario": str(id_usuario)})
+                if not existe.first():
+                    raise HTTPException(status_code=409, detail="El auditor no está asignado a esta programación.")
+                await self.db.execute(text("""
+                    DELETE FROM detalle_programacion_auditor
+                    WHERE id_programacion = :id AND id_usuario = :usuario
+                """), {"id": str(id_programacion), "usuario": str(id_usuario)})
+                detalle = "El auditor fue retirado de la programación."
+
+            estado_final = await self._estado_final_programacion(id_programacion)
+            await self.db.execute(text("""
+                UPDATE programacion_visita
+                SET estado = :estado,
+                    estado_solicitud_reprogramacion = 'Aprobada',
+                    motivo_reprogramacion = NULL,
+                    motivo_solicitud_reprogramacion = :motivo
+                WHERE id_programacion = :id
+            """), {
+                "estado": estado_final,
+                "motivo": motivo.strip() or detalle,
+                "id": str(id_programacion),
+            })
+            await self.db.commit()
+            await self._notificar_solicitante(
+                id_programacion,
+                solicitante,
+                "Solicitud de reprogramación resuelta",
+                f"{detalle} Motivo: {motivo.strip() or 'sin detalle'}.",
+            )
+            await self.db.commit()
+            return {
+                "mensaje": f"Solicitud resuelta. {detalle}",
+                "estado": estado_final,
+                "accion": accion,
+            }
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise HTTPException(status_code=500, detail="No fue posible resolver la solicitud.")
 
     async def cancelar_programacion(self, id_programacion: UUID, motivo: str):
         if not motivo.strip():

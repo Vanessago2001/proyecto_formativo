@@ -347,6 +347,46 @@
             font-weight: 600;
         }
 
+        /* ACCIONES EN TABLA (alineadas en un solo renglón) */
+
+        .acciones-celda {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+
+        .acciones-celda .mini-button {
+            min-height: 34px;
+            padding: 7px 13px;
+            font-size: 12px;
+        }
+
+        .btn-eliminar {
+            background: #dc2626;
+            border-color: #dc2626;
+        }
+
+        .btn-eliminar:hover {
+            background: #b91c1c;
+            border-color: #b91c1c;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+        }
+
+        .btn-reporte {
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+
+        .btn-reporte:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        }
+
         /* PAGINACIÓN */
 
         .pagination-row {
@@ -498,6 +538,144 @@
             }
         }
     </style>
+
+<style>
+.autocomplete-list { position:absolute; background:#fff; border:1px solid #dbe4d4; border-radius:6px; max-height:200px; overflow-y:auto; z-index:50; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+.autocomplete-list div { padding:8px 12px; cursor:pointer; font-size:0.9rem; }
+.autocomplete-list div:hover { background:#f1f8ed; }
+</style>
+
+<style>
+/* ============================================================
+   DISEÑO: chips, cabeceras de sección, tarjetas de resumen
+   ============================================================ */
+.chip {
+    display: inline-block;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.chip-tipo { background: #eef6ff; color: #1d4ed8; border-color: #c7dbfb; }
+.chip-activo { background: #ecfdf5; color: #047857; border-color: #bbf0d5; }
+.chip-inactivo { background: #f1f5f9; color: #475569; border-color: #dbe3ec; }
+.chip-bloquea { background: #fef2f2; color: #b91c1c; border-color: #fbd5d5; }
+.chip-libre { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    margin: 0 0 6px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eaf0e7;
+}
+.section-header .section-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    background: var(--sena-green-light);
+    color: var(--sena-green-dark);
+    font-size: 19px;
+    font-weight: 700;
+}
+.section-header h2 {
+    margin: 0;
+    color: var(--sena-green-dark);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+.section-header p {
+    margin: 3px 0 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.resumen-tarjetas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.tarjeta-resumen {
+    padding: 16px 18px;
+    background: linear-gradient(160deg, #f7fbf5 0%, #ffffff 100%);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--sena-green);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(32, 74, 25, 0.05);
+}
+.tarjeta-resumen .valor {
+    display: block;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--sena-green-dark);
+    line-height: 1.2;
+}
+.tarjeta-resumen .etiqueta {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.tarjeta-resumen.alerta { border-left-color: #dc2626; }
+.tarjeta-resumen.alerta .valor { color: #b91c1c; }
+
+.campo-bloque {
+    padding: 16px;
+    background: #f8fafc;
+    border: 1px solid #e6ece4;
+    border-radius: 12px;
+}
+.campo-bloque .form-group + .form-group { margin-top: 14px; }
+.checkbox-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+}
+.checkbox-inline input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--sena-green);
+    cursor: pointer;
+}
+.vacio-estado {
+    padding: 34px 18px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+.vacio-estado strong { display: block; margin-bottom: 5px; color: var(--text-primary); font-size: 15px; }
+</style>
+
+<style>
+.modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:9999; }
+.modal-overlay.active { display:flex; }
+.modal-box { background:#fff; border-radius:12px; padding:24px; max-width:400px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center; }
+.modal-box h3 { margin-top:0; color:#256d00; }
+.modal-box p { color:#334155; margin-bottom:20px; }
+.modal-box .btn-close { background:#3baa01; color:#fff; border:none; padding:8px 20px; border-radius:6px; cursor:pointer; font-weight:bold; }
+.modal-box.error h3 { color:#dc2626; }
+.modal-box.success h3 { color:#256d00; }
+</style>
 </head>
 
 <body>
@@ -517,7 +695,8 @@
             <!-- REGRESAR AL PORTAL -->
             <nav class="top-navigation" aria-label="Navegación de la página">
                 <div class="page-context">
-                    <p>Banco de auditores / Conflictos registrados</p>
+                    <p style="font-weight:600;color:var(--text-primary);font-size:14px;">Banco de auditores / Conflictos registrados</p>
+                    <p>Gestione los conflictos de interés detectados y genere los reportes correspondientes.</p>
                 </div>
 
                 <div class="acciones">
@@ -528,17 +707,99 @@
                 </div>
             </nav>
 
+            <!-- RESUMEN -->
+            <div class="resumen-tarjetas" id="resumenTarjetas">
+                <div class="tarjeta-resumen">
+                    <span class="valor" id="statTotal">0</span>
+                    <span class="etiqueta">Conflictos totales</span>
+                </div>
+                <div class="tarjeta-resumen">
+                    <span class="valor" id="statBloquean">0</span>
+                    <span class="etiqueta">Bloquean asignación</span>
+                </div>
+                <div class="tarjeta-resumen">
+                    <span class="valor" id="statEmpresas">0</span>
+                    <span class="etiqueta">Empresas limitadas</span>
+                </div>
+                <div class="tarjeta-resumen alerta">
+                    <span class="valor" id="statAuditores">0</span>
+                    <span class="etiqueta">Auditores con conflicto</span>
+                </div>
+            </div>
+
             <!-- CONSULTA GENERAL -->
             <section class="section-card">
-                <h2 class="section-title">Consulta general de conflictos</h2>
-                <p class="help-text">
-                    Aquí se muestran todos los conflictos registrados, quiénes los generaron y con qué empresa los
-                    tuvieron.
-                </p>
+                <div class="section-header">
+                    <span class="section-icon" aria-hidden="true">⚠</span>
+                    <div>
+                        <h2>Consulta general y asignación de conflictos detectados</h2>
+                        <p>Aquí se muestran todos los conflictos registrados, quiénes los generaron y con qué empresa los tuvieron.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CREAR CONFLICTO DETECTADO -->
+            <section class="section-card">
+                <div class="section-header">
+                    <span class="section-icon" aria-hidden="true">＋</span>
+                    <div>
+                        <h2>Crear conflicto detectado</h2>
+                        <p>Busca cualquier auditor (aunque no tenga conflicto), selecciona una empresa y guarda el conflicto.</p>
+                    </div>
+                </div>
+                <div class="campo-bloque">
+                    <div class="filters-grid">
+                        <div class="form-group">
+                            <label for="buscarAuditorConflicto">Auditor</label>
+                            <input id="buscarAuditorConflicto" class="form-control" placeholder="Nombre, documento o correo del auditor">
+                        </div>
+                        <div class="form-group">
+                            <label for="empresaConflicto">Empresa</label>
+                            <select id="empresaConflicto" class="form-control">
+                                <option value="">-- Seleccionar empresa --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tipoConflicto">Tipo</label>
+                            <select id="tipoConflicto" class="form-control">
+                                <option value="">-- Seleccionar tipo --</option>
+                                <option value="Exempleado">Exempleado</option>
+                                <option value="Asesoría Previa">Asesoría Previa</option>
+                                <option value="Parentesco">Parentesco</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="descripcionConflicto">Descripción</label>
+                            <textarea id="descripcionConflicto" class="form-control" rows="2" placeholder="Describe el conflicto detectado"></textarea>
+                        </div>
+                    </div>
+
+                    <div id="tablaAuditorConflicto" style="margin-top:14px; display:none;">
+                        <table class="record-table">
+                            <thead><tr><th>Nombre</th><th>Documento</th><th>Correo</th><th>Estado</th><th>Seleccionar</th></tr></thead>
+                            <tbody id="rowsAuditorConflicto"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="acciones-celda" style="margin-top:14px;">
+                        <label class="checkbox-inline">
+                            <input type="checkbox" id="bloqueaConflicto" checked>
+                            Bloquea asignación
+                        </label>
+                        <button type="button" class="mini-button" onclick="guardarConflictoDetectado()">Guardar conflicto</button>
+                    </div>
+                </div>
             </section>
 
             <!-- FILTROS Y TABLA -->
             <section class="section-card">
+                <div class="section-header">
+                    <span class="section-icon" aria-hidden="true">☰</span>
+                    <div>
+                        <h2>Conflictos registrados</h2>
+                        <p>Consulta, genera el reporte o elimina los conflictos registrados en el sistema.</p>
+                    </div>
+                </div>
                 <div class="filters-grid">
                     <div class="form-group">
                         <label for="busqueda">Filtrar resultados</label>
@@ -571,6 +832,7 @@
                                 <th>Estado</th>
                                 <th>Fecha</th>
                                 <th>Descripción</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="rows"></tbody>
@@ -588,7 +850,34 @@
         </section>
     </main>
 
-    <script>
+    
+<div id="modalOverlay" class="modal-overlay">
+    <div id="modalBox" class="modal-box">
+        <h3 id="modalTitle">Mensaje</h3>
+        <p id="modalMessage"></p>
+        <button class="btn-close" onclick="closeModal()">Cerrar</button>
+    </div>
+</div>
+
+<script>
+    function showModal(message, type = 'success') {
+        const overlay = document.getElementById('modalOverlay');
+        const box = document.getElementById('modalBox');
+        const title = document.getElementById('modalTitle');
+        const msg = document.getElementById('modalMessage');
+        box.classList.remove('error', 'success');
+        box.classList.add(type === 'error' ? 'error' : 'success');
+        title.textContent = type === 'error' ? 'Error' : 'Éxito';
+        msg.textContent = message;
+        overlay.classList.add('active');
+    }
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+        if (e.target.id === 'modalOverlay') closeModal();
+    });
+
         const token = localStorage.getItem('access_token');
         let conflictos = [];
         let pagina = 1;
@@ -601,6 +890,144 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
+        }
+
+        async function generarReporteConflictos(idUsuario) {
+            if (!idUsuario) return;
+            try {
+                const res = await fetch(`/reportes-auditor/conflictos/${idUsuario}/pdf`, {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/pdf' }
+                });
+                if (!res.ok) {
+                    const err = await res.text();
+                    alert('Error al generar el reporte: ' + err);
+                    return;
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            } catch (e) {
+                alert('Error al generar el reporte: ' + e.message);
+            }
+        }
+
+        let auditorSeleccionado = null;
+        let auditoresCache = [];
+
+        async function cargarEmpresasConflicto() {
+            try {
+                const res = await fetch('/api/empresas/', {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                const empresas = Array.isArray(data.empresas) ? data.empresas : (Array.isArray(data) ? data : []);
+                const select = document.getElementById('empresaConflicto');
+                if (!select) return;
+                select.innerHTML = '<option value="">-- Seleccionar empresa --</option>';
+                empresas.forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e.id_empresa || e.id || '';
+                    opt.textContent = `${e.nombre || e.razon_social || ''} - ${e.nit || ''}`;
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.error('Error cargando empresas:', e); }
+        }
+
+        async function cargarAuditoresConflicto() {
+            try {
+                const res = await fetch('/agenda-auditor/auditores', {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                auditoresCache = Array.isArray(data.auditores) ? data.auditores : (Array.isArray(data) ? data : []);
+            } catch (e) { console.error('Error cargando auditores:', e); }
+        }
+
+        function buscarAuditorConflicto() {
+            const input = document.getElementById('buscarAuditorConflicto');
+            const tabla = document.getElementById('tablaAuditorConflicto');
+            const tbody = document.getElementById('rowsAuditorConflicto');
+            if (!input || !tabla || !tbody) return;
+            const q = input.value.trim().toLowerCase();
+            if (!q) { tabla.style.display = 'none'; tbody.innerHTML = ''; return; }
+            const matches = auditoresCache.filter(a => {
+                const nombre = String(a.nombre || '').toLowerCase();
+                const doc = String(a.num_doc || a.numero_documento || '').toLowerCase();
+                const correo = String(a.correo || '').toLowerCase();
+                return nombre.includes(q) || doc.includes(q) || correo.includes(q);
+            }).slice(0, 20);
+            if (!matches.length) { tabla.style.display = 'none'; tbody.innerHTML = ''; return; }
+            tbody.innerHTML = matches.map(a => `
+                <tr>
+                    <td>${escapeHtml(a.nombre || '-')}</td>
+                    <td>${escapeHtml((a.tipo_doc ? a.tipo_doc + ' ' : '') + (a.num_doc || a.numero_documento || '-'))}</td>
+                    <td>${escapeHtml(a.correo || '-')}</td>
+                    <td><span class="chip ${String(a.estado_auditor || a.estado || '').toLowerCase() === 'activo' ? 'chip-activo' : 'chip-inactivo'}">${escapeHtml(a.estado_auditor || a.estado || '-')}</span></td>
+                    <td class="acciones-celda"><button type="button" class="mini-button" onclick="seleccionarAuditorConflicto('${a.id_usuario || a.id || ''}', '${escapeHtml(a.nombre || '')}')">Seleccionar</button></td>
+                </tr>
+            `).join('');
+            tabla.style.display = 'block';
+        }
+
+        function seleccionarAuditorConflicto(id, nombre) {
+            auditorSeleccionado = id;
+            const input = document.getElementById('buscarAuditorConflicto');
+            const tabla = document.getElementById('tablaAuditorConflicto');
+            if (input) input.value = nombre;
+            if (tabla) tabla.style.display = 'none';
+        }
+
+        async function guardarConflictoDetectado() {
+            if (!auditorSeleccionado) { showModal('Selecciona un auditor.', 'error'); return; }
+            const empresa = document.getElementById('empresaConflicto').value;
+            if (!empresa) { showModal('Selecciona una empresa.', 'error'); return; }
+            const tipo = document.getElementById('tipoConflicto').value.trim();
+            const descripcion = document.getElementById('descripcionConflicto').value.trim();
+            if (!tipo || !descripcion) { showModal('Completa tipo y descripción.', 'error'); return; }
+            const bloquea = document.getElementById('bloqueaConflicto').checked;
+            try {
+                const res = await fetch(`/conflictos-auditor/administrador/usuario/${auditorSeleccionado}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_empresa: empresa, tipo_conflicto: tipo, descripcion, bloquea_asignacion: bloquea })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    showModal('Error: ' + (err.detail || 'No se pudo guardar.'), 'error');
+                    return;
+                }
+                showModal('Conflicto guardado correctamente.', 'success');
+                auditorSeleccionado = null;
+                document.getElementById('buscarAuditorConflicto').value = '';
+                document.getElementById('tipoConflicto').value = '';
+                document.getElementById('descripcionConflicto').value = '';
+                cargarConflictos();
+            } catch (e) {
+                showModal('Error: ' + e.message, 'error');
+            }
+        }
+
+        document.getElementById('buscarAuditorConflicto').addEventListener('input', buscarAuditorConflicto);
+        cargarEmpresasConflicto();
+        cargarAuditoresConflicto();
+
+        async function eliminarConflicto(idUsuario, idConflicto) {
+            if (!confirm("¿Desea eliminar este conflicto de interés del auditor?")) return;
+            try {
+                const res = await fetch(`/conflictos-auditor/${idConflicto}?id_usuario=${encodeURIComponent(idUsuario)}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": "Bearer " + token, "Accept": "application/json" }
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    showModal("Error: " + (err.detail || "No se pudo eliminar."), "error");
+                    return;
+                }
+                showModal("Conflicto eliminado correctamente.", "success");
+                cargarConflictos();
+            } catch (e) {
+                showModal("Error: " + e.message, "error");
+            }
         }
 
         async function cargarConflictos() {
@@ -616,7 +1043,7 @@
                 pagina = 1;
                 renderizar();
             } catch (e) {
-                document.getElementById('rows').innerHTML = '<tr><td colspan="10">No se pudo cargar la información.</td></tr>';
+                document.getElementById('rows').innerHTML = '<tr><td colspan="12">No se pudo cargar la información.</td></tr>';
                 document.getElementById('resumen').textContent = '';
             }
         }
@@ -637,6 +1064,18 @@
             ].some(v => String(v || '').toLowerCase().includes(busqueda)));
         }
 
+        function actualizarResumen() {
+            const total = conflictos.length;
+            const bloquean = conflictos.filter(c => c.bloquea_asignacion).length;
+            const empresas = new Set(conflictos.map(c => c.id_empresa || c.empresa)).size;
+            const auditores = new Set(conflictos.map(c => c.id_usuario || c.auditor)).size;
+            const set = (id, valor) => { const el = document.getElementById(id); if (el) el.textContent = valor; };
+            set('statTotal', total);
+            set('statBloquean', bloquean);
+            set('statEmpresas', empresas);
+            set('statAuditores', auditores);
+        }
+
         function renderizar() {
             const filtrados = filtrar();
             const limite = parseInt(document.getElementById('limite').value, 10) || 10;
@@ -647,7 +1086,7 @@
 
             const tbody = document.getElementById('rows');
             if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="10">No hay conflictos para mostrar.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12"><div class="vacio-estado"><strong>Sin conflictos para mostrar</strong>Ajuste el filtro o registre un nuevo conflicto detectado.</div></td></tr>';
             } else {
                 tbody.innerHTML = items.map(item => `
                     <tr>
@@ -656,14 +1095,19 @@
                         <td>${escapeHtml(item.correo || '-')}</td>
                         <td>${escapeHtml(item.empresa || '-')}</td>
                         <td>${escapeHtml(item.nit || '-')}</td>
-                        <td>${escapeHtml(item.tipo_conflicto || '-')}</td>
-                        <td class="${item.bloquea_asignacion ? 'badge-yes' : 'badge-no'}">${escapeHtml(item.bloquea_asignacion)}</td>
-                        <td>${escapeHtml(item.estado || '-')}</td>
+                        <td><span class="chip chip-tipo">${escapeHtml(item.tipo_conflicto || '-')}</span></td>
+                        <td>${item.bloquea_asignacion ? '<span class="chip chip-bloquea">Sí</span>' : '<span class="chip chip-libre">No</span>'}</td>
+                        <td><span class="chip ${String(item.estado || '').toLowerCase() === 'activo' ? 'chip-activo' : 'chip-inactivo'}">${escapeHtml(item.estado || '-')}</span></td>
                         <td>${escapeHtml(item.fecha_declaracion || '-')}</td>
                         <td>${escapeHtml(item.descripcion || '-')}</td>
+                        <td class="acciones-celda">
+                            <button type="button" class="mini-button btn-reporte" onclick="generarReporteConflictos('${item.id_usuario}')">Generar reporte</button>
+                            <button type="button" class="mini-button btn-eliminar" onclick="eliminarConflicto('${item.id_usuario}', '${item.id_conflicto}')">Eliminar</button>
+                        </td>
                     </tr>
                 `).join('');
             }
+            actualizarResumen();
 
             document.getElementById('resumen').textContent =
                 'Mostrando ' + items.length + ' de ' + filtrados.length + ' conflictos. Página ' + pagina + ' de ' + totalPaginas + '.';

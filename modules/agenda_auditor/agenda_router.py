@@ -57,6 +57,28 @@ async def _validar_admin_o_propio_auditor(
 
 
 # Las rutas literales van antes de /{id_usuario} para evitar conflictos.
+@router.get("/bloqueos/vigentes")
+async def listar_bloqueos_vigentes(
+    usuario: dict = Depends(requiere_permiso("SOL-006")),
+    db: AsyncSession = Depends(get_db),
+):
+    return {"bloqueos": await AgendaAuditorService(db).listar_bloqueos_activos()}
+
+
+@router.get("/disponibilidad-mensual-general")
+async def disponibilidad_mensual_general(
+    anio: int = Query(..., ge=2000, le=2100),
+    mes: int = Query(..., ge=1, le=12),
+    ciudad: str | None = Query(None, max_length=150),
+    modalidad: str | None = Query(None, max_length=30),
+    usuario: dict = Depends(requiere_permiso("SOL-006")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AgendaAuditorService(db).ver_disponibilidad_mensual_general(
+        anio=anio, mes=mes, ciudad=ciudad, modalidad=modalidad
+    )
+
+
 @router.get("/solicitudes-asignadas/{id_usuario}")
 async def solicitudes_asignadas_auditor(
     id_usuario: UUID,
@@ -231,6 +253,16 @@ async def disponibilidad_mensual(
     )
 
 
+@router.get("/{id_usuario}/programacion/{id_programacion}/dias")
+async def dias_programacion(
+    id_usuario: UUID,
+    id_programacion: UUID,
+    usuario: dict = Depends(_validar_admin_o_propio_auditor),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AgendaAuditorService(db).consultar_dias_programacion(id_usuario, id_programacion)
+
+
 @router.get("/{id_usuario}")
 async def agenda(
     id_usuario: UUID,
@@ -289,10 +321,39 @@ async def notificaciones_auditor(
 @router.post("/programacion/{id_programacion}/confirmar")
 async def confirmar_programacion(
     id_programacion: UUID,
-    usuario: dict = Depends(_validar_administrador),
+    usuario: dict = Depends(requiere_permiso("SOL-006")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await AgendaAuditorService(db).confirmar_programacion(id_programacion)
+    es_admin = _es_administrador(usuario)
+    id_usuario = usuario.get("id_usuario")
+    try:
+        id_usuario_uuid = UUID(str(id_usuario)) if id_usuario else None
+    except (ValueError, TypeError):
+        id_usuario_uuid = None
+    return await AgendaAuditorService(db).confirmar_programacion(
+        id_programacion, id_usuario_uuid, es_admin
+    )
+
+
+@router.post("/programacion/{id_programacion}/solicitar-reprogramacion")
+async def solicitar_reprogramacion(
+    id_programacion: UUID,
+    data: dict,
+    usuario: dict = Depends(requiere_permiso("SOL-006")),
+    db: AsyncSession = Depends(get_db),
+):
+    es_admin = _es_administrador(usuario)
+    id_usuario = usuario.get("id_usuario")
+    try:
+        id_usuario_uuid = UUID(str(id_usuario)) if id_usuario else None
+    except (ValueError, TypeError):
+        id_usuario_uuid = None
+    return await AgendaAuditorService(db).solicitar_reprogramacion(
+        id_programacion,
+        id_usuario_uuid,
+        es_admin,
+        str(data.get("motivo") or "").strip(),
+    )
 
 
 @router.post("/programacion/{id_programacion}/cancelar")
@@ -340,6 +401,48 @@ async def editar_programacion(
         fecha_fin,
         data.get("direccion_servicio"),
         data.get("observacion"),
+    )
+
+
+@router.post("/programacion/{id_programacion}/rechazar-reprogramacion")
+async def rechazar_reprogramacion(
+    id_programacion: UUID,
+    data: dict,
+    usuario: dict = Depends(_validar_administrador),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AgendaAuditorService(db).rechazar_solicitud_reprogramacion(
+        id_programacion, str(data.get("motivo") or "").strip()
+    )
+
+
+@router.post("/programacion/{id_programacion}/resolver-reprogramacion")
+async def resolver_reprogramacion(
+    id_programacion: UUID,
+    data: dict,
+    usuario: dict = Depends(_validar_administrador),
+    db: AsyncSession = Depends(get_db),
+):
+    id_usuario = data.get("id_usuario")
+    fecha = data.get("fecha")
+    fecha_parsed = None
+    if fecha:
+        try:
+            fecha_parsed = date.fromisoformat(str(fecha)[:10])
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=422, detail="La fecha indicada no es válida.")
+    id_usuario_uuid = None
+    if id_usuario:
+        try:
+            id_usuario_uuid = UUID(str(id_usuario))
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=422, detail="El auditor indicado no es válido.")
+    return await AgendaAuditorService(db).resolver_solicitud_reprogramacion(
+        id_programacion,
+        str(data.get("accion") or "").strip(),
+        id_usuario_uuid,
+        fecha_parsed,
+        str(data.get("motivo") or "").strip(),
     )
 
 

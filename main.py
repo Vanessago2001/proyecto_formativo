@@ -37,6 +37,7 @@ from modules.auditores.auditor_router import router as auditor_router
 from modules.competencias_auditor.competencias_router import router as competencias_auditor_router
 from modules.conflictos_auditor.conflictos_router import router as conflictos_auditor_router
 from modules.agenda_auditor.agenda_router import router as agenda_auditor_router
+from modules.agenda_auditor.agenda_bootstrap import preparar_modulo_agenda
 from modules.perfiles_auditor.perfil_router import router as perfil_auditor_router
 from modules.reportes_auditor.reporte_router import router as reporte_auditor_router
 # Modulo heredado de otro proyecto: su tabla `tareas` no existe en esta base
@@ -278,6 +279,7 @@ async def lifespan(app: FastAPI):
     logger.info("==========================================================")
     await seed_initial_data()
     # Cada modulo prepara su parte de la base con su propia sesion.
+    await preparar_modulo_agenda()
     await preparar_modulo_solicitudes()
     await preparar_modulo_comite()
     await preparar_modulo_empresas()
@@ -330,6 +332,18 @@ app.include_router(agenda_auditor_router)
 app.include_router(perfil_auditor_router)
 app.include_router(reporte_auditor_router)
 # app.include_router(tarea_router)   # modulo heredado, ver nota arriba
+
+
+@app.middleware("http")
+async def no_cache_html(request: Request, call_next):
+    """Evita que el navegador sirva HTML desactualizado."""
+    response = await call_next(request)
+    content_type = response.headers.get("content-type", "")
+    if "text/html" in content_type or "application/javascript" in content_type:
+        response.headers["Cache-Control"] = "no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 # M5 - Gestion de solicitudes
 app.include_router(solicitud_router)
@@ -511,7 +525,14 @@ async def programaciones_futuras_auditor_page():
 
 @app.get("/consultar-auditorias-programadas", response_class=HTMLResponse)
 async def consultar_auditorias_programadas_page():
+    """Vista del auditor: solo las auditorías que le fueron asignadas."""
     return FileResponse("static/consultar_auditorias_programadas.html")
+
+
+@app.get("/consultar-auditorias-programadas-admin", response_class=HTMLResponse)
+async def consultar_auditorias_programadas_admin_page():
+    """Vista del administrador: todas las auditorías programadas del sistema."""
+    return FileResponse("static/consultar_auditorias_programadas_admin.html")
 
 @app.get("/consultar-agenda-auditor", response_class=HTMLResponse)
 async def consultar_agenda_auditor():

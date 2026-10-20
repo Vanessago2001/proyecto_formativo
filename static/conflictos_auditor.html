@@ -735,9 +735,9 @@
 
                 <div class="validation-grid">
                     <div class="form-group">
-                        <label for="empresa_validar">Empresa a validar</label>
+                        <label for="nit_empresa_validar">NIT de la empresa a validar</label>
 
-                        <input id="empresa_validar" class="form-control" placeholder="Ingrese ID de empresa">
+                        <input id="nit_empresa_validar" class="form-control" placeholder="Ingrese NIT de la empresa">
                     </div>
 
                     <div class="form-group">
@@ -802,7 +802,7 @@
                         <td>${item.empresa || item.id_empresa || '-'}</td>
                         <td>${item.nit || '-'}</td>
                         <td>${item.tipo_conflicto || '-'}</td>
-                        <td>${item.bloquea_asignacion}</td>
+                        <td>${item.bloquea_asignacion ? 'Sí' : 'No'}</td>
                         <td>${item.estado || '-'}</td>
                         <td>${item.descripcion || '-'}</td>
                         <td class="action-group">
@@ -898,20 +898,25 @@
 
         async function validarConflicto() {
             const uid = await resolverUsuario();
-            const empresaId = document.getElementById('empresa_validar').value.trim();
-            if (!uid || !empresaId) {
-                document.getElementById('validacion').textContent = 'Debe indicar una empresa.';
+            const nitEmpresa = document.getElementById('nit_empresa_validar').value.trim();
+            if (!uid || !nitEmpresa) {
+                document.getElementById('validacion').textContent = 'Debe indicar el NIT de una empresa.';
                 return;
             }
             try {
-                const res = await fetch('/conflictos-auditor/validar-asignacion', {
+                const res = await fetch('/conflictos-auditor/validar-asignacion-nit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                    body: JSON.stringify({ id_usuario: uid, id_empresa: empresaId })
+                    body: JSON.stringify({ id_usuario: uid, nit_empresa: nitEmpresa })
                 });
                 const data = await res.json().catch(() => ({}));
-                document.getElementById('validacion').textContent =
-                    data.tiene_conflicto ? ' conflicto detectado.' : 'Sin conflicto bloqueante para esta empresa.';
+                const detalles = Array.isArray(data.detalles) ? data.detalles : [];
+                if (data.tiene_conflicto === true && detalles.length) {
+                    const d = detalles[0];
+                    document.getElementById('validacion').innerHTML = '<span style="color:#dc2626;font-weight:bold;">⚠ Conflicto detectado: ' + escapeHtml(d.tipo_conflicto || '') + ' - ' + escapeHtml(d.descripcion || '') + '</span>';
+                } else {
+                    document.getElementById('validacion').innerHTML = '<span style="color:#256d00;font-weight:bold;">✓ Sin conflicto bloqueante para esta empresa.</span>';
+                }
             } catch {
                 document.getElementById('validacion').textContent = 'No fue posible validar el conflicto.';
             }

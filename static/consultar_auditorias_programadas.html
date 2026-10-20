@@ -422,6 +422,31 @@
             box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
         }
 
+        /* Acciones siempre en un solo renglon */
+        .row-actions {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+
+        .record-table .row-actions .mini-btn {
+            height: 32px;
+            min-height: 32px;
+            padding: 0 11px;
+            font-size: 11.5px;
+            line-height: 1;
+            white-space: nowrap;
+            flex: 0 0 auto;
+            border: 0;
+        }
+
+        .record-table .row-actions .badge {
+            flex: 0 0 auto;
+        }
+
         button.mini-btn:hover,
         .mini-btn:hover {
             background: linear-gradient(135deg, #2f8f00, #256d00);
@@ -542,30 +567,68 @@
             letter-spacing: .01em;
         }
 
-        .badge.programada {
-            background: #e0f2fe;
-            color: #0369a1;
-        }
-
-        .badge.confirmada {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .badge.reprogramada {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .badge.cancelada {
-            background: #fee2e2;
+        .badge.programada { background: #e0f2fe; color: #0369a1; }
+        .badge.confirmada { background: #dcfce7; color: #166534; }
+        .badge.reprogramada { background: #fef3c7; color: #92400e; }
+        .badge.cancelada { background: #fee2e2; color: #991b1b; }
+        .badge.ejecutada { background: #e5e7eb; color: #374151; }
+        .badge.disponible { background: #dcfce7; color: #166534; }
+        .badge.no-disponible { background: #fee2e2; color: #991b1b; }
+        .motivo-bloqueo {
+            display: block;
+            margin-top: 4px;
+            font-size: 11.5px;
+            line-height: 1.4;
             color: #991b1b;
         }
-
-        .badge.ejecutada {
-            background: #e5e7eb;
-            color: #374151;
+        .lista-dias-modal {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 7px;
         }
+        .dia-modal {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #e1e9df;
+            background: #f8fafc;
+            font-size: 12px;
+        }
+        .dia-modal .dia-icono {
+            font-size: 13px;
+            font-weight: 800;
+        }
+        .dia-modal .dia-nombre {
+            font-weight: 700;
+            color: #26352b;
+        }
+        .dia-modal .dia-hora {
+            color: #5f6f69;
+            font-size: 11.5px;
+        }
+        .dia-modal .dia-motivo {
+            color: #991b1b;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+        .dia-modal.disponible {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .dia-modal.disponible .dia-icono {
+            color: #15803d;
+        }
+        .dia-modal.bloqueado {
+            background: #fef2f2;
+            border-color: #fbd5d5;
+        }
+        .dia-modal.bloqueado .dia-icono {
+            color: #b91c1c;
+        }
+        .fila-bloqueada { background: #fff7f6; }
+        .fila-bloqueada:hover { background: #ffeeec !important; }
 
         /* =========================================================
            MENSAJES
@@ -656,7 +719,7 @@
         .modal-card {
             background: #fff;
             border-radius: 14px;
-            width: min(700px, 100%);
+            width: min(820px, 100%);
             max-height: 90vh;
             overflow: auto;
             padding: 0;
@@ -720,37 +783,251 @@
             padding: 20px 22px 22px;
         }
 
-        .modal-field {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 10px 0;
-            border-bottom: 1px solid #edf0ed;
-            font-size: 13px;
-            line-height: 1.5;
+        /* Secciones del modal */
+        .modal-section {
+            margin-bottom: 20px;
         }
 
-        .modal-field:last-child {
-            border-bottom: 0;
+        .modal-section:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .modal-section-head {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e8eee8;
+        }
+
+        .modal-section-head::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sena-green-bright);
+            flex-shrink: 0;
+        }
+
+        .modal-section-head h4 {
+            margin: 0;
+            color: var(--sena-green-dark);
+            font-size: 12.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        /* Grid de campos como mini-cards */
+        .modal-fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 10px 12px;
+            border: 1px solid #e6ede6;
+            border-radius: 9px;
+            background: #fbfdfb;
+            min-width: 0;
         }
 
         .modal-field label {
             font-weight: 700;
-            color: var(--sena-green-dark);
-            font-size: 12px;
+            color: var(--muted);
+            font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: .04em;
-            flex: 0 0 auto;
-            min-width: 130px;
+            letter-spacing: .06em;
+            margin: 0;
+            min-width: 0;
         }
 
         .modal-field span {
-            color: #263238;
+            color: var(--ink);
             font-size: 13px;
-            text-align: right;
-            flex: 1;
-            overflow-wrap: anywhere;
             font-weight: 600;
+            line-height: 1.45;
+            text-align: left;
+            overflow-wrap: anywhere;
+        }
+
+        /* Tarjetas de auditor */
+        .modal-auditor {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 12px;
+            border: 1px solid #e1eae2;
+            border-radius: 10px;
+            background: #fbfdfb;
+            margin-bottom: 8px;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .modal-auditor:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-auditor:hover {
+            border-color: #c7ddbe;
+            box-shadow: 0 3px 10px rgba(15, 35, 22, .04);
+        }
+
+        .modal-auditor-avatar {
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3baa01, #256d00);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: .02em;
+        }
+
+        .modal-auditor-body {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .modal-auditor-body strong {
+            color: var(--sena-green-dark);
+            font-size: 13.5px;
+            font-weight: 800;
+            overflow-wrap: anywhere;
+        }
+
+        .modal-auditor-meta {
+            color: var(--muted);
+            font-size: 11.5px;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+
+        .modal-auditor-role {
+            display: inline-block;
+            margin-top: 5px;
+            background: var(--sena-green-light);
+            color: var(--sena-green-dark);
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 10.5px;
+            font-weight: 750;
+            align-self: flex-start;
+        }
+
+        /* Select de exportación */
+        .modal-export-select {
+            width: 100%;
+            height: 42px;
+            min-height: 42px;
+            padding: 0 12px;
+            border: 1px solid #d2ddd4;
+            border-radius: var(--radius-control);
+            font: inherit;
+            font-size: 13.5px;
+            color: var(--ink);
+            background: #fff;
+            cursor: pointer;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .modal-export-select:hover {
+            border-color: #a9c59d;
+        }
+
+        .modal-export-select:focus {
+            border-color: var(--sena-green-bright);
+            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+        }
+
+        /* Botones del modal */
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 22px;
+            padding-top: 16px;
+            border-top: 1px solid #e8eee8;
+        }
+
+        .badge.confirmada { background: #dcfce7; color: #166534; }
+
+        .mini-btn.confirm {
+            background: #15803d;
+            border-color: #15803d;
+            color: #fff;
+        }
+        .mini-btn.confirm:hover { background: #166534; }
+
+        .mini-btn.reprogramar {
+            background: #b45309;
+            border-color: #b45309;
+            color: #fff;
+        }
+        .mini-btn.reprogramar:hover { background: #92400e; }
+
+        .btn-small {
+            height: 38px;
+            min-height: 38px;
+            padding: 0 16px;
+            border: 0;
+            border-radius: var(--radius-control);
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #fff;
+            white-space: nowrap;
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+        }
+
+        .btn-small:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-ver {
+            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            box-shadow: 0 4px 10px rgba(37, 109, 0, .20);
+        }
+
+        .btn-ver:hover {
+            box-shadow: 0 6px 14px rgba(37, 109, 0, .28);
+        }
+
+        .btn-editar {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, .20);
+        }
+
+        .btn-editar:hover {
+            box-shadow: 0 6px 14px rgba(37, 99, 235, .28);
+        }
+
+        .btn-cancelar {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            box-shadow: 0 4px 10px rgba(220, 38, 38, .20);
+        }
+
+        .btn-cancelar:hover {
+            box-shadow: 0 6px 14px rgba(220, 38, 38, .28);
         }
 
         /* =========================================================
@@ -809,10 +1086,11 @@
             .login-header h1 { font-size: 21px; }
             .login-header .subtitle { font-size: 12px; }
             .login-header .profile-link { font-size: 12px; padding: 7px 12px; }
-            .modal-field { flex-direction: column; gap: 4px; }
-            .modal-field span { text-align: left; }
-            .modal-field label { min-width: 0; }
             .filter-actions button { width: 100%; }
+            .modal-body { padding: 16px; }
+            .modal-head { padding: 14px 16px; }
+            .modal-fields-grid { grid-template-columns: 1fr; }
+            .btn-small { width: 100%; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -822,34 +1100,6 @@
             }
         }
     </style>
-
-<style>
-.modal-section { margin-bottom: 14px; padding: 10px; border: 1px solid #dbe4d4; border-radius: 8px; background: #f9fbf9; }
-.modal-section h4 { margin: 0 0 8px 0; color: #256d00; font-size: 14px; border-bottom: 1px solid #dbe4d4; padding-bottom: 4px; }
-.modal-field { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e2e8f0; }
-.modal-field label { font-weight: bold; color: #334155; font-size: 0.85rem; }
-.modal-field span { color: #555; font-size: 0.85rem; text-align: right; max-width: 60%; }
-.modal-auditor { padding: 8px; margin-bottom: 8px; border: 1px solid #dbe4d4; border-radius: 6px; background: #fff; }
-.modal-auditor strong { color: #256d00; }
-</style>
-
-<style>
-.modal-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
-.modal-actions button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    color: #fff;
-    font-weight: bold;
-    cursor: pointer;
-    transition: transform 0.1s, box-shadow 0.2s;
-    font-size: 0.85rem;
-}
-.modal-actions button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-.btn-ver { background: linear-gradient(135deg, #3baa01, #256d00); }
-.btn-editar { background: linear-gradient(135deg, #2563eb, #1e40af); }
-.btn-cancelar { background: linear-gradient(135deg, #dc2626, #991b1b); }
-</style>
 </head>
 <body>
     <header class="login-header">
@@ -868,9 +1118,6 @@
     <main class="portal-shell">
         <div class="portal-grid">
 
-            <!-- =========================================================
-                 MENÚ LATERAL
-            ========================================================= -->
             <nav class="side" aria-label="Navegación de auditorías">
                 <h3>Consulta de agenda</h3>
 
@@ -880,9 +1127,6 @@
                 </a>
             </nav>
 
-            <!-- =========================================================
-                 CONTENIDO
-            ========================================================= -->
             <section class="content">
 
                 <div class="page-head">
@@ -904,12 +1148,12 @@
                 <section class="panel">
                     <div class="panel-head">
                         <h2>Filtros de búsqueda</h2>
-                        <span class="pill">Refinar resultados</span>
+                        <span class="pill">Auto-aplicados</span>
                     </div>
                     <div class="panel-body">
                         <p class="help-text">
-                            Ajusta los criterios para filtrar las auditorías programadas según estado, modalidad,
-                            ciudad o rango de fechas.
+                            Ajusta los criterios para filtrar las auditorías programadas. Los filtros
+                            <strong>se aplican automáticamente</strong> al escribir o cambiar una opción.
                         </p>
                         <div class="filters">
                             <div class="filter-item">
@@ -946,7 +1190,7 @@
                             </div>
                         </div>
                         <div class="filter-actions">
-                            <button type="button" class="mini-btn" onclick="cargarDatos()">Aplicar filtros</button>
+                            <button type="button" class="mini-btn" onclick="cargarDatos()">Aplicar ahora</button>
                             <button type="button" class="mini-btn" style="background:#94a3b8;" onclick="limpiarFiltros()">Limpiar</button>
                         </div>
                     </div>
@@ -973,6 +1217,7 @@
                                         <th>Fin</th>
                                         <th>Modalidad</th>
                                         <th>Estado</th>
+                                        <th>Disponibilidad del día</th>
                                         <th>Observación</th>
                                         <th>Acción</th>
                                     </tr>
@@ -992,6 +1237,41 @@
     <!-- =========================================================
          MODAL DE DETALLE
     ========================================================= -->
+    <div class="modal" id="reproModal">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3>Solicitar reprogramaci&oacute;n formal</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalReprogramacion()" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="help-text" id="reproResumen">Indique el motivo de la reprogramaci&oacute;n solicitada.</p>
+                <label for="reproMotivo" style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Motivo de la reprogramaci&oacute;n</label>
+                <textarea id="reproMotivo" rows="4" minlength="10" maxlength="1000"
+                    style="width:100%;padding:10px 12px;border:1px solid #d2ddd4;border-radius:8px;font:inherit;font-size:13.5px;"
+                    placeholder="Ej. Tengo un compromiso institucional previo en esa fecha."></textarea>
+                <p class="help-text" style="margin-top:8px;">M&iacute;nimo 10 caracteres. La solicitud quedar&aacute; registrada y notificada al equipo.</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-small btn-ver" onclick="enviarSolicitudReprogramacion()">Enviar solicitud</button>
+                <button type="button" class="btn-small btn-cancelar" onclick="cerrarModalReprogramacion()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="avisoModal">
+        <div class="modal-card" style="max-width:430px;text-align:center;">
+            <div class="modal-head" style="justify-content:center;border-bottom:0;">
+                <h3 id="avisoTitle">Aviso</h3>
+            </div>
+            <div class="modal-body">
+                <p id="avisoMensaje" style="margin:0;font-size:14px;line-height:1.6;color:#334155;"></p>
+            </div>
+            <div class="modal-actions" style="justify-content:center;">
+                <button type="button" class="btn-small btn-ver" onclick="cerrarAviso()">Entendido</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="modalDetalle">
         <div class="modal-card">
             <div class="modal-head">
@@ -1039,7 +1319,7 @@
             try {
                 const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
                 usuarioId = payload.user_id || payload.id_usuario || payload.sub;
-                esAdmin = (payload.role_name || '').toLowerCase().includes('admin') || (payload.role_name || '').toLowerCase().includes('super');
+                esAdmin = false; // vista exclusiva del auditor
                 return usuarioId;
             } catch { return null; }
         }
@@ -1048,7 +1328,6 @@
             const uid = await resolverUsuario();
             if (!uid) { mostrarMensaje('No se pudo identificar al usuario.', 'error'); return; }
 
-            // Adjust UI based on role
             const titulo = document.getElementById('tituloLista');
             const subtitulo = document.getElementById('subtitulo');
             const btnRegresar = document.getElementById('btnRegresar');
@@ -1089,7 +1368,6 @@
                 const data = await res.json().catch(() => ({}));
                 let items = esAdmin ? (Array.isArray(data.programaciones) ? data.programaciones : []) : (Array.isArray(data.auditorias) ? data.auditorias : []);
 
-                // For auditor, filter to only their own (already filtered by endpoint, but safety)
                 if (!esAdmin) {
                     items = items.filter(a => String(a.id_usuario) === String(uid));
                 }
@@ -1124,7 +1402,7 @@
                 paginaActual = 1;
                 renderizarPagina();
             } catch (e) {
-                document.getElementById('rows').innerHTML = '<tr><td colspan="10" class="empty">No se pudieron cargar las auditorías.</td></tr>';
+                document.getElementById('rows').innerHTML = '<tr><td colspan="11" class="empty">No se pudieron cargar las auditorías.</td></tr>';
                 document.getElementById('resumen').textContent = '';
                 document.getElementById('pillContador').textContent = 'Sin datos';
             }
@@ -1139,27 +1417,59 @@
             cargarDatos();
         }
 
+        function diasProgramados(r) {
+            if (!r.fecha_inicio) return '-';
+            const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+            const start = new Date(r.fecha_inicio);
+            const end = new Date(r.fecha_fin || r.fecha_inicio);
+            const set = new Set();
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                set.add(dias[d.getDay()]);
+            }
+            const estado = String(r.estado || '').toLowerCase();
+            const esActivo = !estado.includes('cancelad') && !estado.includes('finalizad');
+            const badge = esActivo ? '<span class="badge programada">Activo</span>' : '<span class="badge cancelada">Cancelado</span>';
+            return Array.from(set).join(', ') + ' ' + badge;
+        }
+
+        function estadoAcciones(row) {
+            const estado = String(row.estado_programacion || row.estado || '').toLowerCase();
+            const yaConfirmo = row.auditor_confirmado === true || String(row.auditor_confirmado).toLowerCase() === 'true';
+            return {
+                yaConfirmo: yaConfirmo,
+                // La confirmacion es individual: en la vista de administrador
+                // el equipo se confirma desde la vista de cada auditor.
+                puedeConfirmar: !esAdmin && !yaConfirmo && ['programada', 'reprogramada'].includes(estado),
+                puedeSolicitar: ['programada', 'confirmada', 'reprogramada'].includes(estado)
+            };
+        }
+
         function renderizarPagina() {
             const inicio = (paginaActual - 1) * porPagina;
             const fin = inicio + porPagina;
             const items = todosLosDatos.slice(inicio, fin);
             const tbody = document.getElementById('rows');
             if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay auditorías programadas.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" class="empty">No hay auditorías programadas.</td></tr>';
             } else {
                 tbody.innerHTML = items.map((r, idx) => `
-                    <tr>
+                    <tr class="${r.dia_no_disponible ? 'fila-bloqueada' : ''}">
                         <td>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}${r.empresa_nombre ? '<span class="cell-meta">' + escapeHtml(r.empresa_nombre) + '</span>' : ''}</td>
-                        <td>${escapeHtml((r.auditores_programados || []).join(', ') || r.auditor_nombre || '-')}</td>
+                        <td>${escapeHtml((r.auditores_programados || []).join(', ') || r.auditor_nombre || '-')}${r.auditores_total ? `<span class="cell-meta">Confirmados: ${r.auditores_confirmados || 0} de ${r.auditores_total}</span>` : ''}</td>
                         <td>${escapeHtml(r.auditor_tipo_doc ? r.auditor_tipo_doc + ' ' + (r.auditor_num_doc || '') : (r.auditor_nombre || '-'))}</td>
                         <td>${escapeHtml(r.direccion_servicio || '-')}<span class="cell-meta">${escapeHtml(r.ciudad_servicio || '')}</span></td>
                         <td>${escapeHtml(formatDateTime(r.fecha_inicio))}</td>
                         <td>${escapeHtml(formatDateTime(r.fecha_fin))}</td>
                         <td>${escapeHtml(r.modalidad || '-')}</td>
                         <td><span class="badge ${String(r.estado||'').toLowerCase()}">${escapeHtml(r.estado || '-')}</span></td>
-                        <td>${escapeHtml(r.motivo_reprogramacion || r.motivo_cancelacion || '-')}</td>
+                        <td>${r.dia_no_disponible
+                            ? '<span class="badge no-disponible">No disponible</span>' + (r.bloqueo_motivo ? '<span class="motivo-bloqueo">Motivo: ' + escapeHtml(r.bloqueo_motivo) + '</span>' : '')
+                            : '<span class="badge disponible">Disponible</span>'}</td>
+                        <td>${escapeHtml(r.observacion_auditor || r.motivo_cancelacion || '-')}</td>
                         <td class="row-actions">
                             <button class="mini-btn view" type="button" onclick="verDetalle(${inicio + idx})">Ver</button>
+                            ${estadoAcciones(r).yaConfirmo ? `<span class="badge confirmada">Confirmado</span>` : (estadoAcciones(r).puedeConfirmar ? `<button class="mini-btn confirm" type="button" onclick="confirmarProgramacion(${inicio + idx})">Confirmar programación</button>` : "")}
+                            ${estadoAcciones(r).puedeSolicitar ? `<button class="mini-btn reprogramar" type="button" onclick="abrirModalReprogramacion(${inicio + idx})">Solicitar reprogramación</button>` : ""}
                         </td>
                     </tr>
                 `).join('');
@@ -1196,55 +1506,225 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function verDetalle(idx) {
+        /* ---------------------------------------------------------
+           MODAL DE DETALLE — Diseño profesional
+        --------------------------------------------------------- */
+        let indiceReprogramacion = null;
+
+        function abrirModalReprogramacion(idx) {
             const r = todosLosDatos[idx];
             if (!r) return;
-            const auditores = (r.auditores || []).map(a =>
-                `<div class="modal-auditor">
-                    <strong>${escapeHtml(a.nombre || '-')}</strong><br>
-                    <span class="cell-meta">${escapeHtml(a.tipo_doc || '')} ${escapeHtml(a.num_doc || '')}</span><br>
-                    <span class="cell-meta">${escapeHtml(a.correo || '')}</span><br>
-                    <span class="cell-meta">Rol: ${escapeHtml(a.rol || 'Auditor')}</span>
-                </div>`
-            ).join('') || '<span>-</span>';
+            indiceReprogramacion = idx;
+            const resumen = document.getElementById('reproResumen');
+            const motivo = document.getElementById('reproMotivo');
+            if (resumen) {
+                resumen.textContent = `Solicitud de reprogramación de ${r.numero_radicado || r.id_solicitud || 'la visita'}. Indique el motivo.`;
+            }
+            if (motivo) motivo.value = '';
+            const modal = document.getElementById('reproModal');
+            if (modal) modal.classList.add('show');
+        }
+
+        function cerrarModalReprogramacion() {
+            const modal = document.getElementById('reproModal');
+            if (modal) modal.classList.remove('show');
+            indiceReprogramacion = null;
+        }
+
+        function mostrarAvisoModal(mensaje, titulo = 'Solicitud registrada') {
+            const overlay = document.getElementById('avisoModal');
+            const t = document.getElementById('avisoTitle');
+            const m = document.getElementById('avisoMensaje');
+            if (t) t.textContent = titulo;
+            if (m) m.textContent = mensaje;
+            if (overlay) overlay.classList.add('show');
+        }
+
+        function cerrarAviso() {
+            const overlay = document.getElementById('avisoModal');
+            if (overlay) overlay.classList.remove('show');
+        }
+
+        async function enviarSolicitudReprogramacion() {
+            if (indiceReprogramacion === null) return;
+            const r = todosLosDatos[indiceReprogramacion];
+            if (!r) { cerrarModalReprogramacion(); return; }
+            const motivo = (document.getElementById('reproMotivo') || {}).value || '';
+            if (motivo.trim().length < 10) {
+                mostrarAvisoModal('El motivo debe tener al menos 10 caracteres.', 'Motivo incompleto');
+                return;
+            }
+            // Si ya existe una solicitud pendiente se reemplazará por esta.
+            const yaSolicito = String(r.estado_solicitud_reprogramacion || '').toUpperCase() === 'PENDIENTE';
+            if (yaSolicito) {
+                const aceptar = confirm(
+                    'Ya solicitaste una reprogramación para esta visita.\n\n' +
+                    'Si continúas, la solicitud anterior será reemplazada por esta.\n\n' +
+                    '¿Deseas enviar la nueva solicitud?'
+                );
+                if (!aceptar) return;
+            }
+            try {
+                const res = await fetch(`/agenda-auditor/programacion/${r.id_programacion}/solicitar-reprogramacion`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                    body: JSON.stringify({ motivo: motivo.trim() })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    mostrarMensaje(typeof data.detail === 'string' ? data.detail : ((data.detail && data.detail.mensaje) || 'No se pudo registrar la solicitud.'), 'error');
+                    return;
+                }
+                cerrarModalReprogramacion();
+                mostrarAvisoModal(
+                    'Tu solicitud de reprogramación fue registrada correctamente.\n\n' +
+                    'El administrador la revisará y tú recibirás la respuesta en el menú de Notificaciones. ' +
+                    'Estate atento a las notificaciones.',
+                    'Solicitud registrada'
+                );
+                await cargarDatos();
+            } catch (e) {
+                mostrarMensaje('No se pudo registrar la solicitud: ' + e.message, 'error');
+            }
+        }
+
+        async function confirmarProgramacion(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            if (!confirm('¿Confirma la programación de esta auditoría?')) return;
+            try {
+                const res = await fetch(`/agenda-auditor/programacion/${r.id_programacion}/confirmar`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    mostrarMensaje(typeof data.detail === 'string' ? data.detail : 'No se pudo confirmar la programación.', 'error');
+                    return;
+                }
+                mostrarMensaje(data.mensaje || 'Programación confirmada.', 'ok');
+                const modal = document.getElementById('modalDetalle');
+                if (modal) modal.classList.remove('show');
+                await cargarDatos();
+            } catch (e) {
+                mostrarMensaje('No se pudo confirmar la programación: ' + e.message, 'error');
+            }
+        }
+
+        async function verDetalle(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+
+            // Días programados con estado (activo / bloqueado) y datos del auditor
+            let diasHtml = '<p class="hint">Cargando días...</p>';
+            let auditorHtml = '';
+            const idUsuario = r.id_usuario;
+            const idProgramacion = r.id_programacion;
+            if (idUsuario && idProgramacion) {
+                try {
+                    const res = await fetch(`/agenda-auditor/${idUsuario}/programacion/${idProgramacion}/dias`, {
+                        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    const dias = Array.isArray(data.dias) ? data.dias : [];
+                    const aud = data.auditor || {};
+                    if (aud.nombre || aud.correo) {
+                        auditorHtml = `
+                            <div class="modal-field"><label>Auditor</label><span>${escapeHtml(aud.nombre || '-')}</span></div>
+                            <div class="modal-field"><label>Correo</label><span>${escapeHtml(aud.correo || '-')}</span></div>`;
+                    }
+                    diasHtml = dias.length
+                        ? '<div class="lista-dias-modal">' + dias.map(d => `
+                            <div class="dia-modal ${d.estado === 'bloqueado' ? 'bloqueado' : 'disponible'}">
+                                <span class="dia-icono">${d.estado === 'bloqueado' ? '✖' : '✔'}</span>
+                                <span class="dia-nombre">${escapeHtml(d.dia_semana || '')} · ${escapeHtml(d.fecha || '')}</span>
+                                ${d.horario ? `<span class="dia-hora">${escapeHtml(d.horario)}</span>` : ''}
+                                ${d.motivo ? `<span class="dia-motivo">${escapeHtml(d.motivo)}</span>` : ''}
+                            </div>`).join('') + '</div>'
+                        : '<p class="hint">Sin días para mostrar.</p>';
+                } catch (e) {
+                    diasHtml = '<p class="hint">No se pudieron cargar los días del auditor.</p>';
+                }
+            }
+
+            function iniciales(nombre) {
+                const partes = String(nombre || 'A').trim().split(/\s+/).slice(0, 2);
+                const ini = partes.map(p => (p[0] || '')).join('').toUpperCase();
+                return ini || 'A';
+            }
+
+            const auditores = (r.auditores || []).map(a => `
+                <div class="modal-auditor">
+                    <div class="modal-auditor-avatar">${escapeHtml(iniciales(a.nombre))}</div>
+                    <div class="modal-auditor-body">
+                        <strong>${escapeHtml(a.nombre || 'Auditor sin nombre')}</strong>
+                        <span class="modal-auditor-meta">${escapeHtml((a.tipo_doc || '') + ' ' + (a.num_doc || '')) || 'Documento no registrado'}</span>
+                        <span class="modal-auditor-meta">${escapeHtml(a.correo || 'Sin correo')}</span>
+                        <span class="modal-auditor-role">${escapeHtml(a.rol || 'Auditor')}</span>
+                    </div>
+                </div>
+            `).join('') || '<div class="empty" style="padding:16px;">Sin auditores registrados.</div>';
+
+            const estadoClass = String(r.estado_programacion || r.estado || '').toLowerCase();
+
             const modal = document.getElementById('modalDetalle');
             const body = document.getElementById('modalBody');
             body.innerHTML = `
                 <div class="modal-section">
-                    <h4>Empresa</h4>
-                    <div class="modal-field"><label>Nombre</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
-                    <div class="modal-field"><label>Dirección</label><span>${escapeHtml(r.empresa_direccion || '-')}</span></div>
-                    <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(r.empresa_ciudad || '-')}</span></div>
+                    <div class="modal-section-head"><h4>Empresa</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Nombre</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
+                        <div class="modal-field"><label>Dirección</label><span>${escapeHtml(r.empresa_direccion || '-')}</span></div>
+                        <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(r.empresa_ciudad || '-')}</span></div>
+                    </div>
                 </div>
+
                 <div class="modal-section">
-                    <h4>Solicitud</h4>
-                    <div class="modal-field"><label>N° Radicado</label><span>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}</span></div>
-                    <div class="modal-field"><label>Dirección servicio</label><span>${escapeHtml(r.direccion_servicio || '-')}</span></div>
-                    <div class="modal-field"><label>Ciudad servicio</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                    <div class="modal-section-head"><h4>Solicitud</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>N° Radicado</label><span>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}</span></div>
+                        <div class="modal-field"><label>Dirección servicio</label><span>${escapeHtml(r.direccion_servicio || '-')}</span></div>
+                        <div class="modal-field"><label>Ciudad servicio</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                    </div>
                 </div>
+
                 <div class="modal-section">
-                    <h4>Programación</h4>
-                    <div class="modal-field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
-                    <div class="modal-field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
-                    <div class="modal-field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
-                    <div class="modal-field"><label>Estado</label><span><span class="badge ${String(r.estado||'').toLowerCase()}">${escapeHtml(r.estado || '-')}</span></span></div>
-                    <div class="modal-field"><label>Observación</label><span>${escapeHtml(r.motivo_reprogramacion || r.motivo_cancelacion || '-')}</span></div>
+                    <div class="modal-section-head"><h4>Programación</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                        <div class="modal-field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                        <div class="modal-field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                        <div class="modal-field"><label>Estado</label><span><span class="badge ${estadoClass}">${escapeHtml(r.estado || '-')}</span></span></div>
+                        <div class="modal-field" style="grid-column:1/-1;"><label>Disponibilidad del día</label><span>${r.dia_no_disponible
+                            ? '<span class="badge no-disponible">No disponible</span>' + (r.bloqueo_motivo ? '<span class="motivo-bloqueo">Motivo: ' + escapeHtml(r.bloqueo_motivo) + '</span>' : '')
+                            : '<span class="badge disponible">Disponible</span>'}</span></div>
+                        <div class="modal-field" style="grid-column:1/-1;"><label>Observación</label><span>${escapeHtml(r.motivo_reprogramacion || r.motivo_cancelacion || '-')}</span></div>
+                    </div>
                 </div>
+
                 <div class="modal-section">
-                    <h4>Auditores asignados</h4>
+                    <div class="modal-section-head"><h4>Días programados</h4></div>
+                    ${diasHtml}
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Auditores asignados</h4></div>
                     ${auditores}
+                    <div class="modal-fields-grid">${auditorHtml}</div>
                 </div>
+
                 <div class="modal-section">
-                    <h4>Seleccionar auditor para exportar</h4>
-                    <select id="selectAuditorExport" style="width:100%;padding:6px;border:1px solid #dbe4d4;border-radius:6px;">
+                    <div class="modal-section-head"><h4>Seleccionar auditor para exportar</h4></div>
+                    <select id="selectAuditorExport" class="modal-export-select">
                         <option value="all">Todos los auditores</option>
                         ${(r.auditores || []).map((a, i) => `<option value="${i}">${escapeHtml(a.nombre || 'Auditor ' + (i+1))}</option>`).join('')}
                     </select>
                 </div>
-                <div class="modal-actions" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
-                    <button class="btn-small btn-ver" onclick="imprimirProgramacion(${idx})">Imprimir programación de visitas</button>
-                    <button class="btn-small btn-editar" onclick="exportarAgendaIndividual(${idx})">Exportar agenda individual</button>
-                    <button class="btn-small btn-cancelar" onclick="exportarProgramacionAgenda(${idx})">Exportar programación de agenda</button>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-small btn-ver" onclick="imprimirProgramacion(${idx})">Imprimir programación de visitas</button>
+                    <button type="button" class="btn-small btn-editar" onclick="exportarAgendaIndividual(${idx})">Exportar agenda individual</button>
+                    <button type="button" class="btn-small btn-cancelar" onclick="exportarProgramacionAgenda(${idx})">Exportar programación de agenda</button>
                 </div>
             `;
             modal.classList.add('show');
@@ -1381,7 +1861,19 @@
 
         function cerrarModal() { document.getElementById('modalDetalle').classList.remove('show'); }
 
-        // Cerrar modal con clic fuera o tecla Escape
+        /* ---------------------------------------------------------
+           Debounce para auto-filtrar
+        --------------------------------------------------------- */
+        function debounce(fn, delay = 400) {
+            let timer = null;
+            return function (...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+        const autoFiltrar = debounce(cargarDatos, 400);
+
+        // Cerrar modal con clic fuera o tecla Escape + auto-filtros
         document.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById('modalDetalle');
             if (modal) {
@@ -1392,6 +1884,13 @@
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') cerrarModal();
             });
+
+            // Auto-aplicar filtros al cambiar o escribir
+            document.getElementById('filtroEstado')?.addEventListener('change', autoFiltrar);
+            document.getElementById('filtroModalidad')?.addEventListener('change', autoFiltrar);
+            document.getElementById('filtroCiudad')?.addEventListener('input', autoFiltrar);
+            document.getElementById('filtroDesde')?.addEventListener('change', autoFiltrar);
+            document.getElementById('filtroHasta')?.addEventListener('change', autoFiltrar);
         });
 
         (async function init() {

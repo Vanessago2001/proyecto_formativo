@@ -1,0 +1,2232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Consultar auditorías programadas</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        :root {
+            color-scheme: light;
+            --sena-green: #39a900;
+            --sena-green-dark: #256d00;
+            --sena-green-bright: #3baa01;
+            --sena-green-hover: #2f8f00;
+            --sena-green-light: #f1f8ed;
+            --bg: #f4f7f5;
+            --ink: #26352b;
+            --muted: #5f6f69;
+            --line: #dce5de;
+            --white: #fff;
+            --danger: #9d2b2b;
+            --shadow-card: 0 5px 20px rgba(32, 74, 25, .07);
+            --shadow-hover: 0 8px 24px rgba(32, 74, 25, .10);
+            --radius-card: 14px;
+            --radius-control: 8px;
+        }
+
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        /* =========================================================
+           HEADER
+        ========================================================= */
+        .login-header {
+            background: #3BAA01;
+            color: #fff;
+            padding: 20px clamp(18px, 4vw, 42px);
+        }
+
+        .login-header .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            max-width: 1360px;
+            margin: 0 auto;
+        }
+
+        .login-header .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .login-header .sena-blanco {
+            width: 72px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .login-header h1 {
+            margin: 0;
+            font-size: 26px;
+            line-height: 1.15;
+            letter-spacing: -.02em;
+        }
+
+        .login-header .subtitle {
+            margin: 4px 0 0;
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: .92;
+        }
+
+        .login-header .profile-link {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13.5px;
+            padding: 9px 15px;
+            border: 1px solid rgba(255, 255, 255, .35);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .08);
+            transition: .18s ease;
+        }
+
+        .login-header .profile-link:hover {
+            background: rgba(255, 255, 255, .18);
+            border-color: rgba(255, 255, 255, .55);
+        }
+
+        /* =========================================================
+           LAYOUT
+        ========================================================= */
+        .portal-shell {
+            width: 100%;
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 24px 24px 48px;
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 250px minmax(0, 1fr);
+            gap: 22px;
+            align-items: start;
+        }
+
+        /* =========================================================
+           SIDEBAR
+        ========================================================= */
+        .side {
+            position: sticky;
+            top: 20px;
+            align-self: start;
+            padding: 13px;
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+        }
+
+        .side h3 {
+            margin: 5px 12px 12px;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 800;
+        }
+
+        .side a {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 11px 12px;
+            margin: 2px 0;
+            color: #334155;
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.35;
+            border-left: 3px solid transparent;
+            border-radius: 0 9px 9px 0;
+            transition: background .18s ease, color .18s ease, border-color .18s ease;
+        }
+
+        .side a:hover {
+            background: #f6faf4;
+            color: var(--sena-green-dark);
+        }
+
+        .side a.active {
+            background: var(--sena-green-light);
+            color: var(--sena-green-dark);
+            border-left-color: var(--sena-green-bright);
+            font-weight: 750;
+        }
+
+        .side a .side-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 7px;
+            background: #eaf4e5;
+            color: var(--sena-green-dark);
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+            transition: .18s ease;
+        }
+
+        .side a.active .side-icon {
+            background: var(--sena-green-bright);
+            color: #fff;
+        }
+
+        .side .logout-link {
+            margin-top: 10px;
+            border-top: 1px solid #e8eee8;
+            padding-top: 14px;
+            color: #b42318;
+        }
+
+        .side .logout-link:hover {
+            background: #fff1f0;
+            color: #9f1d16;
+        }
+
+        .side .logout-link .side-icon {
+            background: #fde8e8;
+            color: #b42318;
+        }
+
+        /* =========================================================
+           CONTENIDO
+        ========================================================= */
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-width: 0;
+        }
+
+        .page-head {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .page-head-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--sena-green-dark);
+            background: #fff;
+            border: 1px solid #cfe3c5;
+            border-radius: 8px;
+            padding: 9px 15px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: .18s ease;
+        }
+
+        .back-link:hover {
+            background: var(--sena-green-light);
+            border-color: var(--sena-green);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(57, 169, 0, .10);
+        }
+
+        .page-head h1 {
+            margin: 0;
+            color: var(--sena-green-dark);
+            font-size: clamp(20px, 2vw, 25px);
+            font-weight: 800;
+            letter-spacing: -.02em;
+        }
+
+        .page-head p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13.5px;
+            line-height: 1.55;
+            max-width: 900px;
+        }
+
+        /* =========================================================
+           PANEL
+        ========================================================= */
+        .panel {
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            transition: box-shadow .25s ease, border-color .25s ease;
+        }
+
+        .panel:hover {
+            border-color: #d2e5c9;
+            box-shadow: var(--shadow-hover);
+        }
+
+        .panel-head {
+            padding: 17px 22px;
+            border-bottom: 1px solid #eef3ee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--sena-green-dark);
+            letter-spacing: -.01em;
+        }
+
+        .panel-head .pill {
+            display: inline-block;
+            background: #eaf4ed;
+            color: #205d35;
+            padding: 5px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: 750;
+        }
+
+        .panel-body {
+            padding: 22px;
+        }
+
+        .help-text {
+            color: var(--muted);
+            font-size: 12.5px;
+            line-height: 1.55;
+            margin: 0 0 14px;
+        }
+
+        /* =========================================================
+           FILTROS
+        ========================================================= */
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .filter-item label {
+            font-weight: 700;
+            font-size: 12.5px;
+            color: #33483c;
+            letter-spacing: .005em;
+        }
+
+        .form-control {
+            width: 100%;
+            height: 42px;
+            min-height: 42px;
+            padding: 0 12px;
+            border: 1px solid #d2ddd4;
+            border-radius: var(--radius-control);
+            font: inherit;
+            font-size: 13.5px;
+            color: var(--ink);
+            background: #fff;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+
+        .form-control:hover:not(:disabled) {
+            border-color: #a9c59d;
+        }
+
+        .form-control:focus {
+            outline: 3px solid rgba(59, 170, 1, .14);
+            border-color: var(--sena-green-bright);
+            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+        }
+
+        input[type="date"].form-control {
+            cursor: pointer;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: .65;
+            transition: opacity .15s ease;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+
+        /* =========================================================
+           BOTONES
+        ========================================================= */
+        .filter-actions {
+            display: flex;
+            gap: 9px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        button,
+        .mini-btn {
+            height: 42px;
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 18px;
+            border: 0;
+            border-radius: var(--radius-control);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-sizing: border-box;
+            white-space: nowrap;
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+        }
+
+        button.mini-btn,
+        .mini-btn {
+            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            color: #fff;
+            box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
+        }
+
+        button.mini-btn:hover,
+        .mini-btn:hover {
+            background: linear-gradient(135deg, #2f8f00, #256d00);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(37, 109, 0, .22);
+        }
+
+        button.mini-btn:disabled,
+        .mini-btn:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Botón "Limpiar" gris */
+        button.mini-btn[style*="94a3b8"] {
+            background: #94a3b8 !important;
+            box-shadow: 0 3px 8px rgba(100, 116, 139, .18);
+        }
+
+        button.mini-btn[style*="94a3b8"]:hover {
+            background: #7d8ea3 !important;
+        }
+
+        /* Botón "Ver" de la tabla */
+        .mini-btn.view {
+            height: 32px;
+            min-height: 32px;
+            padding: 0 14px;
+            font-size: 11.5px;
+            background: var(--sena-green-bright);
+            box-shadow: 0 3px 8px rgba(59, 170, 1, .20);
+        }
+
+        .mini-btn.view:hover {
+            background: var(--sena-green-dark);
+            box-shadow: 0 4px 12px rgba(37, 109, 0, .24);
+        }
+
+        /* =========================================================
+           TABLA
+        ========================================================= */
+        .record-table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            scrollbar-width: thin;
+            scrollbar-color: #b8cdb0 #f3f6f1;
+        }
+
+        table.record-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1150px;
+        }
+
+        .record-table thead {
+            background: #f7faf8;
+        }
+
+        .record-table th {
+            padding: 12px 14px;
+            text-align: left;
+            color: #44574a;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .record-table td {
+            padding: 13px 14px;
+            color: #374151;
+            border-bottom: 1px solid #edf0ed;
+            font-size: 13px;
+            line-height: 1.5;
+            vertical-align: top;
+        }
+
+        .record-table tbody tr:hover {
+            background: #fafcf9;
+        }
+
+        .record-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .record-table .cell-meta {
+            display: block;
+            color: var(--muted);
+            font-size: 11.5px;
+            line-height: 1.45;
+            margin-top: 2px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 32px 20px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        /* =========================================================
+           BADGES
+        ========================================================= */
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 750;
+            white-space: nowrap;
+            letter-spacing: .01em;
+        }
+
+        .badge.programada { background: #e0f2fe; color: #0369a1; }
+        .badge.confirmada { background: #dcfce7; color: #166534; }
+
+        .mini-btn.repro { background: #b45309; border-color: #b45309; color: #fff; }
+        .mini-btn.repro:hover { background: #92400e; }
+        .mini-btn.rechazar { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+        .mini-btn.rechazar:hover { background: #991b1b; }
+        .mini-btn.retirar { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+        .mini-btn.retirar:hover { background: #6d28d9; }
+
+        .acciones-celda { display: flex; flex-direction: row; align-items: center; gap: 6px; flex-wrap: nowrap; }
+
+        .lista-dias-admin {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+        }
+        .dia-opcion {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 11px;
+            background: #f8fafc;
+            border: 1px solid #dbe4d4;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .dia-opcion:hover { background: var(--sena-green-light); border-color: var(--sena-green); }
+        .dia-opcion input[type="radio"] { width: 17px; height: 17px; margin: 0; accent-color: var(--sena-green-bright); }
+        .badge.reprogramada { background: #fef3c7; color: #92400e; }
+        .badge.cancelada { background: #fee2e2; color: #991b1b; }
+        .badge.ejecutada { background: #e5e7eb; color: #374151; }
+        .badge.disponible { background: #dcfce7; color: #166534; }
+        .badge.no-disponible { background: #fee2e2; color: #991b1b; }
+        .motivo-bloqueo {
+            display: block;
+            margin-top: 4px;
+            font-size: 11.5px;
+            line-height: 1.4;
+            color: #991b1b;
+        }
+        .lista-dias-modal {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 7px;
+        }
+        .dia-modal {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #e1e9df;
+            background: #f8fafc;
+            font-size: 12px;
+        }
+        .dia-modal .dia-icono {
+            font-size: 13px;
+            font-weight: 800;
+        }
+        .dia-modal .dia-nombre {
+            font-weight: 700;
+            color: #26352b;
+        }
+        .dia-modal .dia-hora {
+            color: #5f6f69;
+            font-size: 11.5px;
+        }
+        .dia-modal .dia-motivo {
+            color: #991b1b;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+        .dia-modal.disponible {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .dia-modal.disponible .dia-icono {
+            color: #15803d;
+        }
+        .dia-modal.bloqueado {
+            background: #fef2f2;
+            border-color: #fbd5d5;
+        }
+        .dia-modal.bloqueado .dia-icono {
+            color: #b91c1c;
+        }
+        .fila-bloqueada { background: #fff7f6; }
+        .fila-bloqueada:hover { background: #ffeeec !important; }
+
+        /* =========================================================
+           MENSAJES
+        ========================================================= */
+        #mensaje {
+            display: none;
+            padding: 12px 15px;
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        /* =========================================================
+           PAGINACIÓN
+        ========================================================= */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            min-width: 38px;
+            height: 38px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd9cf;
+            background: #fff;
+            color: var(--sena-green-dark);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: .15s ease;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--sena-green-light);
+            border-color: var(--sena-green-bright);
+        }
+
+        .pagination button:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        .pagination span {
+            font-size: 13px;
+            color: var(--sena-green-dark);
+            font-weight: 700;
+            padding: 0 6px;
+        }
+
+        .pagination span.pagination-ellipsis {
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        /* =========================================================
+           MODAL
+        ========================================================= */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 35, 22, .55);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 18px;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal.show {
+            display: flex;
+            animation: fadeIn .18s ease both;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-card {
+            background: #fff;
+            border-radius: 14px;
+            width: min(820px, 100%);
+            max-height: 90vh;
+            overflow: auto;
+            padding: 0;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+            animation: popIn .22s ease both;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes popIn {
+            from { transform: translateY(8px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 22px;
+            border-bottom: 1px solid #e8eee8;
+            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            border-top-left-radius: 14px;
+            border-top-right-radius: 14px;
+        }
+
+        .modal-head h3 {
+            color: var(--sena-green-dark);
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -.01em;
+        }
+
+        .modal-close {
+            flex: 0 0 auto;
+            border: 0;
+            background: #f1f5f3;
+            color: #5f6f69;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: .15s ease;
+        }
+
+        .modal-close:hover {
+            background: #ffe2e2;
+            color: #b42318;
+        }
+
+        .modal-body {
+            padding: 20px 22px 22px;
+        }
+
+        /* Secciones del modal */
+        .modal-section {
+            margin-bottom: 20px;
+        }
+
+        .modal-section:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .modal-section-head {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e8eee8;
+        }
+
+        .modal-section-head::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sena-green-bright);
+            flex-shrink: 0;
+        }
+
+        .modal-section-head h4 {
+            margin: 0;
+            color: var(--sena-green-dark);
+            font-size: 12.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        /* Grid de campos como mini-cards */
+        .modal-fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 10px 12px;
+            border: 1px solid #e6ede6;
+            border-radius: 9px;
+            background: #fbfdfb;
+            min-width: 0;
+        }
+
+        .modal-field label {
+            font-weight: 700;
+            color: var(--muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin: 0;
+            min-width: 0;
+        }
+
+        .modal-field span {
+            color: var(--ink);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.45;
+            text-align: left;
+            overflow-wrap: anywhere;
+        }
+
+        /* Tarjetas de auditor */
+        .modal-auditor {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 12px;
+            border: 1px solid #e1eae2;
+            border-radius: 10px;
+            background: #fbfdfb;
+            margin-bottom: 8px;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .modal-auditor:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-auditor:hover {
+            border-color: #c7ddbe;
+            box-shadow: 0 3px 10px rgba(15, 35, 22, .04);
+        }
+
+        .modal-auditor-avatar {
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3baa01, #256d00);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: .02em;
+        }
+
+        .modal-auditor-body {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .modal-auditor-body strong {
+            color: var(--sena-green-dark);
+            font-size: 13.5px;
+            font-weight: 800;
+            overflow-wrap: anywhere;
+        }
+
+        .modal-auditor-meta {
+            color: var(--muted);
+            font-size: 11.5px;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+
+        .modal-auditor-role {
+            display: inline-block;
+            margin-top: 5px;
+            background: var(--sena-green-light);
+            color: var(--sena-green-dark);
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 10.5px;
+            font-weight: 750;
+            align-self: flex-start;
+        }
+
+        /* Select de exportación */
+        .modal-export-select {
+            width: 100%;
+            height: 42px;
+            min-height: 42px;
+            padding: 0 12px;
+            border: 1px solid #d2ddd4;
+            border-radius: var(--radius-control);
+            font: inherit;
+            font-size: 13.5px;
+            color: var(--ink);
+            background: #fff;
+            cursor: pointer;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .modal-export-select:hover {
+            border-color: #a9c59d;
+        }
+
+        .modal-export-select:focus {
+            border-color: var(--sena-green-bright);
+            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+        }
+
+        /* Botones del modal */
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 22px;
+            padding-top: 16px;
+            border-top: 1px solid #e8eee8;
+        }
+
+        .badge.confirmada { background: #dcfce7; color: #166534; }
+
+        .mini-btn.confirm {
+            background: #15803d;
+            border-color: #15803d;
+            color: #fff;
+        }
+        .mini-btn.confirm:hover { background: #166534; }
+
+        .mini-btn.reprogramar {
+            background: #b45309;
+            border-color: #b45309;
+            color: #fff;
+        }
+        .mini-btn.reprogramar:hover { background: #92400e; }
+
+        .btn-small {
+            height: 38px;
+            min-height: 38px;
+            padding: 0 16px;
+            border: 0;
+            border-radius: var(--radius-control);
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #fff;
+            white-space: nowrap;
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+        }
+
+        .btn-small:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-ver {
+            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            box-shadow: 0 4px 10px rgba(37, 109, 0, .20);
+        }
+
+        .btn-ver:hover {
+            box-shadow: 0 6px 14px rgba(37, 109, 0, .28);
+        }
+
+        .btn-editar {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, .20);
+        }
+
+        .btn-editar:hover {
+            box-shadow: 0 6px 14px rgba(37, 99, 235, .28);
+        }
+
+        .btn-cancelar {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            box-shadow: 0 4px 10px rgba(220, 38, 38, .20);
+        }
+
+        .btn-cancelar:hover {
+            box-shadow: 0 6px 14px rgba(220, 38, 38, .28);
+        }
+
+        /* =========================================================
+           FOOTER
+        ========================================================= */
+        .footer {
+            text-align: center;
+            padding: 18px 0;
+            color: #8a928c;
+            font-size: 12px;
+            border-top: 1px solid var(--line);
+            margin-top: 28px;
+        }
+
+        /* =========================================================
+           RESPONSIVE
+        ========================================================= */
+        @media (max-width: 1000px) {
+            .portal-grid { grid-template-columns: 1fr; }
+
+            .side {
+                position: static;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 5px;
+            }
+
+            .side h3 { grid-column: 1 / -1; }
+
+            .side a {
+                margin: 0;
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 8px;
+            }
+
+            .side a.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--sena-green-bright);
+            }
+
+            .side .logout-link {
+                border-top: 0;
+                margin-top: 0;
+                padding-top: 11px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .portal-shell { padding: 16px 12px 32px; }
+            .filters { grid-template-columns: 1fr; }
+            .panel-body { padding: 16px; }
+            .panel-head { padding: 14px 16px; }
+            .side { grid-template-columns: 1fr; }
+            .login-header .sena-blanco { width: 58px; }
+            .login-header h1 { font-size: 21px; }
+            .login-header .subtitle { font-size: 12px; }
+            .login-header .profile-link { font-size: 12px; padding: 7px 12px; }
+            .filter-actions button { width: 100%; }
+            .modal-body { padding: 16px; }
+            .modal-head { padding: 14px 16px; }
+            .modal-fields-grid { grid-template-columns: 1fr; }
+            .btn-small { width: 100%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="login-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle" id="subtitulo">Consultar auditorías programadas</p>
+                </div>
+            </div>
+            <a class="profile-link" href="/profile">Mi perfil</a>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <div class="portal-grid">
+
+            <nav class="side" aria-label="Navegación de auditorías">
+                <h3>Consulta de agenda</h3>
+
+                <a href="#listado" data-vista="listado" class="active">
+                    <span class="side-icon">1</span>
+                    <span>Consultar auditorías</span>
+                </a>
+
+                <a href="#reprogramaciones" data-vista="reprogramaciones">
+                    <span class="side-icon">2</span>
+                    <span>Solicitudes de reprogramación</span>
+                </a>
+            </nav>
+
+            <section class="content">
+
+                <div class="page-head">
+                    <div class="page-head-top">
+                        <a href="/auditor" class="back-link" id="btnRegresar">
+                            <span aria-hidden="true">←</span> Volver al Dashboard
+                        </a>
+                    </div>
+                    <h1>Consultar auditorías programadas</h1>
+                    <p>Consulta las auditorías que te han asignado o, si eres administrador, todas las programaciones
+                        registradas en el sistema.</p>
+                </div>
+
+                <div id="mensaje"></div>
+
+                <!-- ================================================
+                     FILTROS
+                ================================================= -->
+                <section class="panel">
+                    <div class="panel-head">
+                        <h2>Filtros de búsqueda</h2>
+                        <span class="pill">Auto-aplicados</span>
+                    </div>
+                    <div class="panel-body">
+                        <p class="help-text">
+                            Ajusta los criterios para filtrar las auditorías programadas. Los filtros
+                            <strong>se aplican automáticamente</strong> al escribir o cambiar una opción.
+                        </p>
+                        <div class="filters">
+                            <div class="filter-item">
+                                <label for="filtroEstado">Estado</label>
+                                <select id="filtroEstado" class="form-control">
+                                    <option value="">Todos</option>
+                                    <option value="Programada">Programada</option>
+                                    <option value="Confirmada">Confirmada</option>
+                                    <option value="Reprogramada">Reprogramada</option>
+                                    <option value="Cancelada">Cancelada</option>
+                                    <option value="Ejecutada">Ejecutada</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroModalidad">Modalidad</label>
+                                <select id="filtroModalidad" class="form-control">
+                                    <option value="">Todas</option>
+                                    <option value="Presencial">Presencial</option>
+                                    <option value="Remota">Remota</option>
+                                    <option value="Híbrida">Híbrida</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroCiudad">Ciudad</label>
+                                <input id="filtroCiudad" class="form-control" placeholder="Filtrar por ciudad">
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroDesde">Desde</label>
+                                <input id="filtroDesde" type="date" class="form-control">
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroHasta">Hasta</label>
+                                <input id="filtroHasta" type="date" class="form-control">
+                            </div>
+                        </div>
+                        <div class="filter-actions">
+                            <button type="button" class="mini-btn" onclick="cargarDatos()">Aplicar ahora</button>
+                            <button type="button" class="mini-btn" style="background:#94a3b8;" onclick="limpiarFiltros()">Limpiar</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     LISTADO
+                ================================================= -->
+                <section class="panel" id="seccionListado">
+                    <div class="panel-head">
+                        <h2 id="tituloLista">Auditorías programadas</h2>
+                        <span class="pill" id="pillContador">Listado</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="record-table-wrap">
+                            <table class="record-table">
+                                <thead>
+                                    <tr>
+                                        <th>Solicitud aprobada / empresa</th>
+                                        <th>Auditor</th>
+                                        <th>Documento</th>
+                                        <th>Lugar</th>
+                                        <th>Inicio</th>
+                                        <th>Fin</th>
+                                        <th>Modalidad</th>
+                                        <th>Estado</th>
+                                        <th>Disponibilidad del día</th>
+                                        <th>Observación</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rows"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="paginacion"></div>
+                        <p id="resumen" class="help-text" style="margin-top:12px;margin-bottom:0;"></p>
+                    </div>
+                </section>
+
+                <!-- ================================================
+                     SOLICITUDES DE REPROGRAMACIÓN
+                ================================================= -->
+                <section class="panel" id="seccionReprogramaciones" style="display:none;">
+                    <div class="panel-head">
+                        <h2 id="tituloReprogramaciones">Solicitudes de reprogramación</h2>
+                        <span class="pill" id="pillReprogramaciones">Todas las solicitudes</span>
+                        <button type="button" class="mini-btn" style="margin-left:auto;" onclick="cargarReprogramaciones()">Actualizar</button>
+                    </div>
+                    <div class="panel-body">
+                        <p class="help-text">
+                            Todas las visitas que fueron marcadas para reprogramación, con el motivo registrado por el
+                            auditor y el estado de confirmación de cada integrante del equipo.
+                        </p>
+                        <div class="record-table-wrap">
+                            <table class="record-table">
+                                <thead>
+                                    <tr>
+                                        <th>Solicitud / empresa</th>
+                                        <th>Auditores</th>
+                                        <th>Confirmados</th>
+                                        <th>Visita</th>
+                                        <th>Modalidad</th>
+                                        <th>Ciudad</th>
+                                        <th>Estado</th>
+                                        <th>Solicitante / motivo</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rowsReprogramaciones"></tbody>
+                            </table>
+                        </div>
+                        <p id="resumenReprogramaciones" class="help-text" style="margin-top:12px;margin-bottom:0;"></p>
+                    </div>
+                </section>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- =========================================================
+         MODAL DE DETALLE
+    ========================================================= -->
+    <div class="modal" id="reproModal">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3>Solicitar reprogramaci&oacute;n formal</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalReprogramacion()" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="help-text" id="reproResumen">Indique el motivo de la reprogramaci&oacute;n solicitada.</p>
+                <label for="reproMotivo" style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Motivo de la reprogramaci&oacute;n</label>
+                <textarea id="reproMotivo" rows="4" minlength="10" maxlength="1000"
+                    style="width:100%;padding:10px 12px;border:1px solid #d2ddd4;border-radius:8px;font:inherit;font-size:13.5px;"
+                    placeholder="Ej. Tengo un compromiso institucional previo en esa fecha."></textarea>
+                <p class="help-text" style="margin-top:8px;">M&iacute;nimo 10 caracteres. La solicitud quedar&aacute; registrada y notificada al equipo.</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-small btn-ver" onclick="enviarSolicitudReprogramacion()">Enviar solicitud</button>
+                <button type="button" class="btn-small btn-cancelar" onclick="cerrarModalReprogramacion()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="adminReproModal">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3>Reprogramar visita</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalAdminRepro()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="help-text" id="adminReproResumen"></p>
+                <label for="adminReproMotivo" style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Motivo de la decisión</label>
+                <textarea id="adminReproMotivo" rows="3" maxlength="1000"
+                    style="width:100%;padding:10px 12px;border:1px solid #d2ddd4;border-radius:8px;font:inherit;font-size:13.5px;"
+                    placeholder="Ej. Se bloquea el día 20/10 por festivo"></textarea>
+                <h4 style="margin:18px 0 8px;font-size:14px;color:var(--sena-green-dark);">Días asignados al auditor</h4>
+                <div id="adminReproDias" class="lista-dias-admin"></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="mini-btn repro" onclick="resolverSolicitud('bloquear_dia')">Bloquear el día seleccionado</button>
+                <button type="button" class="mini-btn retirar" onclick="resolverSolicitud('retirar_auditor')">Retirar auditor de la programación</button>
+                <button type="button" class="mini-btn" style="background:#94a3b8;" onclick="cerrarModalAdminRepro()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="adminRechazoModal">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3>Rechazar solicitud de reprogramación</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalRechazo()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="help-text" id="adminRechazoResumen"></p>
+                <label for="adminRechazoMotivo" style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Motivo del rechazo</label>
+                <textarea id="adminRechazoMotivo" rows="3" minlength="5" maxlength="1000"
+                    style="width:100%;padding:10px 12px;border:1px solid #d2ddd4;border-radius:8px;font:inherit;font-size:13.5px;"
+                    placeholder="Ej. La visita se mantiene en la fecha original por cohérence operativa."></textarea>
+                <p class="help-text" style="margin-top:8px;">El auditor que solicitó la reprogramación será notificado con este motivo.</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="mini-btn rechazar" onclick="confirmarRechazo()">Rechazar solicitud</button>
+                <button type="button" class="mini-btn" style="background:#94a3b8;" onclick="cerrarModalRechazo()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modalDetalle">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3>Detalle de la auditoría</h3>
+                <button type="button" class="modal-close" onclick="cerrarModal()" aria-label="Cerrar detalle">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        © 2026 CertiSENA - SENA. Todos los derechos reservados.
+    </footer>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        let usuarioId = null;
+        let esAdmin = false;
+        let todosLosDatos = [];
+        let paginaActual = 1;
+        const porPagina = 10;
+
+        function escapeHtml(v){ return (v===null||v===undefined)?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+        function formatDateTime(v) {
+            if (!v) return '-';
+            const d = new Date(v);
+            if (Number.isNaN(d.getTime())) return String(v);
+            return d.toLocaleString('es-CO', { dateStyle:'medium', timeStyle:'short' });
+        }
+
+        function mostrarMensaje(texto, tipo) {
+            const el = document.getElementById('mensaje');
+            el.textContent = texto;
+            el.style.display = 'block';
+            el.style.background = tipo === 'ok' ? '#e6f5e9' : '#fff0ef';
+            el.style.color = tipo === 'ok' ? '#17582c' : '#8a2020';
+            el.style.border = tipo === 'ok' ? '1px solid #b8dfc0' : '1px solid #e7bfbb';
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+
+        async function resolverUsuario() {
+            if (usuarioId) return usuarioId;
+            if (!token) return null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
+                esAdmin = true; // vista exclusiva del administrador
+                return usuarioId;
+            } catch { return null; }
+        }
+
+        document.querySelectorAll('.side a[data-vista]').forEach(enlace => {
+            enlace.addEventListener('click', (event) => {
+                event.preventDefault();
+                mostrarVistaAdmin(enlace.dataset.vista);
+            });
+        });
+
+        async function cargarDatos() {
+            const uid = await resolverUsuario();
+            if (!uid) { mostrarMensaje('No se pudo identificar al usuario.', 'error'); return; }
+
+            const titulo = document.getElementById('tituloLista');
+            const subtitulo = document.getElementById('subtitulo');
+            const btnRegresar = document.getElementById('btnRegresar');
+            if (esAdmin) {
+                titulo.textContent = 'Auditorías programadas (vista administrador)';
+                subtitulo.textContent = 'Consulta todas las auditorías programadas en el sistema.';
+                btnRegresar.href = '/dashboard';
+                btnRegresar.innerHTML = '<span aria-hidden="true">←</span> Volver al Dashboard';
+            } else {
+                titulo.textContent = 'Mis auditorías programadas';
+                subtitulo.textContent = 'Consulta las auditorías que te han asignado.';
+                btnRegresar.href = '/auditor';
+                btnRegresar.innerHTML = '<span aria-hidden="true">←</span> Volver al portal';
+            }
+
+            const params = new URLSearchParams();
+            const estado = document.getElementById('filtroEstado').value;
+            const modalidad = document.getElementById('filtroModalidad').value;
+            const ciudad = document.getElementById('filtroCiudad').value.trim();
+            const desde = document.getElementById('filtroDesde').value;
+            const hasta = document.getElementById('filtroHasta').value;
+            if (estado) params.set('estado', estado);
+            if (modalidad) params.set('modalidad', modalidad);
+            if (ciudad) params.set('ciudad', ciudad);
+            if (desde) params.set('desde', desde);
+            if (hasta) params.set('hasta', hasta);
+
+            try {
+                let url;
+                if (esAdmin) {
+                    url = '/agenda-auditor/programaciones' + (params.toString() ? '?' + params.toString() : '');
+                } else {
+                    url = '/agenda-auditor/' + encodeURIComponent(uid) + '/auditorias-programadas' + (params.toString() ? '?' + params.toString() : '');
+                }
+                const res = await fetch(url, {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                let items = esAdmin ? (Array.isArray(data.programaciones) ? data.programaciones : []) : (Array.isArray(data.auditorias) ? data.auditorias : []);
+
+                if (!esAdmin) {
+                    items = items.filter(a => String(a.id_usuario) === String(uid));
+                }
+
+                // Agrupar por id_programacion para reunir todos los auditores
+                const grupos = {};
+                items.forEach(r => {
+                    const key = r.id_programacion || r.id_solicitud + '|' + r.fecha_inicio;
+                    if (!grupos[key]) {
+                        grupos[key] = { ...r, auditores: [] };
+                    }
+                    grupos[key].auditores.push({
+                        nombre: r.auditor_nombre,
+                        correo: r.auditor_correo,
+                        tipo_doc: r.auditor_tipo_doc,
+                        num_doc: r.auditor_num_doc,
+                        rol: r.rol_auditor
+                    });
+                });
+                items = Object.values(grupos);
+                // Ordenar: Programadas primero
+                items.sort((a, b) => {
+                    const estadoA = String(a.estado || '').toLowerCase();
+                    const estadoB = String(b.estado || '').toLowerCase();
+                    const isProgA = estadoA.includes('programad');
+                    const isProdB = estadoB.includes('programad');
+                    if (isProgA && !isProdB) return -1;
+                    if (!isProgA && isProdB) return 1;
+                    return 0;
+                });
+                todosLosDatos = items;
+                paginaActual = 1;
+                renderizarPagina();
+            } catch (e) {
+                document.getElementById('rows').innerHTML = '<tr><td colspan="11" class="empty">No se pudieron cargar las auditorías.</td></tr>';
+                document.getElementById('resumen').textContent = '';
+                document.getElementById('pillContador').textContent = 'Sin datos';
+            }
+        }
+
+        function limpiarFiltros() {
+            document.getElementById('filtroEstado').value = '';
+            document.getElementById('filtroModalidad').value = '';
+            document.getElementById('filtroCiudad').value = '';
+            document.getElementById('filtroDesde').value = '';
+            document.getElementById('filtroHasta').value = '';
+            cargarDatos();
+        }
+
+        function diasProgramados(r) {
+            if (!r.fecha_inicio) return '-';
+            const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+            const start = new Date(r.fecha_inicio);
+            const end = new Date(r.fecha_fin || r.fecha_inicio);
+            const set = new Set();
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                set.add(dias[d.getDay()]);
+            }
+            const estado = String(r.estado || '').toLowerCase();
+            const esActivo = !estado.includes('cancelad') && !estado.includes('finalizad');
+            const badge = esActivo ? '<span class="badge programada">Activo</span>' : '<span class="badge cancelada">Cancelado</span>';
+            return Array.from(set).join(', ') + ' ' + badge;
+        }
+
+        function estadoAcciones(row) {
+            const estado = String(row.estado_programacion || row.estado || '').toLowerCase();
+            const yaConfirmo = row.auditor_confirmado === true || String(row.auditor_confirmado).toLowerCase() === 'true';
+            return {
+                yaConfirmo: yaConfirmo,
+                // La confirmacion es individual: en la vista de administrador
+                // el equipo se confirma desde la vista de cada auditor.
+                puedeConfirmar: !esAdmin && !yaConfirmo && ['programada', 'reprogramada'].includes(estado),
+                // La solicitud de reprogramacion la realiza el auditor asignado.
+                puedeSolicitar: !esAdmin && ['programada', 'confirmada', 'reprogramada'].includes(estado)
+            };
+        }
+
+        let vistaAdmin = 'listado';
+        let datosReprogramaciones = [];
+
+        function mostrarVistaAdmin(vista) {
+            vistaAdmin = vista;
+            const esListado = vista === 'listado';
+            const panelListado = document.getElementById('seccionListado');
+            const panelRepro = document.getElementById('seccionReprogramaciones');
+            if (panelListado) panelListado.style.display = esListado ? '' : 'none';
+            if (panelRepro) panelRepro.style.display = esListado ? 'none' : '';
+            document.querySelectorAll('.side a[data-vista]').forEach(enlace => {
+                enlace.classList.toggle('active', enlace.dataset.vista === vista);
+            });
+            const h1 = document.querySelector('.page-head h1');
+            const sub = document.querySelector('.page-head p');
+            if (h1) {
+                h1.textContent = esListado
+                    ? 'Consultar auditorías programadas'
+                    : 'Solicitudes de reprogramación';
+            }
+            if (sub) {
+                sub.textContent = esListado
+                    ? 'Consulta todas las programaciones registradas en el sistema.'
+                    : 'Revisa las visitas que los auditores solicitaron reprogramar y el motivo de cada solicitud.';
+            }
+            if (!esListado) cargarReprogramaciones();
+        }
+
+        async function cargarReprogramaciones() {
+            const tbody = document.getElementById('rowsReprogramaciones');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="9" class="empty">Cargando solicitudes...</td></tr>';
+            try {
+                const res = await fetch('/agenda-auditor/programaciones', {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                const todas = Array.isArray(data.programaciones) ? data.programaciones : [];
+                // Agrupar por programación y quedarse solo las solicitudes PENDIENTES.
+                const grupos = new Map();
+                todas.forEach(r => {
+                    if (String(r.estado_solicitud_reprogramacion || '').toUpperCase() !== 'PENDIENTE') return;
+                    const key = String(r.id_programacion || r.id_solicitud + '|' + r.fecha_inicio);
+                    if (!grupos.has(key)) {
+                        grupos.set(key, {
+                            id_programacion: r.id_programacion,
+                            numero_radicado: r.numero_radicado,
+                            empresa_nombre: r.empresa_nombre,
+                            direccion_servicio: r.direccion_servicio,
+                            ciudad_servicio: r.ciudad_servicio,
+                            modalidad: r.modalidad,
+                            estado: r.estado,
+                            fecha_inicio: r.fecha_inicio,
+                            fecha_fin: r.fecha_fin,
+                            motivo_reprogramacion: r.motivo_solicitud_reprogramacion || r.motivo_reprogramacion,
+                            solicitante_id: r.id_usuario_solicitante_reprogramacion,
+                            solicitante_nombre: r.solicitante_nombre || 'Auditor',
+                            solicitante_correo: r.solicitante_correo || '',
+                            auditores: [],
+                            confirmados: r.auditores_confirmados || 0,
+                            total: r.auditores_total || 0
+                        });
+                    }
+                    const item = grupos.get(key);
+                    const nombre = r.auditor_nombre || 'Auditor sin nombre';
+                    if (!item.auditores.some(a => a.nombre === nombre)) {
+                        item.auditores.push({
+                            nombre: nombre,
+                            documento: `${r.auditor_tipo_doc || ''} ${r.auditor_num_doc || ''}`.trim(),
+                            confirmado: r.auditor_confirmado === true || String(r.auditor_confirmado).toLowerCase() === 'true'
+                        });
+                    }
+                    if (r.auditores_confirmados) item.confirmados = r.auditores_confirmados;
+                    if (r.auditores_total) item.total = r.auditores_total;
+                });
+                datosReprogramaciones = Array.from(grupos.values()).sort((a, b) =>
+                    String(b.fecha_inicio || '').localeCompare(String(a.fecha_inicio || ''))
+                );
+                if (!datosReprogramaciones.length) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="empty">No hay solicitudes de reprogramación registradas.</td></tr>';
+                } else {
+                    tbody.innerHTML = datosReprogramaciones.map((r, idx) => {
+                        const auditores = r.auditores.map(a =>
+                            `<div class="cell-line">${escapeHtml(a.nombre)}${a.confirmado ? ' <span class="badge confirmada">Confirmado</span>' : ''}</div>`
+                        ).join('') || '<span class="cell-meta">-</span>';
+                        return `<tr>
+                            <td><span class="cell-strong">${escapeHtml(r.numero_radicado || '-')}</span><span class="cell-meta">${escapeHtml(r.empresa_nombre || '')}</span></td>
+                            <td>${auditores}</td>
+                            <td>${r.confirmados || 0} de ${r.total || r.auditores.length}</td>
+                            <td>${escapeHtml(formatDateTime(r.fecha_inicio))}<br><span class="cell-meta">${escapeHtml(formatDateTime(r.fecha_fin))}</span></td>
+                            <td>${escapeHtml(r.modalidad || '-')}</td>
+                            <td>${escapeHtml(r.ciudad_servicio || '-')}</td>
+                            <td><span class="badge ${String(r.estado || '').toLowerCase()}">${escapeHtml(r.estado || '-')}</span></td>
+                            <td>
+                                <span class="cell-strong">${escapeHtml(r.solicitante_nombre || '-')}</span>
+                                <span class="cell-meta">${escapeHtml(r.solicitante_correo || '')}</span>
+                                <span class="cell-meta">Motivo: ${escapeHtml(r.motivo_reprogramacion || '-')}</span>
+                            </td>
+                            <td class="acciones-celda">
+                                <button class="mini-btn repro" type="button" onclick="abrirModalAdminRepro(${idx})">Reprogramar</button>
+                                <button class="mini-btn rechazar" type="button" onclick="abrirModalRechazo(${idx})">Rechazar reprogramación</button>
+                                <button class="mini-btn view" type="button" onclick="verDetalleReprogramacion(${idx})">Ver</button>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                }
+                const pill = document.getElementById('pillReprogramaciones');
+                if (pill) pill.textContent = `${datosReprogramaciones.length} solicitud(es)`;
+                const resumen = document.getElementById('resumenReprogramaciones');
+                if (resumen) resumen.textContent = `Total de solicitudes de reprogramación: ${datosReprogramaciones.length}.`;
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty">No se pudieron cargar las solicitudes.</td></tr>';
+            }
+        }
+
+        let solicitudEnCurso = null;
+        let diaSeleccionado = null;
+
+        function abrirModalAdminRepro(idx) {
+            const r = datosReprogramaciones[idx];
+            if (!r) return;
+            solicitudEnCurso = r;
+            diaSeleccionado = null;
+            const resumen = document.getElementById('adminReproResumen');
+            const motivo = document.getElementById('adminReproMotivo');
+            const dias = document.getElementById('adminReproDias');
+            if (resumen) {
+                resumen.textContent = `Solicitud de ${r.solicitante_nombre || 'un auditor'} (${r.numero_radicado || 'visita'}). `
+                    + `Motivo: ${r.motivo_reprogramacion || 'sin detalle'}. `
+                    + `Seleccione el día a bloquear o retire al auditor de la programación.`;
+            }
+            if (motivo) motivo.value = '';
+            // Dias asignados (rango de la visita).
+            const lista = [];
+            const inicio = new Date(r.fecha_inicio);
+            const fin = new Date(r.fecha_fin || r.fecha_inicio);
+            for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+                const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const nombre = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][d.getDay()];
+                lista.push({ iso: iso, dia: nombre });
+            }
+            if (dias) {
+                dias.innerHTML = lista.map(d => `
+                    <label class="dia-opcion">
+                        <input type="radio" name="diaSolicitud" value="${d.iso}" onchange="diaSeleccionado = this.value">
+                        <span><strong>${escapeHtml(d.dia)}</strong> <span class="cell-meta">${escapeHtml(d.iso.split('-').reverse().join('/'))}</span></span>
+                    </label>`).join('');
+            }
+            const modal = document.getElementById('adminReproModal');
+            if (modal) modal.classList.add('show');
+        }
+
+        function cerrarModalAdminRepro() {
+            const modal = document.getElementById('adminReproModal');
+            if (modal) modal.classList.remove('show');
+            solicitudEnCurso = null;
+            diaSeleccionado = null;
+        }
+
+        async function resolverSolicitud(accion) {
+            if (!solicitudEnCurso) return;
+            const r = solicitudEnCurso;
+            const motivo = (document.getElementById('adminReproMotivo') || {}).value || '';
+            if (accion === 'bloquear_dia' && !diaSeleccionado) {
+                mostrarMensaje('Seleccione el día que desea bloquear.', 'error');
+                return;
+            }
+            if (!confirm('¿Confirma la decisión? Se notificará al auditor que solicitó la reprogramación.')) return;
+            try {
+                const res = await fetch(`/agenda-auditor/programacion/${r.id_programacion}/resolver-reprogramacion`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        accion: accion,
+                        id_usuario: r.solicitante_id,
+                        fecha: accion === 'bloquear_dia' ? diaSeleccionado : null,
+                        motivo: motivo.trim()
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    mostrarMensaje(typeof data.detail === 'string' ? data.detail : 'No fue posible resolver la solicitud.', 'error');
+                    return;
+                }
+                cerrarModalAdminRepro();
+                mostrarMensaje(data.mensaje || 'Solicitud resuelta y notificada al auditor.', 'ok');
+                await cargarReprogramaciones();
+                await cargarDatos();
+            } catch (e) {
+                mostrarMensaje('No fue posible resolver la solicitud: ' + e.message, 'error');
+            }
+        }
+
+        function abrirModalRechazo(idx) {
+            const r = datosReprogramaciones[idx];
+            if (!r) return;
+            solicitudEnCurso = r;
+            const resumen = document.getElementById('adminRechazoResumen');
+            const motivo = document.getElementById('adminRechazoMotivo');
+            if (resumen) {
+                resumen.textContent = `Rechazar la solicitud de ${r.solicitante_nombre || 'un auditor'} `
+                    + `(${r.numero_radicado || 'visita'}). Motivo registrado: ${r.motivo_reprogramacion || 'sin detalle'}.`;
+            }
+            if (motivo) motivo.value = '';
+            const modal = document.getElementById('adminRechazoModal');
+            if (modal) modal.classList.add('show');
+        }
+
+        function cerrarModalRechazo() {
+            const modal = document.getElementById('adminRechazoModal');
+            if (modal) modal.classList.remove('show');
+            solicitudEnCurso = null;
+        }
+
+        async function confirmarRechazo() {
+            if (!solicitudEnCurso) return;
+            const r = solicitudEnCurso;
+            const motivo = (document.getElementById('adminRechazoMotivo') || {}).value || '';
+            if (motivo.trim().length < 5) {
+                mostrarMensaje('Indique el motivo del rechazo (mínimo 5 caracteres).', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(`/agenda-auditor/programacion/${r.id_programacion}/rechazar-reprogramacion`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                    body: JSON.stringify({ motivo: motivo.trim() })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    mostrarMensaje(typeof data.detail === 'string' ? data.detail : 'No fue posible rechazar la solicitud.', 'error');
+                    return;
+                }
+                cerrarModalRechazo();
+                mostrarMensaje(data.mensaje || 'Solicitud rechazada y notificada al auditor.', 'ok');
+                await cargarReprogramaciones();
+                await cargarDatos();
+            } catch (e) {
+                mostrarMensaje('No fue posible rechazar la solicitud: ' + e.message, 'error');
+            }
+        }
+
+        function verDetalleReprogramacion(idx) {
+            const r = datosReprogramaciones[idx];
+            if (!r) return;
+            const body = document.getElementById('modalBody');
+            const modal = document.getElementById('modalDetalle');
+            const auditores = r.auditores.map(a =>
+                `<div class="modal-auditor"><div class="modal-auditor-body">
+                    <strong>${escapeHtml(a.nombre)}</strong>
+                    <span class="modal-auditor-meta">${escapeHtml(a.documento || 'Documento no registrado')}</span>
+                    <span class="modal-auditor-meta">${a.confirmado ? 'Confirmado' : 'Pendiente de confirmación'}</span>
+                </div></div>`
+            ).join('');
+            body.innerHTML = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Solicitud de reprogramación</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>N° Radicado</label><span>${escapeHtml(r.numero_radicado || '-')}</span></div>
+                        <div class="modal-field"><label>Empresa</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
+                        <div class="modal-field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                        <div class="modal-field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                        <div class="modal-field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                        <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                        <div class="modal-field"><label>Estado</label><span><span class="badge ${String(r.estado || '').toLowerCase()}">${escapeHtml(r.estado || '-')}</span></span></div>
+                        <div class="modal-field"><label>Confirmados</label><span>${r.confirmados || 0} de ${r.total || r.auditores.length}</span></div>
+                        <div class="modal-field" style="grid-column:1/-1;"><label>Motivo</label><span>${escapeHtml(r.motivo_reprogramacion || '-')}</span></div>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Auditores del equipo</h4></div>
+                    ${auditores || '<div class="empty">Sin auditores registrados.</div>'}
+                </div>`;
+            if (modal) modal.classList.add('show');
+        }
+
+        function renderizarPagina() {
+            const inicio = (paginaActual - 1) * porPagina;
+            const fin = inicio + porPagina;
+            const items = todosLosDatos.slice(inicio, fin);
+            const tbody = document.getElementById('rows');
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="11" class="empty">No hay auditorías programadas.</td></tr>';
+            } else {
+                tbody.innerHTML = items.map((r, idx) => `
+                    <tr class="${r.dia_no_disponible ? 'fila-bloqueada' : ''}">
+                        <td>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}${r.empresa_nombre ? '<span class="cell-meta">' + escapeHtml(r.empresa_nombre) + '</span>' : ''}</td>
+                        <td>${escapeHtml((r.auditores_programados || []).join(', ') || r.auditor_nombre || '-')}${r.auditores_total ? `<span class="cell-meta">Confirmados: ${r.auditores_confirmados || 0} de ${r.auditores_total}</span>` : ''}</td>
+                        <td>${escapeHtml(r.auditor_tipo_doc ? r.auditor_tipo_doc + ' ' + (r.auditor_num_doc || '') : (r.auditor_nombre || '-'))}</td>
+                        <td>${escapeHtml(r.direccion_servicio || '-')}<span class="cell-meta">${escapeHtml(r.ciudad_servicio || '')}</span></td>
+                        <td>${escapeHtml(formatDateTime(r.fecha_inicio))}</td>
+                        <td>${escapeHtml(formatDateTime(r.fecha_fin))}</td>
+                        <td>${escapeHtml(r.modalidad || '-')}</td>
+                        <td><span class="badge ${String(r.estado||'').toLowerCase()}">${escapeHtml(r.estado || '-')}</span></td>
+                        <td>${r.dia_no_disponible
+                            ? '<span class="badge no-disponible">No disponible</span>' + (r.bloqueo_motivo ? '<span class="motivo-bloqueo">Motivo: ' + escapeHtml(r.bloqueo_motivo) + '</span>' : '')
+                            : '<span class="badge disponible">Disponible</span>'}</td>
+                        <td>${escapeHtml(r.observacion_auditor || r.motivo_cancelacion || '-')}</td>
+                        <td class="row-actions">
+                            <button class="mini-btn view" type="button" onclick="verDetalle(${inicio + idx})">Ver</button>
+                            ${estadoAcciones(r).yaConfirmo ? `<span class="badge confirmada">Confirmado</span>` : (estadoAcciones(r).puedeConfirmar ? `<button class="mini-btn confirm" type="button" onclick="confirmarProgramacion(${inicio + idx})">Confirmar programación</button>` : "")}
+                            ${estadoAcciones(r).puedeSolicitar ? `<button class="mini-btn reprogramar" type="button" onclick="abrirModalReprogramacion(${inicio + idx})">Solicitar reprogramación</button>` : ""}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            const totalPaginas = Math.max(1, Math.ceil(todosLosDatos.length / porPagina));
+            document.getElementById('resumen').textContent = `Mostrando ${items.length} de ${todosLosDatos.length} auditorías. Página ${paginaActual} de ${totalPaginas}.`;
+            document.getElementById('pillContador').textContent = `${todosLosDatos.length} ${todosLosDatos.length === 1 ? 'auditoría' : 'auditorías'}`;
+            renderizarPaginacion(totalPaginas);
+        }
+
+        function renderizarPaginacion(totalPaginas) {
+            const cont = document.getElementById('paginacion');
+            if (totalPaginas <= 1) { cont.innerHTML = ''; return; }
+            let html = '';
+            html += `<button onclick="cambiarPagina(${paginaActual - 1})" ${paginaActual <= 1 ? 'disabled' : ''}>Anterior</button>`;
+            for (let i = 1; i <= totalPaginas; i++) {
+                if (i === paginaActual) {
+                    html += `<span style="font-weight:700;color:#256d00;padding:0 6px;">${i}</span>`;
+                } else if (i === 1 || i === totalPaginas || Math.abs(i - paginaActual) <= 2) {
+                    html += `<button onclick="cambiarPagina(${i})">${i}</button>`;
+                } else if (Math.abs(i - paginaActual) === 3) {
+                    html += `<span class="pagination-ellipsis" style="padding:0 4px;">...</span>`;
+                }
+            }
+            html += `<button onclick="cambiarPagina(${paginaActual + 1})" ${paginaActual >= totalPaginas ? 'disabled' : ''}>Siguiente</button>`;
+            cont.innerHTML = html;
+        }
+
+        function cambiarPagina(n) {
+            const totalPaginas = Math.max(1, Math.ceil(todosLosDatos.length / porPagina));
+            if (n < 1 || n > totalPaginas) return;
+            paginaActual = n;
+            renderizarPagina();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ---------------------------------------------------------
+           MODAL DE DETALLE — Diseño profesional
+        --------------------------------------------------------- */
+        let indiceReprogramacion = null;
+
+        function abrirModalReprogramacion(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            indiceReprogramacion = idx;
+            const resumen = document.getElementById('reproResumen');
+            const motivo = document.getElementById('reproMotivo');
+            if (resumen) {
+                resumen.textContent = `Solicitud de reprogramación de ${r.numero_radicado || r.id_solicitud || 'la visita'}. Indique el motivo.`;
+            }
+            if (motivo) motivo.value = '';
+            const modal = document.getElementById('reproModal');
+            if (modal) modal.classList.add('show');
+        }
+
+        function cerrarModalReprogramacion() {
+            const modal = document.getElementById('reproModal');
+            if (modal) modal.classList.remove('show');
+            indiceReprogramacion = null;
+        }
+
+        async function enviarSolicitudReprogramacion() {
+            if (indiceReprogramacion === null) return;
+            const r = todosLosDatos[indiceReprogramacion];
+            if (!r) { cerrarModalReprogramacion(); return; }
+            const motivo = (document.getElementById('reproMotivo') || {}).value || '';
+            if (motivo.trim().length < 10) {
+                mostrarMensaje('El motivo debe tener al menos 10 caracteres.', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(`/agenda-auditor/programacion/${r.id_programacion}/solicitar-reprogramacion`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                    body: JSON.stringify({ motivo: motivo.trim() })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    mostrarMensaje(typeof data.detail === 'string' ? data.detail : ((data.detail && data.detail.mensaje) || 'No se pudo registrar la solicitud.'), 'error');
+                    return;
+                }
+                cerrarModalReprogramacion();
+                mostrarMensaje(data.mensaje || 'Solicitud de reprogramación registrada.', 'ok');
+                await cargarDatos();
+            } catch (e) {
+                mostrarMensaje('No se pudo registrar la solicitud: ' + e.message, 'error');
+            }
+        }
+
+        async function confirmarProgramacion(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            if (!confirm('¿Confirma la programación de esta auditoría?')) return;
+            try {
+                const res = await fetch(`/agenda-auditor/programacion/${r.id_programacion}/confirmar`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    mostrarMensaje(typeof data.detail === 'string' ? data.detail : 'No se pudo confirmar la programación.', 'error');
+                    return;
+                }
+                mostrarMensaje(data.mensaje || 'Programación confirmada.', 'ok');
+                const modal = document.getElementById('modalDetalle');
+                if (modal) modal.classList.remove('show');
+                await cargarDatos();
+            } catch (e) {
+                mostrarMensaje('No se pudo confirmar la programación: ' + e.message, 'error');
+            }
+        }
+
+        async function verDetalle(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+
+            // Días programados con estado (activo / bloqueado) y datos del auditor
+            let diasHtml = '<p class="hint">Cargando días...</p>';
+            let auditorHtml = '';
+            const idUsuario = r.id_usuario;
+            const idProgramacion = r.id_programacion;
+            if (idUsuario && idProgramacion) {
+                try {
+                    const res = await fetch(`/agenda-auditor/${idUsuario}/programacion/${idProgramacion}/dias`, {
+                        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    const dias = Array.isArray(data.dias) ? data.dias : [];
+                    const aud = data.auditor || {};
+                    if (aud.nombre || aud.correo) {
+                        auditorHtml = `
+                            <div class="modal-field"><label>Auditor</label><span>${escapeHtml(aud.nombre || '-')}</span></div>
+                            <div class="modal-field"><label>Correo</label><span>${escapeHtml(aud.correo || '-')}</span></div>`;
+                    }
+                    diasHtml = dias.length
+                        ? '<div class="lista-dias-modal">' + dias.map(d => `
+                            <div class="dia-modal ${d.estado === 'bloqueado' ? 'bloqueado' : 'disponible'}">
+                                <span class="dia-icono">${d.estado === 'bloqueado' ? '✖' : '✔'}</span>
+                                <span class="dia-nombre">${escapeHtml(d.dia_semana || '')} · ${escapeHtml(d.fecha || '')}</span>
+                                ${d.horario ? `<span class="dia-hora">${escapeHtml(d.horario)}</span>` : ''}
+                                ${d.motivo ? `<span class="dia-motivo">${escapeHtml(d.motivo)}</span>` : ''}
+                            </div>`).join('') + '</div>'
+                        : '<p class="hint">Sin días para mostrar.</p>';
+                } catch (e) {
+                    diasHtml = '<p class="hint">No se pudieron cargar los días del auditor.</p>';
+                }
+            }
+
+            function iniciales(nombre) {
+                const partes = String(nombre || 'A').trim().split(/\s+/).slice(0, 2);
+                const ini = partes.map(p => (p[0] || '')).join('').toUpperCase();
+                return ini || 'A';
+            }
+
+            const auditores = (r.auditores || []).map(a => `
+                <div class="modal-auditor">
+                    <div class="modal-auditor-avatar">${escapeHtml(iniciales(a.nombre))}</div>
+                    <div class="modal-auditor-body">
+                        <strong>${escapeHtml(a.nombre || 'Auditor sin nombre')}</strong>
+                        <span class="modal-auditor-meta">${escapeHtml((a.tipo_doc || '') + ' ' + (a.num_doc || '')) || 'Documento no registrado'}</span>
+                        <span class="modal-auditor-meta">${escapeHtml(a.correo || 'Sin correo')}</span>
+                        <span class="modal-auditor-role">${escapeHtml(a.rol || 'Auditor')}</span>
+                    </div>
+                </div>
+            `).join('') || '<div class="empty" style="padding:16px;">Sin auditores registrados.</div>';
+
+            const estadoClass = String(r.estado_programacion || r.estado || '').toLowerCase();
+
+            const modal = document.getElementById('modalDetalle');
+            const body = document.getElementById('modalBody');
+            body.innerHTML = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Empresa</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Nombre</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
+                        <div class="modal-field"><label>Dirección</label><span>${escapeHtml(r.empresa_direccion || '-')}</span></div>
+                        <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(r.empresa_ciudad || '-')}</span></div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Solicitud</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>N° Radicado</label><span>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}</span></div>
+                        <div class="modal-field"><label>Dirección servicio</label><span>${escapeHtml(r.direccion_servicio || '-')}</span></div>
+                        <div class="modal-field"><label>Ciudad servicio</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Programación</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                        <div class="modal-field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                        <div class="modal-field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                        <div class="modal-field"><label>Estado</label><span><span class="badge ${estadoClass}">${escapeHtml(r.estado || '-')}</span></span></div>
+                        <div class="modal-field" style="grid-column:1/-1;"><label>Disponibilidad del día</label><span>${r.dia_no_disponible
+                            ? '<span class="badge no-disponible">No disponible</span>' + (r.bloqueo_motivo ? '<span class="motivo-bloqueo">Motivo: ' + escapeHtml(r.bloqueo_motivo) + '</span>' : '')
+                            : '<span class="badge disponible">Disponible</span>'}</span></div>
+                        <div class="modal-field" style="grid-column:1/-1;"><label>Observación</label><span>${escapeHtml(r.motivo_reprogramacion || r.motivo_cancelacion || '-')}</span></div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Días programados</h4></div>
+                    ${diasHtml}
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Auditores asignados</h4></div>
+                    ${auditores}
+                    <div class="modal-fields-grid">${auditorHtml}</div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Seleccionar auditor para exportar</h4></div>
+                    <select id="selectAuditorExport" class="modal-export-select">
+                        <option value="all">Todos los auditores</option>
+                        ${(r.auditores || []).map((a, i) => `<option value="${i}">${escapeHtml(a.nombre || 'Auditor ' + (i+1))}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-small btn-ver" onclick="imprimirProgramacion(${idx})">Imprimir programación de visitas</button>
+                    <button type="button" class="btn-small btn-editar" onclick="exportarAgendaIndividual(${idx})">Exportar agenda individual</button>
+                    <button type="button" class="btn-small btn-cancelar" onclick="exportarProgramacionAgenda(${idx})">Exportar programación de agenda</button>
+                </div>
+            `;
+            modal.classList.add('show');
+        }
+
+        function generarHTMLImpresion(titulo, contenido) {
+            return `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>${titulo}</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; color: #26352b; }
+        .header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #3baa01; padding-bottom: 12px; margin-bottom: 20px; }
+        .header img { height: 50px; }
+        .header h1 { margin: 0; color: #256d00; font-size: 22px; }
+        .header p { margin: 0; color: #5f6f69; font-size: 12px; }
+        .section { margin-bottom: 16px; padding: 12px; border: 1px solid #dbe4d4; border-radius: 8px; background: #f9fbf9; }
+        .section h3 { margin: 0 0 8px 0; color: #256d00; font-size: 14px; border-bottom: 1px solid #dbe4d4; padding-bottom: 4px; }
+        .field { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e2e8f0; }
+        .field label { font-weight: bold; color: #334155; font-size: 0.9rem; }
+        .field span { color: #555; font-size: 0.9rem; text-align: right; max-width: 60%; }
+        .auditor-card { padding: 8px; margin-bottom: 6px; border: 1px solid #dbe4d4; border-radius: 6px; background: #fff; }
+        .auditor-card strong { color: #256d00; }
+        .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #dbe4d4; padding-top: 8px; }
+        @media print { body { margin: 0; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="/static/sena_blanco.png" alt="SENA" onerror="this.style.display='none'">
+        <div>
+            <h1>CertiSENA</h1>
+            <p>Sistema de Auditoría - Programación de Visitas</p>
+        </div>
+    </div>
+    ${contenido}
+    <div class="footer">Documento generado el ${new Date().toLocaleString()} - CertiSENA © 2026</div>
+</body>
+</html>`;
+        }
+
+        function imprimirProgramacion(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            const auditores = (r.auditores || []).map(a =>
+                `<div class="auditor-card"><strong>${escapeHtml(a.nombre || '-')}</strong><br><span>${escapeHtml(a.tipo_doc || '')} ${escapeHtml(a.num_doc || '')}</span><br><span>${escapeHtml(a.correo || '')}</span><br><span>Rol: ${escapeHtml(a.rol || 'Auditor')}</span></div>`
+            ).join('') || '<span>-</span>';
+            const contenido = `
+                <div class="section"><h3>Empresa</h3>
+                    <div class="field"><label>Nombre</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
+                    <div class="field"><label>Dirección</label><span>${escapeHtml(r.empresa_direccion || '-')}</span></div>
+                    <div class="field"><label>Ciudad</label><span>${escapeHtml(r.empresa_ciudad || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Solicitud</h3>
+                    <div class="field"><label>N° Radicado</label><span>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}</span></div>
+                    <div class="field"><label>Dirección servicio</label><span>${escapeHtml(r.direccion_servicio || '-')}</span></div>
+                    <div class="field"><label>Ciudad servicio</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Programación</h3>
+                    <div class="field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                    <div class="field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                    <div class="field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                    <div class="field"><label>Estado</label><span>${escapeHtml(r.estado || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Auditores asignados</h3>${auditores}</div>
+            `;
+            const w = window.open('', '_blank');
+            w.document.write(generarHTMLImpresion('Programación de visita', contenido));
+            w.document.close();
+            w.print();
+        }
+
+        function exportarAgendaIndividual(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            const select = document.getElementById('selectAuditorExport');
+            const selected = select ? select.value : 'all';
+            let auditoresSeleccionados = r.auditores || [];
+            if (selected !== 'all') {
+                const i = parseInt(selected);
+                auditoresSeleccionados = [r.auditores[i]];
+            }
+            const auditores = auditoresSeleccionados.map(a => `${a.nombre} (${a.tipo_doc} ${a.num_doc}) - ${a.correo} - Rol: ${a.rol}`).join('\\n');
+            const contenido = `
+                <div class="section"><h3>Empresa</h3>
+                    <div class="field"><label>Nombre</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
+                    <div class="field"><label>Dirección</label><span>${escapeHtml(r.empresa_direccion || '-')}</span></div>
+                    <div class="field"><label>Ciudad</label><span>${escapeHtml(r.empresa_ciudad || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Solicitud</h3>
+                    <div class="field"><label>N° Radicado</label><span>${escapeHtml(r.numero_radicado || r.id_solicitud || '-')}</span></div>
+                    <div class="field"><label>Dirección servicio</label><span>${escapeHtml(r.direccion_servicio || '-')}</span></div>
+                    <div class="field"><label>Ciudad servicio</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Programación</h3>
+                    <div class="field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                    <div class="field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                    <div class="field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                    <div class="field"><label>Estado</label><span>${escapeHtml(r.estado || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Auditores asignados</h3>
+                    <pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(auditores)}</pre>
+                </div>
+            `;
+            const w = window.open('', '_blank');
+            w.document.write(generarHTMLImpresion('Agenda Individual', contenido));
+            w.document.close();
+            w.print();
+        }
+
+        function exportarProgramacionAgenda(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            const auditores = (r.auditores || []).map(a => `${a.nombre} (${a.tipo_doc} ${a.num_doc}) - ${a.correo} - Rol: ${a.rol}`).join('\\n');
+            const contenido = `
+                <div class="section"><h3>Programación de Agenda</h3>
+                    <div class="field"><label>ID Programación</label><span>${escapeHtml(r.id_programacion || '-')}</span></div>
+                    <div class="field"><label>Estado</label><span>${escapeHtml(r.estado || '-')}</span></div>
+                    <div class="field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
+                    <div class="field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
+                    <div class="field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
+                    <div class="field"><label>Ciudad</label><span>${escapeHtml(r.ciudad_servicio || '-')}</span></div>
+                </div>
+                <div class="section"><h3>Auditores</h3>
+                    <pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(auditores)}</pre>
+                </div>
+            `;
+            const w = window.open('', '_blank');
+            w.document.write(generarHTMLImpresion('Programación de Agenda', contenido));
+            w.document.close();
+            w.print();
+        }
+
+        function cerrarModal() { document.getElementById('modalDetalle').classList.remove('show'); }
+
+        /* ---------------------------------------------------------
+           Debounce para auto-filtrar
+        --------------------------------------------------------- */
+        function debounce(fn, delay = 400) {
+            let timer = null;
+            return function (...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+        const autoFiltrar = debounce(cargarDatos, 400);
+
+        // Cerrar modal con clic fuera o tecla Escape + auto-filtros
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('modalDetalle');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'modalDetalle') cerrarModal();
+                });
+            }
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') cerrarModal();
+            });
+
+            // Auto-aplicar filtros al cambiar o escribir
+            document.getElementById('filtroEstado')?.addEventListener('change', autoFiltrar);
+            document.getElementById('filtroModalidad')?.addEventListener('change', autoFiltrar);
+            document.getElementById('filtroCiudad')?.addEventListener('input', autoFiltrar);
+            document.getElementById('filtroDesde')?.addEventListener('change', autoFiltrar);
+            document.getElementById('filtroHasta')?.addEventListener('change', autoFiltrar);
+        });
+
+        (async function init() {
+            const uid = await resolverUsuario();
+            if (!uid) { mostrarMensaje('No se puede identificar al usuario.', 'error'); return; }
+            await cargarDatos();
+        })();
+    </script>
+</body>
+</html>

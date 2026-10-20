@@ -2172,6 +2172,41 @@ class AuditorService:
         }
 
     # ========================================================
+    # CONFLICTO - CREAR DESDE ADMINISTRADOR (sin restricci��n de estado)
+    # ========================================================
+    async def crear_conflicto_administrador(self, id_usuario: UUID, data: ConflictoInteresCrear):
+        result = await self.db.execute(
+            text("SELECT id_usuario FROM usuario WHERE id_usuario = :id_usuario"),
+            {"id_usuario": id_usuario},
+        )
+        if not result.scalar():
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No se encontr�� el usuario auditor.")
+        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
+        result = await self.db.execute(
+            text("""
+                INSERT INTO conflicto_interes (
+                    id_usuario, id_empresa, tipo_conflicto, descripcion,
+                    bloquea_asignacion, fecha_declaracion, estado, id_postulacion
+                ) VALUES (
+                    :id_usuario, :id_empresa, :tipo_conflicto, :descripcion,
+                    :bloquea_asignacion, CURRENT_TIMESTAMP, 'Activo', :id_postulacion
+                )
+                RETURNING id_conflicto
+            """),
+            {
+                "id_usuario": id_usuario,
+                "id_empresa": data.id_empresa,
+                "tipo_conflicto": data.tipo_conflicto,
+                "descripcion": data.descripcion,
+                "bloquea_asignacion": data.bloquea_asignacion,
+                "id_postulacion": id_postulacion,
+            },
+        )
+        conflicto = result.mappings().first()
+        await self.db.commit()
+        return {"id_conflicto": conflicto["id_conflicto"], "mensaje": "Conflicto de inter��s registrado correctamente."}
+
+    # ========================================================
     # CONFLICTO - ACTUALIZAR
     # ========================================================
 
@@ -2256,6 +2291,31 @@ class AuditorService:
 
     async def eliminar_conflicto(self, id_usuario: UUID, id_conflicto: UUID):
         await self._verificar_usuario_borrador(id_usuario)
+        result = await self.db.execute(
+            text("""
+                DELETE FROM conflicto_interes
+                WHERE id_conflicto = :id_conflicto
+                  AND id_usuario = :id_usuario
+                RETURNING id_conflicto
+            """),
+            {"id_conflicto": id_conflicto, "id_usuario": id_usuario},
+        )
+        row = result.mappings().first()
+        if not row:
+            raise HTTPException(404, "El conflicto no existe o no pertenece al auditor.")
+        await self.db.commit()
+        return {"mensaje": "Conflicto eliminado correctamente."}
+
+    # ========================================================
+    # CONFLICTO - ELIMINAR DESDE ADMINISTRADOR (sin restricci��n de borrador)
+    # ========================================================
+    async def eliminar_conflicto_administrador(self, id_usuario: UUID, id_conflicto: UUID):
+        result = await self.db.execute(
+            text("SELECT id_usuario FROM usuario WHERE id_usuario = :id_usuario"),
+            {"id_usuario": id_usuario},
+        )
+        if not result.scalar():
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No se encontr�� el usuario auditor.")
         result = await self.db.execute(
             text("""
                 DELETE FROM conflicto_interes

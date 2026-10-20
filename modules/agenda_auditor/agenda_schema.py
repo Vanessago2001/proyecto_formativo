@@ -96,6 +96,12 @@ class FechaNoDisponibleCrear(BaseModel):
     fecha_inicio: date
     fecha_fin: date | None = None
     motivo: str = Field(min_length=3, max_length=255)
+    # Programación relacionada con el bloqueo (opcional): permite referenciar
+    # la auditoría programada que originó la fecha a bloquear.
+    id_programacion: UUID | None = None
+    # Si es True y existe una auditoría programada en el periodo, esa
+    # programación se cancela (notificando a los auditores) y el bloqueo se registra.
+    cancelar_programacion: bool = False
 
     @model_validator(mode="after")
     def validar_fechas(self):
