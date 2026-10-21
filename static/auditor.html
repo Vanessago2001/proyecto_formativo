@@ -2082,6 +2082,17 @@
             font-weight: 700;
         }
 
+        /* Cierre explícito del desplegable "Mi registro".
+           Se aplica al pulsar un <select> de sus secciones para que el menú
+           no siga abierto encima del formulario. La regla se declara después
+           de las de :hover / :focus-within para prevalecer sobre ellas. */
+        .side .dropdown-registro.cerrado .dropdown-content {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-6px);
+            pointer-events: none;
+        }
+
         /* Adaptación móvil: el dropdown se muestra inline */
         @media (max-width: 720px) {
             .side .dropdown-registro {
@@ -2394,7 +2405,7 @@
                             Modalidad preferida <span>*</span>
                         </label>
 
-                        <select id="modalidad_preferida" name="modalidad_preferida" class="form-control" required>
+                        <select id="modalidad_preferida" data-cierra-dropdown="mi-registro" name="modalidad_preferida" class="form-control" required>
 
                             <option value="">
                                 Seleccione...
@@ -2479,7 +2490,7 @@
                             Tipo Competencia <span>*</span>
                         </label>
 
-                        <select id="tipo_competencia" name="tipo_competencia" class="form-control" required>
+                        <select id="tipo_competencia" data-cierra-dropdown="mi-registro" name="tipo_competencia" class="form-control" required>
 
                             <option value="">
                                 Seleccione un tipo de competencia
@@ -2526,7 +2537,7 @@
                             Norma <span>*</span>
                         </label>
 
-                        <select id="id_norma" name="id_norma" class="form-control" required>
+                        <select id="id_norma" data-cierra-dropdown="mi-registro" name="id_norma" class="form-control" required>
 
                             <option value="">
                                 Cargando normas...
@@ -2663,7 +2674,7 @@
                         </div>
                         <div class="form-group">
                             <label for="titulo_nivel">Nivel académico</label>
-                            <select id="titulo_nivel" class="form-control">
+                            <select id="titulo_nivel" data-cierra-dropdown="mi-registro" class="form-control">
                                 <option value="">Seleccione...</option>
                                 <option value="Técnico">Técnico</option>
                                 <option value="Tecnólogo">Tecnólogo</option>
@@ -2823,7 +2834,7 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="tipoDocumentoSoporte">Tipo de documento <span>*</span></label>
-                            <select id="tipoDocumentoSoporte" class="form-control" required>
+                            <select id="tipoDocumentoSoporte" data-cierra-dropdown="mi-registro" class="form-control" required>
                                 <option value="">Seleccione...</option>
                                 <option value="Hoja de Vida">Hoja de Vida</option>
                                 <option value="Título">Título</option>
@@ -2887,7 +2898,7 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="id_empresa">Empresa relacionada <span>*</span></label>
-                            <select id="id_empresa" name="id_empresa" class="form-control">
+                            <select id="id_empresa" data-cierra-dropdown="mi-registro" name="id_empresa" class="form-control">
                                 <option value="">Cargando empresas...</option>
                             </select>
                             <span class="help-text">Seleccione la empresa con la que podría existir un conflicto de
@@ -2896,7 +2907,7 @@
 
                         <div class="form-group">
                             <label for="tipo_conflicto">Tipo de conflicto <span>*</span></label>
-                            <select id="tipo_conflicto" name="tipo_conflicto" class="form-control">
+                            <select id="tipo_conflicto" data-cierra-dropdown="mi-registro" name="tipo_conflicto" class="form-control">
                                 <option value="">Seleccione el tipo</option>
                                 <option value="Exempleado">Exempleado</option>
                                 <option value="Asesoría Previa">Asesoría Previa</option>
@@ -6715,6 +6726,57 @@
         actualizarExperienciaAuditoriaOpcional();
         inicializarNavegacionSecciones();
         inicializarVistasDeArchivo();
+        inicializarCierreDropdownMiRegistro();
+
+        /* =====================================================
+           CIERRE DEL DESPLEGABLE "MI REGISTRO"
+
+           El desplegable se abre con :hover / :focus-within. Cuando el usuario
+           pulsa un <select> de sus secciones (Perfil, Competencias, Formación
+           académica, Documentos de soporte, Conflictos) el enlace interno
+           conserva el foco y el menú queda abierto encima del formulario.
+
+           Aquí se cierra de forma explícita: se retira el foco del elemento
+           interno que lo mantenía abierto y se fuerza el estado cerrado durante
+           unos milisegundos, por si el puntero sigue sobre el desplegable.
+           Solo interviene sobre los <select> marcados; el resto de la
+           interfaz mantiene su funcionamiento actual.
+        ===================================================== */
+        function inicializarCierreDropdownMiRegistro() {
+            const SELECTS = '[data-cierra-dropdown="mi-registro"]';
+
+            function cerrarDropdownMiRegistro() {
+                const dropdown = document.querySelector('.side .dropdown-registro');
+                if (!dropdown) return;
+
+                // 1) Quita el foco del elemento interno que mantenía abierto el menú.
+                const activo = document.activeElement;
+                if (activo && dropdown.contains(activo) && typeof activo.blur === 'function') {
+                    activo.blur();
+                }
+
+                // 2) Fuerza el cierre aunque el puntero siga sobre el desplegable.
+                dropdown.classList.add('cerrado');
+                window.setTimeout(() => dropdown.classList.remove('cerrado'), 150);
+            }
+
+            document.addEventListener('pointerdown', (event) => {
+                const select = event.target instanceof Element
+                    ? event.target.closest(SELECTS)
+                    : null;
+                if (!select) return;
+                cerrarDropdownMiRegistro();
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (!['Enter', ' ', 'Spacebar', 'ArrowDown', 'ArrowUp'].includes(event.key)) return;
+                const select = event.target instanceof Element
+                    ? event.target.closest(SELECTS)
+                    : null;
+                if (!select) return;
+                cerrarDropdownMiRegistro();
+            });
+        }
 
         /* =====================================================
            INICIALIZACIÓN
