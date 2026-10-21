@@ -124,6 +124,10 @@ class AgendaAuditorService(AuditorService):
         propias de la Agenda (disponibilidad activa y cruces de horario)
         cuando se informa la fecha/hora de la visita.
 
+        Solo se devuelven los auditores realmente disponibles para la sede: los
+        que ya tienen una auditoría programada, los que están asignados a otra
+        sede y los que no cumplen las validaciones quedan excluidos.
+
         La lista no modifica ninguna asignación: solo informa qué auditores
         están disponibles para la sede seleccionada.
         """
@@ -145,6 +149,8 @@ class AgendaAuditorService(AuditorService):
                 "page_size": page_size,
                 "total": 0,
                 "total_pages": 0,
+                "total_candidatos": 0,
+                "total_no_disponibles": 0,
             }
 
         page = max(1, page)
@@ -233,75 +239,69 @@ class AgendaAuditorService(AuditorService):
                 OR (CAST(:conflicto AS TEXT) = 'no' AND conflicto_interes = FALSE)
             )
         """
+        # Rol que el auditor ya tiene en la solicitud (si existe).
+        rol_fragmento = """
+                rol.especialidad AS rol_asignado
+        """
         seleccion = (
             CTE_AUDITORES
             + " SELECT c.*, "
             + sede_fragmento
+            + ", "
+            + rol_fragmento
             + " FROM candidatos c "
+            + " LEFT JOIN LATERAL ("
+            + "     SELECT a.especialidad"
+            + "     FROM auditores_solicitud a"
+            + "     WHERE a.id_solicitud = :id_solicitud"
+            + "       AND a.id_auditor = c.id_usuario"
+            + "       AND UPPER(TRIM(COALESCE(a.estado_asignacion, ''))) IN"
+            + "           ('AGENDADA', 'PROGRAMADA', 'CONFIRMADO')"
+            + "     ORDER BY a.id"
+            + "     LIMIT 1"
+            + " ) rol ON TRUE "
             + filtros
         )
 
-        count_result = await self.db.execute(
-            text(CTE_AUDITORES + " SELECT COUNT(*) AS total FROM candidatos " + filtros),
-            params,
-        )
-        total = int(count_result.scalar_one() or 0)
-        total_pages = (total + page_size - 1) // page_size
-        if total_pages and page > total_pages:
-            page = total_pages
-        offset = (page - 1) * page_size
-
         result = await self.db.execute(
-            text(seleccion + " ORDER BY nombre ASC LIMIT :limit OFFSET :offset"),
-            {**params, "limit": page_size, "offset": offset},
+            text(seleccion + " ORDER BY nombre ASC LIMIT :limite"),
+            {**params, "limite": 500},
         )
+        candidatos = [dict(fila) for fila in result.mappings().all()]
 
         # Rango horario a validar (opcional).
         inicio_consulta = datetime.combine(fecha, hora_inicio or time.min) if fecha else None
         fin_consulta = datetime.combine(fecha, hora_fin or time.max) if fecha else None
 
-        items = []
-        for raw in result.mappings().all():
-            fila = dict(raw)
-            id_usuario = fila["id_usuario"]
+        # Validaciones de agenda aplicadas en bloque (disponibilidad y cruces).
+        ids = [str(fila["id_usuario"]) for fila in candidatos]
+        con_disponibilidad = await self._ids_con_disponibilidad(
+            ids, fecha, hora_inicio, hora_fin
+        ) if fecha is not None and ids else set()
+        con_cruce = await self._ids_con_cruce(
+            ids, inicio_consulta, fin_consulta
+        ) if (fecha is not None and inicio_consulta and fin_consulta and ids) else {}
+
+        disponibles = []
+        no_disponibles = 0
+        for fila in candidatos:
+            id_usuario = str(fila["id_usuario"])
             competencia_norma = bool(fila["competencia_norma"])
             conflicto_interes = bool(fila["conflicto_interes"])
             ya_asignado = bool(fila["ya_asignado"])
             ya_en_sede = bool(fila.get("ya_en_sede"))
+            disponible = None if fecha is None else (id_usuario in con_disponibilidad)
+            cruce = con_cruce.get(id_usuario) if fecha is not None else None
 
-            disponible: bool | None = None
-            cruce: dict | None = None
-            if fecha is not None:
-                disponible = await self._tiene_disponibilidad_fecha(
-                    id_usuario, fecha, hora_inicio, hora_fin
-                )
-                if inicio_consulta is not None and fin_consulta is not None:
-                    cruce = await self._buscar_cruce(id_usuario, inicio_consulta, fin_consulta)
+            # Solo se ofrecen los auditores que pueden asignarse a la sede.
+            if not competencia_norma or conflicto_interes or ya_en_sede:
+                no_disponibles += 1
+                continue
+            if disponible is False or cruce:
+                no_disponibles += 1
+                continue
 
-            motivos = []
-            if not competencia_norma:
-                motivos.append("No tiene competencia vigente y validada para la norma de la solicitud.")
-            if conflicto_interes:
-                motivos.append("Tiene un conflicto de interés activo con la empresa.")
-            if ya_en_sede:
-                motivos.append("Ya está asignado a esta sede.")
-            if disponible is False:
-                motivos.append("No tiene disponibilidad activa para la fecha/hora seleccionada.")
-            if cruce:
-                motivos.append(
-                    "Tiene otra auditoría programada en ese horario "
-                    f"({cruce.get('empresa_nombre') or 'otra empresa'})."
-                )
-
-            elegible = (
-                competencia_norma
-                and not conflicto_interes
-                and not ya_en_sede
-                and disponible is not False
-                and not cruce
-            )
-
-            items.append({
+            disponibles.append({
                 "id_usuario": id_usuario,
                 "nombre": fila["nombre"],
                 "correo": fila["correo"],
@@ -314,21 +314,29 @@ class AgendaAuditorService(AuditorService):
                 "modalidad_preferida": fila["modalidad_preferida"],
                 "norma_codigo": fila.get("norma_codigo"),
                 "norma_nombre": fila.get("norma_nombre"),
+                "rol_auditor": fila.get("rol_asignado"),
                 "competencia_norma": competencia_norma,
                 "conflicto_interes": conflicto_interes,
                 "ya_asignado": ya_asignado,
                 "ya_en_sede": ya_en_sede,
                 "disponible": disponible,
-                "sin_cruce_horario": cruce is None if fecha is not None else None,
-                "conflicto_horario": cruce,
-                "elegible": elegible,
+                "sin_cruce_horario": None if fecha is None else True,
+                "conflicto_horario": None,
+                "elegible": True,
                 "motivo": (
-                    "Auditor elegible para esta sede. La disponibilidad y los cruces "
+                    "Auditor disponible para esta sede."
+                    if fecha is not None
+                    else "Auditor elegible para esta sede. La disponibilidad y los cruces "
                     "se validan al programar en Agenda."
-                    if elegible
-                    else " ".join(motivos)
                 ),
             })
+
+        total = len(disponibles)
+        total_pages = (total + page_size - 1) // page_size
+        if total_pages and page > total_pages:
+            page = total_pages
+        offset = (page - 1) * page_size
+        items = disponibles[offset:offset + page_size]
 
         return {
             "items": items,
@@ -336,6 +344,130 @@ class AgendaAuditorService(AuditorService):
             "page_size": page_size,
             "total": total,
             "total_pages": total_pages,
+            "total_candidatos": len(candidatos),
+            "total_no_disponibles": no_disponibles,
+        }
+
+    async def _ids_con_disponibilidad(
+        self,
+        ids: list[str],
+        fecha: date,
+        hora_inicio: time | None,
+        hora_fin: time | None,
+    ) -> set[str]:
+        """Auditores (del conjunto indicado) con disponibilidad activa para la fecha/hora."""
+        if not ids:
+            return set()
+        dia_es = [
+            "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"
+        ][fecha.weekday()]
+        dia_numero = {
+            "lunes": 1, "martes": 2, "miercoles": 3, "jueves": 4,
+            "viernes": 5, "sabado": 6, "domingo": 7,
+        }[normalizar_dia(dia_es)]
+        tiene_horas = await self._tabla_tiene_columna("disponibilidad_auditor", "hora_inicio")
+        disp_time_clause = (
+            "AND (da.hora_inicio IS NULL OR da.hora_fin IS NULL "
+            "OR (da.hora_inicio <= :hora_inicio AND da.hora_fin >= :hora_fin))"
+            if tiene_horas else ""
+        )
+        bloqueo_time_clause = (
+            "AND (nd.hora_inicio IS NULL OR nd.hora_fin IS NULL "
+            "OR (nd.hora_inicio < :hora_fin AND nd.hora_fin > :hora_inicio))"
+            if tiene_horas else ""
+        )
+        params = {
+            "ids": ids,
+            "fecha": fecha,
+            "dia_numero": dia_numero,
+        }
+        if tiene_horas:
+            params["hora_inicio"] = hora_inicio or time.min
+            params["hora_fin"] = hora_fin or time.max
+        result = await self.db.execute(text(f"""
+            SELECT DISTINCT da.id_usuario
+            FROM disponibilidad_auditor da
+            WHERE da.id_usuario = ANY(CAST(:ids AS UUID[]))
+              AND UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')
+              AND CAST(da.fecha_inicio AS DATE) <= :fecha
+              AND (da.fecha_fin IS NULL OR CAST(da.fecha_fin AS DATE) >= :fecha)
+              AND (
+                  da.dia_semana IS NULL
+                  OR da.dia_semana = :dia_numero
+                  OR (:dia_numero = 7 AND da.dia_semana = 0)
+              )
+              AND LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN
+                  ('disponible', 'disponibilidad', 'horario disponible', 'availability', 'semanal', 'disponibilidad extra', 'disponibilidad_extra')
+              {disp_time_clause}
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM disponibilidad_auditor nd
+                  WHERE nd.id_usuario = da.id_usuario
+                    AND UPPER(TRIM(COALESCE(nd.estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                    AND LOWER(TRIM(COALESCE(nd.tipo_registro, ''))) IN
+                        ('no disponible', 'no_disponible', 'indisponible', 'bloqueo')
+                    AND CAST(nd.fecha_inicio AS DATE) <= :fecha
+                    AND (nd.fecha_fin IS NULL OR CAST(nd.fecha_fin AS DATE) >= :fecha)
+                    {bloqueo_time_clause}
+              )
+        """), params)
+        return {str(fila["id_usuario"]) for fila in result.mappings().all()}
+
+    async def _ids_con_cruce(
+        self,
+        ids: list[str],
+        inicio: datetime,
+        fin: datetime,
+    ) -> dict[str, dict]:
+        """Auditores (del conjunto indicado) que ya tienen una auditoría en ese horario."""
+        if not ids:
+            return {}
+        result = await self.db.execute(text("""
+            SELECT x.id_usuario, c.id_programacion, c.fecha_inicio, c.fecha_fin,
+                   c.empresa_nombre, c.direccion_servicio
+            FROM (
+                SELECT DISTINCT d.id_usuario
+                FROM detalle_programacion_auditor d
+                INNER JOIN programacion_visita p
+                    ON p.id_programacion = d.id_programacion
+                WHERE d.id_usuario = ANY(CAST(:ids AS UUID[]))
+                  AND UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN
+                      ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
+                  AND p.fecha_inicio < :fecha_fin
+                  AND p.fecha_fin > :fecha_inicio
+            ) x
+            LEFT JOIN LATERAL (
+                SELECT p2.id_programacion, p2.fecha_inicio, p2.fecha_fin, p2.estado,
+                       e2.direccion AS direccion_servicio, e2.nombre AS empresa_nombre
+                FROM detalle_programacion_auditor d2
+                INNER JOIN programacion_visita p2
+                    ON p2.id_programacion = d2.id_programacion
+                LEFT JOIN solicitud s2
+                    ON s2.id_solicitud = p2.id_solicitud
+                LEFT JOIN empresa e2
+                    ON e2.id_empresa = s2.id_empresa
+                WHERE d2.id_usuario = x.id_usuario
+                  AND UPPER(TRIM(COALESCE(p2.estado, ''))) NOT IN
+                      ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
+                  AND p2.fecha_inicio < :fecha_fin
+                  AND p2.fecha_fin > :fecha_inicio
+                ORDER BY p2.fecha_inicio
+                LIMIT 1
+            ) c ON TRUE
+        """), {
+            "ids": ids,
+            "fecha_inicio": inicio,
+            "fecha_fin": fin,
+        })
+        return {
+            str(fila["id_usuario"]): {
+                "id_programacion": fila["id_programacion"],
+                "fecha_inicio": fila["fecha_inicio"],
+                "fecha_fin": fila["fecha_fin"],
+                "empresa_nombre": fila["empresa_nombre"],
+                "direccion_servicio": fila["direccion_servicio"],
+            }
+            for fila in result.mappings().all()
         }
 
     async def _listar_asignaciones_programables(self, id_usuario: UUID | None):

@@ -1837,9 +1837,11 @@
                                     </div>
                                     <div id="scheduleCandidatesWrap" class="hidden" style="margin-top:14px;">
                                         <label>Auditores disponibles para esta sede</label>
-                                        <p class="hint">Se aplican las mismas validaciones de la asignación de auditores
+                                        <p class="hint">Solo se muestran los auditores que están disponibles para esta
+                                            sede: se aplican las mismas validaciones de la asignación de auditores
                                             (competencia en la norma, conflicto de interés) y las de la agenda
                                             (disponibilidad y cruces de horario).</p>
+                                        <div id="scheduleCandidatesNotice" class="notice" role="status" aria-live="polite"></div>
                                         <div id="scheduleCandidates" class="team-list"></div>
                                         <div class="team-toolbar">
                                             <span class="hint" id="scheduleCandidatesInfo">-</span>
@@ -2544,13 +2546,32 @@
             scheduleSedeSelect.addEventListener("change", async () => {
                 const grupo = currentAssignment();
                 aplicarDatosSedeSeleccionada(grupo);
-                // Cada sede se programa de forma independiente: se recarga la
-                // vista para bloquear o habilitar el formulario según la sede.
                 $("scheduleCandidatesWrap").classList.add("hidden");
                 candidatosSede = [];
-                if (grupo) await loadScheduleList(grupo);
+                if (!grupo) return;
+                await loadScheduleList(grupo);
+                // Al elegir una sede se muestran los auditores disponibles
+                // para ella: los que ya tienen auditoría o están asignados a
+                // otra sede quedan excluidos.
+                if (!$("scheduleMoreAuditors").disabled) {
+                    $("scheduleCandidatesWrap").classList.remove("hidden");
+                    $("scheduleMoreAuditors").textContent = "Ocultar auditores disponibles";
+                    await cargarCandidatosSede(1);
+                }
             });
         }
+
+        // La lista de disponibles se recalcula al cambiar la fecha o la hora.
+        ["scheduleDate", "scheduleStart", "scheduleEnd"].forEach((id) => {
+            const control = $(id);
+            if (!control) return;
+            control.addEventListener("change", async () => {
+                const wrap = $("scheduleCandidatesWrap");
+                if (!wrap || wrap.classList.contains("hidden")) return;
+                if (programacionActual && !programacionEnEdicion) return;
+                await cargarCandidatosSede(1);
+            });
+        });
 
         // La dirección y la ciudad provienen de la sede seleccionada; si no hay
         // sede, se usan las de la empresa.
@@ -2786,6 +2807,7 @@
                 equipoSede.delete(id);
             } else {
                 auditor.incluido = Boolean(checked);
+                auditor.excluidoManual = !checked;
             }
             renderEquipoSede();
             renderCandidatosSede();
@@ -2807,8 +2829,9 @@
                 const existente = equipoSede.get(id);
                 if (existente) {
                     existente.incluido = true;
+                    existente.excluidoManual = false;
                 } else {
-                    equipoSede.set(id, auditorEquipo(candidato, { origen: "adicional", incluido: true }));
+                    equipoSede.set(id, auditorEquipo(candidato, { origen: "adicional", incluido: true, excluidoManual: false }));
                 }
             } else {
                 const existente = equipoSede.get(id);
@@ -2817,6 +2840,7 @@
                         equipoSede.delete(id);
                     } else {
                         existente.incluido = false;
+                        existente.excluidoManual = true;
                     }
                 }
             }
@@ -2824,27 +2848,48 @@
             renderCandidatosSede();
         }
 
+        /**
+         * Deja el equipo de la sede únicamente con los auditores que están
+         * disponibles para ella. Los que ya tienen una auditoría programada,
+         * los asignados a otra sede o los que no pueden asignarse quedan
+         * excluidos del equipo.
+         */
+        function reconciliarEquipoConDisponibles(disponibles) {
+            const ids = new Set((disponibles || []).map((item) => String(item.id_usuario)));
+            let excluidos = 0;
+            equipoSede.forEach((auditor, id) => {
+                if (auditor.excluidoManual) {
+                    auditor.incluido = false;
+                    return;
+                }
+                if (ids.has(id)) {
+                    auditor.incluido = true;
+                } else {
+                    auditor.incluido = false;
+                    excluidos += 1;
+                }
+            });
+            return excluidos;
+        }
+
         function renderCandidatosSede() {
             const contenedor = $("scheduleCandidates");
             if (!contenedor) return;
             contenedor.innerHTML = "";
             if (!candidatosSede.length) {
-                contenedor.innerHTML = '<div class="team-empty">No hay auditores disponibles para esta sede con los criterios indicados.</div>';
+                contenedor.innerHTML = '<div class="team-empty">No hay auditores disponibles para esta sede: todos tienen una auditoría programada, están asignados a otra sede o no cumplen las validaciones.</div>';
                 return;
             }
             candidatosSede.forEach((auditor) => {
                 const id = String(auditor.id_usuario);
                 const enEquipo = equipoSede.get(id);
                 const incluido = Boolean(enEquipo && enEquipo.incluido !== false);
-                const puedeSeleccionar = auditor.elegible || incluido;
                 const card = document.createElement("div");
-                card.className = `team-card${incluido ? " selected" : ""}${auditor.elegible ? "" : " ineligible"}`;
+                card.className = `team-card${incluido ? " selected" : ""}`;
                 card.dataset.candidatoId = id;
 
                 const etiquetas = [];
-                etiquetas.push(auditor.elegible
-                    ? '<span class="team-tag ok">Elegible para esta sede</span>'
-                    : '<span class="team-tag fail">No elegible</span>');
+                etiquetas.push('<span class="team-tag ok">Disponible para esta sede</span>');
                 etiquetas.push(auditor.competencia_norma
                     ? '<span class="team-tag ok">Competencia vigente</span>'
                     : '<span class="team-tag fail">Sin competencia vigente</span>');
@@ -2852,16 +2897,12 @@
                     ? '<span class="team-tag fail">Conflicto de interés</span>'
                     : '<span class="team-tag ok">Sin conflicto</span>');
                 if (auditor.ya_asignado) etiquetas.push('<span class="team-tag info">Ya asignado a la solicitud</span>');
-                if (auditor.ya_en_sede) etiquetas.push('<span class="team-tag info">Ya está en esta sede</span>');
                 if (auditor.disponible === true) etiquetas.push('<span class="team-tag ok">Disponible en la fecha</span>');
-                if (auditor.disponible === false) etiquetas.push('<span class="team-tag fail">Sin disponibilidad en la fecha</span>');
-                if (auditor.sin_cruce_horario === false) etiquetas.push('<span class="team-tag fail">Cruce de horario</span>');
 
                 const rolActual = enEquipo ? enEquipo.rol_auditor : rolPorDefecto(auditor.rol_auditor);
                 card.innerHTML = `
                     <div class="team-head">
                         <input type="checkbox" class="team-check" ${incluido ? "checked" : ""}
-                            ${puedeSeleccionar ? "" : "disabled"}
                             aria-label="Seleccionar ${esc(auditor.nombre || "auditor")}"
                             onchange="alternarCandidatoSede('${esc(id)}', this.checked)" />
                         <div>
@@ -2872,7 +2913,6 @@
                         </div>
                     </div>
                     <div class="team-checks">${etiquetas.join("")}</div>
-                    ${auditor.elegible ? "" : `<div class="team-note">${esc(auditor.motivo || "No cumple las condiciones de asignación.")}</div>`}
                     ${incluido ? `<div class="team-role">
                         <label>Rol en esta sede</label>
                         <select onchange="establecerRolEquipo('${esc(id)}', this.value, 'candidatos')">${opcionesRol(rolActual)}</select>
@@ -2884,10 +2924,6 @@
 
                 card.addEventListener("click", (event) => {
                     if (event.target.type === "checkbox" || event.target.closest(".team-role") || event.target.closest("button")) return;
-                    if (!puedeSeleccionar) {
-                        showNotice("scheduleNotice", "Este auditor no cumple las condiciones de elegibilidad para esta sede.", "error");
-                        return;
-                    }
                     alternarCandidatoSede(id, !incluido);
                 });
                 contenedor.appendChild(card);
@@ -2925,12 +2961,35 @@
                 paginaCandidatos = Number(data.page || 1);
                 totalPaginasCandidatos = Number(data.total_pages || 0);
                 totalCandidatos = Number(data.total || 0);
+                const noDisponibles = Number(data.total_no_disponibles || 0);
+                // El equipo de la sede queda solo con los auditores disponibles.
+                const excluidos = reconciliarEquipoConDisponibles(candidatosSede);
                 $("scheduleCandidatesInfo").textContent = totalCandidatos
-                    ? `Página ${paginaCandidatos} de ${totalPaginasCandidatos} · ${totalCandidatos} auditor(es) disponible(s)`
+                    ? `Página ${paginaCandidatos} de ${totalPaginasCandidatos} · ${totalCandidatos} auditor(es) disponible(s) para esta sede`
                     : "No hay auditores disponibles para esta sede.";
                 $("scheduleCandidatesPrev").disabled = paginaCandidatos <= 1;
                 $("scheduleCandidatesNext").disabled = paginaCandidatos >= totalPaginasCandidatos;
+                renderEquipoSede();
                 renderCandidatosSede();
+                if (excluidos > 0) {
+                    showNotice(
+                        "scheduleCandidatesNotice",
+                        `Se excluyeron ${excluidos} auditor(es) del equipo de esta sede porque ya tienen una auditoría programada, están asignados a otra sede o no cumplen las validaciones.`,
+                        "info"
+                    );
+                } else if (noDisponibles > 0) {
+                    showNotice(
+                        "scheduleCandidatesNotice",
+                        `${noDisponibles} auditor(es) no se muestran porque no están disponibles para esta sede.`,
+                        "info"
+                    );
+                } else {
+                    showNotice(
+                        "scheduleCandidatesNotice",
+                        `${totalCandidatos} auditor(es) disponible(s) para ${nombreSedeSeleccionada()}.`,
+                        "ok"
+                    );
+                }
             } catch (error) {
                 console.error(error);
                 candidatosSede = [];
