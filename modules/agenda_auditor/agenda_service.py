@@ -15,6 +15,10 @@ from modules.agenda_auditor.agenda_schema import (
     ProgramacionAuditoriaCrear,
     normalizar_dia,
 )
+from modules.asignacion_auditores.asignacion_service import (
+    CTE_AUDITORES,
+    ESTADOS_ASIGNACION_ACTIVOS,
+)
 
 
 class AgendaAuditorService(AuditorService):
@@ -92,6 +96,247 @@ class AgendaAuditorService(AuditorService):
     async def listar_asignaciones_programables_auditor(self, id_usuario: UUID):
         """Retorna las solicitudes aprobadas asignadas a un auditor específico."""
         return await self._listar_asignaciones_programables(id_usuario)
+
+    # ------------------------------------------------------------------
+    # AUDITORES DISPONIBLES PARA UNA SEDE
+    # ------------------------------------------------------------------
+    async def listar_auditores_disponibles_para_sede(
+        self,
+        id_solicitud: UUID,
+        id_sede: UUID | None = None,
+        fecha: date | None = None,
+        hora_inicio: time | None = None,
+        hora_fin: time | None = None,
+        *,
+        page: int = 1,
+        page_size: int = 12,
+        buscar: str | None = None,
+        ciudad: str | None = None,
+        modalidad: str | None = None,
+        competencia: str | None = None,
+        conflicto: str | None = None,
+    ) -> dict:
+        """
+        Lista los auditores que pueden asignarse a una sede concreta.
+
+        Reutiliza las validaciones de "Asignación de Auditores" (competencia
+        vigente en la norma y conflicto de interés) y añade las validaciones
+        propias de la Agenda (disponibilidad activa y cruces de horario)
+        cuando se informa la fecha/hora de la visita.
+
+        La lista no modifica ninguna asignación: solo informa qué auditores
+        están disponibles para la sede seleccionada.
+        """
+        solicitud_result = await self.db.execute(
+            text("""
+                SELECT s.id_solicitud, s.id_empresa, s.id_norma, s.estado
+                FROM solicitud s
+                WHERE s.id_solicitud = :id_solicitud
+            """),
+            {"id_solicitud": str(id_solicitud)},
+        )
+        solicitud = solicitud_result.mappings().first()
+        if not solicitud:
+            raise HTTPException(status_code=404, detail="La solicitud no existe.")
+        if not solicitud.get("id_empresa") or not solicitud.get("id_norma"):
+            return {
+                "items": [],
+                "page": 1,
+                "page_size": page_size,
+                "total": 0,
+                "total_pages": 0,
+            }
+
+        page = max(1, page)
+        page_size = min(100, max(1, page_size))
+        buscar = (buscar or "").strip() or None
+        ciudad = (ciudad or "").strip() or None
+        modalidad = (modalidad or "").strip() or None
+        competencia = (competencia or "").strip().lower() or None
+        conflicto = (conflicto or "").strip().lower() or None
+        if competencia not in (None, "si", "no"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El filtro competencia debe ser 'si' o 'no'.",
+            )
+        if conflicto not in (None, "si", "no"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El filtro conflicto debe ser 'si' o 'no'.",
+            )
+
+        params = {
+            "id_solicitud": str(id_solicitud),
+            "id_empresa": str(solicitud["id_empresa"]),
+            "id_norma": str(solicitud["id_norma"]),
+            "estados_activos": list(ESTADOS_ASIGNACION_ACTIVOS),
+            "buscar": buscar,
+            "ciudad": ciudad,
+            "modalidad": modalidad,
+            "competencia": competencia,
+            "conflicto": conflicto,
+        }
+        # El equipo que ya está en la sede no se vuelve a ofrecer.
+        if id_sede:
+            params["id_sede"] = str(id_sede)
+            sede_fragmento = """
+                    EXISTS (
+                        SELECT 1
+                        FROM detalle_programacion_auditor d
+                        INNER JOIN programacion_visita p
+                            ON p.id_programacion = d.id_programacion
+                        WHERE d.id_usuario = c.id_usuario
+                          AND p.id_sede = :id_sede
+                          AND UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN
+                              ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
+                    ) AS ya_en_sede
+            """
+        else:
+            sede_fragmento = """
+                    EXISTS (
+                        SELECT 1
+                        FROM detalle_programacion_auditor d
+                        INNER JOIN programacion_visita p
+                            ON p.id_programacion = d.id_programacion
+                        WHERE d.id_usuario = c.id_usuario
+                          AND p.id_sede IS NULL
+                          AND UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN
+                              ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
+                    ) AS ya_en_sede
+            """
+
+        filtros = """
+            WHERE (
+                CAST(:buscar AS TEXT) IS NULL
+                OR COALESCE(nombre, '') ILIKE '%' || CAST(:buscar AS TEXT) || '%'
+                OR COALESCE(correo, '') ILIKE '%' || CAST(:buscar AS TEXT) || '%'
+                OR COALESCE(tipo_doc, '') ILIKE '%' || CAST(:buscar AS TEXT) || '%'
+                OR COALESCE(num_doc, '') ILIKE '%' || CAST(:buscar AS TEXT) || '%'
+                OR CONCAT_WS(' ', tipo_doc, num_doc) ILIKE '%' || CAST(:buscar AS TEXT) || '%'
+            )
+              AND (
+                CAST(:ciudad AS TEXT) IS NULL
+                OR COALESCE(ciudad_residencia, '') ILIKE '%' || CAST(:ciudad AS TEXT) || '%'
+            )
+              AND (
+                CAST(:modalidad AS TEXT) IS NULL
+                OR LOWER(COALESCE(modalidad_preferida, '')) = LOWER(CAST(:modalidad AS TEXT))
+            )
+              AND (
+                CAST(:competencia AS TEXT) IS NULL
+                OR (CAST(:competencia AS TEXT) = 'si' AND competencia_norma = TRUE)
+                OR (CAST(:competencia AS TEXT) = 'no' AND competencia_norma = FALSE)
+            )
+              AND (
+                CAST(:conflicto AS TEXT) IS NULL
+                OR (CAST(:conflicto AS TEXT) = 'si' AND conflicto_interes = TRUE)
+                OR (CAST(:conflicto AS TEXT) = 'no' AND conflicto_interes = FALSE)
+            )
+        """
+        seleccion = (
+            CTE_AUDITORES
+            + " SELECT c.*, "
+            + sede_fragmento
+            + " FROM candidatos c "
+            + filtros
+        )
+
+        count_result = await self.db.execute(
+            text(CTE_AUDITORES + " SELECT COUNT(*) AS total FROM candidatos " + filtros),
+            params,
+        )
+        total = int(count_result.scalar_one() or 0)
+        total_pages = (total + page_size - 1) // page_size
+        if total_pages and page > total_pages:
+            page = total_pages
+        offset = (page - 1) * page_size
+
+        result = await self.db.execute(
+            text(seleccion + " ORDER BY nombre ASC LIMIT :limit OFFSET :offset"),
+            {**params, "limit": page_size, "offset": offset},
+        )
+
+        # Rango horario a validar (opcional).
+        inicio_consulta = datetime.combine(fecha, hora_inicio or time.min) if fecha else None
+        fin_consulta = datetime.combine(fecha, hora_fin or time.max) if fecha else None
+
+        items = []
+        for raw in result.mappings().all():
+            fila = dict(raw)
+            id_usuario = fila["id_usuario"]
+            competencia_norma = bool(fila["competencia_norma"])
+            conflicto_interes = bool(fila["conflicto_interes"])
+            ya_asignado = bool(fila["ya_asignado"])
+            ya_en_sede = bool(fila.get("ya_en_sede"))
+
+            disponible: bool | None = None
+            cruce: dict | None = None
+            if fecha is not None:
+                disponible = await self._tiene_disponibilidad_fecha(
+                    id_usuario, fecha, hora_inicio, hora_fin
+                )
+                if inicio_consulta is not None and fin_consulta is not None:
+                    cruce = await self._buscar_cruce(id_usuario, inicio_consulta, fin_consulta)
+
+            motivos = []
+            if not competencia_norma:
+                motivos.append("No tiene competencia vigente y validada para la norma de la solicitud.")
+            if conflicto_interes:
+                motivos.append("Tiene un conflicto de interés activo con la empresa.")
+            if ya_en_sede:
+                motivos.append("Ya está asignado a esta sede.")
+            if disponible is False:
+                motivos.append("No tiene disponibilidad activa para la fecha/hora seleccionada.")
+            if cruce:
+                motivos.append(
+                    "Tiene otra auditoría programada en ese horario "
+                    f"({cruce.get('empresa_nombre') or 'otra empresa'})."
+                )
+
+            elegible = (
+                competencia_norma
+                and not conflicto_interes
+                and not ya_en_sede
+                and disponible is not False
+                and not cruce
+            )
+
+            items.append({
+                "id_usuario": id_usuario,
+                "nombre": fila["nombre"],
+                "correo": fila["correo"],
+                "tipo_doc": fila["tipo_doc"],
+                "num_doc": fila["num_doc"],
+                "estado_usuario": fila["estado_usuario"],
+                "estado_auditor": fila["estado_auditor"],
+                "ciudad_residencia": fila["ciudad_residencia"],
+                "departamento_residencia": fila["departamento_residencia"],
+                "modalidad_preferida": fila["modalidad_preferida"],
+                "norma_codigo": fila.get("norma_codigo"),
+                "norma_nombre": fila.get("norma_nombre"),
+                "competencia_norma": competencia_norma,
+                "conflicto_interes": conflicto_interes,
+                "ya_asignado": ya_asignado,
+                "ya_en_sede": ya_en_sede,
+                "disponible": disponible,
+                "sin_cruce_horario": cruce is None if fecha is not None else None,
+                "conflicto_horario": cruce,
+                "elegible": elegible,
+                "motivo": (
+                    "Auditor elegible para esta sede. La disponibilidad y los cruces "
+                    "se validan al programar en Agenda."
+                    if elegible
+                    else " ".join(motivos)
+                ),
+            })
+
+        return {
+            "items": items,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": total_pages,
+        }
 
     async def _listar_asignaciones_programables(self, id_usuario: UUID | None):
         filtros = [
@@ -192,6 +437,7 @@ class AgendaAuditorService(AuditorService):
                     u.tipo_doc AS auditor_tipo_doc,
                     u.num_doc AS auditor_num_doc,
                     p.direccion_servicio,
+                    p.id_sede,
                     p.fecha_inicio,
                     p.fecha_fin,
                     p.modalidad,
@@ -296,6 +542,7 @@ class AgendaAuditorService(AuditorService):
                     s.numero_radicado,
                     e.nombre AS empresa_nombre,
                     e.direccion AS direccion_servicio,
+                    p.id_sede,
                     p.fecha_inicio,
                     p.fecha_fin,
                     p.modalidad,
@@ -490,6 +737,53 @@ class AgendaAuditorService(AuditorService):
         result = await self.db.execute(text(sql), params)
         return bool(result.scalar())
 
+    async def _validar_sede_disponible(
+        self,
+        id_solicitud: UUID,
+        id_sede: UUID | None,
+        fecha_inicio: datetime,
+        fecha_fin: datetime,
+        excluir_programacion: UUID | None = None,
+    ) -> None:
+        """
+        Impide programar una sede que ya tiene una visita vigente.
+
+        La programacion anterior debe cancelarse para poder reutilizar la sede.
+        """
+        params = {
+            "id_solicitud": str(id_solicitud),
+            "id_sede": str(id_sede) if id_sede else None,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "excluir": str(excluir_programacion) if excluir_programacion else None,
+        }
+        result = await self.db.execute(text("""
+            SELECT p.id_programacion, p.fecha_inicio, p.fecha_fin, p.estado,
+                   s.numero_radicado
+            FROM programacion_visita p
+            LEFT JOIN solicitud s ON s.id_solicitud = p.id_solicitud
+            WHERE UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN
+                  ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
+              AND (CAST(:id_sede AS UUID) IS NULL AND p.id_sede IS NULL
+                   OR p.id_sede = CAST(:id_sede AS UUID))
+              AND (CAST(:excluir AS UUID) IS NULL OR p.id_programacion <> CAST(:excluir AS UUID))
+            ORDER BY p.fecha_inicio
+            LIMIT 1
+        """), params)
+        conflicto = result.mappings().first()
+        if not conflicto:
+            return
+        nombre_sede = "la dirección principal de la empresa" if not id_sede else "la sede seleccionada"
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"No se puede programar: {nombre_sede} ya tiene una visita vigente "
+                f"({conflicto['numero_radicado'] or 'otra solicitud'}) el "
+                f"{conflicto['fecha_inicio'].strftime('%d/%m/%Y')}. "
+                "Cancela esa programación para poder utilizar la sede."
+            ),
+        )
+
     async def _buscar_cruce(
         self,
         id_usuario: UUID,
@@ -532,6 +826,36 @@ class AgendaAuditorService(AuditorService):
         row = result.mappings().first()
         return dict(row) if row else None
 
+    async def _registrar_asignacion_auditor(
+        self,
+        id_solicitud: UUID,
+        id_usuario: UUID,
+        rol_auditor: str | None,
+    ) -> None:
+        """
+        Registra la asignación de un auditor que se incorpora al equipo de
+        una sede concreta. Solo crea registros nuevos: nunca modifica las
+        asignaciones que ya existen para la solicitud.
+        """
+        await self.db.execute(
+            text("""
+                INSERT INTO auditores_solicitud (
+                    id, id_solicitud, id_auditor, especialidad, declaracion,
+                    fecha_inicio_planificada, fecha_fin_planificada, estado_asignacion
+                ) VALUES (
+                    :id, :id_solicitud, :id_auditor, :especialidad, TRUE,
+                    NULL, NULL, :estado_asignacion
+                )
+            """),
+            {
+                "id": str(uuid4()),
+                "id_solicitud": str(id_solicitud),
+                "id_auditor": str(id_usuario),
+                "especialidad": self._normalizar_rol_agenda(rol_auditor),
+                "estado_asignacion": "Agendada",
+            },
+        )
+
     async def crear_programacion(self, data: ProgramacionAuditoriaCrear) -> dict:
         """Crea la programación, las relaciones con cada auditor y sus notificaciones en una transacción."""
         id_programacion = uuid4()
@@ -557,6 +881,15 @@ class AgendaAuditorService(AuditorService):
                 raise HTTPException(status_code=404, detail="La solicitud no existe.")
             if str(solicitud["estado"] or "").strip().upper() != "APROBADO":
                 raise HTTPException(status_code=409, detail="Solo se puede programar una solicitud aprobada.")
+
+            # Una sede no puede recibir dos visitas vigentes: si ya tiene una
+            # programacion activa se rechaza hasta que se cancele esa.
+            await self._validar_sede_disponible(
+                data.id_solicitud,
+                data.id_sede,
+                data.fecha_inicio,
+                data.fecha_fin,
+            )
 
             # Valida cada auditor y su asignación.
             auditores_ok = []
@@ -594,10 +927,20 @@ class AgendaAuditorService(AuditorService):
                 )
                 asignacion = asignacion_result.mappings().first()
                 if not asignacion:
-                    raise HTTPException(
-                        status_code=409,
-                        detail=f"El auditor {id_usuario} debe estar asignado a esta solicitud antes de programar la visita.",
+                    # Flujo "Mostrar más auditores disponibles": el auditor se
+                    # incorpora al equipo de esta sede y se registra su
+                    # asignación. No se modifican las asignaciones existentes.
+                    if not data.asignar_auditores_adicionales:
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"El auditor {id_usuario} debe estar asignado a esta solicitud antes de programar la visita.",
+                        )
+                    await self._registrar_asignacion_auditor(
+                        id_solicitud=data.id_solicitud,
+                        id_usuario=id_usuario,
+                        rol_auditor=rol_solicitado,
                     )
+                    asignacion = {"especialidad": rol_solicitado, "estado_asignacion": "Agendada"}
 
                 tiene_disponibilidad = await self._tiene_disponibilidad_fecha(
                     id_usuario, fecha_programacion, data.fecha_inicio.time(), data.fecha_fin.time()

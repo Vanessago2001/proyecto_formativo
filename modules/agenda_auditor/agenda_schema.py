@@ -33,6 +33,10 @@ class ProgramacionAuditoriaCrear(BaseModel):
     modalidad: ModalidadAuditoria = "Presencial"
     fecha_inicio: datetime
     fecha_fin: datetime
+    # Flujo "Mostrar más auditores disponibles": permite incorporar al equipo
+    # de una sede concreta auditores que aún no estaban asignados a la
+    # solicitud. No modifica las asignaciones ni las sedes ya programadas.
+    asignar_auditores_adicionales: bool = False
 
     @model_validator(mode="after")
     def normalizar_auditores(self):

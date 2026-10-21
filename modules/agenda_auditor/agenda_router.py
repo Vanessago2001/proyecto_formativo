@@ -124,6 +124,49 @@ async def crear_programacion(
     return await AgendaAuditorService(db).crear_programacion(data)
 
 
+@router.get(
+    "/programacion/auditores-disponibles",
+    summary="Auditores disponibles para asignar a una sede concreta",
+)
+async def listar_auditores_disponibles_para_sede(
+    id_solicitud: UUID,
+    id_sede: UUID | None = Query(default=None),
+    fecha: date | None = Query(default=None),
+    hora_inicio: time | None = Query(default=None),
+    hora_fin: time | None = Query(default=None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(12, ge=1, le=100),
+    buscar: str | None = Query(default=None, max_length=120),
+    ciudad: str | None = Query(default=None, max_length=100),
+    modalidad: str | None = Query(default=None, max_length=40),
+    competencia: str | None = Query(default=None, pattern="^(si|no)$"),
+    conflicto: str | None = Query(default=None, pattern="^(si|no)$"),
+    usuario: dict = Depends(_validar_administrador),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Lista los auditores que pueden asignarse a la sede seleccionada.
+
+    Aplica las mismas validaciones de "Asignación de Auditores" (competencia
+    en la norma y conflicto de interés) y las de la Agenda (disponibilidad y
+    cruces de horario) cuando se informa la fecha/hora de la visita.
+    """
+    return await AgendaAuditorService(db).listar_auditores_disponibles_para_sede(
+        id_solicitud=id_solicitud,
+        id_sede=id_sede,
+        fecha=fecha,
+        hora_inicio=hora_inicio,
+        hora_fin=hora_fin,
+        page=page,
+        page_size=page_size,
+        buscar=buscar,
+        ciudad=ciudad,
+        modalidad=modalidad,
+        competencia=competencia,
+        conflicto=conflicto,
+    )
+
+
 @router.get("/{id_usuario}/disponibilidad")
 async def consultar_disponibilidad(
     id_usuario: UUID,
