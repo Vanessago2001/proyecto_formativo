@@ -645,8 +645,15 @@ class AgendaAuditorService(AuditorService):
         Si se indica `id_usuario` solo se devuelven las programaciones en las
         que ese auditor está asignado (alcance propio del auditor). La
         consulta usa siempre las fechas reales registradas en el sistema.
+
+        Solo se devuelven las programaciones vigentes: las canceladas o ya
+        ejecutadas quedan excluidas del listado.
         """
-        filtros = ["CAST(p.fecha_inicio AS DATE) >= (CURRENT_DATE + CAST(:dias AS INTEGER))"]
+        filtros = [
+            "CAST(p.fecha_inicio AS DATE) >= (CURRENT_DATE + CAST(:dias AS INTEGER))",
+            # Se excluyen las programaciones cerradas (canceladas o ejecutadas).
+            "UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'EJECUTADA', 'EJECUTADO')",
+        ]
         params: dict = {"dias": int(dias)}
         if id_usuario:
             filtros.append("d.id_usuario = :id_usuario")
