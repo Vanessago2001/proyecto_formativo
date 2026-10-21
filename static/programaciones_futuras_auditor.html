@@ -3,80 +3,1198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CertiSENA | Programaciones futuras del auditor</title>
+    <title>CertiSENA | Programaciones futuras</title>
     <link rel="stylesheet" href="/static/styles.css">
     <style>
-        .portal-shell { max-width:1100px; margin:0 auto; padding:28px; }
-        .header-logo { display:flex; align-items:center; gap:16px; }
-        .header-logo img { width:76px; height:auto; }
-        .header-logo h1 { font-size:30px; margin:0; }
-        .header-logo p { font-size:13px; opacity:.92; margin-top:6px; }
-        .card { background:#fff; border:1px solid #dbe4d4; border-radius:12px; padding:22px; margin-bottom:22px; box-shadow:0 2px 8px rgba(37,109,0,.06); }
-        .card-title { color:#256d00; font-size:20px; margin:0 0 14px; }
-        .help-text { color:#5f6f69; font-size:13px; margin-bottom:12px; }
-        .record-table-wrap { overflow-x:auto; border-radius:8px; border:1px solid #e5f0e1; }
-        .badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; }
-        .badge.programada { background:#e0f2fe; color:#0369a1; }
-        .badge.cancelada { background:#fee2e2; color:#991b1b; }
-        .back-button { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:6px; background:#e9eeea; color:#3f4942; text-decoration:none; font-weight:600; font-size:13px; }
-        .empty { text-align:center; padding:24px; color:#64748b; }
-        .mini-btn { padding:6px 10px; border-radius:6px; border:none; cursor:pointer; font-weight:600; font-size:11px; background:#3baa01; color:#fff; }
-        .footer { text-align:center; padding:18px 0; color:#64748b; font-size:12px; border-top:1px solid #dbe4d4; margin-top:28px; }
-        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); align-items:center; justify-content:center; z-index:9999; padding:18px; }
-        .modal.show { display:flex; }
-        .modal-card { background:#fff; border-radius:12px; width:min(600px,100%); max-height:90vh; overflow:auto; padding:24px; box-shadow:0 20px 50px rgba(0,0,0,.25); }
-        .modal-card h3 { color:#256d00; margin:0 0 14px; }
-        .modal-field { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb; }
-        .modal-field:last-child { border-bottom:0; }
-        .modal-field label { font-weight:700; color:#256d00; font-size:13px; }
-        .modal-field span { color:#334155; font-size:13px; text-align:right; max-width:60%; word-break:break-word; }
+
+        :root {
+            color-scheme: light;
+            --sena-green: #39a900;
+            --sena-green-dark: #256d00;
+            --sena-green-bright: #3baa01;
+            --sena-green-hover: #2f8f00;
+            --sena-green-light: #f1f8ed;
+            --bg: #f4f7f5;
+            --ink: #26352b;
+            --muted: #5f6f69;
+            --line: #dce5de;
+            --white: #fff;
+            --danger: #9d2b2b;
+            --shadow-card: 0 5px 20px rgba(32, 74, 25, .07);
+            --shadow-hover: 0 8px 24px rgba(32, 74, 25, .10);
+            --radius-card: 14px;
+            --radius-control: 8px;
+        }
+
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        /* =========================================================
+           HEADER
+        ========================================================= */
+        .login-header {
+            background: #3BAA01;
+            color: #fff;
+            padding: 20px clamp(18px, 4vw, 42px);
+        }
+
+        .login-header .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            max-width: 1360px;
+            margin: 0 auto;
+        }
+
+        .login-header .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .login-header .sena-blanco {
+            width: 72px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .login-header h1 {
+            margin: 0;
+            font-size: 26px;
+            line-height: 1.15;
+            letter-spacing: -.02em;
+        }
+
+        .login-header .subtitle {
+            margin: 4px 0 0;
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: .92;
+        }
+
+        .login-header .profile-link {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13.5px;
+            padding: 9px 15px;
+            border: 1px solid rgba(255, 255, 255, .35);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .08);
+            transition: .18s ease;
+        }
+
+        .login-header .profile-link:hover {
+            background: rgba(255, 255, 255, .18);
+            border-color: rgba(255, 255, 255, .55);
+        }
+
+        /* =========================================================
+           LAYOUT
+        ========================================================= */
+        .portal-shell {
+            width: 100%;
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 24px 24px 48px;
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 250px minmax(0, 1fr);
+            gap: 22px;
+            align-items: start;
+        }
+
+        /* =========================================================
+           SIDEBAR
+        ========================================================= */
+        .side {
+            position: sticky;
+            top: 20px;
+            align-self: start;
+            padding: 13px;
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+        }
+
+        .side h3 {
+            margin: 5px 12px 12px;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 800;
+        }
+
+        .side a {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 11px 12px;
+            margin: 2px 0;
+            color: #334155;
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.35;
+            border-left: 3px solid transparent;
+            border-radius: 0 9px 9px 0;
+            transition: background .18s ease, color .18s ease, border-color .18s ease;
+        }
+
+        .side a:hover {
+            background: #f6faf4;
+            color: var(--sena-green-dark);
+        }
+
+        .side a.active {
+            background: var(--sena-green-light);
+            color: var(--sena-green-dark);
+            border-left-color: var(--sena-green-bright);
+            font-weight: 750;
+        }
+
+        .side a .side-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 7px;
+            background: #eaf4e5;
+            color: var(--sena-green-dark);
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+            transition: .18s ease;
+        }
+
+        .side a.active .side-icon {
+            background: var(--sena-green-bright);
+            color: #fff;
+        }
+
+        .side .logout-link {
+            margin-top: 10px;
+            border-top: 1px solid #e8eee8;
+            padding-top: 14px;
+            color: #b42318;
+        }
+
+        .side .logout-link:hover {
+            background: #fff1f0;
+            color: #9f1d16;
+        }
+
+        .side .logout-link .side-icon {
+            background: #fde8e8;
+            color: #b42318;
+        }
+
+        /* =========================================================
+           CONTENIDO
+        ========================================================= */
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-width: 0;
+        }
+
+        .page-head {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .page-head-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--sena-green-dark);
+            background: #fff;
+            border: 1px solid #cfe3c5;
+            border-radius: 8px;
+            padding: 9px 15px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: .18s ease;
+        }
+
+        .back-link:hover {
+            background: var(--sena-green-light);
+            border-color: var(--sena-green);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(57, 169, 0, .10);
+        }
+
+        .page-head h1 {
+            margin: 0;
+            color: var(--sena-green-dark);
+            font-size: clamp(20px, 2vw, 25px);
+            font-weight: 800;
+            letter-spacing: -.02em;
+        }
+
+        .page-head p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13.5px;
+            line-height: 1.55;
+            max-width: 900px;
+        }
+
+        /* =========================================================
+           PANEL
+        ========================================================= */
+        .panel {
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            transition: box-shadow .25s ease, border-color .25s ease;
+        }
+
+        .panel:hover {
+            border-color: #d2e5c9;
+            box-shadow: var(--shadow-hover);
+        }
+
+        .panel-head {
+            padding: 17px 22px;
+            border-bottom: 1px solid #eef3ee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--sena-green-dark);
+            letter-spacing: -.01em;
+        }
+
+        .panel-head .pill {
+            display: inline-block;
+            background: #eaf4ed;
+            color: #205d35;
+            padding: 5px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: 750;
+        }
+
+        .panel-body {
+            padding: 22px;
+        }
+
+        .help-text {
+            color: var(--muted);
+            font-size: 12.5px;
+            line-height: 1.55;
+            margin: 0 0 14px;
+        }
+
+        /* =========================================================
+           FILTROS
+        ========================================================= */
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .filter-item label {
+            font-weight: 700;
+            font-size: 12.5px;
+            color: #33483c;
+            letter-spacing: .005em;
+        }
+
+        .form-control {
+            width: 100%;
+            height: 42px;
+            min-height: 42px;
+            padding: 0 12px;
+            border: 1px solid #d2ddd4;
+            border-radius: var(--radius-control);
+            font: inherit;
+            font-size: 13.5px;
+            color: var(--ink);
+            background: #fff;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+
+        .form-control:hover:not(:disabled) {
+            border-color: #a9c59d;
+        }
+
+        .form-control:focus {
+            outline: 3px solid rgba(59, 170, 1, .14);
+            border-color: var(--sena-green-bright);
+            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+        }
+
+        input[type="date"].form-control {
+            cursor: pointer;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: .65;
+            transition: opacity .15s ease;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+
+        /* =========================================================
+           BOTONES
+        ========================================================= */
+        .filter-actions {
+            display: flex;
+            gap: 9px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        button,
+        .mini-btn {
+            height: 42px;
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 18px;
+            border: 0;
+            border-radius: var(--radius-control);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-sizing: border-box;
+            white-space: nowrap;
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+        }
+
+        button.mini-btn,
+        .mini-btn {
+            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            color: #fff;
+            box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
+        }
+
+        /* Acciones siempre en un solo renglon */
+        .row-actions {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+
+        .record-table .row-actions .mini-btn {
+            height: 32px;
+            min-height: 32px;
+            padding: 0 11px;
+            font-size: 11.5px;
+            line-height: 1;
+            white-space: nowrap;
+            flex: 0 0 auto;
+            border: 0;
+        }
+
+        .record-table .row-actions .badge {
+            flex: 0 0 auto;
+        }
+
+        button.mini-btn:hover,
+        .mini-btn:hover {
+            background: linear-gradient(135deg, #2f8f00, #256d00);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(37, 109, 0, .22);
+        }
+
+        button.mini-btn:disabled,
+        .mini-btn:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Botón "Limpiar" gris */
+        button.mini-btn[style*="94a3b8"] {
+            background: #94a3b8 !important;
+            box-shadow: 0 3px 8px rgba(100, 116, 139, .18);
+        }
+
+        button.mini-btn[style*="94a3b8"]:hover {
+            background: #7d8ea3 !important;
+        }
+
+        /* Botón "Ver" de la tabla */
+        .mini-btn.view {
+            height: 32px;
+            min-height: 32px;
+            padding: 0 14px;
+            font-size: 11.5px;
+            background: var(--sena-green-bright);
+            box-shadow: 0 3px 8px rgba(59, 170, 1, .20);
+        }
+
+        .mini-btn.view:hover {
+            background: var(--sena-green-dark);
+            box-shadow: 0 4px 12px rgba(37, 109, 0, .24);
+        }
+
+        /* =========================================================
+           TABLA
+        ========================================================= */
+        .record-table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            scrollbar-width: thin;
+            scrollbar-color: #b8cdb0 #f3f6f1;
+        }
+
+        table.record-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1150px;
+        }
+
+        .record-table thead {
+            background: #f7faf8;
+        }
+
+        .record-table th {
+            padding: 12px 14px;
+            text-align: left;
+            color: #44574a;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .record-table td {
+            padding: 13px 14px;
+            color: #374151;
+            border-bottom: 1px solid #edf0ed;
+            font-size: 13px;
+            line-height: 1.5;
+            vertical-align: top;
+        }
+
+        .record-table tbody tr:hover {
+            background: #fafcf9;
+        }
+
+        .record-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .record-table .cell-meta {
+            display: block;
+            color: var(--muted);
+            font-size: 11.5px;
+            line-height: 1.45;
+            margin-top: 2px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 32px 20px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        /* =========================================================
+           BADGES
+        ========================================================= */
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 750;
+            white-space: nowrap;
+            letter-spacing: .01em;
+        }
+
+        .badge.programada { background: #e0f2fe; color: #0369a1; }
+        .badge.confirmada { background: #dcfce7; color: #166534; }
+        .badge.reprogramada { background: #fef3c7; color: #92400e; }
+        .badge.cancelada { background: #fee2e2; color: #991b1b; }
+        .badge.ejecutada { background: #e5e7eb; color: #374151; }
+        .badge.disponible { background: #dcfce7; color: #166534; }
+        .badge.no-disponible { background: #fee2e2; color: #991b1b; }
+        .motivo-bloqueo {
+            display: block;
+            margin-top: 4px;
+            font-size: 11.5px;
+            line-height: 1.4;
+            color: #991b1b;
+        }
+        .lista-dias-modal {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 7px;
+        }
+        .dia-modal {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #e1e9df;
+            background: #f8fafc;
+            font-size: 12px;
+        }
+        .dia-modal .dia-icono {
+            font-size: 13px;
+            font-weight: 800;
+        }
+        .dia-modal .dia-nombre {
+            font-weight: 700;
+            color: #26352b;
+        }
+        .dia-modal .dia-hora {
+            color: #5f6f69;
+            font-size: 11.5px;
+        }
+        .dia-modal .dia-motivo {
+            color: #991b1b;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+        .dia-modal.disponible {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .dia-modal.disponible .dia-icono {
+            color: #15803d;
+        }
+        .dia-modal.bloqueado {
+            background: #fef2f2;
+            border-color: #fbd5d5;
+        }
+        .dia-modal.bloqueado .dia-icono {
+            color: #b91c1c;
+        }
+        .fila-bloqueada { background: #fff7f6; }
+        .fila-bloqueada:hover { background: #ffeeec !important; }
+
+        /* =========================================================
+           MENSAJES
+        ========================================================= */
+        #mensaje {
+            display: none;
+            padding: 12px 15px;
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        /* =========================================================
+           PAGINACIÓN
+        ========================================================= */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            min-width: 38px;
+            height: 38px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd9cf;
+            background: #fff;
+            color: var(--sena-green-dark);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: .15s ease;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--sena-green-light);
+            border-color: var(--sena-green-bright);
+        }
+
+        .pagination button:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        .pagination span {
+            font-size: 13px;
+            color: var(--sena-green-dark);
+            font-weight: 700;
+            padding: 0 6px;
+        }
+
+        .pagination span.pagination-ellipsis {
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        /* =========================================================
+           MODAL
+        ========================================================= */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 35, 22, .55);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 18px;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal.show {
+            display: flex;
+            animation: fadeIn .18s ease both;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-card {
+            background: #fff;
+            border-radius: 14px;
+            width: min(820px, 100%);
+            max-height: 90vh;
+            overflow: auto;
+            padding: 0;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+            animation: popIn .22s ease both;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes popIn {
+            from { transform: translateY(8px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 22px;
+            border-bottom: 1px solid #e8eee8;
+            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            border-top-left-radius: 14px;
+            border-top-right-radius: 14px;
+        }
+
+        .modal-head h3 {
+            color: var(--sena-green-dark);
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -.01em;
+        }
+
+        .modal-close {
+            flex: 0 0 auto;
+            border: 0;
+            background: #f1f5f3;
+            color: #5f6f69;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: .15s ease;
+        }
+
+        .modal-close:hover {
+            background: #ffe2e2;
+            color: #b42318;
+        }
+
+        .modal-body {
+            padding: 20px 22px 22px;
+        }
+
+        /* Secciones del modal */
+        .modal-section {
+            margin-bottom: 20px;
+        }
+
+        .modal-section:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .modal-section-head {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e8eee8;
+        }
+
+        .modal-section-head::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sena-green-bright);
+            flex-shrink: 0;
+        }
+
+        .modal-section-head h4 {
+            margin: 0;
+            color: var(--sena-green-dark);
+            font-size: 12.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        /* Grid de campos como mini-cards */
+        .modal-fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 10px 12px;
+            border: 1px solid #e6ede6;
+            border-radius: 9px;
+            background: #fbfdfb;
+            min-width: 0;
+        }
+
+        .modal-field label {
+            font-weight: 700;
+            color: var(--muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin: 0;
+            min-width: 0;
+        }
+
+        .modal-field span {
+            color: var(--ink);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.45;
+            text-align: left;
+            overflow-wrap: anywhere;
+        }
+
+        /* Tarjetas de auditor */
+        .modal-auditor {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 12px;
+            border: 1px solid #e1eae2;
+            border-radius: 10px;
+            background: #fbfdfb;
+            margin-bottom: 8px;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .modal-auditor:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-auditor:hover {
+            border-color: #c7ddbe;
+            box-shadow: 0 3px 10px rgba(15, 35, 22, .04);
+        }
+
+        .modal-auditor-avatar {
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3baa01, #256d00);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: .02em;
+        }
+
+        .modal-auditor-body {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .modal-auditor-body strong {
+            color: var(--sena-green-dark);
+            font-size: 13.5px;
+            font-weight: 800;
+            overflow-wrap: anywhere;
+        }
+
+        .modal-auditor-meta {
+            color: var(--muted);
+            font-size: 11.5px;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+
+        .modal-auditor-role {
+            display: inline-block;
+            margin-top: 5px;
+            background: var(--sena-green-light);
+            color: var(--sena-green-dark);
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 10.5px;
+            font-weight: 750;
+            align-self: flex-start;
+        }
+
+        /* Select de exportación */
+        .modal-export-select {
+            width: 100%;
+            height: 42px;
+            min-height: 42px;
+            padding: 0 12px;
+            border: 1px solid #d2ddd4;
+            border-radius: var(--radius-control);
+            font: inherit;
+            font-size: 13.5px;
+            color: var(--ink);
+            background: #fff;
+            cursor: pointer;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .modal-export-select:hover {
+            border-color: #a9c59d;
+        }
+
+        .modal-export-select:focus {
+            border-color: var(--sena-green-bright);
+            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+        }
+
+        /* Botones del modal */
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 22px;
+            padding-top: 16px;
+            border-top: 1px solid #e8eee8;
+        }
+
+        .badge.confirmada { background: #dcfce7; color: #166534; }
+
+        .mini-btn.confirm {
+            background: #15803d;
+            border-color: #15803d;
+            color: #fff;
+        }
+        .mini-btn.confirm:hover { background: #166534; }
+
+        .mini-btn.reprogramar {
+            background: #b45309;
+            border-color: #b45309;
+            color: #fff;
+        }
+        .mini-btn.reprogramar:hover { background: #92400e; }
+
+        .btn-small {
+            height: 38px;
+            min-height: 38px;
+            padding: 0 16px;
+            border: 0;
+            border-radius: var(--radius-control);
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #fff;
+            white-space: nowrap;
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+        }
+
+        .btn-small:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-ver {
+            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            box-shadow: 0 4px 10px rgba(37, 109, 0, .20);
+        }
+
+        .btn-ver:hover {
+            box-shadow: 0 6px 14px rgba(37, 109, 0, .28);
+        }
+
+        .btn-editar {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, .20);
+        }
+
+        .btn-editar:hover {
+            box-shadow: 0 6px 14px rgba(37, 99, 235, .28);
+        }
+
+        .btn-cancelar {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            box-shadow: 0 4px 10px rgba(220, 38, 38, .20);
+        }
+
+        .btn-cancelar:hover {
+            box-shadow: 0 6px 14px rgba(220, 38, 38, .28);
+        }
+
+        /* =========================================================
+           FOOTER
+        ========================================================= */
+        .footer {
+            text-align: center;
+            padding: 18px 0;
+            color: #8a928c;
+            font-size: 12px;
+            border-top: 1px solid var(--line);
+            margin-top: 28px;
+        }
+
+        /* =========================================================
+           RESPONSIVE
+        ========================================================= */
+        @media (max-width: 1000px) {
+            .portal-grid { grid-template-columns: 1fr; }
+
+            .side {
+                position: static;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 5px;
+            }
+
+            .side h3 { grid-column: 1 / -1; }
+
+            .side a {
+                margin: 0;
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 8px;
+            }
+
+            .side a.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--sena-green-bright);
+            }
+
+            .side .logout-link {
+                border-top: 0;
+                margin-top: 0;
+                padding-top: 11px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .portal-shell { padding: 16px 12px 32px; }
+            .filters { grid-template-columns: 1fr; }
+            .panel-body { padding: 16px; }
+            .panel-head { padding: 14px 16px; }
+            .side { grid-template-columns: 1fr; }
+            .login-header .sena-blanco { width: 58px; }
+            .login-header h1 { font-size: 21px; }
+            .login-header .subtitle { font-size: 12px; }
+            .login-header .profile-link { font-size: 12px; padding: 7px 12px; }
+            .filter-actions button { width: 100%; }
+            .modal-body { padding: 16px; }
+            .modal-head { padding: 14px 16px; }
+            .modal-fields-grid { grid-template-columns: 1fr; }
+            .btn-small { width: 100%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    
     </style>
 </head>
 <body>
     <header class="login-header">
-        <div class="header-content header-logo">
-            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
-            <div>
-                <h1>CertiSENA</h1>
-                <p class="subtitle">Programaciones futuras del auditor</p>
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Programaciones futuras del auditor</p>
+                </div>
             </div>
+            <a class="profile-link" href="/profile">Mi perfil</a>
         </div>
     </header>
 
     <main class="portal-shell">
-        <div style="margin-bottom:18px;">
-            <a class="back-button" href="/auditor">Volver al Dashboard</a>
+        <div class="portal-grid">
+
+            <nav class="side" aria-label="Navegación de agenda">
+                <h3>Consulta de agenda</h3>
+
+                <a href="/consultar-auditorias-programadas">
+                    <span class="side-icon">1</span>
+                    <span>Consultar auditorías</span>
+                </a>
+
+                <a href="/programaciones-futuras-auditor" class="active">
+                    <span class="side-icon">2</span>
+                    <span>Programaciones futuras</span>
+                </a>
+            </nav>
+
+            <section class="content">
+
+                <div class="page-head">
+                    <div class="page-head-top">
+                        <a href="/auditor" class="back-link">
+                            <span aria-hidden="true">←</span> Volver al Dashboard
+                        </a>
+                    </div>
+                    <h1>Programaciones futuras</h1>
+                    <p>Consulta las auditorías que tienes programadas con siete días o más de anticipación a la fecha
+                        actual. Selecciona <strong>Ver detalles</strong> para consultar toda la información de la
+                        visita.</p>
+                </div>
+
+                <div id="mensaje"></div>
+
+                <!-- ================================================
+                     LISTADO DE PROGRAMACIONES FUTURAS
+                ================================================= -->
+                <section class="panel">
+                    <div class="panel-head">
+                        <h2>Auditorías programadas a partir de siete días</h2>
+                        <span class="pill" id="pillContador">Programaciones futuras</span>
+                    </div>
+                    <div class="panel-body">
+                        <p class="help-text" id="ayudaCriterio">
+                            Se muestran únicamente las auditorías en las que estás asignado y cuya fecha programada
+                            sea igual o superior a siete días después de la fecha actual.
+                        </p>
+                        <div class="record-table-wrap">
+                            <table class="record-table">
+                                <thead>
+                                    <tr>
+                                        <th>Solicitud aprobada / empresa</th>
+                                        <th>Tu rol</th>
+                                        <th>Estado</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rows"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="paginacion"></div>
+                        <p id="resumen" class="help-text" style="margin-top:12px;margin-bottom:0;"></p>
+                    </div>
+                </section>
+
+            </section>
         </div>
-
-        <div id="mensaje" style="display:none;padding:12px 14px;border-radius:8px;margin-bottom:16px;font-weight:600;"></div>
-
-        <section class="card">
-            <h2 class="card-title">Solicitudes asignadas sin programar</h2>
-            <p class="help-text">Aquí verás las solicitudes aprobadas donde ya estás asignado como auditor y aún no tienen programación de visita.</p>
-            <div class="record-table-wrap">
-                <table class="record-table">
-                    <thead>
-                        <tr>
-                            <th>Solicitud aprobada / empresa</th>
-                            <th>Tu rol</th>
-                            <th>Estado</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rows"></tbody>
-                </table>
-            </div>
-            <p id="resumen" class="help-text" style="margin-top:12px;"></p>
-        </section>
     </main>
 
-    <div class="modal" id="modalDetalle">
+    <!-- =========================================================
+         MODAL DE DETALLE DE LA PROGRAMACIÓN
+    ========================================================= -->
+    <div class="modal" id="modalDetalle" role="dialog" aria-modal="true" aria-labelledby="modalDetalleTitulo">
         <div class="modal-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-                <h3>Detalle de la solicitud asignada</h3>
-                <button type="button" onclick="cerrarModal()" style="border:none;background:#94a3b8;color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;">Cerrar</button>
+            <div class="modal-head">
+                <h3 id="modalDetalleTitulo">Detalle de la programación</h3>
+                <button type="button" class="modal-close" onclick="cerrarModal()" aria-label="Cerrar">&times;</button>
             </div>
-            <div id="modalBody"></div>
+            <div class="modal-body" id="modalBody"></div>
         </div>
     </div>
 
@@ -86,18 +1204,36 @@
 
     <script>
         const token = localStorage.getItem('access_token');
+        const DIAS_FUTURAS = 7;
         let usuarioId = null;
+        let programaciones = [];
+        let paginaActual = 1;
+        const porPagina = 10;
 
         function escapeHtml(v){ return (v===null||v===undefined)?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+        function sinDato(v){ return (v===null||v===undefined||String(v).trim()==='')?'No disponible':String(v); }
 
-        async function resolverUsuario() {
-            if (usuarioId) return usuarioId;
-            if (!token) return null;
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
-                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
-                return usuarioId;
-            } catch { return null; }
+        function formatDateTime(v) {
+            if (!v) return 'No disponible';
+            const d = new Date(v);
+            if (Number.isNaN(d.getTime())) return String(v);
+            return d.toLocaleString('es-CO', { dateStyle:'medium', timeStyle:'short' });
+        }
+
+        function formatDate(v) {
+            if (!v) return 'No disponible';
+            const d = new Date(v);
+            if (Number.isNaN(d.getTime())) return String(v);
+            return d.toLocaleDateString('es-CO', { dateStyle:'medium' });
+        }
+
+        function claseEstado(estado) {
+            const valor = String(estado || '').toLowerCase();
+            if (valor.includes('cancel')) return 'cancelada';
+            if (valor.includes('confirm')) return 'confirmada';
+            if (valor.includes('reprogram')) return 'reprogramada';
+            if (valor.includes('ejecut')) return 'ejecutada';
+            return 'programada';
         }
 
         function mostrarMensaje(texto, tipo) {
@@ -110,105 +1246,236 @@
             setTimeout(() => { el.style.display = 'none'; }, 5000);
         }
 
+        async function resolverUsuario() {
+            if (usuarioId) return usuarioId;
+            if (!token) return null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
+                return usuarioId;
+            } catch { return null; }
+        }
+
         async function cargarProgramaciones() {
             const uid = await resolverUsuario();
-            if (!uid) { mostrarMensaje('No se pudo identificar al auditor.', 'error'); return; }
+            const tbody = document.getElementById('rows');
+            if (!uid) {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="empty">No se pudo identificar al auditor.</td></tr>';
+                mostrarMensaje('No se pudo identificar al auditor autenticado.', 'error');
+                return;
+            }
+            if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="empty">Cargando programaciones futuras...</td></tr>';
             try {
-                const [asignacionesRes, programadasRes] = await Promise.all([
-                    fetch('/agenda-auditor/solicitudes-asignadas/' + encodeURIComponent(uid), { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } }),
-                    fetch('/agenda-auditor/' + encodeURIComponent(uid) + '/auditorias-programadas', { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } })
-                ]);
-                const asignacionesData = await asignacionesRes.json().catch(() => ({}));
-                const programadasData = await programadasRes.json().catch(() => ({}));
-
-                const programadas = Array.isArray(programadasData.auditorias) ? programadasData.auditorias : [];
-                const solicitudesProgramadas = new Set(programadas.map((item) => String(item.id_solicitud)));
-
-                const sourceRows = Array.isArray(asignacionesData.asignaciones) ? asignacionesData.asignaciones : [];
-                const grouped = new Map();
-                sourceRows.forEach((row, index) => {
-                    const requestId = row.id_solicitud || row.solicitud_id || row.idSolicitud || '';
-                    const key = requestId ? String(requestId) : `sin-solicitud-${index}`;
-                    if (!grouped.has(key)) {
-                        grouped.set(key, { ...row, id_solicitud: requestId || row.id_solicitud, auditores: [] });
-                    }
-                    const group = grouped.get(key);
-                    const nestedAuditors = Array.isArray(row.auditores) ? row.auditores : [row];
-                    nestedAuditors.forEach((auditor) => {
-                        const idUsuario = auditor.id_usuario || auditor.id_auditor || auditor.id_usuario_auditor;
-                        if (!idUsuario) return;
-                        if (!group.auditores.some((existing) => String(existing.id_usuario) === String(idUsuario))) {
-                            group.auditores.push({
-                                ...auditor,
-                                id_usuario: idUsuario,
-                                auditor_nombre: auditor.auditor_nombre || auditor.nombre || 'Auditor sin nombre',
-                                auditor_correo: auditor.auditor_correo || auditor.correo || '',
-                                auditor_tipo_doc: auditor.auditor_tipo_doc || auditor.tipo_doc || auditor.tipo_documento || '',
-                                auditor_num_doc: auditor.auditor_num_doc || auditor.num_doc || auditor.numero_documento || auditor.numero_doc || '',
-                                rol_auditor: auditor.rol_auditor || auditor.rol || 'Auditor',
-                                estado_asignacion: auditor.estado_asignacion || row.estado_asignacion || 'Agendada'
-                            });
-                        }
+                const res = await fetch(`/agenda-auditor/${encodeURIComponent(uid)}/programaciones-futuras?dias=${DIAS_FUTURAS}`, {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(typeof data.detail === 'string' ? data.detail : 'No fue posible consultar las programaciones futuras.');
+                }
+                const items = Array.isArray(data.programaciones) ? data.programaciones : [];
+                // Una fila por programación (en esta vista solo el propio auditor).
+                const grupos = new Map();
+                items.forEach((r) => {
+                    const key = String(r.id_programacion || r.id_solicitud + '|' + r.fecha_inicio);
+                    if (!grupos.has(key)) grupos.set(key, { ...r, equipo: [] });
+                    grupos.get(key).equipo.push({
+                        id_usuario: r.id_usuario,
+                        nombre: r.auditor_nombre,
+                        correo: r.auditor_correo,
+                        tipo_doc: r.auditor_tipo_doc,
+                        num_doc: r.auditor_num_doc,
+                        rol: r.rol_auditor,
+                        confirmado: r.auditor_confirmado === true || String(r.auditor_confirmado).toLowerCase() === 'true'
                     });
                 });
-
-                const misSolicitudes = Array.from(grouped.values()).filter((group) => {
-                    const auditores = group.auditores || [];
-                    return auditores.some((auditor) => String(auditor.id_usuario) === String(uid)) && !solicitudesProgramadas.has(String(group.id_solicitud));
-                });
-
-                window.__programacionesFuturas = misSolicitudes;
-                const tbody = document.getElementById('rows');
-                if (!misSolicitudes.length) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="empty">No tienes solicitudes asignadas sin programar.</td></tr>';
-                    document.getElementById('resumen').textContent = '';
-                    return;
-                }
-                tbody.innerHTML = misSolicitudes.map((group) => {
-                    const auditor = (group.auditores || []).find((item) => String(item.id_usuario) === String(uid)) || {};
-                    return `<tr>
-                        <td>${escapeHtml(group.numero_radicado || group.id_solicitud || '-')}<br><span class="help-text">${escapeHtml(group.empresa_nombre || '-')}</span></td>
-                        <td>${escapeHtml(auditor.rol_auditor || 'Auditor')}</td>
-                        <td><span class="badge programada">${escapeHtml(auditor.estado_asignacion || 'Agendada')}</span></td>
-                        <td class="row-actions">
-                            <button class="mini-btn" type="button" onclick="verDetalle('${escapeHtml(group.id_solicitud)}')">Ver</button>
-                        </td>
-                    </tr>`;
-                }).join('');
-                document.getElementById('resumen').textContent = `Total: ${misSolicitudes.length} solicitud(es) asignada(s) sin programar.`;
+                programaciones = Array.from(grupos.values());
+                paginaActual = 1;
+                renderizarPagina();
             } catch (error) {
-                console.error('No fue posible cargar las programaciones:', error);
-                document.getElementById('rows').innerHTML = '<tr><td colspan="4" class="empty">No se pudieron cargar las programaciones.</td></tr>';
+                console.error(error);
+                programaciones = [];
+                if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="empty">No se pudieron cargar las programaciones futuras.</td></tr>`;
+                document.getElementById('resumen').textContent = '';
+                document.getElementById('pillContador').textContent = 'Sin datos';
+                mostrarMensaje(error.message || 'No se pudieron cargar las programaciones futuras.', 'error');
             }
         }
 
-        function verDetalle(idSolicitud) {
-            const group = (window.__programacionesFuturas || []).find((item) => String(item.id_solicitud) === String(idSolicitud));
+        function renderizarPagina() {
+            const inicio = (paginaActual - 1) * porPagina;
+            const items = programaciones.slice(inicio, inicio + porPagina);
+            const tbody = document.getElementById('rows');
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty">No tienes solicitudes asignadas sin programar.</td></tr>';
+            } else {
+                tbody.innerHTML = items.map((r, idx) => `
+                    <tr>
+                        <td>
+                            <span class="cell-strong">${escapeHtml(r.numero_radicado || r.id_solicitud || 'No disponible')}</span>
+                            <span class="cell-meta">${escapeHtml(r.empresa_nombre || 'No disponible')}</span>
+                        </td>
+                        <td>${escapeHtml(r.rol_auditor || 'Auditor')}</td>
+                        <td><span class="badge ${claseEstado(r.estado)}">${escapeHtml(r.estado || 'No disponible')}</span></td>
+                        <td class="row-actions">
+                            <button class="mini-btn view" type="button" onclick="verDetalle('${escapeHtml(r.id_programacion || '')}')">Ver detalles</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            const totalPaginas = Math.max(1, Math.ceil(programaciones.length / porPagina));
+            document.getElementById('resumen').textContent = programaciones.length
+                ? `Mostrando ${items.length} de ${programaciones.length} programación(es) futura(s). Página ${paginaActual} de ${totalPaginas}.`
+                : '';
+            document.getElementById('pillContador').textContent = `${programaciones.length} ${programaciones.length === 1 ? 'programación' : 'programaciones'}`;
+            renderizarPaginacion(totalPaginas);
+        }
+
+        function renderizarPaginacion(totalPaginas) {
+            const cont = document.getElementById('paginacion');
+            if (totalPaginas <= 1) { cont.innerHTML = ''; return; }
+            let html = '';
+            html += `<button onclick="cambiarPagina(${paginaActual - 1})" ${paginaActual <= 1 ? 'disabled' : ''}>Anterior</button>`;
+            for (let i = 1; i <= totalPaginas; i++) {
+                if (i === paginaActual) {
+                    html += `<span style="font-weight:700;color:#256d00;padding:0 6px;">${i}</span>`;
+                } else if (i === 1 || i === totalPaginas || Math.abs(i - paginaActual) <= 2) {
+                    html += `<button onclick="cambiarPagina(${i})">${i}</button>`;
+                } else if (Math.abs(i - paginaActual) === 3) {
+                    html += `<span style="padding:0 4px;">...</span>`;
+                }
+            }
+            html += `<button onclick="cambiarPagina(${paginaActual + 1})" ${paginaActual >= totalPaginas ? 'disabled' : ''}>Siguiente</button>`;
+            cont.innerHTML = html;
+        }
+
+        function cambiarPagina(n) {
+            const totalPaginas = Math.max(1, Math.ceil(programaciones.length / porPagina));
+            if (n < 1 || n > totalPaginas) return;
+            paginaActual = n;
+            renderizarPagina();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ---------------------------------------------------------
+           MODAL DE DETALLE
+        --------------------------------------------------------- */
+        async function verDetalle(idProgramacion) {
             const modal = document.getElementById('modalDetalle');
             const body = document.getElementById('modalBody');
-            if (!group) {
-                body.innerHTML = '<p class="help-text">No se encontró la información de la solicitud.</p>';
+            if (!idProgramacion) {
+                body.innerHTML = '<p class="help-text">No se encontró la programación seleccionada.</p>';
                 modal.classList.add('show');
                 return;
             }
-            const auditor = (group.auditores || []).find((item) => String(item.id_usuario) === String(usuarioId)) || {};
-            body.innerHTML = `
-                <div class="modal-field"><label>Solicitud</label><span>${escapeHtml(group.numero_radicado || group.id_solicitud || '-')}</span></div>
-                <div class="modal-field"><label>Empresa</label><span>${escapeHtml(group.empresa_nombre || '-')}</span></div>
-                <div class="modal-field"><label>Tu rol</label><span>${escapeHtml(auditor.rol_auditor || 'Auditor')}</span></div>
-                <div class="modal-field"><label>Estado</label><span>${escapeHtml(auditor.estado_asignacion || 'Agendada')}</span></div>
-                <div class="modal-field"><label>Documento</label><span>${escapeHtml((auditor.auditor_tipo_doc || '') + ' ' + (auditor.auditor_num_doc || '-'))}</span></div>
-                <div class="modal-field"><label>Dirección de la empresa</label><span>${escapeHtml(group.empresa_direccion || '-')}</span></div>
-                <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(group.empresa_ciudad || '-')}</span></div>
-            `;
+            body.innerHTML = '<p class="help-text">Cargando detalle de la programación...</p>';
             modal.classList.add('show');
+            try {
+                const res = await fetch(`/agenda-auditor/programacion/${encodeURIComponent(idProgramacion)}/detalle`, {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(typeof data.detail === 'string' ? data.detail : 'No fue posible consultar el detalle.');
+                }
+                body.innerHTML = construirDetalle(data, (data.auditores || []).filter((a) => String(a.id_usuario) === String(usuarioId)));
+            } catch (error) {
+                console.error(error);
+                body.innerHTML = `<p class="help-text">${escapeHtml(error.message || 'No fue posible consultar el detalle de la programación.')}</p>`;
+            }
         }
 
+        function construirDetalle(data, auditores) {
+            const p = data.programacion || {};
+            const equipo = auditores || [];
+            const miRegistro = equipo[0] || {};
+            const esSede = Boolean(p.id_sede);
+
+            const bloqueSolicitud = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Solicitud y programación</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Solicitud</label><span>${escapeHtml(sinDato(p.numero_radicado))}</span></div>
+                        <div class="modal-field"><label>Identificador</label><span>${escapeHtml(sinDato(p.id_solicitud))}</span></div>
+                        <div class="modal-field"><label>Estado de la solicitud</label><span>${escapeHtml(sinDato(p.estado_solicitud))}</span></div>
+                        <div class="modal-field"><label>Fecha de la solicitud</label><span>${escapeHtml(formatDate(p.fecha_solicitud))}</span></div>
+                        <div class="modal-field"><label>Norma</label><span>${escapeHtml(sinDato([p.norma_codigo, p.norma_nombre].filter(Boolean).join(' - ')))}</span></div>
+                        <div class="modal-field"><label>Versión de la norma</label><span>${escapeHtml(sinDato(p.norma_version))}</span></div>
+                        <div class="modal-field"><label>Fecha de inicio</label><span>${escapeHtml(formatDateTime(p.fecha_inicio))}</span></div>
+                        <div class="modal-field"><label>Fecha de fin</label><span>${escapeHtml(formatDateTime(p.fecha_fin))}</span></div>
+                        <div class="modal-field"><label>Modalidad</label><span>${escapeHtml(sinDato(p.modalidad))}</span></div>
+                        <div class="modal-field"><label>Estado de la programación</label><span><span class="badge ${claseEstado(p.estado)}">${escapeHtml(sinDato(p.estado))}</span></span></div>
+                        <div class="modal-field"><label>Observación</label><span>${escapeHtml(sinDato(p.motivo_reprogramacion || p.motivo_cancelacion))}</span></div>
+                        <div class="modal-field"><label>Notificación enviada</label><span>${p.notificacion_enviada ? 'Sí' : 'No'}</span></div>
+                    </div>
+                </div>`;
+
+            const bloqueAuditor = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Información del auditor</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Nombre</label><span>${escapeHtml(sinDato(miRegistro.nombre))}</span></div>
+                        <div class="modal-field"><label>Documento</label><span>${escapeHtml(sinDato([miRegistro.tipo_doc, miRegistro.num_doc].filter(Boolean).join(' ')))}</span></div>
+                        <div class="modal-field"><label>Correo</label><span>${escapeHtml(sinDato(miRegistro.correo))}</span></div>
+                        <div class="modal-field"><label>Rol en la auditoría</label><span>${escapeHtml(sinDato(miRegistro.rol_auditor))}</span></div>
+                        <div class="modal-field"><label>Ciudad de residencia</label><span>${escapeHtml(sinDato(miRegistro.ciudad_residencia))}</span></div>
+                        <div class="modal-field"><label>Departamento</label><span>${escapeHtml(sinDato(miRegistro.departamento_residencia))}</span></div>
+                        <div class="modal-field"><label>Modalidad preferida</label><span>${escapeHtml(sinDato(miRegistro.modalidad_preferida))}</span></div>
+                        <div class="modal-field"><label>Confirmación</label><span>${miRegistro.confirmado ? 'Programación confirmada' : 'Pendiente de confirmación'}</span></div>
+                        <div class="modal-field"><label>Fecha de confirmación</label><span>${escapeHtml(sinDato(miRegistro.fecha_confirmacion ? formatDateTime(miRegistro.fecha_confirmacion) : ''))}</span></div>
+                    </div>
+                </div>`;
+
+            const bloqueEmpresa = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Información de la empresa</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Nombre</label><span>${escapeHtml(sinDato(p.empresa_nombre))}</span></div>
+                        <div class="modal-field"><label>NIT</label><span>${escapeHtml(sinDato(p.empresa_nit))}</span></div>
+                        <div class="modal-field"><label>Dirección</label><span>${escapeHtml(sinDato(p.empresa_direccion))}</span></div>
+                        <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(sinDato(p.empresa_ciudad))}</span></div>
+                        <div class="modal-field"><label>Correo</label><span>${escapeHtml(sinDato(p.empresa_correo))}</span></div>
+                        <div class="modal-field"><label>Estado</label><span>${escapeHtml(sinDato(p.empresa_estado))}</span></div>
+                    </div>
+                </div>`;
+
+            const bloqueSede = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Información de la sede</h4></div>
+                    ${esSede ? `
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Sede</label><span>${escapeHtml(sinDato(p.nombre_sede))}</span></div>
+                        <div class="modal-field"><label>Dirección</label><span>${escapeHtml(sinDato(p.sede_direccion))}</span></div>
+                        <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(sinDato(p.sede_ciudad))}</span></div>
+                        <div class="modal-field"><label>Departamento</label><span>${escapeHtml(sinDato(p.sede_departamento))}</span></div>
+                        <div class="modal-field"><label>País</label><span>${escapeHtml(sinDato(p.sede_pais))}</span></div>
+                        <div class="modal-field"><label>Sede principal</label><span>${p.sede_es_principal ? 'Sí' : 'No'}</span></div>
+                        <div class="modal-field"><label>Dirección de la visita</label><span>${escapeHtml(sinDato(p.direccion_servicio))}</span></div>
+                        <div class="modal-field"><label>Ciudad de la visita</label><span>${escapeHtml(sinDato(p.ciudad_servicio))}</span></div>
+                    </div>` : `
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Sede</label><span>La auditoría se realiza directamente en la empresa, sin sede específica.</span></div>
+                        <div class="modal-field"><label>Dirección de la visita</label><span>${escapeHtml(sinDato(p.direccion_servicio))}</span></div>
+                        <div class="modal-field"><label>Ciudad de la visita</label><span>${escapeHtml(sinDato(p.ciudad_servicio))}</span></div>
+                    </div>`}
+                </div>`;
+
+            return bloqueSolicitud + bloqueAuditor + bloqueEmpresa + bloqueSede;
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalDetalle').classList.remove('show');
+        }
+
+        document.getElementById('modalDetalle').addEventListener('click', (event) => {
+            if (event.target.id === 'modalDetalle') cerrarModal();
+        });
+
         (async function init() {
-            const uid = await resolverUsuario();
-            if (!uid) { mostrarMensaje('No se pudo identificar al auditor.', 'error'); return; }
+            if (!token) { location.href = '/login'; return; }
             await cargarProgramaciones();
         })();
     </script>
+    <script src="/static/session.js"></script>
 </body>
 </html>

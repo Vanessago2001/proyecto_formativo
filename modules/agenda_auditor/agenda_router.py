@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -98,6 +99,93 @@ async def listar_todas_programaciones(
     db: AsyncSession = Depends(get_db),
 ):
     return {"programaciones": await AgendaAuditorService(db).listar_todas_programaciones(desde, hasta, ciudad, modalidad, estado)}
+
+
+@router.get(
+    "/programaciones-futuras",
+    summary="Programaciones futuras (hoy + N días) de todos los auditores",
+)
+async def listar_programaciones_futuras(
+    dias: int = Query(7, ge=1, le=365, description="Días desde hoy a partir de los cuales se consideran futuras"),
+    estado: str | None = Query(None, max_length=40),
+    ciudad: str | None = Query(None, max_length=150),
+    modalidad: str | None = Query(None, max_length=40),
+    usuario: dict = Depends(_validar_administrador),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Programaciones cuya fecha de inicio sea igual o superior a hoy + `dias`.
+
+    Alcance administrativo: incluye la programación de todos los auditores.
+    """
+    return {
+        "programaciones": await AgendaAuditorService(db).listar_programaciones_futuras(
+            dias=dias, estado=estado, ciudad=ciudad, modalidad=modalidad
+        ),
+        "dias": dias,
+    }
+
+
+@router.get(
+    "/{id_usuario}/programaciones-futuras",
+    summary="Programaciones futuras asignadas a un auditor",
+)
+async def listar_programaciones_futuras_auditor(
+    id_usuario: UUID,
+    dias: int = Query(7, ge=1, le=365, description="Días desde hoy a partir de los cuales se consideran futuras"),
+    estado: str | None = Query(None, max_length=40),
+    ciudad: str | None = Query(None, max_length=150),
+    modalidad: str | None = Query(None, max_length=40),
+    usuario: dict = Depends(_validar_admin_o_propio_auditor),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Programaciones futuras del auditor indicado.
+
+    Un auditor solo puede consultar las suyas propias; el administrador puede
+    consultar las de cualquier auditor.
+    """
+    return {
+        "programaciones": await AgendaAuditorService(db).listar_programaciones_futuras(
+            dias=dias, id_usuario=id_usuario, estado=estado, ciudad=ciudad, modalidad=modalidad
+        ),
+        "dias": dias,
+    }
+
+
+@router.get(
+    "/programacion/{id_programacion}/detalle",
+    summary="Detalle completo de una programación",
+)
+async def detalle_programacion(
+    id_programacion: UUID,
+    usuario: dict = Depends(requiere_permiso("SOL-006")),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Detalle de la programación: solicitud, empresa, sede y auditores.
+
+    El administrador puede ver cualquier programación; el auditor solo las
+    que tiene asignadas.
+    """
+    if not _es_administrador(usuario):
+        id_autenticado = usuario.get("id_usuario")
+        asignado = await db.execute(
+            text("""
+                SELECT 1
+                FROM detalle_programacion_auditor
+                WHERE id_programacion = :id_programacion
+                  AND id_usuario = :id_usuario
+                LIMIT 1
+            """),
+            {"id_programacion": str(id_programacion), "id_usuario": str(id_autenticado)},
+        )
+        if not asignado.first():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo puedes consultar las programaciones donde estás asignado.",
+            )
+    return await AgendaAuditorService(db).consultar_detalle_programacion(id_programacion)
 
 @router.get("/auditores")
 async def listar_auditores(

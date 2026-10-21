@@ -1133,6 +1133,11 @@
                     <span class="side-icon">2</span>
                     <span>Solicitudes de reprogramación</span>
                 </a>
+
+                <a href="#futuras" data-vista="futuras">
+                    <span class="side-icon">3</span>
+                    <span>Programaciones futuras</span>
+                </a>
             </nav>
 
             <section class="content">
@@ -1274,6 +1279,38 @@
                     </div>
                 </section>
 
+                <!-- ================================================
+                     PROGRAMACIONES FUTURAS
+                ================================================= -->
+                <section class="panel" id="seccionFuturas" style="display:none;">
+                    <div class="panel-head">
+                        <h2 id="tituloFuturas">Programaciones futuras</h2>
+                        <span class="pill" id="pillFuturas">A partir de 7 días</span>
+                        <button type="button" class="mini-btn" style="margin-left:auto;" onclick="cargarProgramacionesFuturas()">Actualizar</button>
+                    </div>
+                    <div class="panel-body">
+                        <p class="help-text">
+                            Auditorías programadas cuya fecha de inicio sea igual o superior a siete días después de
+                            la fecha actual, con el equipo de auditores asignado a cada visita.
+                        </p>
+                        <div class="record-table-wrap">
+                            <table class="record-table">
+                                <thead>
+                                    <tr>
+                                        <th>Solicitud aprobada / empresa</th>
+                                        <th>Rol asignado</th>
+                                        <th>Estado</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rowsFuturas"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="paginacionFuturas"></div>
+                        <p id="resumenFuturas" class="help-text" style="margin-top:12px;margin-bottom:0;"></p>
+                    </div>
+                </section>
+
             </section>
         </div>
     </main>
@@ -1356,6 +1393,20 @@
         </div>
     </div>
 
+    <!-- =========================================================
+         MODAL DE DETALLE DE PROGRAMACIÓN FUTURA (vista admin)
+    ========================================================= -->
+    <div class="modal" id="modalDetalleFuturas" role="dialog" aria-modal="true"
+        aria-labelledby="modalDetalleFuturasTitulo">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3 id="modalDetalleFuturasTitulo">Detalle de la programación</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalFuturas()" aria-label="Cerrar">×</button>
+            </div>
+            <div class="modal-body" id="modalBodyFuturas"></div>
+        </div>
+    </div>
+
     <footer class="footer">
         © 2026 CertiSENA - SENA. Todos los derechos reservados.
     </footer>
@@ -1375,6 +1426,13 @@
             const d = new Date(v);
             if (Number.isNaN(d.getTime())) return String(v);
             return d.toLocaleString('es-CO', { dateStyle:'medium', timeStyle:'short' });
+        }
+
+        function formatDate(v) {
+            if (!v) return 'No disponible';
+            const d = new Date(v);
+            if (Number.isNaN(d.getTime())) return String(v);
+            return d.toLocaleDateString('es-CO', { dateStyle:'medium' });
         }
 
         function mostrarMensaje(texto, tipo) {
@@ -1529,13 +1587,35 @@
         let vistaAdmin = 'listado';
         let datosReprogramaciones = [];
 
+        /* =========================================================
+           PROGRAMACIONES FUTURAS (A PARTIR DE HOY + 7 DÍAS)
+        ========================================================== */
+        const DIAS_FUTURAS = 7;
+        let datosFuturas = [];
+        let paginaFuturas = 1;
+        const porPaginaFuturas = 10;
+
+        function sinDato(v) { return (v===null||v===undefined||String(v).trim()==='')?'No disponible':String(v); }
+
+        function claseEstadoFuturas(estado) {
+            const valor = String(estado || '').toLowerCase();
+            if (valor.includes('cancel')) return 'cancelada';
+            if (valor.includes('confirm')) return 'confirmada';
+            if (valor.includes('reprogram')) return 'reprogramada';
+            if (valor.includes('ejecut')) return 'ejecutada';
+            return 'programada';
+        }
+
         function mostrarVistaAdmin(vista) {
             vistaAdmin = vista;
             const esListado = vista === 'listado';
+            const esRepro = vista === 'reprogramaciones';
             const panelListado = document.getElementById('seccionListado');
             const panelRepro = document.getElementById('seccionReprogramaciones');
+            const panelFuturas = document.getElementById('seccionFuturas');
             if (panelListado) panelListado.style.display = esListado ? '' : 'none';
-            if (panelRepro) panelRepro.style.display = esListado ? 'none' : '';
+            if (panelRepro) panelRepro.style.display = esRepro ? '' : 'none';
+            if (panelFuturas) panelFuturas.style.display = vista === 'futuras' ? '' : 'none';
             document.querySelectorAll('.side a[data-vista]').forEach(enlace => {
                 enlace.classList.toggle('active', enlace.dataset.vista === vista);
             });
@@ -1544,14 +1624,228 @@
             if (h1) {
                 h1.textContent = esListado
                     ? 'Consultar auditorías programadas'
-                    : 'Solicitudes de reprogramación';
+                    : (vista === 'futuras' ? 'Programaciones futuras' : 'Solicitudes de reprogramación');
             }
             if (sub) {
                 sub.textContent = esListado
                     ? 'Consulta todas las programaciones registradas en el sistema.'
-                    : 'Revisa las visitas que los auditores solicitaron reprogramar y el motivo de cada solicitud.';
+                    : (vista === 'futuras'
+                        ? 'Consulta las auditorías programadas con siete días o más de anticipación y el equipo de auditores asignado a cada visita.'
+                        : 'Revisa las visitas que los auditores solicitaron reprogramar y el motivo de cada solicitud.');
             }
-            if (!esListado) cargarReprogramaciones();
+            if (esRepro) cargarReprogramaciones();
+            if (vista === 'futuras') cargarProgramacionesFuturas();
+        }
+
+        /* ---------------------------------------------------------
+           PROGRAMACIONES FUTURAS — ADMINISTRADOR
+        --------------------------------------------------------- */
+        async function cargarProgramacionesFuturas() {
+            const tbody = document.getElementById('rowsFuturas');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="4" class="empty">Cargando programaciones futuras...</td></tr>';
+            try {
+                const res = await fetch(`/agenda-auditor/programaciones-futuras?dias=${DIAS_FUTURAS}`, {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(typeof data.detail === 'string' ? data.detail : 'No fue posible consultar las programaciones futuras.');
+                }
+                const items = Array.isArray(data.programaciones) ? data.programaciones : [];
+                const grupos = new Map();
+                items.forEach((r) => {
+                    const key = String(r.id_programacion || r.id_solicitud + '|' + r.fecha_inicio);
+                    if (!grupos.has(key)) grupos.set(key, { ...r, equipo: [] });
+                    grupos.get(key).equipo.push({
+                        id_usuario: r.id_usuario,
+                        nombre: r.auditor_nombre,
+                        correo: r.auditor_correo,
+                        tipo_doc: r.auditor_tipo_doc,
+                        num_doc: r.auditor_num_doc,
+                        rol: r.rol_auditor,
+                        confirmado: r.auditor_confirmado === true || String(r.auditor_confirmado).toLowerCase() === 'true'
+                    });
+                });
+                datosFuturas = Array.from(grupos.values());
+                paginaFuturas = 1;
+                renderizarFuturas();
+            } catch (error) {
+                console.error(error);
+                datosFuturas = [];
+                tbody.innerHTML = '<tr><td colspan="4" class="empty">No se pudieron cargar las programaciones futuras.</td></tr>';
+                document.getElementById('resumenFuturas').textContent = '';
+                document.getElementById('pillFuturas').textContent = 'Sin datos';
+                mostrarMensaje(error.message || 'No se pudieron cargar las programaciones futuras.', 'error');
+            }
+        }
+
+        function renderizarFuturas() {
+            const inicio = (paginaFuturas - 1) * porPaginaFuturas;
+            const items = datosFuturas.slice(inicio, inicio + porPaginaFuturas);
+            const tbody = document.getElementById('rowsFuturas');
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty">No hay programaciones futuras registradas en el sistema.</td></tr>';
+            } else {
+                tbody.innerHTML = items.map((r, idx) => {
+                    const roles = Array.from(new Set((r.equipo || []).map((a) => a.rol).filter(Boolean)));
+                    return `<tr>
+                        <td>
+                            <span class="cell-strong">${escapeHtml(r.numero_radicado || r.id_solicitud || 'No disponible')}</span>
+                            <span class="cell-meta">${escapeHtml(r.empresa_nombre || 'No disponible')}</span>
+                        </td>
+                        <td>${escapeHtml(roles.length ? roles.join(', ') : (r.rol_auditor || 'Auditor'))}</td>
+                        <td><span class="badge ${claseEstadoFuturas(r.estado)}">${escapeHtml(r.estado || 'No disponible')}</span></td>
+                        <td class="row-actions">
+                            <button class="mini-btn view" type="button" onclick="verDetalleFuturas('${escapeHtml(r.id_programacion || '')}')">Ver detalles</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+            const totalPaginas = Math.max(1, Math.ceil(datosFuturas.length / porPaginaFuturas));
+            document.getElementById('resumenFuturas').textContent = datosFuturas.length
+                ? `Mostrando ${items.length} de ${datosFuturas.length} programación(es) futura(s). Página ${paginaFuturas} de ${totalPaginas}.`
+                : '';
+            document.getElementById('pillFuturas').textContent = `${datosFuturas.length} ${datosFuturas.length === 1 ? 'programación' : 'programaciones'}`;
+            renderizarPaginacionFuturas(totalPaginas);
+        }
+
+        function renderizarPaginacionFuturas(totalPaginas) {
+            const cont = document.getElementById('paginacionFuturas');
+            if (!cont) return;
+            if (totalPaginas <= 1) { cont.innerHTML = ''; return; }
+            let html = '';
+            html += `<button onclick="cambiarPaginaFuturas(${paginaFuturas - 1})" ${paginaFuturas <= 1 ? 'disabled' : ''}>Anterior</button>`;
+            for (let i = 1; i <= totalPaginas; i++) {
+                if (i === paginaFuturas) {
+                    html += `<span style="font-weight:700;color:#256d00;padding:0 6px;">${i}</span>`;
+                } else if (i === 1 || i === totalPaginas || Math.abs(i - paginaFuturas) <= 2) {
+                    html += `<button onclick="cambiarPaginaFuturas(${i})">${i}</button>`;
+                } else if (Math.abs(i - paginaFuturas) === 3) {
+                    html += `<span style="padding:0 4px;">...</span>`;
+                }
+            }
+            html += `<button onclick="cambiarPaginaFuturas(${paginaFuturas + 1})" ${paginaFuturas >= totalPaginas ? 'disabled' : ''}>Siguiente</button>`;
+            cont.innerHTML = html;
+        }
+
+        function cambiarPaginaFuturas(n) {
+            const totalPaginas = Math.max(1, Math.ceil(datosFuturas.length / porPaginaFuturas));
+            if (n < 1 || n > totalPaginas) return;
+            paginaFuturas = n;
+            renderizarFuturas();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function verDetalleFuturas(idProgramacion) {
+            const modal = document.getElementById('modalDetalleFuturas');
+            const body = document.getElementById('modalBodyFuturas');
+            if (!idProgramacion) {
+                body.innerHTML = '<p class="help-text">No se encontró la programación seleccionada.</p>';
+                modal.classList.add('show');
+                return;
+            }
+            body.innerHTML = '<p class="help-text">Cargando detalle de la programación...</p>';
+            modal.classList.add('show');
+            try {
+                const res = await fetch(`/agenda-auditor/programacion/${encodeURIComponent(idProgramacion)}/detalle`, {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(typeof data.detail === 'string' ? data.detail : 'No fue posible consultar el detalle.');
+                }
+                body.innerHTML = construirDetalleFuturas(data);
+            } catch (error) {
+                console.error(error);
+                body.innerHTML = `<p class="help-text">${escapeHtml(error.message || 'No fue posible consultar el detalle de la programación.')}</p>`;
+            }
+        }
+
+        function construirDetalleFuturas(data) {
+            const p = data.programacion || {};
+            const auditores = data.auditores || [];
+            const esSede = Boolean(p.id_sede);
+
+            function iniciales(nombre) {
+                const partes = String(nombre || 'A').trim().split(/\s+/).slice(0, 2);
+                return (partes.map((x) => (x[0] || '')).join('') || 'A').toUpperCase();
+            }
+
+            const bloqueSolicitud = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Solicitud y programación</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Solicitud</label><span>${escapeHtml(sinDato(p.numero_radicado))}</span></div>
+                        <div class="modal-field"><label>Identificador</label><span>${escapeHtml(sinDato(p.id_solicitud))}</span></div>
+                        <div class="modal-field"><label>Estado de la solicitud</label><span>${escapeHtml(sinDato(p.estado_solicitud))}</span></div>
+                        <div class="modal-field"><label>Fecha de la solicitud</label><span>${escapeHtml(p.fecha_solicitud ? formatDate(p.fecha_solicitud) : 'No disponible')}</span></div>
+                        <div class="modal-field"><label>Norma</label><span>${escapeHtml(sinDato([p.norma_codigo, p.norma_nombre].filter(Boolean).join(' - ')))}</span></div>
+                        <div class="modal-field"><label>Versión de la norma</label><span>${escapeHtml(sinDato(p.norma_version))}</span></div>
+                        <div class="modal-field"><label>Fecha de inicio</label><span>${escapeHtml(formatDateTime(p.fecha_inicio))}</span></div>
+                        <div class="modal-field"><label>Fecha de fin</label><span>${escapeHtml(formatDateTime(p.fecha_fin))}</span></div>
+                        <div class="modal-field"><label>Modalidad</label><span>${escapeHtml(sinDato(p.modalidad))}</span></div>
+                        <div class="modal-field"><label>Estado de la programación</label><span><span class="badge ${claseEstadoFuturas(p.estado)}">${escapeHtml(sinDato(p.estado))}</span></span></div>
+                        <div class="modal-field"><label>Observación</label><span>${escapeHtml(sinDato(p.motivo_reprogramacion || p.motivo_cancelacion))}</span></div>
+                        <div class="modal-field"><label>Notificación enviada</label><span>${p.notificacion_enviada ? 'Sí' : 'No'}</span></div>
+                    </div>
+                </div>`;
+
+            const bloqueAuditores = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Auditores asignados</h4></div>
+                    ${auditores.length ? auditores.map((a) => `
+                        <div class="modal-auditor">
+                            <div class="modal-auditor-avatar">${escapeHtml(iniciales(a.nombre))}</div>
+                            <div class="modal-auditor-body">
+                                <strong>${escapeHtml(sinDato(a.nombre))}</strong>
+                                <span class="modal-auditor-meta">${escapeHtml(sinDato([a.tipo_doc, a.num_doc].filter(Boolean).join(' ')))}</span>
+                                <span class="modal-auditor-meta">${escapeHtml(sinDato(a.correo))}</span>
+                                <span class="modal-auditor-meta">Ciudad: ${escapeHtml(sinDato(a.ciudad_residencia))} · Modalidad preferida: ${escapeHtml(sinDato(a.modalidad_preferida))}</span>
+                                <span class="modal-auditor-role">${escapeHtml(sinDato(a.rol_auditor))}${a.confirmado ? ' · Confirmado' : ' · Pendiente de confirmación'}</span>
+                            </div>
+                        </div>`).join('') : '<div class="empty" style="padding:16px;">Sin auditores registrados para esta programación.</div>'}
+                </div>`;
+
+            const bloqueEmpresa = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Información de la empresa</h4></div>
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Nombre</label><span>${escapeHtml(sinDato(p.empresa_nombre))}</span></div>
+                        <div class="modal-field"><label>NIT</label><span>${escapeHtml(sinDato(p.empresa_nit))}</span></div>
+                        <div class="modal-field"><label>Dirección</label><span>${escapeHtml(sinDato(p.empresa_direccion))}</span></div>
+                        <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(sinDato(p.empresa_ciudad))}</span></div>
+                        <div class="modal-field"><label>Correo</label><span>${escapeHtml(sinDato(p.empresa_correo))}</span></div>
+                        <div class="modal-field"><label>Estado</label><span>${escapeHtml(sinDato(p.empresa_estado))}</span></div>
+                    </div>
+                </div>`;
+
+            const bloqueSede = `
+                <div class="modal-section">
+                    <div class="modal-section-head"><h4>Información de la sede</h4></div>
+                    ${esSede ? `
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Sede</label><span>${escapeHtml(sinDato(p.nombre_sede))}</span></div>
+                        <div class="modal-field"><label>Dirección</label><span>${escapeHtml(sinDato(p.sede_direccion))}</span></div>
+                        <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(sinDato(p.sede_ciudad))}</span></div>
+                        <div class="modal-field"><label>Departamento</label><span>${escapeHtml(sinDato(p.sede_departamento))}</span></div>
+                        <div class="modal-field"><label>País</label><span>${escapeHtml(sinDato(p.sede_pais))}</span></div>
+                        <div class="modal-field"><label>Sede principal</label><span>${p.sede_es_principal ? 'Sí' : 'No'}</span></div>
+                        <div class="modal-field"><label>Dirección de la visita</label><span>${escapeHtml(sinDato(p.direccion_servicio))}</span></div>
+                        <div class="modal-field"><label>Ciudad de la visita</label><span>${escapeHtml(sinDato(p.ciudad_servicio))}</span></div>
+                    </div>` : `
+                    <div class="modal-fields-grid">
+                        <div class="modal-field"><label>Sede</label><span>La auditoría se realiza directamente en la empresa, sin sede específica.</span></div>
+                        <div class="modal-field"><label>Dirección de la visita</label><span>${escapeHtml(sinDato(p.direccion_servicio))}</span></div>
+                        <div class="modal-field"><label>Ciudad de la visita</label><span>${escapeHtml(sinDato(p.ciudad_servicio))}</span></div>
+                    </div>`}
+                </div>`;
+
+            return bloqueSolicitud + bloqueAuditores + bloqueEmpresa + bloqueSede;
+        }
+
+        function cerrarModalFuturas() {
+            document.getElementById('modalDetalleFuturas').classList.remove('show');
         }
 
         async function cargarReprogramaciones() {
@@ -2224,8 +2518,13 @@
 
         (async function init() {
             const uid = await resolverUsuario();
-            if (!uid) { mostrarMensaje('No se puede identificar al usuario.', 'error'); return; }
+            if (!uid) { mostrarMensaje('No se puede identificar el usuario.', 'error'); return; }
             await cargarDatos();
+            // Permite abrir directamente una vista concreta (#futuras, #reprogramaciones).
+            const hash = (location.hash || '').replace('#', '').trim();
+            if (hash === 'futuras' || hash === 'reprogramaciones') {
+                mostrarVistaAdmin(hash);
+            }
         })();
     </script>
 </body>

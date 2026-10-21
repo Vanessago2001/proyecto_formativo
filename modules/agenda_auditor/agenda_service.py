@@ -628,6 +628,209 @@ class AgendaAuditorService(AuditorService):
         )
         return [dict(row) for row in result.mappings().all()]
 
+    # ------------------------------------------------------------------
+    # PROGRAMACIONES FUTURAS
+    # ------------------------------------------------------------------
+    async def listar_programaciones_futuras(
+        self,
+        dias: int = 7,
+        id_usuario: UUID | None = None,
+        estado: str | None = None,
+        ciudad: str | None = None,
+        modalidad: str | None = None,
+    ) -> list[dict]:
+        """
+        Programaciones con fecha de inicio igual o superior a hoy + `dias`.
+
+        Si se indica `id_usuario` solo se devuelven las programaciones en las
+        que ese auditor está asignado (alcance propio del auditor). La
+        consulta usa siempre las fechas reales registradas en el sistema.
+        """
+        filtros = ["CAST(p.fecha_inicio AS DATE) >= (CURRENT_DATE + CAST(:dias AS INTEGER))"]
+        params: dict = {"dias": int(dias)}
+        if id_usuario:
+            filtros.append("d.id_usuario = :id_usuario")
+            params["id_usuario"] = str(id_usuario)
+        if estado and estado.strip():
+            filtros.append("UPPER(TRIM(COALESCE(p.estado, ''))) = UPPER(:estado)")
+            params["estado"] = estado.strip()
+        if ciudad and ciudad.strip():
+            filtros.append("LOWER(COALESCE(p.ciudad_servicio, '')) LIKE :ciudad")
+            params["ciudad"] = f"%{ciudad.strip().lower()}%"
+        if modalidad and modalidad.strip():
+            filtros.append("LOWER(COALESCE(p.modalidad, '')) = LOWER(:modalidad)")
+            params["modalidad"] = modalidad.strip()
+
+        result = await self.db.execute(
+            text(f"""
+                SELECT
+                    p.id_programacion,
+                    p.id_solicitud,
+                    s.numero_radicado,
+                    s.estado AS estado_solicitud,
+                    e.nombre AS empresa_nombre,
+                    e.nit AS empresa_nit,
+                    p.id_sede,
+                    se.nombre_sede,
+                    p.direccion_servicio,
+                    p.ciudad_servicio,
+                    p.fecha_inicio,
+                    p.fecha_fin,
+                    p.modalidad,
+                    p.estado,
+                    p.notificacion_enviada,
+                    p.estado_solicitud_reprogramacion,
+                    p.motivo_solicitud_reprogramacion,
+                    CASE
+                        WHEN UPPER(TRIM(COALESCE(p.estado_solicitud_reprogramacion, ''))) = 'RECHAZADA'
+                            THEN 'Reprogramación rechazada' || CASE
+                                WHEN p.motivo_solicitud_reprogramacion IS NOT NULL
+                                    THEN ': ' || p.motivo_solicitud_reprogramacion
+                                ELSE '' END
+                        WHEN UPPER(TRIM(COALESCE(p.estado_solicitud_reprogramacion, ''))) = 'APROBADA'
+                            THEN 'Reprogramación resuelta' || CASE
+                                WHEN p.motivo_solicitud_reprogramacion IS NOT NULL
+                                    THEN ': ' || p.motivo_solicitud_reprogramacion
+                                ELSE '' END
+                        ELSE p.motivo_reprogramacion
+                    END AS observacion_auditor,
+                    d.id_usuario,
+                    d.rol_auditor,
+                    d.horas_asignadas,
+                    COALESCE(d.confirmado, FALSE) AS auditor_confirmado,
+                    d.fecha_confirmacion,
+                    u.nombre AS auditor_nombre,
+                    u.correo AS auditor_correo,
+                    u.tipo_doc AS auditor_tipo_doc,
+                    u.num_doc AS auditor_num_doc,
+                    (
+                        SELECT COUNT(*) FROM detalle_programacion_auditor dt
+                        WHERE dt.id_programacion = p.id_programacion
+                    ) AS auditores_total,
+                    (
+                        SELECT COUNT(*) FROM detalle_programacion_auditor dc
+                        WHERE dc.id_programacion = p.id_programacion
+                          AND COALESCE(dc.confirmado, FALSE) = TRUE
+                    ) AS auditores_confirmados
+                FROM detalle_programacion_auditor d
+                INNER JOIN programacion_visita p
+                    ON p.id_programacion = d.id_programacion
+                LEFT JOIN solicitud s
+                    ON s.id_solicitud = p.id_solicitud
+                LEFT JOIN empresa e
+                    ON e.id_empresa = s.id_empresa
+                LEFT JOIN sede_empresa se
+                    ON se.id_sede = p.id_sede
+                LEFT JOIN usuario u
+                    ON u.id_usuario = d.id_usuario
+                WHERE {' AND '.join(filtros)}
+                ORDER BY p.fecha_inicio ASC, u.nombre ASC
+            """),
+            params,
+        )
+        return [dict(fila) for fila in result.mappings().all()]
+
+    async def consultar_detalle_programacion(self, id_programacion: UUID) -> dict:
+        """Detalle completo de una programación: solicitud, empresa, sede y auditores."""
+        result = await self.db.execute(
+            text("""
+                SELECT
+                    p.id_programacion,
+                    p.id_solicitud,
+                    p.id_empresa,
+                    p.id_sede,
+                    p.fecha_inicio,
+                    p.fecha_fin,
+                    p.modalidad,
+                    p.estado,
+                    p.direccion_servicio,
+                    p.ciudad_servicio,
+                    p.notificacion_enviada,
+                    p.anio_ciclo,
+                    p.motivo_reprogramacion,
+                    p.motivo_cancelacion,
+                    p.estado_solicitud_reprogramacion,
+                    p.motivo_solicitud_reprogramacion,
+                    s.numero_radicado,
+                    s.estado AS estado_solicitud,
+                    s.fecha AS fecha_solicitud,
+                    s.alcance_certificacion,
+                    s.numero_empleados,
+                    s.numero_sedes,
+                    s.persona_contacto,
+                    s.observaciones AS observaciones_solicitud,
+                    n.codigo AS norma_codigo,
+                    n.nombre AS norma_nombre,
+                    n.version AS norma_version,
+                    e.nombre AS empresa_nombre,
+                    e.nit AS empresa_nit,
+                    e.direccion AS empresa_direccion,
+                    e.ciudad AS empresa_ciudad,
+                    e.correo AS empresa_correo,
+                    e.estado AS empresa_estado,
+                    se.nombre_sede,
+                    se.direccion AS sede_direccion,
+                    se.ciudad AS sede_ciudad,
+                    se.departamento AS sede_departamento,
+                    se.pais AS sede_pais,
+                    se.es_principal AS sede_es_principal
+                FROM programacion_visita p
+                LEFT JOIN solicitud s
+                    ON s.id_solicitud = p.id_solicitud
+                LEFT JOIN empresa e
+                    ON e.id_empresa = s.id_empresa
+                LEFT JOIN norma n
+                    ON n.id_norma = s.id_norma
+                LEFT JOIN sede_empresa se
+                    ON se.id_sede = p.id_sede
+                WHERE p.id_programacion = :id_programacion
+            """),
+            {"id_programacion": str(id_programacion)},
+        )
+        fila = result.mappings().first()
+        if not fila:
+            raise HTTPException(status_code=404, detail="La programación no existe.")
+        programacion = dict(fila)
+
+        auditores_result = await self.db.execute(
+            text("""
+                SELECT
+                    d.id_usuario,
+                    d.rol_auditor,
+                    d.horas_asignadas,
+                    COALESCE(d.confirmado, FALSE) AS confirmado,
+                    d.fecha_confirmacion,
+                    u.nombre,
+                    u.correo,
+                    u.tipo_doc,
+                    u.num_doc,
+                    u.estado AS estado_usuario,
+                    u.estado_auditor,
+                    pr.ciudad_residencia,
+                    pr.departamento_residencia,
+                    pr.modalidad_preferida
+                FROM detalle_programacion_auditor d
+                INNER JOIN usuario u
+                    ON u.id_usuario = d.id_usuario
+                LEFT JOIN LATERAL (
+                    SELECT p2.ciudad_residencia, p2.departamento_residencia, p2.modalidad_preferida
+                    FROM perfil_auditor p2
+                    WHERE p2.id_usuario = u.id_usuario
+                    ORDER BY p2.id_postulacion DESC
+                    LIMIT 1
+                ) pr ON TRUE
+                WHERE d.id_programacion = :id_programacion
+                ORDER BY u.nombre ASC
+            """),
+            {"id_programacion": str(id_programacion)},
+        )
+        auditores = [dict(item) for item in auditores_result.mappings().all()]
+
+        return {
+            "programacion": programacion,
+            "auditores": auditores,
+        }
+
     async def consultar_auditorias_programadas(
         self,
         id_usuario: UUID,
