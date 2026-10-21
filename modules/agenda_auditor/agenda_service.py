@@ -405,7 +405,7 @@ class AgendaAuditorService(AuditorService):
                   WHERE nd.id_usuario = da.id_usuario
                     AND UPPER(TRIM(COALESCE(nd.estado, ''))) IN ('ACTIVO', 'ACTIVA')
                     AND LOWER(TRIM(COALESCE(nd.tipo_registro, ''))) IN
-                        ('no disponible', 'no_disponible', 'indisponible', 'bloqueo')
+                        ('no disponible', 'no_disponible', 'indisponible', 'bloqueo', 'bloqueo fecha')
                     AND CAST(nd.fecha_inicio AS DATE) <= :fecha
                     AND (nd.fecha_fin IS NULL OR CAST(nd.fecha_fin AS DATE) >= :fecha)
                     {bloqueo_time_clause}
@@ -1062,7 +1062,7 @@ class AgendaAuditorService(AuditorService):
                 WHERE nd.id_usuario = :id_usuario
                   AND UPPER(TRIM(COALESCE(nd.estado, ''))) IN ('ACTIVO', 'ACTIVA')
                   AND LOWER(TRIM(COALESCE(nd.tipo_registro, ''))) IN
-                      ('no disponible', 'no_disponible', 'indisponible', 'bloqueo')
+                      ('no disponible', 'no_disponible', 'indisponible', 'bloqueo', 'bloqueo fecha')
                   AND CAST(nd.fecha_inicio AS DATE) <= :fecha
                   AND (nd.fecha_fin IS NULL OR CAST(nd.fecha_fin AS DATE) >= :fecha)
                   {bloqueo_time_clause}
@@ -1878,10 +1878,12 @@ class AgendaAuditorService(AuditorService):
             result = await self.db.execute(text("""
                 INSERT INTO disponibilidad_auditor (
                     id_disponibilidad, id_usuario, tipo_registro, dia_semana,
-                    fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+                    fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado,
+                    id_programacion
                 ) VALUES (
                     :id_disponibilidad, :id_usuario, 'Bloqueo Fecha', :dia_semana,
-                    :fecha_inicio, :fecha_fin, NULL, NULL, :motivo, 'Activo'
+                    :fecha_inicio, :fecha_fin, NULL, NULL, :motivo, 'Activo',
+                    :id_programacion
                 )
                 RETURNING id_disponibilidad, id_usuario, tipo_registro, dia_semana,
                           fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
@@ -1892,6 +1894,7 @@ class AgendaAuditorService(AuditorService):
                 "fecha_fin": fin_dt,
                 "motivo": data.motivo.strip(),
                 "dia_semana": data.fecha_inicio.weekday() + 1,
+                "id_programacion": str(data.id_programacion) if data.id_programacion else None,
             })
             row = dict(result.mappings().one())
             await self._registrar_historial_disponibilidad(row, "REGISTRADA_NO_DISPONIBLE")
@@ -2346,13 +2349,14 @@ class AgendaAuditorService(AuditorService):
                     continue
                 tipo = str(registro.get("tipo_registro") or "").strip().lower()
                 dia_registro = self._etiqueta_dia_semana(registro.get("dia_semana"))
-                if tipo in {"no disponible", "no_disponible", "indisponible", "bloqueo"}:
+                if tipo in {"no disponible", "no_disponible", "indisponible", "bloqueo", "bloqueo fecha"}:
                     bloqueos.append(registro)
                 elif not dia_registro or normalizar_dia(dia_registro) == dia_nombre:
                     aplican.append(registro)
             # El bloqueo de fecha tiene prioridad visual sobre la regla semanal.
             if bloqueos:
                 aplican = bloqueos
+            # Las programaciones canceladas o finalizadas no ocupan el horario.
             auditorias_dia = [
                 item for item in auditorias
                 if isinstance(item.get("fecha_inicio"), datetime)
@@ -2361,6 +2365,8 @@ class AgendaAuditorService(AuditorService):
                     not isinstance(item.get("fecha_fin"), datetime)
                     or item["fecha_fin"].date() >= fecha_actual
                 )
+                and str(item.get("estado") or "").strip().upper()
+                not in ("CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO")
             ]
             dias.append({
                 "fecha": fecha_actual.isoformat(),
@@ -2681,10 +2687,12 @@ class AgendaAuditorService(AuditorService):
                 await self.db.execute(text("""
                     INSERT INTO disponibilidad_auditor (
                         id_disponibilidad, id_usuario, tipo_registro, dia_semana,
-                        fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado
+                        fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, estado,
+                        id_programacion
                     ) VALUES (
                         :id, :usuario, 'Bloqueo Fecha', :dia,
-                        :fecha_inicio, :fecha_fin, NULL, NULL, :motivo, 'Activo'
+                        :fecha_inicio, :fecha_fin, NULL, NULL, :motivo, 'Activo',
+                        :id_programacion
                     )
                 """), {
                     "id": str(uuid4()),
@@ -2693,6 +2701,7 @@ class AgendaAuditorService(AuditorService):
                     "fecha_inicio": datetime.combine(fecha, time.min),
                     "fecha_fin": datetime.combine(fecha, time.max),
                     "motivo": motivo.strip() or "Bloqueo por solicitud de reprogramación",
+                    "id_programacion": str(id_programacion),
                 })
                 detalle = f"Se bloqueó el día {fecha.strftime('%d/%m/%Y')} para el auditor."
             else:
@@ -2760,16 +2769,52 @@ class AgendaAuditorService(AuditorService):
                 WHERE d.id_programacion = :id
             """), {"id": str(id_programacion)})
             auditores = [UUID(str(row[0])) for row in detalles.all()]
-            # Notificar a cada auditor.
+            # Se liberan los bloqueos de fecha originados por esta programacion:
+            # el horario queda disponible para todos los auditores involucrados.
+            bloqueos = await self.db.execute(text("""
+                UPDATE disponibilidad_auditor
+                SET estado = 'Cancelado'
+                WHERE id_programacion = :id
+                  AND UPPER(TRIM(COALESCE(estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                RETURNING id_disponibilidad, id_usuario, fecha_inicio, fecha_fin, motivo
+            """), {"id": str(id_programacion)})
+            liberados = [dict(fila) for fila in bloqueos.mappings().all()]
+            for fila in liberados:
+                await self._registrar_historial_disponibilidad(
+                    {
+                        "id_disponibilidad": fila["id_disponibilidad"],
+                        "id_usuario": fila["id_usuario"],
+                        "tipo_registro": "Bloqueo Fecha",
+                        "fecha_inicio": fila["fecha_inicio"],
+                        "fecha_fin": fila["fecha_fin"],
+                        "motivo": fila["motivo"],
+                        "estado": "Cancelado",
+                    },
+                    "LIBERADA_POR_CANCELACION",
+                )
+            # Notificar a cada auditor (incluyendo la liberación del horario).
+            texto_liberacion = (
+                f" El horario bloqueado de esa visita quedó liberado y vuelve a estar disponible."
+                if liberados
+                else " El horario queda libre y no bloquea su agenda."
+            )
             for auditor_id in auditores:
                 await self._crear_notificacion(
                     id_programacion,
                     auditor_id,
                     "Auditoría cancelada",
-                    f"La auditoría programada fue cancelada. Motivo: {motivo.strip()}.",
+                    f"La auditoría programada fue cancelada. Motivo: {motivo.strip()}."
+                    + texto_liberacion,
                 )
             await self.db.commit()
-            return {"mensaje": "Programación cancelada; el intervalo ya no bloquea la agenda y se notificó a los auditores."}
+            mensaje = (
+                "Programación cancelada; el intervalo ya no bloquea la agenda y se notificó a los auditores."
+            )
+            if liberados:
+                mensaje += (
+                    f" Se liberó el horario bloqueado para {len(liberados)} auditor(es)."
+                )
+            return {"mensaje": mensaje, "bloqueos_liberados": len(liberados)}
         except HTTPException:
             await self.db.rollback()
             raise
