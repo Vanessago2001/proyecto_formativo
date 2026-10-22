@@ -37,6 +37,7 @@ from modules.asignacion_auditores.asignacion_router import router as asignacion_
 
 from modules.administrar_auditores.administrar_auditores_router import router as administrar_auditores_router
 from modules.auditores.auditor_router import router as auditor_router
+from modules.auditores.auditor_bootstrap import preparar_modulo_auditores
 from modules.competencias_auditor.competencias_router import router as competencias_auditor_router
 from modules.conflictos_auditor.conflictos_router import router as conflictos_auditor_router
 from modules.agenda_auditor.agenda_router import router as agenda_auditor_router
@@ -61,6 +62,11 @@ from modules.solicitudes.trazabilidad_router import router as trazabilidad_route
 from modules.solicitudes.calculo_router import router as calculo_router
 from modules.auditorias.auditoria_router import router as auditorias_router
 from modules.auditorias.auditoria_bootstrap import preparar_modulo_auditorias
+
+# ============================================================
+# M12 - REPORTES POR ROL
+# ============================================================
+from modules.reportes.reportes_router import router as reportes_router
 from modules.solicitudes.solicitud_bootstrap import preparar_modulo_solicitudes
 from modules.empresas.empresas_bootstrap import preparar_modulo_empresas
 
@@ -284,6 +290,7 @@ async def lifespan(app: FastAPI):
 
         await seed_initial_data()
         # Cada modulo prepara su parte de la base con su propia sesion.
+        await preparar_modulo_auditores()
         await preparar_modulo_agenda()
         await preparar_modulo_solicitudes()
         await preparar_modulo_auditorias()
@@ -367,6 +374,9 @@ app.include_router(calculo_router)
 
 # M7 - Auditorias
 app.include_router(auditorias_router)
+
+# M12 - Reportes por rol
+app.include_router(reportes_router)
 
 # M5 - Administrar Auditores
 app.include_router(administrar_auditores_router)
@@ -587,6 +597,12 @@ async def buscar_empresa_page(request: Request):
 async def revision_solicitudes_page(request: Request):
     """M5: Administración revisa las solicitudes radicadas y valida sus sedes."""
     return FileResponse("static/revision-solicitudes.html")
+
+
+@app.get("/reportes", response_class=HTMLResponse)
+async def reportes_page(request: Request):
+    """M12: el catálogo de reportes lo arma la API según el rol de la sesión."""
+    return FileResponse("static/reportes.html")
 
 
 # /buscar_empresa lo sirve modules/consultas_p/paginas_router.py: la página del

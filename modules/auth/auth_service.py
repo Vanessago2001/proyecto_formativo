@@ -17,7 +17,7 @@ from core.security import (
     verify_verification_code,
     validar_password_segura,
 )
-from core.datetime_utils import system_now_utc_naive
+from core.datetime_utils import system_now_utc, system_now_utc_naive
 
 from modules.auth.mail_service import MailService
 
@@ -53,6 +53,16 @@ class AuthService:
         fecha con zona horaria contra una sin ella.
         """
         return system_now_utc_naive()
+
+    def _ahora_utc(self) -> datetime:
+        """
+        Instante actual en UTC **con zona horaria**.
+
+        Se usa para escribir en columnas TIMESTAMPTZ: si se envia un valor
+        naive, el motor lo interpreta en la zona horaria local (Bogota) y
+        guarda el dato desplazado (por ejemplo, +5 horas).
+        """
+        return system_now_utc()
 
     def _a_naive_utc(self, valor: datetime) -> datetime:
         """
@@ -188,7 +198,7 @@ class AuthService:
                 nuevo_codigo = self._generar_codigo()
                 nuevo_codigo_hash = hash_verification_code(nuevo_codigo)
 
-                nueva_expiracion = self._ahora() + timedelta(minutes=5)
+                nueva_expiracion = self._ahora_utc() + timedelta(minutes=5)
 
                 await self.db.execute(
                     text("""
@@ -210,7 +220,7 @@ class AuthService:
 
                 await self.db.commit()
 
-                await MailService.enviar_codigo(
+                await MailService.enviar_codigo_verificacion(
                     destinatario=correo,
                     codigo=nuevo_codigo,
                 )
@@ -448,7 +458,8 @@ class AuthService:
                     # ----- FASE 1: enviar código de verificación al correo -----
                     codigo = self._generar_codigo()
                     codigo_hash = hash_verification_code(codigo)
-                    expira = ahora + timedelta(minutes=5)
+                    # TIMESTAMPTZ: se guarda con zona horaria para no desplazar la hora.
+                    expira = self._ahora_utc() + timedelta(minutes=5)
 
                     await self.db.execute(
                         text("""
@@ -462,7 +473,7 @@ class AuthService:
                         """),
                         {
                             "intentos": nuevos_intentos,
-                            "ultimo_intento": ahora,
+                            "ultimo_intento": self._ahora_utc(),
                             "codigo": codigo_hash,
                             "expira": expira,
                             "id_usuario": user["id_usuario"],
@@ -470,7 +481,7 @@ class AuthService:
                     )
                     await self.db.commit()
 
-                    await MailService.enviar_codigo(
+                    await MailService.enviar_codigo_verificacion(
                         destinatario=user["correo"],
                         codigo=codigo,
                     )
@@ -495,10 +506,10 @@ class AuthService:
                     )
 
                 # ----- FASE 2: enviar enlace de restablecimiento de contraseña -----
-                enlace = await self._crear_enlace_reset(user["id_usuario"], ahora)
+                enlace = await self._crear_enlace_reset(user["id_usuario"])
 
                 # Bloquear la cuenta temporalmente y limpiar contadores de intentos.
-                bloqueo = ahora + timedelta(minutes=TIEMPO_BLOQUEO_MINUTOS)
+                bloqueo = self._ahora_utc() + timedelta(minutes=TIEMPO_BLOQUEO_MINUTOS)
                 await self.db.execute(
                     text("""
                         UPDATE usuario
@@ -550,7 +561,7 @@ class AuthService:
                 """),
                 {
                     "intentos": nuevos_intentos,
-                    "ultimo_intento": ahora,
+                    "ultimo_intento": self._ahora_utc(),
                     "id_usuario": user["id_usuario"],
                 },
             )
@@ -837,7 +848,6 @@ class AuthService:
     async def _crear_enlace_reset(
         self,
         user_id,
-        ahora: datetime,
     ) -> str:
         """
         Genera un token seguro de un solo uso, lo guarda en la base de datos y
@@ -846,7 +856,8 @@ class AuthService:
         await self._ensure_reset_table()
 
         token = secrets.token_urlsafe(32)
-        expira = ahora + timedelta(minutes=RESET_TOKEN_MINUTOS)
+        # TIMESTAMPTZ: se guarda con zona horaria para no desplazar la hora.
+        expira = self._ahora_utc() + timedelta(minutes=RESET_TOKEN_MINUTOS)
 
         await self.db.execute(
             text("""
@@ -1035,8 +1046,7 @@ class AuthService:
         if not usuario:
             return mensaje_generico
 
-        ahora = self._ahora()
-        enlace = await self._crear_enlace_reset(usuario["id_usuario"], ahora)
+        enlace = await self._crear_enlace_reset(usuario["id_usuario"])
 
         await self.db.commit()
 

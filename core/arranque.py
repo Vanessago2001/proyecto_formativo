@@ -39,6 +39,7 @@ MARCA = RAIZ / "storage" / "arranque.json"
 # Archivos que preparan la base. Si cambia cualquiera, se vuelve a preparar.
 ARCHIVOS_DE_PREPARACION = (
     "main.py",
+    "modules/auditores/auditor_bootstrap.py",
     "modules/agenda_auditor/agenda_bootstrap.py",
     "modules/solicitudes/solicitud_bootstrap.py",
     "modules/auditorias/auditoria_bootstrap.py",

@@ -618,6 +618,30 @@ class MailService:
 
 
     # ============================================================
+    # CÓDIGO DE VERIFICACIÓN POR CORREO (FASE 1 DEL LOGIN)
+    # ============================================================
+    # Se envía cuando la contraseña se falla varios intentos seguidos.
+    # Reutiliza la plantilla del código de inicio de sesión.
+    # ============================================================
+
+    @staticmethod
+    async def enviar_codigo_verificacion(
+        destinatario: str,
+        codigo: str,
+    ):
+        """
+        Envía el código de 6 dígitos de verificación de la cuenta.
+        """
+        await MailService.enviar_codigo_login_mfa(
+            destinatario=destinatario,
+            codigo=codigo,
+        )
+
+    # Alias histórico: el método original se llamaba `enviar_codigo`.
+    # Se conserva para que ningún flujo antiguo vuelva a romperse.
+    enviar_codigo = enviar_codigo_verificacion
+
+    # ============================================================
     # DESACTIVAR MFA
     # ============================================================
 

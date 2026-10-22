@@ -427,6 +427,8 @@
             position: sticky;
             top: 20px;
             align-self: start;
+            /* FIX: Asegura que toda la barra lateral esté sobre el contenido */
+            z-index: 100;
         }
 
         /* El menú se reduce ligeramente, sin alterar el header. */
@@ -481,6 +483,82 @@
             color: #1b4b12;
             font-size: 13.5px;
             line-height: 1.6;
+        }
+
+        /* Clase utilitaria: oculta un bloque. La pagina usa ademas la
+           propiedad nativa `hidden`, que ya oculta por si sola. */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Aviso de postulación rechazada: habilita volver a diligenciar */
+        .aviso-repostulacion {
+            padding: 16px 18px;
+            margin: 18px 0 22px;
+            border: 1px solid #f4c7b8;
+            border-left: 4px solid #d97706;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #fffbeb, #ffffff);
+            color: #7c2d12;
+            font-size: 13.5px;
+            line-height: 1.6;
+        }
+
+        .aviso-repostulacion .aviso-repostulacion-titulo {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 800;
+            font-size: 13.5px;
+            color: #9a3412;
+        }
+
+        .aviso-repostulacion .aviso-repostulacion-observacion {
+            display: block;
+            margin-top: 8px;
+            padding: 9px 11px;
+            border-radius: 8px;
+            background: #fffbeb;
+            border: 1px solid #f6d3bd;
+            font-size: 12.5px;
+        }
+
+        .aviso-repostulacion .aviso-repostulacion-acciones {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 13px;
+        }
+
+        .btn-repostular {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            height: 38px;
+            padding: 0 16px;
+            border: 0;
+            border-radius: 8px;
+            background: var(--sena-green-bright);
+            color: #fff;
+            font: inherit;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .18s ease, opacity .18s ease;
+        }
+
+        .btn-repostular:hover:not(:disabled) {
+            background: var(--sena-green-hover);
+        }
+
+        .btn-repostular:disabled {
+            background: #a9c59d;
+            cursor: not-allowed;
+        }
+
+        .aviso-repostulacion .aviso-repostulacion-pista {
+            color: #8a5a3b;
+            font-size: 12.5px;
         }
 
         .form-section {
@@ -549,6 +627,9 @@
             border-radius: 9px;
             font-size: 13.5px;
             transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+            /* Prevenir que los selects nativos traspasen el dropdown */
+            position: relative;
+            z-index: 1;
         }
 
         .form-control:hover:not(:disabled):not([readonly]) {
@@ -1993,10 +2074,12 @@
 
 
         /* =====================================================
-       DROPDOWN "MI REGISTRO" (solo diseño, sin afectar la lógica)
+       DROPDOWN "MI REGISTRO" (Diseño profesional y z-index)
     ====================================================== */
         .side .dropdown-registro {
             position: relative;
+            z-index: 101;
+            /* Asegura que este contenedor esté sobre el contenido */
         }
 
         .side .dropdown-registro>a.menu-toggle {
@@ -2022,56 +2105,87 @@
         .side .dropdown-registro .dropdown-content {
             position: absolute;
             top: 0;
-            left: 100%;
-            margin-left: 6px;
-            min-width: 230px;
+            left: calc(100% + 10px);
+            /* Separación del botón */
+            min-width: 240px;
             display: flex;
             flex-direction: column;
-            gap: 1px;
-            padding: 7px;
+            gap: 2px;
+            padding: 8px;
             background: #ffffff;
             border: 1px solid var(--portal-border);
             border-radius: 12px;
-            box-shadow: 0 14px 34px rgba(15, 35, 22, .14);
+            box-shadow: 0 10px 40px rgba(15, 35, 22, .18);
+            /* Sombra más fuerte para separar del form */
             opacity: 0;
             visibility: hidden;
-            transform: translateX(-6px);
-            transition: opacity .18s ease, transform .18s ease, visibility .18s ease;
-            z-index: 100;
+            transform: translateX(-10px) translateZ(0);
+            /* translateZ arregla el bug de los selects nativos */
+            transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 9999;
+            /* Por encima de todo */
             pointer-events: none;
+            isolation: isolate;
+        }
+
+        /* Flecha del tooltip */
+        .side .dropdown-registro .dropdown-content::before {
+            content: "";
+            position: absolute;
+            top: 16px;
+            left: -6px;
+            width: 10px;
+            height: 10px;
+            background: #ffffff;
+            border-left: 1px solid var(--portal-border);
+            border-bottom: 1px solid var(--portal-border);
+            transform: rotate(45deg);
+            z-index: 1;
+        }
+
+        /* Puente invisible para evitar que el menú se cierre al mover el ratón */
+        .side .dropdown-registro .dropdown-content::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -15px;
+            width: 15px;
+            height: 100%;
         }
 
         .side .dropdown-registro:hover .dropdown-content,
         .side .dropdown-registro:focus-within .dropdown-content {
             opacity: 1;
             visibility: visible;
-            transform: translateX(0);
+            transform: translateX(0) translateZ(0);
             pointer-events: auto;
         }
 
         .side .dropdown-registro .dropdown-content a {
-            display: block;
-            padding: 9px 12px;
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
             margin: 0;
             color: #334155;
             font-size: 13px;
-            line-height: 1.35;
+            font-weight: 500;
+            line-height: 1.4;
             text-decoration: none;
+            border-radius: 8px;
+            border-left: none;
+            /* Quitamos la línea para look flotante */
+            transition: background .15s ease, color .15s ease;
             white-space: nowrap;
-            border-left: 3px solid transparent;
-            border-radius: 0 9px 9px 0;
-            transition: background .15s ease, color .15s ease, border-color .15s ease;
         }
 
         .side .dropdown-registro .dropdown-content a:hover {
-            background: #f8fafc;
+            background: var(--sena-green-soft);
             color: var(--sena-green);
         }
 
         .side .dropdown-registro .dropdown-content a.active {
             color: var(--sena-green);
             background: var(--sena-green-soft);
-            border-left-color: var(--sena-green-bright);
             font-weight: 700;
         }
 
@@ -2083,7 +2197,16 @@
             font-weight: 700;
         }
 
-        /* Adaptación móvil: el dropdown se muestra inline */
+        /* Cierre explícito del desplegable "Mi registro" */
+        .side .dropdown-registro.cerrado .dropdown-content {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-10px) translateZ(0);
+            pointer-events: none;
+            transition-duration: 0.15s;
+        }
+
+        /*         /* Adaptación móvil: el dropdown se muestra inline */
         @media (max-width: 720px) {
             .side .dropdown-registro {
                 grid-column: 1 / -1;
@@ -2118,6 +2241,12 @@
                 display: none;
             }
 
+            .side .dropdown-registro .dropdown-content::before,
+            .side .dropdown-registro .dropdown-content::after {
+                display: none;
+                /* Ocultar flecha y puente en móvil */
+            }
+
             .side .dropdown-registro:hover .dropdown-content,
             .side .dropdown-registro:focus-within .dropdown-content {
                 display: flex;
@@ -2127,6 +2256,7 @@
                 white-space: normal;
                 border-left: 3px solid transparent;
                 border-radius: 0 8px 8px 0;
+                padding: 8px 10px;
             }
         }
     </style>
@@ -2230,6 +2360,8 @@
 
             <a href="/catalogo-competencias-auditor">Catálogo de competencias</a>
 
+            <a href="/reportes">Reportes</a>
+
             <a id="logout" href="/login">
                 Cerrar sesión
             </a>
@@ -2255,6 +2387,24 @@
 
             <div class="notice" id="estado-alerta">
                 Cargando estado del registro...
+            </div>
+
+            <!-- =====================================================
+       AVISO DE POSTULACIÓN RECHAZADA: PERMITE VOLVER A DILIGENCIAR
+    ====================================================== -->
+            <div class="aviso-repostulacion" id="avisoRepostulacion" role="status" aria-live="polite" hidden>
+                <span class="aviso-repostulacion-titulo" id="avisoRepostulacionTitulo">Su postulación fue rechazada</span>
+                <span id="avisoRepostulacionTexto">
+                    Puede diligenciar de nuevo el formulario: la información ya registrada se conserva y solo deberá
+                    corregir lo observado y volver a adjuntar los soportes.
+                </span>
+                <span class="aviso-repostulacion-observacion" id="avisoRepostulacionObservacion" hidden></span>
+                <div class="aviso-repostulacion-acciones">
+                    <button type="button" class="btn-repostular" id="btnNuevaPostulacionRegistro">
+                        Diligenciar de nuevo el formulario
+                    </button>
+                    <span class="aviso-repostulacion-pista" id="avisoRepostulacionPista"></span>
+                </div>
             </div>
 
             <div id="panelInicio" class="panel-inicio">
@@ -2395,7 +2545,7 @@
                             Modalidad preferida <span>*</span>
                         </label>
 
-                        <select id="modalidad_preferida" name="modalidad_preferida" class="form-control" required>
+                        <select id="modalidad_preferida" data-cierra-dropdown="mi-registro" name="modalidad_preferida" class="form-control" required>
 
                             <option value="">
                                 Seleccione...
@@ -2480,7 +2630,7 @@
                             Tipo Competencia <span>*</span>
                         </label>
 
-                        <select id="tipo_competencia" name="tipo_competencia" class="form-control" required>
+                        <select id="tipo_competencia" data-cierra-dropdown="mi-registro" name="tipo_competencia" class="form-control" required>
 
                             <option value="">
                                 Seleccione un tipo de competencia
@@ -2527,7 +2677,7 @@
                             Norma <span>*</span>
                         </label>
 
-                        <select id="id_norma" name="id_norma" class="form-control" required>
+                        <select id="id_norma" data-cierra-dropdown="mi-registro" name="id_norma" class="form-control" required>
 
                             <option value="">
                                 Cargando normas...
@@ -2664,7 +2814,7 @@
                         </div>
                         <div class="form-group">
                             <label for="titulo_nivel">Nivel académico</label>
-                            <select id="titulo_nivel" class="form-control">
+                            <select id="titulo_nivel" data-cierra-dropdown="mi-registro" class="form-control">
                                 <option value="">Seleccione...</option>
                                 <option value="Técnico">Técnico</option>
                                 <option value="Tecnólogo">Tecnólogo</option>
@@ -2824,7 +2974,8 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="tipoDocumentoSoporte">Tipo de documento <span>*</span></label>
-                            <select id="tipoDocumentoSoporte" class="form-control" required>
+                            <select id="tipoDocumentoSoporte" data-cierra-dropdown="mi-registro" class="form-control"
+                                required disabled title="Verificando el estado de la postulación…">
                                 <option value="">Seleccione...</option>
                                 <option value="Hoja de Vida">Hoja de Vida</option>
                                 <option value="Título">Título</option>
@@ -2836,12 +2987,14 @@
                         <div class="form-group">
                             <label for="archivoSoporte">Archivo <span>*</span></label>
                             <input type="file" id="archivoSoporte" class="form-control"
-                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" disabled
+                                title="Verificando el estado de la postulación…">
                             <span class="help-text">Formatos admitidos: PDF, DOC, DOCX, JPG, PNG o WEBP.</span>
                         </div>
                     </div>
 
-                    <button type="button" id="btnAdjuntarDocumento" class="btn-save-section">📎 Cargar
+                    <button type="button" id="btnAdjuntarDocumento" class="btn-save-section" disabled
+                        title="Verificando el estado de la postulación…">📎 Cargar
                         documento</button>
                 </div>
 
@@ -2888,7 +3041,7 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="id_empresa">Empresa relacionada <span>*</span></label>
-                            <select id="id_empresa" name="id_empresa" class="form-control">
+                            <select id="id_empresa" data-cierra-dropdown="mi-registro" name="id_empresa" class="form-control">
                                 <option value="">Cargando empresas...</option>
                             </select>
                             <span class="help-text">Seleccione la empresa con la que podría existir un conflicto de
@@ -2897,7 +3050,7 @@
 
                         <div class="form-group">
                             <label for="tipo_conflicto">Tipo de conflicto <span>*</span></label>
-                            <select id="tipo_conflicto" name="tipo_conflicto" class="form-control">
+                            <select id="tipo_conflicto" data-cierra-dropdown="mi-registro" name="tipo_conflicto" class="form-control">
                                 <option value="">Seleccione el tipo</option>
                                 <option value="Exempleado">Exempleado</option>
                                 <option value="Asesoría Previa">Asesoría Previa</option>
@@ -3032,6 +3185,10 @@
         let fotoProfesionalUrl = '';
         // Estado de la postulación actual
         let registroCanceladoORechazado = false;
+        // Estado de la postulación que se está editando y permisos derivados.
+        let estadoPostulacionCargada = '';
+        let estadoAuditorCargado = '';
+        let permisosAdjuntarDocumentos = { permitido: true, motivo: '' };
 
         const token = localStorage.getItem('access_token');
 
@@ -3443,8 +3600,131 @@
             );
 
         }
-        function obtenerControlesFormulario(form) {
+        /* =====================================================
+           AVISO DE POSTULACIÓN RECHAZADA O CANCELADA
 
+           El auditor puede diligenciar de nuevo el formulario. La
+           postulación anterior queda en el historial y la nueva se crea
+           como un borrador en blanco conservando el perfil, las
+           competencias, los conflictos, los títulos y las experiencias.
+        ===================================================== */
+
+        function mostrarAvisoRepostulacion(estado, observacion) {
+
+            const aviso = document.getElementById('avisoRepostulacion');
+            if (!aviso) return;
+
+            const titulo = document.getElementById('avisoRepostulacionTitulo');
+            const texto = document.getElementById('avisoRepostulacionTexto');
+            const bloqueObservacion = document.getElementById('avisoRepostulacionObservacion');
+            const pista = document.getElementById('avisoRepostulacionPista');
+
+            const esRechazada = estado === 'rechazado';
+
+            if (titulo) {
+                titulo.textContent = esRechazada
+                    ? 'Su postulación fue rechazada'
+                    : 'Su postulación fue cancelada';
+            }
+
+            if (texto) {
+                texto.textContent = esRechazada
+                    ? 'Puede diligenciar de nuevo el formulario: la información ya registrada se conserva y solo deberá corregir lo observado y volver a adjuntar los soportes.'
+                    : 'Puede diligenciar de nuevo el formulario: la información ya registrada se conserva y solo deberá volver a adjuntar los soportes.';
+            }
+
+            if (bloqueObservacion) {
+                const detalle = String(observacion || '').trim();
+                if (detalle) {
+                    bloqueObservacion.textContent = `Observación: ${detalle}`;
+                    bloqueObservacion.hidden = false;
+                } else {
+                    bloqueObservacion.hidden = true;
+                    bloqueObservacion.textContent = '';
+                }
+            }
+
+            if (pista) {
+                pista.textContent = 'La postulación anterior se conserva en el historial de “Consultar estado del registro”.';
+            }
+
+            aviso.hidden = false;
+
+        }
+
+        function ocultarAvisoRepostulacion() {
+            const avisoRepostulacion =
+                document.getElementById('avisoRepostulacion');
+            if (avisoRepostulacion) {
+                avisoRepostulacion.hidden = true;
+            }
+        }
+
+        async function iniciarNuevaPostulacion() {
+
+            const boton = document.getElementById('btnNuevaPostulacionRegistro');
+            const pista = document.getElementById('avisoRepostulacionPista');
+
+            const confirmado = confirm(
+                'Se creará una nueva postulación en blanco.\n\n' +
+                'La postulación anterior seguirá conservada en el historial ' +
+                'y la información que ya registró (perfil, competencias, conflictos, ' +
+                'títulos y experiencias) se conservará.\n\n' +
+                '¿Desea continuar?'
+            );
+
+            if (!confirmado) return;
+
+            if (boton) {
+                boton.disabled = true;
+                boton.textContent = 'Preparando nueva postulación...';
+            }
+            if (pista) {
+                pista.textContent = 'Creando la nueva postulación...';
+            }
+
+            try {
+                const response = await fetch('/auditores/registro/nueva-postulacion', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ id_usuario: userId })
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail || 'No fue posible iniciar una nueva postulación.'
+                    );
+                }
+
+                // La nueva postulación es un borrador: se recarga el formulario.
+                window.location.href = '/auditor';
+
+            } catch (error) {
+
+                console.error('Error iniciando nueva postulación:', error);
+
+                if (pista) {
+                    pista.textContent = error.message
+                        || 'No fue posible iniciar una nueva postulación.';
+                }
+
+                if (boton) {
+                    boton.disabled = false;
+                    boton.textContent = 'Diligenciar de nuevo el formulario';
+                }
+
+            }
+
+        }
+
+
+        function obtenerControlesFormulario(form) {
             return form.querySelectorAll(
                 'input:not([type="hidden"]), select, textarea'
             );
@@ -3453,12 +3733,267 @@
 
 
         /* =====================================================
-           BLOQUEAR SECCIÓN
+           PERMISOS DE ADJUNTAR DOCUMENTOS
+
+           La sección de documentos de soporte es una <section> y no un
+           <form>, por lo que el bloqueo general del formulario no la
+           alcanzaba: los controles de adjuntar quedaban operativos en
+           postulaciones que el servidor ya no permite modificar.
+
+           Se replica aquí la misma regla del servidor:
+             · la postulación debe estar en Borrador o Correcciones;
+             · el estado del usuario debe permitir la edición.
+        ===================================================== */
+
+        const ESTADOS_POSTULACION_EDITABLES = ['borrador', 'correcciones'];
+
+        const ESTADOS_AUDITOR_EDITABLES = [
+            'borrador',
+            'postulante',
+            'pendiente',
+            'enviado',
+            'enviada',
+            'enviado por corrección'
+        ];
+
+        function aplicarPermisosAdjuntarDocumentos(estadoPostulacion, estadoAuditor) {
+
+            const estado = String(estadoPostulacion || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditor || '').trim().toLowerCase();
+
+            let permitido = true;
+            let motivo = '';
+
+            if (!estado) {
+                // Estado aún desconocido: los controles permanecen bloqueados
+                // hasta que la postulación se haya cargado.
+                permitido = false;
+                motivo = 'Verificando el estado de la postulación…';
+            } else if (!ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                permitido = false;
+                motivo = `La postulación está en estado '${estadoPostulacion}' y no admite nuevos documentos.`;
+            } else if (!ESTADOS_AUDITOR_EDITABLES.includes(estadoUsuario)) {
+                permitido = false;
+                motivo = `Su estado de auditor ('${estadoAuditor}') no permite modificar la postulación.`;
+            }
+
+            permisosAdjuntarDocumentos = { permitido, motivo };
+
+            const controles = [
+                document.getElementById('tipoDocumentoSoporte'),
+                document.getElementById('archivoSoporte'),
+                document.getElementById('btnAdjuntarDocumento')
+            ];
+
+            controles.forEach((control) => {
+                if (!control) return;
+                control.disabled = !permitido;
+                if (permitido) {
+                    control.removeAttribute('title');
+                } else {
+                    control.setAttribute('title', motivo);
+                }
+            });
+
+            return permisosAdjuntarDocumentos;
+
+        }
+
+
+        /* =====================================================
+           PERMISO DE ADJUNTAR DOCUMENTOS (cálculo en vivo)
+
+           Se consulta siempre a partir del estado cargado, para que los
+           controles que se generan al vuelo (adjuntar soporte de títulos
+           y experiencias) usen la misma regla que el resto de la sección.
+        ===================================================== */
+
+        function permisoAdjuntarDocumentos() {
+
+            const estado = String(estadoPostulacionCargada || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+
+            if (!estado) {
+                return {
+                    permitido: false,
+                    motivo: 'Verificando el estado de la postulación…'
+                };
+            }
+
+            if (!ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                return {
+                    permitido: false,
+                    motivo: `La postulación está en estado '${estadoPostulacionCargada}' y no admite nuevos documentos.`
+                };
+            }
+
+            if (!ESTADOS_AUDITOR_EDITABLES.includes(estadoUsuario)) {
+                return {
+                    permitido: false,
+                    motivo: `Su estado de auditor ('${estadoAuditorCargado}') no permite modificar la postulación.`
+                };
+            }
+
+            return { permitido: true, motivo: '' };
+
+        }
+
+
+        /* =====================================================
+           PERMISO PARA MODIFICAR LOS REGISTROS
+
+           Titulos, experiencias y conflictos solo se pueden modificar si el
+           estado del auditor lo permite, que es lo mismo que exige
+           _verificar_usuario_borrador() en el servidor.
+        ===================================================== */
+
+        function permisoEditarRegistros() {
+
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+
+            if (!estadoUsuario) {
+                return {
+                    permitido: false,
+                    motivo: 'Verificando el estado del auditor...'
+                };
+            }
+
+            if (!ESTADOS_AUDITOR_EDITABLES.includes(estadoUsuario)) {
+                return {
+                    permitido: false,
+                    motivo: `Su estado de auditor ('${estadoAuditorCargado}') no permite modificar el registro.`
+                };
+            }
+
+            return { permitido: true, motivo: '' };
+
+        }
+
+
+        /* =====================================================
+           PERMISOS DE GESTIÓN DE UN DOCUMENTO (reemplazar/eliminar)
+
+           Los botones de la lista de documentos se crean después de
+           aplicar el bloqueo general, por lo que naceaban operativos
+           aunque la postulación ya no admitiera cambios.
+
+           Se replica la misma regla del servidor:
+             · la postulación debe estar en Borrador o Correcciones;
+             · en Correcciones solo se gestionan los documentos rechazados;
+             · el estado del auditor debe permitir la edición.
+        ===================================================== */
+
+        function permisoGestionDocumento(documento) {
+
+            const estado = String(estadoPostulacionCargada || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+            const estadoDocumento = String(
+                documento?.estado_revision
+                || documento?.estado_documento
+                || documento?.estado
+                || ''
+            ).trim().toLowerCase();
+
+            if (!estado) {
+                return {
+                    permitido: false,
+                    motivo: 'Verificando el estado de la postulación…'
+                };
+            }
+
+            if (!ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                return {
+                    permitido: false,
+                    motivo: `La postulación está en estado '${estadoPostulacionCargada}' y no permite modificar sus documentos.`
+                };
+            }
+
+            if (!ESTADOS_AUDITOR_EDITABLES.includes(estadoUsuario)) {
+                return {
+                    permitido: false,
+                    motivo: `Su estado de auditor ('${estadoAuditorCargado}') no permite modificar la postulación.`
+                };
+            }
+
+            if (estado === 'correcciones' && estadoDocumento !== 'rechazado') {
+                return {
+                    permitido: false,
+                    motivo: 'En estado Correcciones solo se pueden modificar los documentos rechazados.'
+                };
+            }
+
+            return { permitido: true, motivo: '' };
+
+        }
+
+
+        /* =====================================================
+           PERMISOS DE EDICIÓN POR SECCIÓN
+
+           El botón "Editar borrador" reactivaba la sección completa
+           aunque la postulación ya no admitiera cambios. Ahora la sección
+           solo se puede editar cuando:
+
+             · la postulación está en Borrador o Correcciones; o
+             · es el Perfil y el auditor ya está aprobado, que es el único
+               caso que el backend permite modificar (guardar_perfil).
+        ===================================================== */
+
+        const ESTADOS_AUDITOR_PERFIL_EDITABLE = ['activo', 'aprobado', 'aprobada'];
+
+        function seccionEditable(formId) {
+
+            const estado = String(estadoPostulacionCargada || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+
+            if (!estado) {
+                return false;
+            }
+
+            // Un registro en revisión o ya aprobado no se modifica.
+            if (ESTADOS_AUDITOR_REGISTRO_CERRADO.includes(estadoUsuario)) {
+                return false;
+            }
+
+            if (ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                return true;
+            }
+
+            if (formId === 'formPerfil' && ESTADOS_AUDITOR_PERFIL_EDITABLE.includes(estadoUsuario)) {
+                return true;
+            }
+
+            return false;
+
+        }
+
+        function motivoSeccionNoEditable(formId) {
+            const estado = String(estadoPostulacionCargada || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+            if (!estado) {
+                return 'Verificando el estado de la postulación…';
+            }
+            if (formId === 'formPerfil' && ESTADOS_AUDITOR_PERFIL_EDITABLE.includes(estadoUsuario)) {
+                return '';
+            }
+            if (!ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                return `La postulación está en estado '${estadoPostulacionCargada}' y no permite modificar esta sección.`;
+            }
+            return `Su estado de auditor ('${estadoAuditorCargado}') no permite modificar esta sección.`;
+        }
+
+
+        /* =====================================================
+           BLOQUEO GENERAL DEL REGISTRO
+
+           Deja todos los formularios en solo lectura. Las secciones que
+           puedan editarse se reabilitan despues con bloquearSeccion /
+           habilitarSeccion, que deciden segun el estado.
         ====================================================== */
 
         function bloquearFormularioCompleto() {
             const controles =
-                document.querySelectorAll('.content form:not(#formCompetencias) input, .content form:not(#formCompetencias) select, .content form:not(#formCompetencias) textarea, .content form:not(#formCompetencias) button, .content form:not(#formCompetencias) a');
+                document.querySelectorAll('.content form input, .content form select, .content form textarea, .content form button, .content form a');
 
             controles.forEach((elemento) => {
                 if (elemento.tagName) {
@@ -3468,14 +4003,37 @@
                 }
             });
 
-            const enviarAuditor =
-                document.getElementById('btnEnviarBanco');
-            if (enviarAuditor) {
-                enviarAuditor.disabled = true;
-                enviarAuditor.classList.add('blocked');
+            document.querySelector('.content')?.classList.add('formulario-bloqueado');
+        }
+
+
+        /* =====================================================
+           APLICAR LOS BLOQUEOS SEGÚN EL ESTADO
+
+           Fuente unica de verdad: el estado de la postulación cargada y
+           el estado del auditor. Si la postulación no admite cambios o el
+           registro del auditor está en revisión o aprobado, el formulario
+           completo queda en solo lectura.
+        ====================================================== */
+
+        const ESTADOS_AUDITOR_REGISTRO_CERRADO = ['pendiente', 'aprobado', 'aprobada'];
+
+        function aplicarBloqueosPorEstado(estadoPostulacion, estadoAuditor) {
+
+            const estado = String(estadoPostulacion || '').trim().toLowerCase();
+            const usuario = String(estadoAuditor || '').trim().toLowerCase();
+
+            const postulacionCerrada =
+                !ESTADOS_POSTULACION_EDITABLES.includes(estado);
+            const registroCerrado =
+                ESTADOS_AUDITOR_REGISTRO_CERRADO.includes(usuario);
+
+            if (postulacionCerrada || registroCerrado) {
+                bloquearFormularioCompleto();
             }
 
-            document.querySelector('.content')?.classList.add('formulario-bloqueado');
+            return { postulacionCerrada, registroCerrado };
+
         }
 
         function bloquearSeccion(formId) {
@@ -3527,7 +4085,25 @@
                 botonEditar.style.display =
                     'inline-block';
 
-                botonEditar.disabled = false;
+                // Solo se ofrece "Editar borrador" si la sección puede
+                // modificarse en el estado actual de la postulación.
+                const editable = seccionEditable(formId);
+                botonEditar.disabled = !editable;
+
+                if (editable) {
+                    botonEditar.removeAttribute('title');
+                    /*
+                     * El bloqueo general deja pointer-events: none: hay que
+                     * restaurarlo para que el boton siga siendo utilizable.
+                     */
+                    botonEditar.style.pointerEvents = '';
+                    botonEditar.removeAttribute('aria-disabled');
+                } else {
+                    botonEditar.setAttribute(
+                        'title',
+                        motivoSeccionNoEditable(formId)
+                    );
+                }
 
             }
 
@@ -3547,6 +4123,14 @@
                 return;
             }
 
+            // Una sección que no es editable en el estado actual no se
+            // habilita: de lo contrario reopening el formulario reabriria
+            // campos que deben permanecer bloqueados.
+            if (!seccionEditable(formId)) {
+                bloquearSeccion(formId);
+                return;
+            }
+
 
             obtenerControlesFormulario(form)
                 .forEach((elemento) => {
@@ -3557,6 +4141,15 @@
                         elemento.id !== 'num_doc') {
 
                         elemento.disabled = false;
+
+                        /*
+                         * El bloqueo general deja pointer-events: none y
+                         * aria-disabled de forma permanente: hay que
+                         * restaurarlos o el campo parecería editable sin
+                         * aceptar el clic.
+                         */
+                        elemento.style.pointerEvents = '';
+                        elemento.removeAttribute('aria-disabled');
 
                     }
 
@@ -3570,6 +4163,8 @@
 
             botonesGuardar.forEach((boton) => {
                 boton.disabled = false;
+                boton.style.pointerEvents = '';
+                boton.removeAttribute('aria-disabled');
             });
 
 
@@ -3591,6 +4186,16 @@
         ====================================================== */
 
         function editarSeccion(formId, nombreSeccion) {
+
+            // Guarda: la sección no se reactiva si el estado de la
+            // postulación no permite modificarla.
+            if (!seccionEditable(formId)) {
+                alert(
+                    motivoSeccionNoEditable(formId)
+                    || `No puede modificar la sección "${nombreSeccion}" en el estado actual.`
+                );
+                return;
+            }
 
             const confirmado =
                 confirm(
@@ -4032,6 +4637,13 @@
 
                 renderizarDocumentosSoporte();
 
+                // Los controles de adjuntar se mantienen sincronizados con el
+                // estado de la postulación aunque la lista se vuelva a pintar.
+                aplicarPermisosAdjuntarDocumentos(
+                    estadoPostulacionCargada,
+                    estadoAuditorCargado
+                );
+
                 (function () {
                     const rechazados = documentosSoporte.filter((documento) =>
                         String(documento.estado_revision || documento.estado_documento || documento.estado || '').trim().toLowerCase() === 'rechazado'
@@ -4223,16 +4835,28 @@
                 botonReemplazar.className = 'btn-mini btn-mini-ver';
                 botonReemplazar.textContent = '🔄 Reemplazar';
                 const idDocumento = documento.id_documento || documento.id_documento_soporte || documento.documento_id || documento.id;
-                botonReemplazar.disabled = !idDocumento || clase === 'aprobado';
-                if (clase === 'aprobado') botonReemplazar.title = 'El documento aprobado no se puede reemplazar';
+                // El permiso depende del estado de la postulacion, no solo del
+                // estado de revision del documento.
+                const gestion = permisoGestionDocumento(documento);
+                const bloqueado = clase === 'aprobado' || !gestion.permitido;
+                botonReemplazar.disabled = !idDocumento || bloqueado;
+                botonReemplazar.title = bloqueado
+                    ? (clase === 'aprobado'
+                        ? 'El documento aprobado no se puede reemplazar'
+                        : gestion.motivo)
+                    : 'Reemplazar el archivo del documento';
                 botonReemplazar.addEventListener('click', () => reemplazarDocumentoSoporte(idDocumento));
 
                 const botonEliminar = document.createElement('button');
                 botonEliminar.type = 'button';
                 botonEliminar.className = 'btn-mini btn-mini-eliminar';
                 botonEliminar.textContent = '🗑 Eliminar';
-                botonEliminar.disabled = !idDocumento || clase === 'aprobado';
-                if (clase === 'aprobado') botonEliminar.title = 'El documento aprobado no se puede eliminar';
+                botonEliminar.disabled = !idDocumento || bloqueado;
+                botonEliminar.title = bloqueado
+                    ? (clase === 'aprobado'
+                        ? 'El documento aprobado no se puede eliminar'
+                        : gestion.motivo)
+                    : 'Eliminar el documento';
                 botonEliminar.addEventListener('click', () => eliminarDocumentoSoporte(idDocumento));
 
                 acciones.append(botonVer, botonReemplazar, botonEliminar);
@@ -4250,6 +4874,14 @@
             .addEventListener(
                 'click',
                 async function () {
+
+                    // Guarda en el cliente: evita una accion restringida y el
+                    // error confuso del servidor (409).
+                    const permiso = permisoAdjuntarDocumentos();
+                    if (!permiso.permitido) {
+                        alert(permiso.motivo || 'No puede adjuntar documentos en el estado actual.');
+                        return;
+                    }
 
                     const tipoDocumento =
                         document.getElementById(
@@ -4448,6 +5080,17 @@
             idDocumento
         ) {
 
+            // Guarda en el cliente: evita una accion restringida y el error
+            // confuso del servidor (404 "la postulacion ya fue enviada").
+            const documento = (documentosSoporte || []).find(
+                (item) => String(item.id_documento || item.id || '') === String(idDocumento)
+            );
+            const gestion = permisoGestionDocumento(documento || {});
+            if (!gestion.permitido) {
+                alert(gestion.motivo || 'No puede modificar los documentos en el estado actual.');
+                return;
+            }
+
             const input =
                 document.createElement(
                     'input'
@@ -4543,6 +5186,17 @@
         async function eliminarDocumentoSoporte(
             idDocumento
         ) {
+
+            // Guarda en el cliente: evita una accion restringida y el error
+            // confuso del servidor (404 "la postulacion ya fue enviada").
+            const documento = (documentosSoporte || []).find(
+                (item) => String(item.id_documento || item.id || '') === String(idDocumento)
+            );
+            const gestion = permisoGestionDocumento(documento || {});
+            if (!gestion.permitido) {
+                alert(gestion.motivo || 'No puede modificar los documentos en el estado actual.');
+                return;
+            }
 
             const confirmado =
                 confirm(
@@ -4662,118 +5316,62 @@
                     `Registro de auditor: ${data.nombre || ''}`;
 
 
-                // =====================================================
-                // CONSULTAR ESTADO REAL DE LA POSTULACIÓN
-                // =====================================================
+                /* =====================================================
+                   ESTADO REAL DE LA POSTULACIÓN
 
-                let estadoPostulacion = '';
+                   Se toma de `data.estado`, que es el estado de la
+                   postulación realmente cargada (la última). El listado
+                   de estados excluye los borradores, por lo que usarlo
+                   aplicaría los permisos de una postulación anterior.
+                ===================================================== */
 
-                try {
+                estadoPostulacionCargada = String(
+                    data.estado || ''
+                ).trim();
 
-                    const respuestaEstado = await fetch(
-                        `/auditores/registro/estado?correo=${encodeURIComponent(data.correo)}`,
-                        {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        }
-                    );
+                estadoAuditorCargado = String(
+                    data.estado_auditor || ''
+                ).trim();
 
-                    if (respuestaEstado.ok) {
+                const estadoPostulacion =
+                    estadoPostulacionCargada.toLowerCase();
 
-                        const estadoSolicitud =
-                            await respuestaEstado.json();
+                aplicarBloqueosPorEstado(
+                    estadoPostulacion,
+                    estadoAuditorCargado
+                );
 
-                        console.log(
-                            '🔵 Estado REAL de las postulaciones:',
-                            estadoSolicitud
+                if (estadoPostulacion === 'correcciones') {
+
+                    const itemMenu =
+                        document.querySelector(
+                            '.side a[data-seccion="inicioRegistro"]'
                         );
 
-                        const postulaciones =
-                            Array.isArray(estadoSolicitud.postulaciones)
-                                ? estadoSolicitud.postulaciones
-                                : [];
+                    if (itemMenu) {
 
-                        console.log(
-                            '📋 Postulaciones recibidas:',
-                            postulaciones
+                        itemMenu.classList.add(
+                            'correction-warning'
                         );
 
-                        if (postulaciones.length > 0) {
-
-                            // El backend las entrega ordenadas de más reciente a más antigua
-                            const ultimaPostulacion = postulaciones[0];
-
-                            estadoPostulacion = String(
-                                ultimaPostulacion?.estado_postulacion || ''
+                        if (
+                            !itemMenu.querySelector(
+                                '.correction-dot'
                             )
-                                .trim()
-                                .toLowerCase();
+                        ) {
+                            const punto =
+                                document.createElement(
+                                    'span'
+                                );
 
-                            if (
-                                [
-                                    'enviado',
-                                    'aprobado',
-                                    'cancelado',
-                                    'en revision'
-                                ].includes(estadoPostulacion)
-                            ) {
-                                bloquearFormularioCompleto();
-                            }
+                            punto.className =
+                                'correction-dot';
 
-                            if (
-                                estadoPostulacion === "correcciones"
-                            ) {
-                                const itemMenu =
-                                    document.querySelector(
-                                        '.side a[data-seccion="inicioRegistro"]'
-                                    );
-
-                                if (itemMenu) {
-                                    itemMenu.classList.add(
-                                        "correction-warning"
-                                    );
-
-                                    if (
-                                        !itemMenu.querySelector(
-                                            ".correction-dot"
-                                        )
-                                    ) {
-                                        const punto =
-                                            document.createElement(
-                                                "span"
-                                            );
-
-                                        punto.className =
-                                            "correction-dot";
-
-                                        itemMenu.appendChild(
-                                            punto
-                                        );
-                                    }
-                                }
-                            }
-
-                            console.log(
-                                '🟣 Última postulación:',
-                                ultimaPostulacion
-                            );
-
-                            console.log(
-                                '🔎 Estado última postulación:',
-                                estadoPostulacion
+                            itemMenu.appendChild(
+                                punto
                             );
                         }
-
-
                     }
-
-                } catch (error) {
-
-                    console.error(
-                        '❌ No fue posible consultar el estado de la solicitud:',
-                        error
-                    );
 
                 }
 
@@ -4804,7 +5402,32 @@
 
                     // Continuar con el flujo normal para recuperar datos guardados.
 
+                    // Se informa que puede diligenciar de nuevo el formulario.
+                    mostrarAvisoRepostulacion(
+                        estadoPostulacion,
+                        data.observaciones_rechazo || ''
+                    );
+
+                } else {
+
+                    ocultarAvisoRepostulacion();
+
                 }
+
+
+                /* =================================================
+                   PERMISOS DE ADJUNTAR DOCUMENTOS
+
+                   Se calculan con el estado de la postulación que se
+                   acaba de cargar (`data.estado`), que es el mismo que
+                   usa el servidor, y no con el listado de estados
+                   (que excluye los borradores).
+                ================================================== */
+
+                aplicarPermisosAdjuntarDocumentos(
+                    estadoPostulacionCargada,
+                    estadoAuditorCargado
+                );
 
                 /* =================================================
                    TÍTULO
@@ -5100,7 +5723,9 @@
                     )
                 ) {
 
-                    bloquearRegistroCompleto();
+                    // El bloqueo general y por secci\u00f3n se aplican en
+                    // aplicarBloqueosPorEstado(): no hace falta un segundo
+                    // mecanismo de bloqueo.
 
 
                     if (alerta) {
@@ -5134,34 +5759,6 @@
            BLOQUEAR REGISTRO COMPLETO
         ====================================================== */
 
-        function bloquearRegistroCompleto() {
-
-            document
-                .querySelectorAll(
-                    '#formPerfil input, #formPerfil select, #formPerfil textarea,' +
-                    '#formCompetencias input, #formCompetencias select, #formCompetencias textarea,' +
-                    '#formConflictos input, #formConflictos select, #formConflictos textarea'
-                )
-                .forEach(
-                    (elemento) => {
-                        elemento.disabled = true;
-                    }
-                );
-
-
-            document
-                .querySelectorAll(
-                    '.btn-save-section, .btn-edit-section, #btnEnviarGeneral'
-                )
-                .forEach(
-                    (boton) => {
-                        boton.disabled = true;
-                    }
-                );
-
-        }
-
-
         /* =====================================================
            EDITAR PERFIL
         ====================================================== */
@@ -5178,6 +5775,25 @@
                         'formPerfil',
                         'Perfil del Auditor'
                     );
+
+                }
+            );
+
+
+        /* =====================================================
+           DILIGENCIAR DE NUEVO EL FORMULARIO
+           (postulación rechazada o cancelada)
+        ====================================================== */
+
+        document
+            .getElementById(
+                'btnNuevaPostulacionRegistro'
+            )
+            ?.addEventListener(
+                'click',
+                () => {
+
+                    iniciarNuevaPostulacion();
 
                 }
             );
@@ -5612,7 +6228,16 @@
                 const estado = doc.estado_revision || doc.estado_documento || 'Pendiente';
                 const clase = estadoDocumentoClase(estado);
                 const observacion = String(doc.observacion_revision || doc.observaciones_revision || doc.observacion_rechazo || doc.observaciones_rechazo || '').trim();
-                const bloqueado = clase === 'aprobado';
+                // El permiso depende del estado de la postulacion, no solo del
+                // estado de revision del documento.
+                const gestion = permisoGestionDocumento(doc);
+                const bloqueado = clase === 'aprobado' || !gestion.permitido;
+                const motivoReemplazar = clase === 'aprobado'
+                    ? 'El documento aprobado no se puede reemplazar'
+                    : gestion.motivo;
+                const motivoEliminar = clase === 'aprobado'
+                    ? 'El documento aprobado no se puede eliminar'
+                    : gestion.motivo;
                 const id = escaparAtributo(doc.id_documento || '');
                 const url = escaparAtributo(doc.url_archivo || doc.url || '');
                 const nombreArchivo = String(doc.nombre_archivo || 'Documento');
@@ -5635,8 +6260,8 @@
             </div>
             <div class="documento-relacionado-acciones">
               <button type="button" class="btn-mini btn-mini-ver" ${url ? `onclick="verDocumentoSoporte('${url}')"` : 'disabled'}>👁 Ver</button>
-              <button type="button" class="btn-mini btn-mini-reemplazar" ${bloqueado || !id ? 'disabled title="El documento aprobado no se puede reemplazar"' : `onclick="reemplazarDocumentoSoporte('${id}')"`}>🔄 Reemplazar</button>
-              <button type="button" class="btn-mini btn-mini-eliminar" ${bloqueado || !id ? 'disabled title="El documento aprobado no se puede eliminar"' : `onclick="eliminarDocumentoSoporte('${id}')"`}>🗑 Eliminar</button>
+              <button type="button" class="btn-mini btn-mini-reemplazar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoReemplazar)}"` : `onclick="reemplazarDocumentoSoporte('${id}')"`}>🔄 Reemplazar</button>
+              <button type="button" class="btn-mini btn-mini-eliminar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoEliminar)}"` : `onclick="eliminarDocumentoSoporte('${id}')"`}>🗑 Eliminar</button>
             </div>
           </div>
         `;
@@ -5645,6 +6270,17 @@
 
         async function eliminarDocumentoRelacionado(idDocumento) {
             if (!idDocumento) return;
+
+            // Guarda en el cliente: evita una accion restringida.
+            const documento = (documentosSoporte || []).find(
+                (item) => String(item.id_documento || item.id || '') === String(idDocumento)
+            );
+            const gestion = permisoGestionDocumento(documento || {});
+            if (!gestion.permitido) {
+                alert(gestion.motivo || 'No puede modificar los documentos en el estado actual.');
+                return;
+            }
+
             if (!confirm('¿Desea quitar este documento de soporte?')) return;
 
             try {
@@ -5672,6 +6308,13 @@
         async function subirDocumentoRelacionado(tipoDocumento, archivo, campoId, idRegistro) {
             if (!archivo || !idRegistro) return;
 
+            // Guarda en el cliente: evita una accion restringida.
+            const permiso = permisoAdjuntarDocumentos();
+            if (!permiso.permitido) {
+                alert(permiso.motivo || 'No puede adjuntar documentos en el estado actual.');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('archivo', archivo);
 
@@ -5696,6 +6339,14 @@
 
         async function eliminarRegistroRelacionado(endpoint, idRegistro, nombre) {
             if (!idRegistro) return;
+
+            // Guarda en el cliente: evita una accion restringida.
+            const permiso = permisoEditarRegistros();
+            if (!permiso.permitido) {
+                alert(permiso.motivo || 'No puede modificar el registro en el estado actual.');
+                return;
+            }
+
             if (!confirm(`¿Desea eliminar ${nombre}?`)) return;
 
             const response = await fetch(
@@ -5735,15 +6386,15 @@
                 ${item.fecha_obtencion ? ` · ${escapeHtml(item.fecha_obtencion)}` : ''}
               </div>
             </div>
-            <button type="button" class="btn-mini btn-mini-eliminar" onclick="eliminarRegistroRelacionado('titulos', '${escaparAtributo(item.id_titulo || item.id)}', 'este título')">✕</button>
+            <button type="button" class="btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('titulos', '${escaparAtributo(item.id_titulo || item.id)}', 'este título')">✕</button>
           </div>
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_titulo || item.id }, 'id_titulo')}
           <div class="upload-relacionado">
             <div class="form-group">
               <label>Agregar o reemplazar soporte</label>
-              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoTitulo_${escaparAtributo(item.id_titulo || item.id)}">
+              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoTitulo_${escaparAtributo(item.id_titulo || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
-            <button type="button" class="btn-save-section" onclick="adjuntarSoporteDesdeRegistro('titulo', '${escaparAtributo(item.id_titulo || item.id)}')">Adjuntar</button>
+            <button type="button" class="btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('titulo', '${escaparAtributo(item.id_titulo || item.id)}')">Adjuntar</button>
           </div>
         </div>
       `).join('');
@@ -5770,16 +6421,16 @@
               </div>
               ${item.descripcion ? `<div class="registro-card-meta">${escapeHtml(item.descripcion)}</div>` : ''}
             </div>
-            <button type="button" class="btn-mini btn-mini-eliminar" onclick="eliminarRegistroRelacionado('experiencias-laborales', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia laboral')">✕</button>
+            <button type="button" class="btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('experiencias-laborales', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia laboral')">✕</button>
           </div>
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_experiencia || item.id }, 'id_experiencia_laboral')}
           <div class="help-text" style="margin-top:10px;">El soporte de esta experiencia es opcional.</div>
           <div class="upload-relacionado">
             <div class="form-group">
               <label>Soporte de la experiencia</label>
-              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoLab_${escaparAtributo(item.id_experiencia || item.id)}">
+              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoLab_${escaparAtributo(item.id_experiencia || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
-            <button type="button" class="btn-save-section" onclick="adjuntarSoporteDesdeRegistro('laboral', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
+            <button type="button" class="btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('laboral', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
           </div>
         </div>
       `).join('');
@@ -5808,21 +6459,26 @@
               </div>
               ${item.descripcion ? `<div class="registro-card-meta">${escapeHtml(item.descripcion)}</div>` : ''}
             </div>
-            <button type="button" class="btn-mini btn-mini-eliminar" onclick="eliminarRegistroRelacionado('experiencias-auditoria', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia de auditoría')">✕</button>
+            <button type="button" class="btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('experiencias-auditoria', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia de auditoría')">✕</button>
           </div>
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_experiencia || item.id }, 'id_experiencia_auditoria')}
           <div class="upload-relacionado">
             <div class="form-group">
               <label>Soporte de la experiencia</label>
-              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoAud_${escaparAtributo(item.id_experiencia || item.id)}">
+              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoAud_${escaparAtributo(item.id_experiencia || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
-            <button type="button" class="btn-save-section" onclick="adjuntarSoporteDesdeRegistro('auditoria', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
+            <button type="button" class="btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('auditoria', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
           </div>
         </div>
       `).join('');
         }
 
         async function adjuntarSoporteDesdeRegistro(tipo, idRegistro) {
+            const permiso = permisoAdjuntarDocumentos();
+            if (!permiso.permitido) {
+                alert(permiso.motivo || 'No puede adjuntar documentos en el estado actual.');
+                return;
+            }
             try {
                 let inputId;
                 let campoId;
@@ -6716,6 +7372,57 @@
         actualizarExperienciaAuditoriaOpcional();
         inicializarNavegacionSecciones();
         inicializarVistasDeArchivo();
+        inicializarCierreDropdownMiRegistro();
+
+        /* =====================================================
+           CIERRE DEL DESPLEGABLE "MI REGISTRO"
+
+           El desplegable se abre con :hover / :focus-within. Cuando el usuario
+           pulsa un <select> de sus secciones (Perfil, Competencias, Formación
+           académica, Documentos de soporte, Conflictos) el enlace interno
+           conserva el foco y el menú queda abierto encima del formulario.
+
+           Aquí se cierra de forma explícita: se retira el foco del elemento
+           interno que lo mantenía abierto y se fuerza el estado cerrado durante
+           unos milisegundos, por si el puntero sigue sobre el desplegable.
+           Solo interviene sobre los <select> marcados; el resto de la
+           interfaz mantiene su funcionamiento actual.
+        ===================================================== */
+        function inicializarCierreDropdownMiRegistro() {
+            const SELECTS = '[data-cierra-dropdown="mi-registro"]';
+
+            function cerrarDropdownMiRegistro() {
+                const dropdown = document.querySelector('.side .dropdown-registro');
+                if (!dropdown) return;
+
+                // 1) Quita el foco del elemento interno que mantenía abierto el menú.
+                const activo = document.activeElement;
+                if (activo && dropdown.contains(activo) && typeof activo.blur === 'function') {
+                    activo.blur();
+                }
+
+                // 2) Fuerza el cierre aunque el puntero siga sobre el desplegable.
+                dropdown.classList.add('cerrado');
+                window.setTimeout(() => dropdown.classList.remove('cerrado'), 150);
+            }
+
+            document.addEventListener('pointerdown', (event) => {
+                const select = event.target instanceof Element
+                    ? event.target.closest(SELECTS)
+                    : null;
+                if (!select) return;
+                cerrarDropdownMiRegistro();
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (!['Enter', ' ', 'Spacebar', 'ArrowDown', 'ArrowUp'].includes(event.key)) return;
+                const select = event.target instanceof Element
+                    ? event.target.closest(SELECTS)
+                    : null;
+                if (!select) return;
+                cerrarDropdownMiRegistro();
+            });
+        }
 
         /* =====================================================
            INICIALIZACIÓN
