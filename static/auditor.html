@@ -3827,6 +3827,37 @@
 
 
         /* =====================================================
+           PERMISO PARA MODIFICAR LOS REGISTROS
+
+           Titulos, experiencias y conflictos solo se pueden modificar si el
+           estado del auditor lo permite, que es lo mismo que exige
+           _verificar_usuario_borrador() en el servidor.
+        ===================================================== */
+
+        function permisoEditarRegistros() {
+
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+
+            if (!estadoUsuario) {
+                return {
+                    permitido: false,
+                    motivo: 'Verificando el estado del auditor...'
+                };
+            }
+
+            if (!ESTADOS_AUDITOR_EDITABLES.includes(estadoUsuario)) {
+                return {
+                    permitido: false,
+                    motivo: `Su estado de auditor ('${estadoAuditorCargado}') no permite modificar el registro.`
+                };
+            }
+
+            return { permitido: true, motivo: '' };
+
+        }
+
+
+        /* =====================================================
            PERMISOS DE GESTIÓN DE UN DOCUMENTO (reemplazar/eliminar)
 
            Los botones de la lista de documentos se crean después de
@@ -3906,6 +3937,11 @@
                 return false;
             }
 
+            // Un registro en revisión o ya aprobado no se modifica.
+            if (ESTADOS_AUDITOR_REGISTRO_CERRADO.includes(estadoUsuario)) {
+                return false;
+            }
+
             if (ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
                 return true;
             }
@@ -3935,7 +3971,11 @@
 
 
         /* =====================================================
-           BLOQUEAR SECCIÓN
+           BLOQUEO GENERAL DEL REGISTRO
+
+           Deja todos los formularios en solo lectura. Las secciones que
+           puedan editarse se reabilitan despues con bloquearSeccion /
+           habilitarSeccion, que deciden segun el estado.
         ====================================================== */
 
         function bloquearFormularioCompleto() {
@@ -3950,14 +3990,37 @@
                 }
             });
 
-            const enviarAuditor =
-                document.getElementById('btnEnviarBanco');
-            if (enviarAuditor) {
-                enviarAuditor.disabled = true;
-                enviarAuditor.classList.add('blocked');
+            document.querySelector('.content')?.classList.add('formulario-bloqueado');
+        }
+
+
+        /* =====================================================
+           APLICAR LOS BLOQUEOS SEGÚN EL ESTADO
+
+           Fuente unica de verdad: el estado de la postulación cargada y
+           el estado del auditor. Si la postulación no admite cambios o el
+           registro del auditor está en revisión o aprobado, el formulario
+           completo queda en solo lectura.
+        ====================================================== */
+
+        const ESTADOS_AUDITOR_REGISTRO_CERRADO = ['pendiente', 'aprobado', 'aprobada'];
+
+        function aplicarBloqueosPorEstado(estadoPostulacion, estadoAuditor) {
+
+            const estado = String(estadoPostulacion || '').trim().toLowerCase();
+            const usuario = String(estadoAuditor || '').trim().toLowerCase();
+
+            const postulacionCerrada =
+                !ESTADOS_POSTULACION_EDITABLES.includes(estado);
+            const registroCerrado =
+                ESTADOS_AUDITOR_REGISTRO_CERRADO.includes(usuario);
+
+            if (postulacionCerrada || registroCerrado) {
+                bloquearFormularioCompleto();
             }
 
-            document.querySelector('.content')?.classList.add('formulario-bloqueado');
+            return { postulacionCerrada, registroCerrado };
+
         }
 
         function bloquearSeccion(formId) {
@@ -4016,6 +4079,12 @@
 
                 if (editable) {
                     botonEditar.removeAttribute('title');
+                    /*
+                     * El bloqueo general deja pointer-events: none: hay que
+                     * restaurarlo para que el boton siga siendo utilizable.
+                     */
+                    botonEditar.style.pointerEvents = '';
+                    botonEditar.removeAttribute('aria-disabled');
                 } else {
                     botonEditar.setAttribute(
                         'title',
@@ -5254,14 +5323,10 @@
                 const estadoPostulacion =
                     estadoPostulacionCargada.toLowerCase();
 
-                if (
-                    ['enviado', 'aprobado', 'cancelado', 'en revision']
-                        .includes(estadoPostulacion)
-                ) {
-
-                    bloquearFormularioCompleto();
-
-                }
+                aplicarBloqueosPorEstado(
+                    estadoPostulacion,
+                    estadoAuditorCargado
+                );
 
                 if (estadoPostulacion === 'correcciones') {
 
@@ -5645,7 +5710,9 @@
                     )
                 ) {
 
-                    bloquearRegistroCompleto();
+                    // El bloqueo general y por secci\u00f3n se aplican en
+                    // aplicarBloqueosPorEstado(): no hace falta un segundo
+                    // mecanismo de bloqueo.
 
 
                     if (alerta) {
@@ -5678,34 +5745,6 @@
         /* =====================================================
            BLOQUEAR REGISTRO COMPLETO
         ====================================================== */
-
-        function bloquearRegistroCompleto() {
-
-            document
-                .querySelectorAll(
-                    '#formPerfil input, #formPerfil select, #formPerfil textarea,' +
-                    '#formCompetencias input, #formCompetencias select, #formCompetencias textarea,' +
-                    '#formConflictos input, #formConflictos select, #formConflictos textarea'
-                )
-                .forEach(
-                    (elemento) => {
-                        elemento.disabled = true;
-                    }
-                );
-
-
-            document
-                .querySelectorAll(
-                    '.btn-save-section, .btn-edit-section, #btnEnviarGeneral'
-                )
-                .forEach(
-                    (boton) => {
-                        boton.disabled = true;
-                    }
-                );
-
-        }
-
 
         /* =====================================================
            EDITAR PERFIL
@@ -6218,6 +6257,17 @@
 
         async function eliminarDocumentoRelacionado(idDocumento) {
             if (!idDocumento) return;
+
+            // Guarda en el cliente: evita una accion restringida.
+            const documento = (documentosSoporte || []).find(
+                (item) => String(item.id_documento || item.id || '') === String(idDocumento)
+            );
+            const gestion = permisoGestionDocumento(documento || {});
+            if (!gestion.permitido) {
+                alert(gestion.motivo || 'No puede modificar los documentos en el estado actual.');
+                return;
+            }
+
             if (!confirm('¿Desea quitar este documento de soporte?')) return;
 
             try {
@@ -6245,6 +6295,13 @@
         async function subirDocumentoRelacionado(tipoDocumento, archivo, campoId, idRegistro) {
             if (!archivo || !idRegistro) return;
 
+            // Guarda en el cliente: evita una accion restringida.
+            const permiso = permisoAdjuntarDocumentos();
+            if (!permiso.permitido) {
+                alert(permiso.motivo || 'No puede adjuntar documentos en el estado actual.');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('archivo', archivo);
 
@@ -6269,6 +6326,14 @@
 
         async function eliminarRegistroRelacionado(endpoint, idRegistro, nombre) {
             if (!idRegistro) return;
+
+            // Guarda en el cliente: evita una accion restringida.
+            const permiso = permisoEditarRegistros();
+            if (!permiso.permitido) {
+                alert(permiso.motivo || 'No puede modificar el registro en el estado actual.');
+                return;
+            }
+
             if (!confirm(`¿Desea eliminar ${nombre}?`)) return;
 
             const response = await fetch(
@@ -6308,7 +6373,7 @@
                 ${item.fecha_obtencion ? ` · ${escapeHtml(item.fecha_obtencion)}` : ''}
               </div>
             </div>
-            <button type="button" class="btn-mini btn-mini-eliminar" onclick="eliminarRegistroRelacionado('titulos', '${escaparAtributo(item.id_titulo || item.id)}', 'este título')">✕</button>
+            <button type="button" class="btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('titulos', '${escaparAtributo(item.id_titulo || item.id)}', 'este título')">✕</button>
           </div>
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_titulo || item.id }, 'id_titulo')}
           <div class="upload-relacionado">
@@ -6343,7 +6408,7 @@
               </div>
               ${item.descripcion ? `<div class="registro-card-meta">${escapeHtml(item.descripcion)}</div>` : ''}
             </div>
-            <button type="button" class="btn-mini btn-mini-eliminar" onclick="eliminarRegistroRelacionado('experiencias-laborales', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia laboral')">✕</button>
+            <button type="button" class="btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('experiencias-laborales', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia laboral')">✕</button>
           </div>
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_experiencia || item.id }, 'id_experiencia_laboral')}
           <div class="help-text" style="margin-top:10px;">El soporte de esta experiencia es opcional.</div>
@@ -6381,7 +6446,7 @@
               </div>
               ${item.descripcion ? `<div class="registro-card-meta">${escapeHtml(item.descripcion)}</div>` : ''}
             </div>
-            <button type="button" class="btn-mini btn-mini-eliminar" onclick="eliminarRegistroRelacionado('experiencias-auditoria', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia de auditoría')">✕</button>
+            <button type="button" class="btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('experiencias-auditoria', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia de auditoría')">✕</button>
           </div>
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_experiencia || item.id }, 'id_experiencia_auditoria')}
           <div class="upload-relacionado">
