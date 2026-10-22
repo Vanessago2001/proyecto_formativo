@@ -3581,6 +3581,102 @@
 
 
         /* =====================================================
+           PERMISO DE ADJUNTAR DOCUMENTOS (cálculo en vivo)
+
+           Se consulta siempre a partir del estado cargado, para que los
+           controles que se generan al vuelo (adjuntar soporte de títulos
+           y experiencias) usen la misma regla que el resto de la sección.
+        ===================================================== */
+
+        function permisoAdjuntarDocumentos() {
+
+            const estado = String(estadoPostulacionCargada || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+
+            if (!estado) {
+                return {
+                    permitido: false,
+                    motivo: 'Verificando el estado de la postulación…'
+                };
+            }
+
+            if (!ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                return {
+                    permitido: false,
+                    motivo: `La postulación está en estado '${estadoPostulacionCargada}' y no admite nuevos documentos.`
+                };
+            }
+
+            if (!ESTADOS_AUDITOR_EDITABLES.includes(estadoUsuario)) {
+                return {
+                    permitido: false,
+                    motivo: `Su estado de auditor ('${estadoAuditorCargado}') no permite modificar la postulación.`
+                };
+            }
+
+            return { permitido: true, motivo: '' };
+
+        }
+
+
+        /* =====================================================
+           PERMISOS DE GESTIÓN DE UN DOCUMENTO (reemplazar/eliminar)
+
+           Los botones de la lista de documentos se crean después de
+           aplicar el bloqueo general, por lo que naceaban operativos
+           aunque la postulación ya no admitiera cambios.
+
+           Se replica la misma regla del servidor:
+             · la postulación debe estar en Borrador o Correcciones;
+             · en Correcciones solo se gestionan los documentos rechazados;
+             · el estado del auditor debe permitir la edición.
+        ===================================================== */
+
+        function permisoGestionDocumento(documento) {
+
+            const estado = String(estadoPostulacionCargada || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+            const estadoDocumento = String(
+                documento?.estado_revision
+                || documento?.estado_documento
+                || documento?.estado
+                || ''
+            ).trim().toLowerCase();
+
+            if (!estado) {
+                return {
+                    permitido: false,
+                    motivo: 'Verificando el estado de la postulación…'
+                };
+            }
+
+            if (!ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                return {
+                    permitido: false,
+                    motivo: `La postulación está en estado '${estadoPostulacionCargada}' y no permite modificar sus documentos.`
+                };
+            }
+
+            if (!ESTADOS_AUDITOR_EDITABLES.includes(estadoUsuario)) {
+                return {
+                    permitido: false,
+                    motivo: `Su estado de auditor ('${estadoAuditorCargado}') no permite modificar la postulación.`
+                };
+            }
+
+            if (estado === 'correcciones' && estadoDocumento !== 'rechazado') {
+                return {
+                    permitido: false,
+                    motivo: 'En estado Correcciones solo se pueden modificar los documentos rechazados.'
+                };
+            }
+
+            return { permitido: true, motivo: '' };
+
+        }
+
+
+        /* =====================================================
            BLOQUEAR SECCIÓN
         ====================================================== */
 
@@ -4358,16 +4454,28 @@
                 botonReemplazar.className = 'btn-mini btn-mini-ver';
                 botonReemplazar.textContent = '🔄 Reemplazar';
                 const idDocumento = documento.id_documento || documento.id_documento_soporte || documento.documento_id || documento.id;
-                botonReemplazar.disabled = !idDocumento || clase === 'aprobado';
-                if (clase === 'aprobado') botonReemplazar.title = 'El documento aprobado no se puede reemplazar';
+                // El permiso depende del estado de la postulacion, no solo del
+                // estado de revision del documento.
+                const gestion = permisoGestionDocumento(documento);
+                const bloqueado = clase === 'aprobado' || !gestion.permitido;
+                botonReemplazar.disabled = !idDocumento || bloqueado;
+                botonReemplazar.title = bloqueado
+                    ? (clase === 'aprobado'
+                        ? 'El documento aprobado no se puede reemplazar'
+                        : gestion.motivo)
+                    : 'Reemplazar el archivo del documento';
                 botonReemplazar.addEventListener('click', () => reemplazarDocumentoSoporte(idDocumento));
 
                 const botonEliminar = document.createElement('button');
                 botonEliminar.type = 'button';
                 botonEliminar.className = 'btn-mini btn-mini-eliminar';
                 botonEliminar.textContent = '🗑 Eliminar';
-                botonEliminar.disabled = !idDocumento || clase === 'aprobado';
-                if (clase === 'aprobado') botonEliminar.title = 'El documento aprobado no se puede eliminar';
+                botonEliminar.disabled = !idDocumento || bloqueado;
+                botonEliminar.title = bloqueado
+                    ? (clase === 'aprobado'
+                        ? 'El documento aprobado no se puede eliminar'
+                        : gestion.motivo)
+                    : 'Eliminar el documento';
                 botonEliminar.addEventListener('click', () => eliminarDocumentoSoporte(idDocumento));
 
                 acciones.append(botonVer, botonReemplazar, botonEliminar);
@@ -4385,6 +4493,14 @@
             .addEventListener(
                 'click',
                 async function () {
+
+                    // Guarda en el cliente: evita una accion restringida y el
+                    // error confuso del servidor (409).
+                    const permiso = permisoAdjuntarDocumentos();
+                    if (!permiso.permitido) {
+                        alert(permiso.motivo || 'No puede adjuntar documentos en el estado actual.');
+                        return;
+                    }
 
                     const tipoDocumento =
                         document.getElementById(
@@ -4583,6 +4699,17 @@
             idDocumento
         ) {
 
+            // Guarda en el cliente: evita una accion restringida y el error
+            // confuso del servidor (404 "la postulacion ya fue enviada").
+            const documento = (documentosSoporte || []).find(
+                (item) => String(item.id_documento || item.id || '') === String(idDocumento)
+            );
+            const gestion = permisoGestionDocumento(documento || {});
+            if (!gestion.permitido) {
+                alert(gestion.motivo || 'No puede modificar los documentos en el estado actual.');
+                return;
+            }
+
             const input =
                 document.createElement(
                     'input'
@@ -4678,6 +4805,17 @@
         async function eliminarDocumentoSoporte(
             idDocumento
         ) {
+
+            // Guarda en el cliente: evita una accion restringida y el error
+            // confuso del servidor (404 "la postulacion ya fue enviada").
+            const documento = (documentosSoporte || []).find(
+                (item) => String(item.id_documento || item.id || '') === String(idDocumento)
+            );
+            const gestion = permisoGestionDocumento(documento || {});
+            if (!gestion.permitido) {
+                alert(gestion.motivo || 'No puede modificar los documentos en el estado actual.');
+                return;
+            }
 
             const confirmado =
                 confirm(
@@ -5770,7 +5908,16 @@
                 const estado = doc.estado_revision || doc.estado_documento || 'Pendiente';
                 const clase = estadoDocumentoClase(estado);
                 const observacion = String(doc.observacion_revision || doc.observaciones_revision || doc.observacion_rechazo || doc.observaciones_rechazo || '').trim();
-                const bloqueado = clase === 'aprobado';
+                // El permiso depende del estado de la postulacion, no solo del
+                // estado de revision del documento.
+                const gestion = permisoGestionDocumento(doc);
+                const bloqueado = clase === 'aprobado' || !gestion.permitido;
+                const motivoReemplazar = clase === 'aprobado'
+                    ? 'El documento aprobado no se puede reemplazar'
+                    : gestion.motivo;
+                const motivoEliminar = clase === 'aprobado'
+                    ? 'El documento aprobado no se puede eliminar'
+                    : gestion.motivo;
                 const id = escaparAtributo(doc.id_documento || '');
                 const url = escaparAtributo(doc.url_archivo || doc.url || '');
                 const nombreArchivo = String(doc.nombre_archivo || 'Documento');
@@ -5793,8 +5940,8 @@
             </div>
             <div class="documento-relacionado-acciones">
               <button type="button" class="btn-mini btn-mini-ver" ${url ? `onclick="verDocumentoSoporte('${url}')"` : 'disabled'}>👁 Ver</button>
-              <button type="button" class="btn-mini btn-mini-reemplazar" ${bloqueado || !id ? 'disabled title="El documento aprobado no se puede reemplazar"' : `onclick="reemplazarDocumentoSoporte('${id}')"`}>🔄 Reemplazar</button>
-              <button type="button" class="btn-mini btn-mini-eliminar" ${bloqueado || !id ? 'disabled title="El documento aprobado no se puede eliminar"' : `onclick="eliminarDocumentoSoporte('${id}')"`}>🗑 Eliminar</button>
+              <button type="button" class="btn-mini btn-mini-reemplazar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoReemplazar)}"` : `onclick="reemplazarDocumentoSoporte('${id}')"`}>🔄 Reemplazar</button>
+              <button type="button" class="btn-mini btn-mini-eliminar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoEliminar)}"` : `onclick="eliminarDocumentoSoporte('${id}')"`}>🗑 Eliminar</button>
             </div>
           </div>
         `;
@@ -5899,9 +6046,9 @@
           <div class="upload-relacionado">
             <div class="form-group">
               <label>Agregar o reemplazar soporte</label>
-              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoTitulo_${escaparAtributo(item.id_titulo || item.id)}">
+              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoTitulo_${escaparAtributo(item.id_titulo || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
-            <button type="button" class="btn-save-section" onclick="adjuntarSoporteDesdeRegistro('titulo', '${escaparAtributo(item.id_titulo || item.id)}')">Adjuntar</button>
+            <button type="button" class="btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('titulo', '${escaparAtributo(item.id_titulo || item.id)}')">Adjuntar</button>
           </div>
         </div>
       `).join('');
@@ -5935,9 +6082,9 @@
           <div class="upload-relacionado">
             <div class="form-group">
               <label>Soporte de la experiencia</label>
-              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoLab_${escaparAtributo(item.id_experiencia || item.id)}">
+              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoLab_${escaparAtributo(item.id_experiencia || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
-            <button type="button" class="btn-save-section" onclick="adjuntarSoporteDesdeRegistro('laboral', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
+            <button type="button" class="btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('laboral', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
           </div>
         </div>
       `).join('');
@@ -5972,15 +6119,20 @@
           <div class="upload-relacionado">
             <div class="form-group">
               <label>Soporte de la experiencia</label>
-              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoAud_${escaparAtributo(item.id_experiencia || item.id)}">
+              <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoAud_${escaparAtributo(item.id_experiencia || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
-            <button type="button" class="btn-save-section" onclick="adjuntarSoporteDesdeRegistro('auditoria', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
+            <button type="button" class="btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('auditoria', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
           </div>
         </div>
       `).join('');
         }
 
         async function adjuntarSoporteDesdeRegistro(tipo, idRegistro) {
+            const permiso = permisoAdjuntarDocumentos();
+            if (!permiso.permitido) {
+                alert(permiso.motivo || 'No puede adjuntar documentos en el estado actual.');
+                return;
+            }
             try {
                 let inputId;
                 let campoId;
