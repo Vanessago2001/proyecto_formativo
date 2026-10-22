@@ -3940,7 +3940,7 @@
 
         function bloquearFormularioCompleto() {
             const controles =
-                document.querySelectorAll('.content form:not(#formCompetencias) input, .content form:not(#formCompetencias) select, .content form:not(#formCompetencias) textarea, .content form:not(#formCompetencias) button, .content form:not(#formCompetencias) a');
+                document.querySelectorAll('.content form input, .content form select, .content form textarea, .content form button, .content form a');
 
             controles.forEach((elemento) => {
                 if (elemento.tagName) {
@@ -4060,6 +4060,15 @@
 
                         elemento.disabled = false;
 
+                        /*
+                         * El bloqueo general deja pointer-events: none y
+                         * aria-disabled de forma permanente: hay que
+                         * restaurarlos o el campo parecería editable sin
+                         * aceptar el clic.
+                         */
+                        elemento.style.pointerEvents = '';
+                        elemento.removeAttribute('aria-disabled');
+
                     }
 
                 });
@@ -4072,6 +4081,8 @@
 
             botonesGuardar.forEach((boton) => {
                 boton.disabled = false;
+                boton.style.pointerEvents = '';
+                boton.removeAttribute('aria-disabled');
             });
 
 
@@ -5223,121 +5234,14 @@
                     `Registro de auditor: ${data.nombre || ''}`;
 
 
-                // =====================================================
-                // CONSULTAR ESTADO REAL DE LA POSTULACIÓN
-                // =====================================================
+                /* =====================================================
+                   ESTADO REAL DE LA POSTULACIÓN
 
-                let estadoPostulacion = '';
-
-                try {
-
-                    const respuestaEstado = await fetch(
-                        `/auditores/registro/estado?correo=${encodeURIComponent(data.correo)}`,
-                        {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        }
-                    );
-
-                    if (respuestaEstado.ok) {
-
-                        const estadoSolicitud =
-                            await respuestaEstado.json();
-
-                        console.log(
-                            '🔵 Estado REAL de las postulaciones:',
-                            estadoSolicitud
-                        );
-
-                        const postulaciones =
-                            Array.isArray(estadoSolicitud.postulaciones)
-                                ? estadoSolicitud.postulaciones
-                                : [];
-
-                        console.log(
-                            '📋 Postulaciones recibidas:',
-                            postulaciones
-                        );
-
-                        if (postulaciones.length > 0) {
-
-                            // El backend las entrega ordenadas de más reciente a más antigua
-                            const ultimaPostulacion = postulaciones[0];
-
-                            estadoPostulacion = String(
-                                ultimaPostulacion?.estado_postulacion || ''
-                            )
-                                .trim()
-                                .toLowerCase();
-
-                            if (
-                                [
-                                    'enviado',
-                                    'aprobado',
-                                    'cancelado',
-                                    'en revision'
-                                ].includes(estadoPostulacion)
-                            ) {
-                                bloquearFormularioCompleto();
-                            }
-
-                            if (
-                                estadoPostulacion === "correcciones"
-                            ) {
-                                const itemMenu =
-                                    document.querySelector(
-                                        '.side a[data-seccion="inicioRegistro"]'
-                                    );
-
-                                if (itemMenu) {
-                                    itemMenu.classList.add(
-                                        "correction-warning"
-                                    );
-
-                                    if (
-                                        !itemMenu.querySelector(
-                                            ".correction-dot"
-                                        )
-                                    ) {
-                                        const punto =
-                                            document.createElement(
-                                                "span"
-                                            );
-
-                                        punto.className =
-                                            "correction-dot";
-
-                                        itemMenu.appendChild(
-                                            punto
-                                        );
-                                    }
-                                }
-                            }
-
-                            console.log(
-                                '🟣 Última postulación:',
-                                ultimaPostulacion
-                            );
-
-                            console.log(
-                                '🔎 Estado última postulación:',
-                                estadoPostulacion
-                            );
-                        }
-
-
-                    }
-
-                } catch (error) {
-
-                    console.error(
-                        '❌ No fue posible consultar el estado de la solicitud:',
-                        error
-                    );
-
-                }
-
+                   Se toma de `data.estado`, que es el estado de la
+                   postulación realmente cargada (la última). El listado
+                   de estados excluye los borradores, por lo que usarlo
+                   aplicaría los permisos de una postulación anterior.
+                ===================================================== */
 
                 estadoPostulacionCargada = String(
                     data.estado || ''
@@ -5347,22 +5251,66 @@
                     data.estado_auditor || ''
                 ).trim();
 
+                const estadoPostulacion =
+                    estadoPostulacionCargada.toLowerCase();
+
+                if (
+                    ['enviado', 'aprobado', 'cancelado', 'en revision']
+                        .includes(estadoPostulacion)
+                ) {
+
+                    bloquearFormularioCompleto();
+
+                }
+
+                if (estadoPostulacion === 'correcciones') {
+
+                    const itemMenu =
+                        document.querySelector(
+                            '.side a[data-seccion="inicioRegistro"]'
+                        );
+
+                    if (itemMenu) {
+
+                        itemMenu.classList.add(
+                            'correction-warning'
+                        );
+
+                        if (
+                            !itemMenu.querySelector(
+                                '.correction-dot'
+                            )
+                        ) {
+                            const punto =
+                                document.createElement(
+                                    'span'
+                                );
+
+                            punto.className =
+                                'correction-dot';
+
+                            itemMenu.appendChild(
+                                punto
+                            );
+                        }
+                    }
+
+                }
+
+
                 // =====================================================
                 // CANCELADO / RECHAZADO
                 // NO CARGAR DATOS DEL REGISTRO ANTERIOR
                 // =====================================================
 
-                const estadoRechazadoOCancelado =
-                    estadoPostulacionCargada.toLowerCase();
-
                 if (
-                    estadoRechazadoOCancelado === 'cancelado' ||
-                    estadoRechazadoOCancelado === 'rechazado'
+                    estadoPostulacion === 'cancelado' ||
+                    estadoPostulacion === 'rechazado'
                 ) {
                     registroCanceladoORechazado = true;
                     console.log(
                         '🧹 La última postulación está',
-                        estadoRechazadoOCancelado,
+                        estadoPostulacion,
                         '. Se prepara un nuevo registro.'
                     );
 
@@ -5378,7 +5326,7 @@
 
                     // Se informa que puede diligenciar de nuevo el formulario.
                     mostrarAvisoRepostulacion(
-                        estadoRechazadoOCancelado,
+                        estadoPostulacion,
                         data.observaciones_rechazo || ''
                     );
 
