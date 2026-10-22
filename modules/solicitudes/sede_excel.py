@@ -102,6 +102,47 @@ def _fila(numero: int, valores: list, estilo: int) -> str:
     return f'<row r="{numero}">{celdas}</row>'
 
 
+def generar_excel(titulo: str, encabezados: list[str], filas: list[list]) -> bytes:
+    """
+    Construye un .xlsx de una hoja con los mismos recursos que SOL-030.
+
+    Lo usan las exportaciones del Bloque 6 (SOL-056, historial de solicitudes)
+    y del Bloque 7 (SOL-068, desglose del cálculo). Igual que allí, todas las
+    celdas van como texto: lo que escriba un usuario nunca se evalúa.
+    """
+    cuerpo: list[tuple[list, int]] = [
+        ([titulo], ESTILO_NEGRITA),
+        ([f"Generado: {system_now():%Y-%m-%d %H:%M}"], ESTILO_NORMAL),
+        ([], ESTILO_NORMAL),
+        (list(encabezados), ESTILO_NEGRITA),
+    ]
+    cuerpo.extend((list(fila), ESTILO_NORMAL) for fila in filas)
+    if not filas:
+        cuerpo.append((["No hay información para mostrar."], ESTILO_NORMAL))
+
+    contenido_filas = "".join(
+        _fila(numero, valores, estilo)
+        for numero, (valores, estilo) in enumerate(cuerpo, start=1)
+    )
+    hoja = (
+        f'{_CABECERA_XML}<worksheet xmlns="{_NS_HOJA}">'
+        f'<cols><col min="1" max="{max(1, len(encabezados))}" width="26" customWidth="1"/></cols>'
+        f"<sheetData>{contenido_filas}</sheetData>"
+        "</worksheet>"
+    )
+
+    salida = io.BytesIO()
+    with zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as libro:
+        libro.writestr("[Content_Types].xml", _TIPOS_CONTENIDO)
+        libro.writestr("_rels/.rels", _RELACIONES_RAIZ)
+        libro.writestr("xl/workbook.xml", _LIBRO)
+        libro.writestr("xl/_rels/workbook.xml.rels", _RELACIONES_LIBRO)
+        libro.writestr("xl/styles.xml", _ESTILOS)
+        libro.writestr("xl/worksheets/sheet1.xml", hoja)
+
+    return salida.getvalue()
+
+
 def generar_excel_sedes(solicitud: dict, sedes: list[dict]) -> bytes:
     """
     Construye el .xlsx con las sedes incluidas en la solicitud.

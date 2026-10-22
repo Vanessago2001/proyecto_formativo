@@ -14,6 +14,7 @@
         CertiSENA | Solicitud de Auditor
     </title>
 
+    <link rel="stylesheet" href="/static/tema.css">
     <link
         rel="stylesheet"
         href="/static/styles.css"
@@ -144,7 +145,7 @@
 
         .admin-nav a:hover {
 
-            background: #f1f8ed;
+            background: #f1f5f9;
 
             color: #256d00;
 
@@ -239,7 +240,7 @@
 
         .status-enviado {
 
-            background: #fff7ed;
+            background: #fffbeb;
 
             color: #c2410c;
 
@@ -248,7 +249,7 @@
 
         .status-revision {
 
-            background: #eff6ff;
+            background: #f1f5f9;
 
             color: #1d4ed8;
 
@@ -257,7 +258,7 @@
 
         .status-correcciones {
 
-            background: #fff7ed;
+            background: #fffbeb;
 
             color: #b45309;
 
@@ -266,7 +267,7 @@
 
         .status-aprobado {
 
-            background: #e8f5e2;
+            background: #e4f1dc;
 
             color: #256d00;
 
@@ -275,7 +276,7 @@
 
         .status-rechazado {
 
-            background: #feecec;
+            background: #fffbeb;
 
             color: #b42318;
 
@@ -436,17 +437,17 @@
         }
 
         .btn-approve {
-            background: #e8f5e2;
+            background: #e4f1dc;
             color: #1f7a1f;
             border-color: #b7e0a5;
         }
 
         .btn-approve:hover {
-            background: #d6f0c8;
+            background: #cfe3c5;
         }
 
         .btn-reject {
-            background: #feecec;
+            background: #fffbeb;
             color: #b42318;
             border-color: #f5c2c0;
         }
@@ -468,7 +469,7 @@
 
         .message.error {
 
-            background: #feecec;
+            background: #fffbeb;
 
             color: #b42318;
 
@@ -667,7 +668,7 @@
                     ← Volver al banco de auditores
                 </a>
 
-                <div id="fotoPerfilAdmin" class="profile-photo-thumb" style="width: 78px; height: 78px; border-radius: 12px; overflow: hidden; border: 1px solid #dbe3ea; flex: 0 0 78px;"></div>
+                <div id="fotoPerfilAdmin" class="profile-photo-thumb" style="width: 78px; height: 78px; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; flex: 0 0 78px;"></div>
             </div>
 
 
@@ -1763,9 +1764,9 @@
                     !archivo
                         ? "-"
                         : esImagen
-                            ? "<a href=\"" + escapeHtml(archivo) + "\" target=\"_blank\"><img src=\"" + escapeHtml(archivo) + "\" alt=\"Vista previa\" class=\"document-preview-thumb\" style=\"max-width: 92px; max-height: 92px; object-fit: contain; border: 1px solid #dbe3ea; border-radius: 6px;\"></a>"
+                            ? "<a href=\"" + escapeHtml(archivo) + "\" target=\"_blank\"><img src=\"" + escapeHtml(archivo) + "\" alt=\"Vista previa\" class=\"document-preview-thumb\" style=\"max-width: 92px; max-height: 92px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 6px;\"></a>"
                             : esPdf
-                                ? "<embed src=\"" + escapeHtml(archivo) + "\" type=\"application/pdf\" style=\"width: 100%; max-width: 120px; height: 95px; border: 1px solid #dbe3ea; border-radius: 6px;\">"
+                                ? "<embed src=\"" + escapeHtml(archivo) + "\" type=\"application/pdf\" style=\"width: 100%; max-width: 120px; height: 95px; border: 1px solid #e2e8f0; border-radius: 6px;\">"
                                 : "<a href=\"" + escapeHtml(archivo) + "\" target=\"_blank\" class=\"document-link\">Ver documento</a>";
 
                 rows += `
@@ -2397,6 +2398,7 @@
 
 <script src="/static/session.js"></script>
 
+<script src="/static/nav.js"></script>
 </body>
 
 </html>

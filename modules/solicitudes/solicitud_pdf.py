@@ -35,8 +35,13 @@ def _norma(solicitud: dict) -> str:
     return legible or "No registrada"
 
 
-def generar_pdf_solicitud(solicitud: dict) -> bytes:
-    """Devuelve el PDF de la solicitud como bytes listos para descargar."""
+def generar_pdf_solicitud(solicitud: dict, extra: list[tuple[str, object]] | None = None) -> bytes:
+    """
+    Devuelve el PDF de la solicitud como bytes listos para descargar.
+
+    `extra` lo usa SOL-057 (imprimir la solicitud completa) para añadir al
+    final lo que aportan los bloques siguientes: historial y observaciones.
+    """
     campos = [
         ("Radicado", solicitud.get("numero_radicado") or "Sin radicar (borrador)"),
         ("Estado", solicitud.get("estado")),
@@ -52,6 +57,8 @@ def generar_pdf_solicitud(solicitud: dict) -> bytes:
         ("Fecha de cancelacion", solicitud.get("fecha_cancelacion")),
         ("Motivo de cancelacion", solicitud.get("motivo_cancelacion")),
     ]
+
+    campos.extend(extra or [])
 
     return construir_pdf(
         titulo="CertiSENA - Solicitud de certificacion",

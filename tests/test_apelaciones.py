@@ -108,14 +108,18 @@ async def test_servicio_persiste_solicitud_uuid_y_razon_original(mock_db_session
         "motivo": "La decisión fue incorrecta",
         "razones_rechazo": "Falta evidencia requerida.",
     }
-    mock_db_session.execute.side_effect = [duplicate_result, sequence_result, insert_result]
+    # El servicio consulta el motivo que escribio el Comite (comite_accion).
+    # Aqui no hay ninguno, asi que debe caer en las observaciones de la solicitud.
+    comite_result = MagicMock()
+    comite_result.scalar.return_value = None
+    mock_db_session.execute.side_effect = [duplicate_result, sequence_result, comite_result, insert_result]
 
     result = await ApelacionesService(mock_db_session).create_apelacion(
         {"id_solicitud": ID_SOLICITUD, "motivo": "La decisión fue incorrecta"},
         {"id_usuario": ID_USUARIO, "role_name": "Empresa"},
     )
 
-    insert_sql = str(mock_db_session.execute.call_args_list[2].args[0])
+    insert_sql = str(mock_db_session.execute.call_args_list[3].args[0])
     assert "id_solicitud_uuid" not in insert_sql
     assert "id_solicitud" in insert_sql
     assert result["id_solicitud"] == ID_SOLICITUD
@@ -168,7 +172,13 @@ async def test_registrar_apelacion_y_adjuntar_evidencia(mock_db_session, mock_us
         "descripcion": "Evidencia de soporte",
     }
     monkeypatch.setattr(ApelacionesService, "create_apelacion", AsyncMock(return_value=creada))
-    monkeypatch.setattr(ApelacionesService, "add_evidence", AsyncMock(return_value=evidencia))
+    # El endpoint admite varios documentos, asi que responde con la lista.
+    monkeypatch.setattr(
+        ApelacionesService,
+        "add_evidences",
+        AsyncMock(return_value={"agregadas": 1, "evidencias": [evidencia],
+                                "requerimientos_atendidos": 0}),
+    )
 
     app.dependency_overrides[get_db] = lambda: mock_db_session
     app.dependency_overrides[get_current_user] = lambda: mock_user
@@ -190,7 +200,8 @@ async def test_registrar_apelacion_y_adjuntar_evidencia(mock_db_session, mock_us
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["motivo"] == "La decisión fue incorrecta"
     assert evidence_response.status_code == status.HTTP_201_CREATED
-    assert evidence_response.json()["nombre_archivo"] == "recurso.pdf"
+    assert evidence_response.json()["agregadas"] == 1
+    assert evidence_response.json()["evidencias"][0]["nombre_archivo"] == "recurso.pdf"
 
     app.dependency_overrides.clear()
 

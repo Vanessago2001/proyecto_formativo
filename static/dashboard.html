@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CertiSENA | Administracion</title>
+  <link rel="stylesheet" href="/static/tema.css">
   <link rel="stylesheet" href="/static/styles.css" />
   <style>
     .app-shell {
@@ -62,19 +63,41 @@
       height: max-content;
     }
 
+    .admin-nav-heading {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 10px 12px 14px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #1f2937;
+      font-weight: 700;
+    }
+
+    .admin-nav-heading span {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
     .admin-nav a {
       display: block;
       color: #334155;
       text-decoration: none;
-      padding: 12px;
+      padding: 11px 12px;
+      font-size: 13px;
+      line-height: 1.35;
       border-left: 3px solid transparent;
     }
 
     .admin-nav a.active,
     .admin-nav a:hover {
-      background: #f1f8ed;
+      background: #f1f5f9;
       color: #256d00;
       border-left-color: #3baa01;
+      font-weight: 700;
     }
 
     .surface {
@@ -97,9 +120,9 @@
     }
 
     .metric {
-      border: 1px solid #dbe7d4;
+      border: 1px solid #e4f1dc;
       padding: 18px;
-      background: #fbfdf9;
+      background: #f8fafc;
     }
 
     .metric b {
@@ -154,7 +177,7 @@
     }
 
     .primary-action:hover {
-      background: #2d8700;
+      background: #2f8f00;
     }
 
     .table-wrap {
@@ -188,12 +211,12 @@
     }
 
     .status.active {
-      background: #e8f5e2;
+      background: #e4f1dc;
       color: #256d00;
     }
 
     .status.inactive {
-      background: #feecec;
+      background: #fffbeb;
       color: #b42318;
     }
 
@@ -216,8 +239,8 @@
       margin-top: 24px;
       padding: 16px;
       border-left: 4px solid #3baa01;
-      background: #f1f8ed;
-      color: #365314;
+      background: #f1f5f9;
+      color: #1b4b12;
       line-height: 1.5;
     }
 
@@ -280,15 +303,22 @@
     </div>
    <div id="adminView" class="admin-grid non-admin">
   <nav class="admin-nav">
+    <div class="admin-nav-heading">
+      <span>Administración</span>
+      Panel principal
+    </div>
     <a class="active" href="/dashboard">Resumen</a>
     <a href="/empresas">Empresas registradas</a>
     <a href="#usuarios">Gestionar usuarios</a>
     <a href="/asignacion-auditores">Asignación de auditores</a>
     <a href="/consultar-auditorias-programadas-admin">Consultar auditorías programadas</a>
     <a href="/consultar-auditorias-programadas-admin#futuras">Consultar programaciones futuras</a>
-            <a href="/consultar-agenda-auditor">Consultar agenda de auditor</a>
+    <a href="/consultar-agenda-auditor">Consultar agenda de auditor</a>
     <a href="/revision-solicitudes">Revisión de solicitudes</a>
     <a href="/banco-auditores">Banco de auditores</a>
+    <a href="/conflictos-administrador">Conflictos de interés</a>
+    <a href="/gestion-certificados">Gestión de certificados</a>
+    <a href="/apelacion">Apelaciones</a>
     <a href="/comite">Ir al Comité de certificación</a>
     <a href="/profile">Mi perfil</a>
     <a href="#" id="mfaLink">Activar autenticación en dos pasos</a>
@@ -996,6 +1026,7 @@
 
 
   <script src="/static/session.js"></script>
+<script src="/static/nav.js"></script>
 </body>
 
 </html>

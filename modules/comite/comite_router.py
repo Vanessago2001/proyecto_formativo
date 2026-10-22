@@ -649,12 +649,18 @@ async def consultar_decisiones_historicas(
             a.id_accion,
             a.id_solicitud AS expediente_id,
             COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo_expediente,
+            e.nombre AS empresa,
             a.accion,
+            a.datos->>'comentario' AS comentario,
             CAST(a.datos AS TEXT) AS datos,
             a.id_usuario,
+            COALESCE(u.nombre, u.correo, a.id_usuario) AS usuario,
+            s.estado AS estado_expediente,
             a.fecha
         FROM comite_accion a
         JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+        LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+        LEFT JOIN usuario u ON u.id_usuario::TEXT = a.id_usuario
         ORDER BY a.fecha DESC, a.id_accion DESC
         LIMIT 500;
     """))
@@ -681,12 +687,18 @@ async def exportar_decisiones_consolidadas(
             a.id_accion,
             a.id_solicitud AS expediente_id,
             COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo_expediente,
+            e.nombre AS empresa,
             a.accion,
+            a.datos->>'comentario' AS comentario,
             CAST(a.datos AS TEXT) AS datos,
             a.id_usuario,
+            COALESCE(u.nombre, u.correo, a.id_usuario) AS usuario,
+            s.estado AS estado_expediente,
             a.fecha
         FROM comite_accion a
         JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+        LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+        LEFT JOIN usuario u ON u.id_usuario::TEXT = a.id_usuario
         ORDER BY a.fecha DESC, a.id_accion DESC;
     """))
     return {

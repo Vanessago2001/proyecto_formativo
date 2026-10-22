@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Competencias registradas</title>
+    <link rel="stylesheet" href="/static/tema.css">
     <link rel="stylesheet" href="/static/styles.css">
 
     <style>
@@ -15,7 +16,7 @@
 
         .card {
             background:#fff;
-            border:1px solid #dbe4d4;
+            border:1px solid #cbd5e1;
             border-radius:12px;
             padding:22px;
             margin-bottom:22px;
@@ -33,18 +34,18 @@
         .help-text { color:#5f6f69; font-size:13px; margin-bottom:12px; }
         .form-control { width:100%; box-sizing:border-box; }
 
-        .record-table-wrap { overflow-x:auto; border-radius:8px; border:1px solid #e5f0e1; }
+        .record-table-wrap { overflow-x:auto; border-radius:8px; border:1px solid #e2e8f0; }
         table { width:100%; border-collapse:collapse; min-width:980px; }
-        th, td { padding:12px 14px; text-align:left; border-bottom:1px solid #edf0ed; vertical-align:top; font-size:13px; }
+        th, td { padding:12px 14px; text-align:left; border-bottom:1px solid #e2e8f0; vertical-align:top; font-size:13px; }
         th { color:#475569; background:#f8fafc; font-size:11px; text-transform:uppercase; letter-spacing:.3px; }
-        tbody tr:hover { background:#fafcf9; }
+        tbody tr:hover { background:#f8fafc; }
         tbody tr:last-child td { border-bottom:0; }
 
         .badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; }
-        .badge.ok { background:#e7f6df; color:#2d750b; }
-        .badge.warn { background:#fff5d8; color:#896500; }
-        .badge.info { background:#e0f2fe; color:#0369a1; }
-        .badge.danger { background:#fee2e2; color:#991b1b; }
+        .badge.ok { background:#e4f1dc; color:#256d00; }
+        .badge.warn { background:#fff3cd; color:#896500; }
+        .badge.info { background:#e8f1ff; color:#0369a1; }
+        .badge.danger { background:#fee2e2; color:#b42318; }
 
         .btn {
             border:0;
@@ -56,9 +57,9 @@
             transition:.2s ease;
         }
         .btn-primary { background:#3baa01; color:#fff; box-shadow:0 3px 8px rgba(59,170,1,.20); }
-        .btn-primary:hover { background:#2d8700; }
-        .btn-secondary { background:#e9eeea; color:#3f4942; }
-        .btn-secondary:hover { background:#dce4de; }
+        .btn-primary:hover { background:#2f8f00; }
+        .btn-secondary { background:#e2e8f0; color:#334155; }
+        .btn-secondary:hover { background:#e2e8f0; }
         .btn-danger { background:#ef4444; color:#fff; }
 
         .modal {
@@ -98,8 +99,8 @@
             gap:6px;
             padding:8px 14px;
             border-radius:6px;
-            background:#e9eeea;
-            color:#3f4942;
+            background:#e2e8f0;
+            color:#334155;
             text-decoration:none;
             font-weight:600;
             font-size:13px;
@@ -109,7 +110,7 @@
             padding:18px 0;
             color:#64748b;
             font-size:12px;
-            border-top:1px solid #dbe4d4;
+            border-top:1px solid #cbd5e1;
             margin-top:28px;
         }
         @media(max-width:720px){

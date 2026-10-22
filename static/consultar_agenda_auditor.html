@@ -8,20 +8,20 @@
     <style>
         :root {
             color-scheme: light;
-            --sena-green: #39a900;
+            --sena-green: #3baa01;
             --sena-green-dark: #256d00;
             --sena-green-bright: #3baa01;
             --sena-green-hover: #2f8f00;
-            --sena-green-light: #f1f8ed;
-            --bg: #f4f7f5;
-            --ink: #26352b;
+            --sena-green-light: #f1f5f9;
+            --bg: #f1f5f9;
+            --ink: #1f2937;
             --muted: #5f6f69;
-            --line: #dce5de;
+            --line: #e2e8f0;
             --white: #fff;
             --danger: #9d2b2b;
             --good: #256d00;
             --warn: #875b07;
-            --pale: #edf5ef;
+            --pale: #f1f5f9;
             --shadow-card: 0 5px 20px rgba(32, 74, 25, .07);
             --shadow-hover: 0 8px 24px rgba(32, 74, 25, .10);
             --radius-card: 14px;
@@ -40,14 +40,14 @@
             margin: 0;
             background: var(--bg);
             color: var(--ink);
-            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            font-family: var(--tipografia);
         }
 
         /* =========================================================
            HEADER
         ========================================================= */
         .login-header {
-            background: #3BAA01;
+            background: #3baa01;
             color: #fff;
             padding: 20px clamp(18px, 4vw, 42px);
         }
@@ -162,7 +162,7 @@
         }
 
         .side a:hover {
-            background: #f6faf4;
+            background: #f8fafc;
             color: var(--sena-green-dark);
         }
 
@@ -180,7 +180,7 @@
             width: 24px;
             height: 24px;
             border-radius: 7px;
-            background: #eaf4e5;
+            background: #e2e8f0;
             color: var(--sena-green-dark);
             font-size: 11px;
             font-weight: 800;
@@ -269,19 +269,19 @@
         }
 
         .panel:hover {
-            border-color: #d2e5c9;
+            border-color: #cfe3c5;
             box-shadow: var(--shadow-hover);
         }
 
         .panel-head {
             padding: 17px 22px;
-            border-bottom: 1px solid #eef3ee;
+            border-bottom: 1px solid #f1f5f9;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
-            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
         }
 
         .panel-head h2 {
@@ -343,7 +343,7 @@
         textarea {
             width: 100%;
             min-height: 42px;
-            border: 1px solid #d2ddd4;
+            border: 1px solid #cbd5e1;
             border-radius: var(--radius-control);
             padding: 10px 12px;
             font: inherit;
@@ -372,7 +372,7 @@
         input:disabled,
         select:disabled,
         textarea:disabled {
-            background: #f5f7f5;
+            background: #f1f5f9;
             color: #64748b;
             cursor: not-allowed;
         }
@@ -416,7 +416,7 @@
         }
 
         button.primary {
-            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            background: linear-gradient(135deg, #256d00, #256d00);
             color: #fff;
             box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
         }
@@ -428,18 +428,18 @@
         }
 
         button.secondary {
-            background: #edf3ef;
+            background: #f1f5f9;
             color: var(--sena-green-dark);
-            border: 1px solid #cbd9cf;
+            border: 1px solid #cbd5e1;
         }
 
         button.secondary:hover:not(:disabled) {
-            background: #e2ede6;
+            background: #e2e8f0;
             transform: translateY(-1px);
         }
 
         button.danger {
-            background: #fff0ef;
+            background: #f1f5f9;
             color: var(--danger);
             border: 1px solid #e7bfbb;
         }
@@ -474,19 +474,19 @@
         }
 
         .notice.ok {
-            background: #e6f5e9;
+            background: #e2e8f0;
             color: #17582c;
-            border: 1px solid #b8dfc0;
+            border: 1px solid #cfe3c5;
         }
 
         .notice.error {
-            background: #fff0ef;
+            background: #f1f5f9;
             color: #8a2020;
             border: 1px solid #e7bfbb;
         }
 
         .notice.info {
-            background: #eef4ff;
+            background: #f1f5f9;
             color: #244f89;
             border: 1px solid #c6d5ef;
         }
@@ -496,7 +496,7 @@
         ========================================================= */
         .pill {
             display: inline-block;
-            background: #eaf4ed;
+            background: #f1f5f9;
             color: #205d35;
             padding: 5px 10px;
             border-radius: 999px;
@@ -507,12 +507,12 @@
         }
 
         .pill.blocked {
-            background: #fff0ef;
+            background: #f1f5f9;
             color: #8a2020;
         }
 
         .pill.audit {
-            background: #edf2ff;
+            background: #e8f1ff;
             color: #2b4e93;
         }
 
@@ -522,7 +522,7 @@
         .paso-bloque {
             margin-top: 20px;
             padding: 18px;
-            background: #fbfdfb;
+            background: #f8fafc;
             border: 1px solid var(--line);
             border-radius: 14px;
         }
@@ -621,7 +621,7 @@
             gap: 11px;
             margin-top: 16px;
             padding: 13px 15px;
-            background: #fff7f6;
+            background: #f8fafc;
             border: 1px solid #f3d3d0;
             border-radius: 11px;
             cursor: pointer;
@@ -632,7 +632,7 @@
             min-height: 18px;
             margin: 2px 0 0;
             padding: 0;
-            accent-color: #b91c1c;
+            accent-color: #b42318;
             cursor: pointer;
         }
 
@@ -760,15 +760,15 @@
 
         .auditor-estado.bloqueado {
             background: #fee2e2;
-            color: #991b1b;
+            color: #b42318;
         }
 
         .mini-block {
             padding: 6px 11px;
-            border: 1px solid #b91c1c;
+            border: 1px solid #b42318;
             border-radius: 6px;
             background: #fff;
-            color: #b91c1c;
+            color: #b42318;
             font-size: 11.5px;
             font-weight: 700;
             cursor: pointer;
@@ -777,13 +777,13 @@
         }
 
         .mini-block:hover:not(:disabled) {
-            background: #b91c1c;
+            background: #b42318;
             color: #fff;
         }
 
         .mini-block:disabled {
             border-color: var(--line);
-            color: #a3b0a8;
+            color: #94a3b8;
             cursor: not-allowed;
         }
 
@@ -803,7 +803,7 @@
             align-items: center;
             gap: 1px 8px;
             padding: 6px 9px;
-            background: #fef2f2;
+            background: #f1f5f9;
             border: 1px solid #fbd5d5;
             border-radius: 7px;
             font-size: 11.5px;
@@ -812,7 +812,7 @@
         .bloqueo-fecha {
             grid-area: fecha;
             font-weight: 800;
-            color: #b91c1c;
+            color: #b42318;
             line-height: 1.3;
         }
 
@@ -855,7 +855,7 @@
         td {
             padding: 13px 14px;
             text-align: left;
-            border-bottom: 1px solid #e7eee9;
+            border-bottom: 1px solid #e2e8f0;
             vertical-align: top;
             font-size: 13px;
             line-height: 1.5;
@@ -863,7 +863,7 @@
 
         th {
             color: #44574a;
-            background: #f7faf8;
+            background: #f8fafc;
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: .05em;
@@ -876,7 +876,7 @@
         }
 
         tbody tr:hover {
-            background: #fafcf9;
+            background: #f8fafc;
         }
 
         .empty {
@@ -933,8 +933,8 @@
             gap: 12px;
             padding: 13px 15px;
             border-radius: 10px;
-            background: linear-gradient(135deg, #f6faf3, #fbfdf9);
-            border: 1px solid #dce8d8;
+            background: linear-gradient(135deg, #f8fafc, #f8fafc);
+            border: 1px solid #e2e8f0;
             border-left: 4px solid var(--sena-green-bright);
             color: #46604b;
             font-size: 12.5px;
@@ -950,7 +950,7 @@
             width: 26px;
             height: 26px;
             border-radius: 8px;
-            background: #e4f1dd;
+            background: #e4f1dc;
             color: var(--sena-green-dark);
             font-size: 14px;
             font-weight: 800;
@@ -1024,13 +1024,13 @@
 
         .team-card.selected {
             border-color: var(--sena-green-bright);
-            background: #f7fcf4;
+            background: #f8fafc;
             box-shadow: 0 0 0 2px rgba(59, 170, 1, .12);
         }
 
         .team-card.ineligible {
-            background: #fafafa;
-            border-color: #e3e8e4;
+            background: #f8fafc;
+            border-color: #e2e8f0;
         }
 
         .team-card.ineligible .team-name {
@@ -1087,22 +1087,22 @@
             border-radius: 999px;
             font-size: 10.5px;
             font-weight: 700;
-            background: #eef2ef;
+            background: #f1f5f9;
             color: var(--muted);
         }
 
         .team-tag.ok {
-            background: #e7f6df;
-            color: #2d750b;
+            background: #e4f1dc;
+            color: #256d00;
         }
 
         .team-tag.fail {
-            background: #fff0ef;
-            color: #a5261e;
+            background: #f1f5f9;
+            color: #b42318;
         }
 
         .team-tag.info {
-            background: #eef4ff;
+            background: #f1f5f9;
             color: #244f89;
         }
 
@@ -1110,7 +1110,7 @@
             margin-top: 8px;
             font-size: 11.5px;
             line-height: 1.45;
-            color: #9f2d25;
+            color: #b42318;
         }
 
         .team-role {
@@ -1161,9 +1161,9 @@
         .team-empty {
             grid-column: 1 / -1;
             padding: 18px;
-            border: 1px dashed #cbd8cd;
+            border: 1px dashed #cbd5e1;
             border-radius: 10px;
-            background: #f8fbf8;
+            background: #f8fafc;
             color: var(--muted);
             font-size: 12.5px;
             text-align: center;
@@ -1180,9 +1180,9 @@
 
         .audit-list li {
             padding: 11px 13px;
-            border: 1px solid #e1eae2;
+            border: 1px solid #e2e8f0;
             border-radius: 9px;
-            background: #fbfdfb;
+            background: #f8fafc;
             color: #374151;
             font-size: 12.5px;
             line-height: 1.55;
@@ -1233,7 +1233,7 @@
             gap: 12px;
             padding: 20px 22px;
             border-bottom: 1px solid var(--line);
-            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
             position: sticky;
             top: 0;
             z-index: 2;
@@ -1258,7 +1258,7 @@
         .modal-close {
             flex: 0 0 auto;
             border: 0;
-            background: #f1f5f3;
+            background: #f1f5f9;
             color: #5f6f69;
             width: 34px;
             height: 34px;
@@ -1287,7 +1287,7 @@
             display: flex;
             justify-content: flex-end;
             gap: 9px;
-            background: #fbfdf9;
+            background: #f8fafc;
             position: sticky;
             bottom: 0;
         }
@@ -1308,7 +1308,7 @@
             text-transform: uppercase;
             letter-spacing: .09em;
             padding-bottom: 8px;
-            border-bottom: 1px solid #e6ede6;
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -1335,9 +1335,9 @@
 
         .detail-item {
             padding: 12px 14px;
-            border: 1px solid #e6ede6;
+            border: 1px solid #e2e8f0;
             border-radius: 10px;
-            background: #fbfdfb;
+            background: #f8fafc;
             min-width: 0;
         }
 
@@ -1357,7 +1357,7 @@
 
         .detail-item strong {
             font-size: 13.5px;
-            color: #26352b;
+            color: #1f2937;
             font-weight: 700;
             overflow-wrap: anywhere;
             display: block;
@@ -1375,9 +1375,9 @@
 
         .auditores-list li {
             padding: 11px 14px;
-            border: 1px solid #e1eae2;
+            border: 1px solid #e2e8f0;
             border-radius: 9px;
-            background: #fbfdfb;
+            background: #f8fafc;
             color: #374151;
             font-size: 13px;
             font-weight: 600;
@@ -1539,7 +1539,7 @@
             margin: 0 0 16px;
             padding: 14px 16px;
             background: #f8fafc;
-            border: 1px solid #e6ece4;
+            border: 1px solid #e2e8f0;
             border-radius: 12px;
             position: relative;
         }
@@ -1614,7 +1614,7 @@
             margin: 0 0 14px;
             padding: 14px 16px;
             background: #f8fafc;
-            border: 1px solid #e6ece4;
+            border: 1px solid #e2e8f0;
             border-radius: 12px;
         }
 
@@ -1668,7 +1668,7 @@
 
         .filtro-mes-help {
             font-size: 12.5px;
-            color: #365314;
+            color: #1b4b12;
         }
 
     </style>
@@ -1683,6 +1683,7 @@
 .modal-box.error h3 { color:#dc2626; }
 .modal-box.success h3 { color:#256d00; }
 </style>
+  <link rel="stylesheet" href="/static/tema.css">
 </head>
 
 <body>
@@ -1751,6 +1752,9 @@
                     <div class="page-head-top">
                         <a href="/asignacion-auditores" class="back-link">
                             <span aria-hidden="true">←</span> Regresar
+                        </a>
+                        <a href="/dashboard" class="back-link">
+                            <span aria-hidden="true">←</span> Panel principal
                         </a>
                     </div>
                     <h1 id="pageTitle">Programar una auditoría</h1>
@@ -1998,7 +2002,7 @@
                             <div class="weekday-grid" id="weekdayGrid"
                                 style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px;">
                                 <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
                                     <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
                                             id="day-lunes" type="checkbox"
                                             style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
@@ -2012,7 +2016,7 @@
                                             disabled></div>
                                 </div>
                                 <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
                                     <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
                                             id="day-martes" type="checkbox"
                                             style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
@@ -2026,7 +2030,7 @@
                                             value="17:00" disabled></div>
                                 </div>
                                 <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
                                     <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
                                             id="day-miercoles" type="checkbox"
                                             style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
@@ -2040,7 +2044,7 @@
                                             value="17:00" disabled></div>
                                 </div>
                                 <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
                                     <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
                                             id="day-jueves" type="checkbox"
                                             style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
@@ -2054,7 +2058,7 @@
                                             value="17:00" disabled></div>
                                 </div>
                                 <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
                                     <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
                                             id="day-viernes" type="checkbox"
                                             style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
@@ -2068,7 +2072,7 @@
                                             value="17:00" disabled></div>
                                 </div>
                                 <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
                                     <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
                                             id="day-sabado" type="checkbox"
                                             style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
@@ -2082,7 +2086,7 @@
                                             value="12:00" disabled></div>
                                 </div>
                                 <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#fbfdfb;">
+                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
                                     <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
                                             id="day-domingo" type="checkbox" disabled
                                             style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
@@ -3191,7 +3195,7 @@
             document.querySelectorAll("[data-filtro-auditor-slot]").forEach(slot => {
                 const actual = slot.querySelector("[data-filtro-actual]");
                 if (!actual) return;
-                if (!auditor) { actual.innerHTML = '<span class="filtro-auditor-actual" style="background:#fff7f6;border-color:#f3d3d0;color:#b91c1c;">Sin auditor seleccionado</span>'; return; }
+                if (!auditor) { actual.innerHTML = '<span class="filtro-auditor-actual" style="background:#f8fafc;border-color:#f3d3d0;color:#b42318;">Sin auditor seleccionado</span>'; return; }
                 actual.innerHTML = `<span class="filtro-auditor-actual">${esc(auditor.nombre)} &middot; ${esc(auditor.documento)}<button type="button" title="Quitar selección" onclick="seleccionarAuditorEnFiltro('')">×</button></span>`;
             });
         }
@@ -4101,9 +4105,9 @@
                 const tieneAuditoria = auditoriasDia.length > 0;
                 const marcar = esFuturo && tieneAuditoria;
                 const estiloDia = marcar
-                    ? "min-height:126px;border:1px solid #f0a9a9;border-radius:9px;padding:8px;background:#fff4f4;"
+                    ? "min-height:126px;border:1px solid #f0a9a9;border-radius:9px;padding:8px;background:#f8fafc;"
                     : "min-height:126px;border:1px solid var(--line);border-radius:9px;padding:8px;background:#fff;";
-                html += `<div class="day" style="${estiloDia}"><div class="num" style="font-weight:800;font-size:13px;margin-bottom:6px;color:${marcar ? "#b91c1c" : "var(--sena-green-dark)"};">${Number(d.fecha.slice(-2))}</div>`;
+                html += `<div class="day" style="${estiloDia}"><div class="num" style="font-weight:800;font-size:13px;margin-bottom:6px;color:${marcar ? "#b42318" : "var(--sena-green-dark)"};">${Number(d.fecha.slice(-2))}</div>`;
                 // Las auditorías que cubren el día se registran (sin repetir) para la tabla.
                 auditoriasDelDia(d).forEach(a => {
                     const clave = `${a.id_programacion}|${a.id_usuario}`;
@@ -4111,19 +4115,19 @@
                 });
                 if (marcar) {
                     // Día con auditoría asignada: solo se muestra ese mensaje.
-                    html += `<div style="font-size:10px;font-weight:800;color:#b91c1c;background:#fee2e2;border:1px solid #fbd5d5;border-radius:5px;padding:3px 7px;margin-bottom:5px;display:inline-block;">Con auditoría asignada</div>`;
+                    html += `<div style="font-size:10px;font-weight:800;color:#b42318;background:#fee2e2;border:1px solid #fbd5d5;border-radius:5px;padding:3px 7px;margin-bottom:5px;display:inline-block;">Con auditoría asignada</div>`;
                 } else {
                     // Días sin auditoría: un único estado de disponibilidad.
                     const registros = d.disponibilidad || [];
                     const hayBloqueo = registros.some(r => availabilityTypeName(r) === "No disponible");
                     const hayDisponible = registros.length > 0;
                     if (hayBloqueo) {
-                        html += `<div class="event" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 7px;border-radius:6px;background:#fff0ef;color:#8a2020;border:1px solid #f6d4d1;">No disponible</div>`;
+                        html += `<div class="event" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 7px;border-radius:6px;background:#f1f5f9;color:#8a2020;border:1px solid #f6d4d1;">No disponible</div>`;
                     } else if (hayDisponible) {
-                        html += `<div class="event" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 7px;border-radius:6px;background:#f1faf3;color:#3f7d4a;border:1px solid #d3ecd9;">Disponible</div>`;
+                        html += `<div class="event" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 7px;border-radius:6px;background:#f1f5f9;color:#3f7d4a;border:1px solid #e4f1dc;">Disponible</div>`;
                     }
                     auditoriasDelDia(d).forEach(a => {
-                        html += `<div class="event visit" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 7px;border-radius:6px;background:#edf2ff;color:#2b4e93;">Auditoría<small style="display:block;opacity:.85;margin-top:2px;">${esc(timeFromDateTime(a.fecha_inicio) || formatDateTime(a.fecha_inicio))} · ${esc(a.modalidad || "")}</small></div>`;
+                        html += `<div class="event visit" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 7px;border-radius:6px;background:#e8f1ff;color:#2b4e93;">Auditoría<small style="display:block;opacity:.85;margin-top:2px;">${esc(timeFromDateTime(a.fecha_inicio) || formatDateTime(a.fecha_inicio))} · ${esc(a.modalidad || "")}</small></div>`;
                     });
                 }
                 html += '</div>';
@@ -4791,6 +4795,7 @@
     </script>
 
     <script src="/static/session.js"></script>
+<script src="/static/nav.js"></script>
 </body>
 
 </html>

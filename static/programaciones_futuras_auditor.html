@@ -4,20 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Programaciones futuras</title>
+    <link rel="stylesheet" href="/static/tema.css">
     <link rel="stylesheet" href="/static/styles.css">
     <style>
 
         :root {
             color-scheme: light;
-            --sena-green: #39a900;
+            --sena-green: #3baa01;
             --sena-green-dark: #256d00;
             --sena-green-bright: #3baa01;
             --sena-green-hover: #2f8f00;
-            --sena-green-light: #f1f8ed;
-            --bg: #f4f7f5;
-            --ink: #26352b;
+            --sena-green-light: #f1f5f9;
+            --bg: #f1f5f9;
+            --ink: #1f2937;
             --muted: #5f6f69;
-            --line: #dce5de;
+            --line: #e2e8f0;
             --white: #fff;
             --danger: #9d2b2b;
             --shadow-card: 0 5px 20px rgba(32, 74, 25, .07);
@@ -33,14 +34,14 @@
             margin: 0;
             background: var(--bg);
             color: var(--ink);
-            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            font-family: var(--tipografia);
         }
 
         /* =========================================================
            HEADER
         ========================================================= */
         .login-header {
-            background: #3BAA01;
+            background: #3baa01;
             color: #fff;
             padding: 20px clamp(18px, 4vw, 42px);
         }
@@ -155,7 +156,7 @@
         }
 
         .side a:hover {
-            background: #f6faf4;
+            background: #f8fafc;
             color: var(--sena-green-dark);
         }
 
@@ -173,7 +174,7 @@
             width: 24px;
             height: 24px;
             border-radius: 7px;
-            background: #eaf4e5;
+            background: #e2e8f0;
             color: var(--sena-green-dark);
             font-size: 11px;
             font-weight: 800;
@@ -188,18 +189,18 @@
 
         .side .logout-link {
             margin-top: 10px;
-            border-top: 1px solid #e8eee8;
+            border-top: 1px solid #e2e8f0;
             padding-top: 14px;
             color: #b42318;
         }
 
         .side .logout-link:hover {
-            background: #fff1f0;
-            color: #9f1d16;
+            background: #f1f5f9;
+            color: #b42318;
         }
 
         .side .logout-link .side-icon {
-            background: #fde8e8;
+            background: #fffbeb;
             color: #b42318;
         }
 
@@ -278,19 +279,19 @@
         }
 
         .panel:hover {
-            border-color: #d2e5c9;
+            border-color: #cfe3c5;
             box-shadow: var(--shadow-hover);
         }
 
         .panel-head {
             padding: 17px 22px;
-            border-bottom: 1px solid #eef3ee;
+            border-bottom: 1px solid #f1f5f9;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
-            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
         }
 
         .panel-head h2 {
@@ -303,7 +304,7 @@
 
         .panel-head .pill {
             display: inline-block;
-            background: #eaf4ed;
+            background: #f1f5f9;
             color: #205d35;
             padding: 5px 10px;
             border-radius: 999px;
@@ -352,7 +353,7 @@
             height: 42px;
             min-height: 42px;
             padding: 0 12px;
-            border: 1px solid #d2ddd4;
+            border: 1px solid #cbd5e1;
             border-radius: var(--radius-control);
             font: inherit;
             font-size: 13.5px;
@@ -418,7 +419,7 @@
 
         button.mini-btn,
         .mini-btn {
-            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            background: linear-gradient(135deg, #256d00, #256d00);
             color: #fff;
             box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
         }
@@ -498,7 +499,7 @@
             border-radius: 10px;
             background: #fff;
             scrollbar-width: thin;
-            scrollbar-color: #b8cdb0 #f3f6f1;
+            scrollbar-color: #a9c59d #f1f5f9;
         }
 
         table.record-table {
@@ -508,7 +509,7 @@
         }
 
         .record-table thead {
-            background: #f7faf8;
+            background: #f8fafc;
         }
 
         .record-table th {
@@ -526,14 +527,14 @@
         .record-table td {
             padding: 13px 14px;
             color: #374151;
-            border-bottom: 1px solid #edf0ed;
+            border-bottom: 1px solid #e2e8f0;
             font-size: 13px;
             line-height: 1.5;
             vertical-align: top;
         }
 
         .record-table tbody tr:hover {
-            background: #fafcf9;
+            background: #f8fafc;
         }
 
         .record-table tbody tr:last-child td {
@@ -568,19 +569,19 @@
             letter-spacing: .01em;
         }
 
-        .badge.programada { background: #e0f2fe; color: #0369a1; }
-        .badge.confirmada { background: #dcfce7; color: #166534; }
-        .badge.reprogramada { background: #fef3c7; color: #92400e; }
-        .badge.cancelada { background: #fee2e2; color: #991b1b; }
-        .badge.ejecutada { background: #e5e7eb; color: #374151; }
-        .badge.disponible { background: #dcfce7; color: #166534; }
-        .badge.no-disponible { background: #fee2e2; color: #991b1b; }
+        .badge.programada { background: #e8f1ff; color: #0369a1; }
+        .badge.confirmada { background: #e4f1dc; color: #166534; }
+        .badge.reprogramada { background: #fff3cd; color: #92400e; }
+        .badge.cancelada { background: #fee2e2; color: #b42318; }
+        .badge.ejecutada { background: #e2e8f0; color: #374151; }
+        .badge.disponible { background: #e4f1dc; color: #166534; }
+        .badge.no-disponible { background: #fee2e2; color: #b42318; }
         .motivo-bloqueo {
             display: block;
             margin-top: 4px;
             font-size: 11.5px;
             line-height: 1.4;
-            color: #991b1b;
+            color: #b42318;
         }
         .lista-dias-modal {
             display: grid;
@@ -593,7 +594,7 @@
             gap: 2px;
             padding: 8px 10px;
             border-radius: 8px;
-            border: 1px solid #e1e9df;
+            border: 1px solid #e2e8f0;
             background: #f8fafc;
             font-size: 12px;
         }
@@ -603,33 +604,33 @@
         }
         .dia-modal .dia-nombre {
             font-weight: 700;
-            color: #26352b;
+            color: #1f2937;
         }
         .dia-modal .dia-hora {
             color: #5f6f69;
             font-size: 11.5px;
         }
         .dia-modal .dia-motivo {
-            color: #991b1b;
+            color: #b42318;
             font-size: 11px;
             line-height: 1.35;
         }
         .dia-modal.disponible {
-            background: #f0fdf4;
+            background: #f1f5f9;
             border-color: #bbf7d0;
         }
         .dia-modal.disponible .dia-icono {
             color: #15803d;
         }
         .dia-modal.bloqueado {
-            background: #fef2f2;
+            background: #f1f5f9;
             border-color: #fbd5d5;
         }
         .dia-modal.bloqueado .dia-icono {
-            color: #b91c1c;
+            color: #b42318;
         }
-        .fila-bloqueada { background: #fff7f6; }
-        .fila-bloqueada:hover { background: #ffeeec !important; }
+        .fila-bloqueada { background: #f8fafc; }
+        .fila-bloqueada:hover { background: #fffbeb !important; }
 
         /* =========================================================
            MENSAJES
@@ -661,7 +662,7 @@
             height: 38px;
             padding: 0 12px;
             border-radius: 8px;
-            border: 1px solid #cbd9cf;
+            border: 1px solid #cbd5e1;
             background: #fff;
             color: var(--sena-green-dark);
             font-weight: 700;
@@ -741,8 +742,8 @@
             align-items: center;
             gap: 12px;
             padding: 18px 22px;
-            border-bottom: 1px solid #e8eee8;
-            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+            border-bottom: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
             position: sticky;
             top: 0;
             z-index: 2;
@@ -761,7 +762,7 @@
         .modal-close {
             flex: 0 0 auto;
             border: 0;
-            background: #f1f5f3;
+            background: #f1f5f9;
             color: #5f6f69;
             width: 34px;
             height: 34px;
@@ -799,7 +800,7 @@
             gap: 9px;
             margin-bottom: 12px;
             padding-bottom: 10px;
-            border-bottom: 1px solid #e8eee8;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .modal-section-head::before {
@@ -832,9 +833,9 @@
             flex-direction: column;
             gap: 4px;
             padding: 10px 12px;
-            border: 1px solid #e6ede6;
+            border: 1px solid #e2e8f0;
             border-radius: 9px;
-            background: #fbfdfb;
+            background: #f8fafc;
             min-width: 0;
         }
 
@@ -863,9 +864,9 @@
             gap: 12px;
             align-items: flex-start;
             padding: 12px;
-            border: 1px solid #e1eae2;
+            border: 1px solid #e2e8f0;
             border-radius: 10px;
-            background: #fbfdfb;
+            background: #f8fafc;
             margin-bottom: 8px;
             transition: border-color .15s ease, box-shadow .15s ease;
         }
@@ -875,7 +876,7 @@
         }
 
         .modal-auditor:hover {
-            border-color: #c7ddbe;
+            border-color: #cfe3c5;
             box-shadow: 0 3px 10px rgba(15, 35, 22, .04);
         }
 
@@ -934,7 +935,7 @@
             height: 42px;
             min-height: 42px;
             padding: 0 12px;
-            border: 1px solid #d2ddd4;
+            border: 1px solid #cbd5e1;
             border-radius: var(--radius-control);
             font: inherit;
             font-size: 13.5px;
@@ -962,10 +963,10 @@
             flex-wrap: wrap;
             margin-top: 22px;
             padding-top: 16px;
-            border-top: 1px solid #e8eee8;
+            border-top: 1px solid #e2e8f0;
         }
 
-        .badge.confirmada { background: #dcfce7; color: #166534; }
+        .badge.confirmada { background: #e4f1dc; color: #166534; }
 
         .mini-btn.confirm {
             background: #15803d;
@@ -1005,7 +1006,7 @@
         }
 
         .btn-ver {
-            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            background: linear-gradient(135deg, #256d00, #256d00);
             box-shadow: 0 4px 10px rgba(37, 109, 0, .20);
         }
 
@@ -1014,7 +1015,7 @@
         }
 
         .btn-editar {
-            background: linear-gradient(135deg, #2563eb, #1e40af);
+            background: linear-gradient(135deg, #2563eb, #1e4db8);
             box-shadow: 0 4px 10px rgba(37, 99, 235, .20);
         }
 
@@ -1023,7 +1024,7 @@
         }
 
         .btn-cancelar {
-            background: linear-gradient(135deg, #dc2626, #991b1b);
+            background: linear-gradient(135deg, #dc2626, #b42318);
             box-shadow: 0 4px 10px rgba(220, 38, 38, .20);
         }
 
@@ -1240,9 +1241,9 @@
             const el = document.getElementById('mensaje');
             el.textContent = texto;
             el.style.display = 'block';
-            el.style.background = tipo === 'ok' ? '#e6f5e9' : '#fff0ef';
+            el.style.background = tipo === 'ok' ? '#e2e8f0' : '#f1f5f9';
             el.style.color = tipo === 'ok' ? '#17582c' : '#8a2020';
-            el.style.border = tipo === 'ok' ? '1px solid #b8dfc0' : '1px solid #e7bfbb';
+            el.style.border = tipo === 'ok' ? '1px solid #cfe3c5' : '1px solid #e7bfbb';
             setTimeout(() => { el.style.display = 'none'; }, 5000);
         }
 
@@ -1477,5 +1478,6 @@
         })();
     </script>
     <script src="/static/session.js"></script>
+<script src="/static/nav.js"></script>
 </body>
 </html>

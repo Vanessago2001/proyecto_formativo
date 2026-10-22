@@ -23,7 +23,19 @@ class ApelacionUpdate(BaseModel):
 
 
 class RequerimientoCreate(BaseModel):
-    requerimiento: str
+    """Lo que el Comité pide a la empresa para seguir con la apelación."""
+
+    requerimiento: str = Field(
+        ...,
+        min_length=10,
+        max_length=2000,
+        description="Qué documentos debe adjuntar la empresa, en detalle.",
+    )
+    observaciones: Optional[str] = Field(
+        default=None,
+        max_length=2000,
+        description="Nota interna opcional sobre el requerimiento.",
+    )
 
 
 class DecisionCreate(BaseModel):
@@ -45,6 +57,16 @@ async def registrar_apelacion(
     return await ApelacionesService(db).create_apelacion(data.model_dump(), current_user)
 
 
+@router.get("/solicitud/{id_solicitud}/contexto")
+async def contexto_de_solicitud(
+    id_solicitud: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin", "auxiliar"]))
+):
+    """Si la solicitud se puede apelar y el motivo del rechazo del Comité."""
+    return await ApelacionesService(db).contexto_de_solicitud(id_solicitud, current_user)
+
+
 @router.get("/{id}")
 async def consultar_apelacion(
     id: UUID,
@@ -57,18 +79,60 @@ async def consultar_apelacion(
     return apelacion
 
 
+@router.get("/{id}/expediente")
+async def consultar_expediente_apelacion(
+    id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin", "auxiliar"]))
+):
+    """
+    Expediente completo de la apelación: la solicitud original, la evaluación
+    previa del Comité, la apelación y sus evidencias. Un miembro del Comité
+    solo accede si pertenece al comité asignado a esta apelación.
+    """
+    return await ApelacionesService(db).expediente_apelacion(id, current_user)
+
+
+@router.get("/{id}/comite-elegible")
+async def consultar_comite_elegible(
+    id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["superadmin", "admin"]))
+):
+    """
+    Miembros del Comité que el Administrador puede asignar a esta apelación.
+    Los que ya evaluaron la solicitud original vienen marcados.
+    """
+    return await ApelacionesService(db).comite_elegible(id)
+
+
 @router.post("/{id}/evidencias", status_code=status.HTTP_201_CREATED)
 async def adjuntar_evidencias(
     id: UUID,
-    archivo: UploadFile = File(...),
+    archivos: list[UploadFile] = File(default=[]),
+    archivo: Optional[UploadFile] = File(default=None),
     descripcion: Optional[str] = Form(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_role(["empresa"]))
 ):
-    updated = await ApelacionesService(db).add_evidence(id, archivo, descripcion, current_user)
-    if not updated:
+    """
+    Adjunta uno o varios documentos a la apelación.
+
+    Se acepta `archivos` (varios) y también `archivo` (uno), que es como lo
+    enviaba la pantalla anterior. En ningún caso se reemplazan las evidencias
+    que ya estaban: cada envío suma.
+    """
+    recibidos = [a for a in list(archivos or []) if a and a.filename]
+    if archivo is not None and archivo.filename:
+        recibidos.append(archivo)
+
+    if not recibidos:
+        raise HTTPException(status_code=400, detail="No se recibió ningún archivo.")
+
+    resultado = await ApelacionesService(db).add_evidences(id, recibidos, descripcion, current_user)
+    if not resultado:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
-    return updated
+    return resultado
 
 
 @router.put("/{id}")
@@ -165,6 +229,16 @@ async def descargar_evidencia(
     return FileResponse(ruta, filename=nombre)
 
 
+@router.get("/{id}/requerimientos")
+async def consultar_requerimientos(
+    id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin", "auxiliar"]))
+):
+    """Lo que el Comité ha pedido en esta apelación y si ya fue atendido."""
+    return await ApelacionesService(db).listar_requerimientos(id, current_user)
+
+
 @router.post("/{id}/solicitar-info", status_code=status.HTTP_201_CREATED)
 async def solicitar_info_adicional(
     id: UUID,
@@ -172,7 +246,9 @@ async def solicitar_info_adicional(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
 ):
-    updated = await ApelacionesService(db).solicitar_info_adicional(id, data.requerimiento, current_user)
+    updated = await ApelacionesService(db).solicitar_info_adicional(
+        id, data.requerimiento, current_user, data.observaciones
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
     return updated

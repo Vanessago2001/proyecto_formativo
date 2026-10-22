@@ -1,0 +1,164 @@
+/*=========================
+TEMA INSTITUCIONAL CERTISENA
+==========================
+
+Una sola fuente para la tipografia, la paleta, los tamanos y los espacios de
+todas las pantallas. Se carga antes de la hoja de cada vista, de modo que
+cualquier pagina pueda seguir ajustando detalles, pero partiendo de la misma
+base visual.
+
+Como usarlo en una vista nueva:
+  <link rel="stylesheet" href="/static/tema.css">
+  <link rel="stylesheet" href="/static/styles.css">
+y dentro del CSS de la pagina usar las variables (var(--verde-800), var(--txt-base)...)
+en lugar de escribir colores o tamanos sueltos.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* --- Tipografia --- */
+  --tipografia: 'Montserrat', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+
+  --txt-xs: 12px;
+  --txt-sm: 13px;
+  --txt-base: 14px;
+  --txt-md: 15px;
+  --txt-lg: 18px;
+  --txt-xl: 22px;
+  --txt-2xl: 28px;
+
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --peso-semi: 600;
+  --peso-fuerte: 700;
+
+  --alto-linea: 1.55;
+  --alto-linea-titulo: 1.25;
+
+  /* --- Verdes institucionales --- */
+  --verde-900: #1b4b12;
+  --verde-800: #256d00;
+  --verde-700: #2f8f00;
+  --verde-600: #3baa01;
+  --verde-300: #a9c59d;
+  --verde-200: #cfe3c5;
+  --verde-100: #e4f1dc;
+  --verde-50: #f3f9ef;
+
+  /* --- Neutros --- */
+  --gris-900: #1f2937;
+  --gris-800: #334155;
+  --gris-700: #475569;
+  --gris-500: #64748b;
+  --gris-400: #94a3b8;
+  --gris-300: #cbd5e1;
+  --gris-200: #e2e8f0;
+  --gris-100: #f1f5f9;
+  --gris-50: #f8fafc;
+  --blanco: #ffffff;
+
+  /* --- Estados --- */
+  --rojo-700: #b42318;
+  --rojo-600: #dc2626;
+  --rojo-100: #fde7e7;
+  --rojo-50: #fef2f2;
+
+  --ambar-700: #7a5400;
+  --ambar-600: #b45309;
+  --ambar-100: #fff3cd;
+  --ambar-50: #fffbeb;
+
+  --azul-700: #1e4db8;
+  --azul-600: #2563eb;
+  --azul-100: #e8f1ff;
+  --azul-50: #eff6ff;
+
+  /* --- Superficies --- */
+  --fondo-pagina: #f3f9ef;
+  --fondo-panel: #ffffff;
+  --fondo-suave: #fafcf9;
+  --borde: #e2e8f0;
+  --borde-fuerte: #cbd5e1;
+
+  /* --- Espaciado --- */
+  --esp-1: 4px;
+  --esp-2: 8px;
+  --esp-3: 12px;
+  --esp-4: 16px;
+  --esp-5: 22px;
+  --esp-6: 32px;
+
+  /* --- Formas --- */
+  --radio-sm: 8px;
+  --radio-md: 12px;
+  --radio-lg: 16px;
+  --radio-pill: 999px;
+
+  --sombra-1: 0 2px 6px rgba(22, 35, 12, 0.06);
+  --sombra-2: 0 12px 28px rgba(22, 35, 12, 0.08);
+
+  /* Nombres heredados de pantallas antiguas, apuntando a la misma paleta. */
+  --verde-principal: var(--verde-800);
+  --verde-claro: var(--verde-600);
+  --bg: var(--fondo-pagina);
+  --texto: var(--gris-900);
+  --texto-suave: var(--gris-500);
+}
+
+/*=========================
+TIPOGRAFIA BASE
+==========================*/
+
+body {
+  font-family: var(--tipografia);
+  font-size: var(--txt-base);
+  line-height: var(--alto-linea);
+  color: var(--gris-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--tipografia);
+  line-height: var(--alto-linea-titulo);
+  color: var(--verde-800);
+}
+
+h1 { font-size: var(--txt-2xl); font-weight: var(--peso-fuerte); }
+h2 { font-size: var(--txt-xl); font-weight: var(--peso-fuerte); }
+h3 { font-size: var(--txt-lg); font-weight: var(--peso-semi); }
+h4 { font-size: var(--txt-md); font-weight: var(--peso-semi); }
+h5, h6 { font-size: var(--txt-base); font-weight: var(--peso-semi); }
+
+small { font-size: var(--txt-xs); }
+
+button, input, select, textarea {
+  font-family: var(--tipografia);
+  font-size: var(--txt-base);
+}
+
+table { font-size: var(--txt-base); }
+
+/*=========================
+AYUDAS COMPARTIDAS
+==========================*/
+
+.texto-suave { color: var(--gris-500); }
+.texto-fuerte { color: var(--gris-900); font-weight: var(--peso-semi); }
+
+/* Etiqueta de estado: misma forma en todas las pantallas. */
+.chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radio-pill);
+  font-size: var(--txt-xs);
+  font-weight: var(--peso-fuerte);
+  letter-spacing: 0.02em;
+  background: var(--gris-100);
+  color: var(--gris-700);
+}
+
+.chip-exito { background: var(--verde-100); color: var(--verde-800); }
+.chip-alerta { background: var(--ambar-100); color: var(--ambar-700); }
+.chip-error { background: var(--rojo-100); color: var(--rojo-700); }
+.chip-info { background: var(--azul-100); color: var(--azul-700); }

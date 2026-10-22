@@ -7,6 +7,14 @@ load_dotenv()
 class Settings:
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+
+    # Imprimir cada sentencia SQL sirve para depurar, pero llena la
+    # consola y hace lento el arranque. Se activa con SQL_ECHO=1.
+    SQL_ECHO: bool = os.getenv("SQL_ECHO", "0").strip().lower() in ("1", "true", "si", "sí")
+
+    # Preparar la base al arrancar: auto (solo si hace falta),
+    # siempre o nunca. Ver core/arranque.py.
+    PREPARAR_BASE: str = os.getenv("PREPARAR_BASE", "auto")
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
     SECRET_KEY: str = os.getenv(

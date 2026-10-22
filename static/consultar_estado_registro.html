@@ -5,19 +5,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CertiSENA | Estado del registro</title>
+  <link rel="stylesheet" href="/static/tema.css">
   <link rel="stylesheet" href="/static/styles.css">
 
   <style>
     :root {
       --verde-sena: #256d00;
       --verde-claro: #3baa01;
-      --verde-fondo: #f1f8ed;
+      --verde-fondo: #f1f5f9;
       --texto: #172033;
       --texto-secundario: #64748b;
-      --borde: #dbe4d4;
-      --fondo-pagina: #f5f7f4;
+      --borde: #cbd5e1;
+      --fondo-pagina: #f1f5f9;
       --azul: #0369a1;
-      --rojo: #b91c1c;
+      --rojo: #b42318;
       --radio: 12px;
       --sombra: 0 8px 24px rgba(15, 23, 42, 0.055);
     }
@@ -30,7 +31,7 @@
       margin: 0;
       background: var(--fondo-pagina);
       color: var(--texto);
-      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      font-family: var(--tipografia);
     }
 
     /* El encabezado conserva el color verde definido en styles.css. */
@@ -74,7 +75,7 @@
     }
 
     .side a:hover {
-      background: #f5f8f2;
+      background: #f1f5f9;
       color: var(--verde-sena);
     }
 
@@ -116,11 +117,11 @@
     .notice {
       margin: 15px 0;
       padding: 11px 14px;
-      border: 1px solid #d8eacb;
+      border: 1px solid #cfe3c5;
       border-left: 4px solid var(--verde-claro);
       border-radius: 9px;
-      background: linear-gradient(110deg, #f1f8ed 0%, #fbfdf9 100%);
-      color: #365314;
+      background: linear-gradient(110deg, #f1f5f9 0%, #f8fafc 100%);
+      color: #1b4b12;
       font-size: 13px;
       line-height: 1.5;
     }
@@ -128,7 +129,7 @@
     .notice-correcciones {
       border-color: #fed7aa;
       border-left-color: #f97316;
-      background: #fff7ed;
+      background: #fffbeb;
       color: #9a3412;
     }
 
@@ -184,8 +185,8 @@
     }
 
     .status-item:hover {
-      border-color: #cfe2c3;
-      background: #fbfdf9;
+      border-color: #cfe3c5;
+      background: #f8fafc;
     }
 
     .status-item .label,
@@ -222,8 +223,8 @@
     }
 
     .status-item:has(#estadoPostulacion) {
-      background: #f4faef;
-      border-color: #d6e9cb;
+      background: #f1f5f9;
+      border-color: #cfe3c5;
     }
 
     /* Estados */
@@ -235,7 +236,7 @@
       padding: 6px 11px;
       border: 1px solid transparent;
       border-radius: 999px;
-      background: #fef3c7;
+      background: #fff3cd;
       color: #92400e;
       font-size: 12px;
       font-weight: 750;
@@ -245,20 +246,20 @@
 
     .estado-enviado,
     .estado-pendiente {
-      background: #dbeafe;
+      background: #e8f1ff;
       color: #1d4ed8;
       border-color: #bfdbfe;
     }
 
     .estado-aprobado {
-      background: #dcfce7;
+      background: #e4f1dc;
       color: #166534;
       border-color: #bbf7d0;
     }
 
     .estado-rechazado {
       background: #fee2e2;
-      color: #991b1b;
+      color: #b42318;
       border-color: #fecaca;
     }
 
@@ -269,7 +270,7 @@
     }
 
     .estado-correcciones {
-      background: #ffedd5;
+      background: #fff3cd;
       color: #c2410c;
       border-color: #fed7aa;
     }
@@ -281,7 +282,7 @@
       overflow: hidden;
       border: 1px solid #fed7aa;
       border-radius: 10px;
-      background: #fffaf5;
+      background: #f8fafc;
     }
 
     .correcciones-card.visible {
@@ -290,7 +291,7 @@
 
     .correcciones-header {
       padding: 16px 18px;
-      background: #ffedd5;
+      background: #fff3cd;
       border-bottom: 1px solid #fed7aa;
     }
 
@@ -347,7 +348,7 @@
       padding: 12px;
       border: 1px solid #fed7aa;
       border-radius: 7px;
-      background: #fff7ed;
+      background: #fffbeb;
       color: #7c2d12;
       font-size: 13px;
       overflow-wrap: anywhere;
@@ -376,9 +377,9 @@
       gap: 9px;
       min-width: 145px;
       padding: 9px 16px;
-      border: 1px solid #b8d7a8;
+      border: 1px solid #a9c59d;
       border-radius: 8px;
-      background: #f4faef;
+      background: #f1f5f9;
       color: var(--verde-sena);
       font-size: 13px;
       font-weight: 750;
@@ -387,14 +388,14 @@
     }
 
     .btn-ver-mas:hover {
-      background: #e9f5df;
+      background: #e4f1dc;
       border-color: var(--verde-claro);
     }
 
     .btn-ver-mas:focus-visible,
     .btn-accion:focus-visible,
     .btn-nueva-postulacion:focus-visible {
-      outline: 3px solid #a7d48f;
+      outline: 3px solid #a9c59d;
       outline-offset: 2px;
     }
 
@@ -442,7 +443,7 @@
       padding: 20px;
       border: 1px solid #fecaca;
       border-radius: 10px;
-      background: #fff7f7;
+      background: #f8fafc;
     }
 
     .rechazo-card.visible {
@@ -451,7 +452,7 @@
 
     .rechazo-card h3 {
       margin: 0 0 10px;
-      color: #991b1b;
+      color: #b42318;
       font-size: 17px;
     }
 
@@ -490,8 +491,8 @@
     }
 
     .historial-item.active {
-      border-color: #b8d7a8;
-      background: #f5faef;
+      border-color: #a9c59d;
+      background: #f1f5f9;
     }
 
     .historial-item-header {
@@ -516,7 +517,7 @@
     }
 
     .historial-observacion {
-      color: #991b1b;
+      color: #b42318;
     }
 
     .btn-nueva-postulacion {
@@ -534,7 +535,7 @@
     }
 
     .btn-nueva-postulacion:hover {
-      background: #1e5800;
+      background: #1b4b12;
     }
 
     /* Paginación */
@@ -604,7 +605,7 @@
     }
 
     .btn-cancelar:hover:not(:disabled) {
-      background: #b91c1c;
+      background: #b42318;
     }
 
     .btn-pdf {
@@ -613,7 +614,7 @@
     }
 
     .btn-pdf:hover:not(:disabled) {
-      background: #1e5800;
+      background: #1b4b12;
     }
 
     .btn-accion:disabled,
@@ -633,7 +634,7 @@
 
     .mensaje.success {
       display: block;
-      background: #dcfce7;
+      background: #e4f1dc;
       border: 1px solid #bbf7d0;
       color: #166534;
     }
@@ -642,7 +643,7 @@
       display: block;
       background: #fee2e2;
       border: 1px solid #fecaca;
-      color: #991b1b;
+      color: #b42318;
     }
 
     .loading {
@@ -708,7 +709,7 @@
       padding: 13px 14px;
       border-left: 4px solid #f97316;
       border-radius: 5px;
-      background: #fff7ed;
+      background: #fffbeb;
       color: #9a3412;
       font-size: 13px;
     }
@@ -1585,7 +1586,7 @@
         mostrarMensaje("El navegador bloqueó la ventana del comprobante.", "error");
         return;
       }
-      ventanaPdf.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Generando comprobante...</title></head><body style="font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;color:#334155"><h3>Generando comprobante PDF...</h3></body></html>`);
+      ventanaPdf.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Generando comprobante...</title></head><body style="font-family: var(--tipografia);display:flex;align-items:center;justify-content:center;height:100vh;color:#334155"><h3>Generando comprobante PDF...</h3></body></html>`);
 
       try {
         const response = await fetch(`/auditores/registro/postulacion/${encodeURIComponent(idPostulacion)}/comprobante`, {
@@ -1610,6 +1611,7 @@
     consultarEstado();
   </script>
   <script src="/static/session.js"></script>
+<script src="/static/nav.js"></script>
 </body>
 
 </html>

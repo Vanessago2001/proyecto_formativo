@@ -4,19 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Disponibilidad semanal - Auditor</title>
+    <link rel="stylesheet" href="/static/tema.css">
     <link rel="stylesheet" href="/static/styles.css">
     <style>
         :root {
             color-scheme: light;
-            --sena-green: #39a900;
+            --sena-green: #3baa01;
             --sena-green-dark: #256d00;
             --sena-green-bright: #3baa01;
             --sena-green-hover: #2f8f00;
-            --sena-green-light: #f1f8ed;
-            --bg: #f4f7f5;
-            --ink: #26352b;
+            --sena-green-light: #f1f5f9;
+            --bg: #f1f5f9;
+            --ink: #1f2937;
             --muted: #5f6f69;
-            --line: #dce5de;
+            --line: #e2e8f0;
             --white: #fff;
             --danger: #9d2b2b;
             --shadow-card: 0 5px 20px rgba(32, 74, 25, .07);
@@ -32,14 +33,14 @@
             margin: 0;
             background: var(--bg);
             color: var(--ink);
-            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            font-family: var(--tipografia);
         }
 
         /* =========================================================
            HEADER
         ========================================================= */
         .login-header {
-            background: #3BAA01;
+            background: #3baa01;
             color: #fff;
             padding: 20px clamp(18px, 4vw, 42px);
         }
@@ -154,7 +155,7 @@
         }
 
         .side a:hover {
-            background: #f6faf4;
+            background: #f8fafc;
             color: var(--sena-green-dark);
         }
 
@@ -172,7 +173,7 @@
             width: 24px;
             height: 24px;
             border-radius: 7px;
-            background: #eaf4e5;
+            background: #e2e8f0;
             color: var(--sena-green-dark);
             font-size: 11px;
             font-weight: 800;
@@ -260,19 +261,19 @@
         }
 
         .panel:hover {
-            border-color: #d2e5c9;
+            border-color: #cfe3c5;
             box-shadow: var(--shadow-hover);
         }
 
         .panel-head {
             padding: 17px 22px;
-            border-bottom: 1px solid #eef3ee;
+            border-bottom: 1px solid #f1f5f9;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
-            background: linear-gradient(180deg, #ffffff, #fbfdf9);
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
         }
 
         .panel-head h2 {
@@ -285,7 +286,7 @@
 
         .panel-head .pill {
             display: inline-block;
-            background: #eaf4ed;
+            background: #f1f5f9;
             color: #205d35;
             padding: 5px 10px;
             border-radius: 999px;
@@ -329,7 +330,7 @@
             width: 100%;
             height: 42px;
             min-height: 42px;
-            border: 1px solid #d2ddd4;
+            border: 1px solid #cbd5e1;
             border-radius: var(--radius-control);
             padding: 0 12px;
             font: inherit;
@@ -356,7 +357,7 @@
         }
 
         input[readonly], input:disabled, select:disabled, textarea:disabled {
-            background: #f5f7f5;
+            background: #f1f5f9;
             color: #64748b;
             cursor: not-allowed;
         }
@@ -419,7 +420,7 @@
 
         .btn-primary,
         button[type="submit"] {
-            background: linear-gradient(135deg, #2e7d0a, #256d00);
+            background: linear-gradient(135deg, #256d00, #256d00);
             color: #fff;
             box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
         }
@@ -446,8 +447,8 @@
             gap: 12px;
             padding: 13px 15px;
             border-radius: 10px;
-            background: linear-gradient(135deg, #f6faf3, #fbfdf9);
-            border: 1px solid #dce8d8;
+            background: linear-gradient(135deg, #f8fafc, #f8fafc);
+            border: 1px solid #e2e8f0;
             border-left: 4px solid var(--sena-green-bright);
             color: #46604b;
             font-size: 12.5px;
@@ -463,7 +464,7 @@
             width: 26px;
             height: 26px;
             border-radius: 8px;
-            background: #e4f1dd;
+            background: #e4f1dc;
             color: var(--sena-green-dark);
             font-size: 14px;
             font-weight: 800;
@@ -486,7 +487,7 @@
 
         .weekday-item {
             padding: 12px 8px;
-            border: 1px solid #d2ddd4;
+            border: 1px solid #cbd5e1;
             border-radius: 9px;
             background: #fff;
             text-align: center;
@@ -500,7 +501,7 @@
 
         .weekday-item:hover {
             border-color: #a9c59d;
-            background: #f8fbf6;
+            background: #f8fafc;
             color: var(--sena-green-dark);
         }
 
@@ -549,7 +550,7 @@
             padding: 0 6px;
             font-size: 11.5px;
             border-radius: 5px;
-            border: 1px solid #d2ddd4;
+            border: 1px solid #cbd5e1;
             background: #fff;
             box-sizing: border-box;
         }
@@ -561,7 +562,7 @@
 
         /* Cuando el día está seleccionado, resaltar tarjeta */
         .weekday-item:has(input[type="checkbox"]:checked) {
-            background: #f1f8ed;
+            background: #f1f5f9;
             border-color: var(--sena-green-bright);
             box-shadow: 0 3px 10px rgba(59, 170, 1, .18);
             color: var(--sena-green-dark);
@@ -595,18 +596,18 @@
 
         .historial-item {
             padding: 12px 14px;
-            border: 1px solid #e1eae2;
+            border: 1px solid #e2e8f0;
             border-left: 4px solid var(--sena-green-bright);
             border-radius: 9px;
-            background: #f8fbf6;
-            color: #26352b;
+            background: #f8fafc;
+            color: #1f2937;
             font-size: 13px;
             line-height: 1.55;
             transition: border-color .15s ease, box-shadow .15s ease;
         }
 
         .historial-item:hover {
-            border-color: #c7ddbe;
+            border-color: #cfe3c5;
             border-left-color: var(--sena-green-bright);
             box-shadow: 0 3px 10px rgba(15, 35, 22, .04);
         }
@@ -746,18 +747,18 @@
     margin-top: 12px;
 }
 .historial-tabla th, .historial-tabla td {
-    border: 1px solid #dbe4d4;
+    border: 1px solid #cbd5e1;
     padding: 8px;
     text-align: left;
     font-size: 0.9rem;
 }
 .historial-tabla th {
-    background: #f1f8ed;
+    background: #f1f5f9;
     color: #256d00;
     font-weight: bold;
 }
 .historial-tabla tr:hover {
-    background: #f9fbf9;
+    background: #f8fafc;
 }
 .btn-small {
     padding: 4px 8px;
@@ -1478,5 +1479,6 @@
 </script>
  <script src="/static/session.js"></script>
 
+<script src="/static/nav.js"></script>
 </body>
 </html>

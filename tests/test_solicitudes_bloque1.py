@@ -190,8 +190,8 @@ def test_la_matriz_del_codigo_coincide_con_el_excel():
 
 
 def test_la_matriz_cubre_los_bloques_implementados():
-    """Bloques 1 a 4: SOL-001 a SOL-040."""
-    esperados = [f"SOL-{n:03d}" for n in range(1, 41)]
+    """Los siete bloques de la hoja: SOL-001 a SOL-070."""
+    esperados = [f"SOL-{n:03d}" for n in range(1, 71)]
     assert sorted(PERMISOS_M5) == sorted(esperados)
 
 

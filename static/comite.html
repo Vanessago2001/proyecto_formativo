@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/tema.css">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 
@@ -22,6 +23,7 @@
         </div>
       </div>
       <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">← Panel principal</a>
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
@@ -38,6 +40,7 @@
           <button class="comite-nav-link active" type="button" data-view="expedientes">Expedientes pendientes</button>
           <button class="comite-nav-link" type="button" data-view="historico">Historial de Decisiones</button>
           <a class="comite-nav-link certificados-nav-anchor" href="/gestion-certificados">Gestión de certificados</a>
+          <a class="comite-nav-link" href="/apelacion">Apelaciones asignadas</a>
         </nav>
         <div class="comite-access-note">
           <span id="roleLabel">Validando permisos...</span>
@@ -192,6 +195,31 @@
         return body;
       }
 
+      // Acciones que fijan el dictamen del expediente. Cuando ya hay uno
+      // (aprobado o rechazado) dejan de estar disponibles.
+      var ACCIONES_DE_DICTAMEN = [
+        "/comite/aprobar", "/comite/rechazar",
+        "/comite/decisiones", "/comite/decision-borrador", "/comite/decision-definitiva",
+      ];
+
+      function esDecisionFinal(estado) {
+        return ["APROBADO", "APROBADA", "RECHAZADO", "RECHAZADA"]
+          .includes(String(estado || "").toUpperCase());
+      }
+
+      function bloquearAccionesDeDictamen(bloquear) {
+        document.querySelectorAll("#detailPanel [data-decision]").forEach((boton) => {
+          if (ACCIONES_DE_DICTAMEN.includes(boton.dataset.decision)) boton.disabled = bloquear;
+        });
+        var comentario = $("#decisionComment");
+        if (comentario) comentario.disabled = bloquear;
+      }
+
+      // Lleva la vista arriba, donde aparece el aviso del resultado.
+      function mostrarAvisoArriba() {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
       function showFeedback(message, type) {
         feedback.textContent = message || "";
         feedback.className = "comite-feedback" + (message ? " " + type : "");
@@ -312,6 +340,7 @@
             '</div></div>' : '');
 
         $("#detailPanel").querySelectorAll("[data-decision]").forEach((button) => button.addEventListener("click", () => submitDecision(button.dataset.decision)));
+        if (hasFinalDecision) bloquearAccionesDeDictamen(true);
         $("#detailPanel").querySelectorAll("[data-resource]").forEach((button) => button.addEventListener("click", () => loadResource(button.dataset.resource)));
       }
 
@@ -362,6 +391,8 @@
           $("#decisionComment").focus();
           return;
         }
+        var esDictamen = ACCIONES_DE_DICTAMEN.includes(path);
+        if (esDictamen) bloquearAccionesDeDictamen(true);   // evita un doble envio
         try {
           const result = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expediente_id: state.selectedId, comentario: comment }) });
           await Promise.all([loadExpedientes(), loadHistory()]);
@@ -369,15 +400,79 @@
           if (statusBadge && result && result.estado) {
             statusBadge.textContent = result.estado;
             statusBadge.className = "comite-status " + statusClass(result.estado);
-            const hasFinalDecision = ["APROBADO", "APROBADA", "RECHAZADO", "RECHAZADA"].includes(String(result.estado).toUpperCase());
+            const hasFinalDecision = esDecisionFinal(result.estado);
             $("#detailPanel").querySelectorAll("[data-requires-final]").forEach((button) => {
               button.disabled = !hasFinalDecision;
             });
+            if (hasFinalDecision) bloquearAccionesDeDictamen(true);
           }
           showFeedback(result && result.mensaje || "La acción del comité fue guardada.", "success");
+          mostrarAvisoArriba();
         } catch (error) {
+          if (esDictamen) bloquearAccionesDeDictamen(false);   // se puede reintentar
           showFeedback(error.message, "error");
+          mostrarAvisoArriba();
         }
+      }
+
+      // Nombre legible de cada accion registrada por el comite.
+      var NOMBRE_ACCION = {
+        "aprobar": "Aprobó el otorgamiento",
+        "rechazar": "Rechazó el expediente",
+        "decisiones": "Registró la decisión",
+        "decision-borrador": "Guardó un borrador",
+        "decision-definitiva": "Registró la decisión definitiva",
+        "solicitar-info-adicional": "Solicitó información adicional",
+        "observaciones-acta": "Agregó una observación al acta",
+        "restricciones-alcance": "Registró una restricción de alcance",
+        "comentarios-debate": "Comentó el debate",
+        "acta-definitiva": "Generó el acta definitiva",
+        "firmar-acta": "Firmó el acta",
+        "cerrar-expediente": "Cerró el expediente",
+        "reabrir-dictamen": "Reabrió el dictamen",
+      };
+
+      function fechaLegible(valor) {
+        if (!valor) return "--";
+        var f = new Date(valor);
+        return isNaN(f) ? String(valor) : f.toLocaleString("es-CO", {
+          day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+        });
+      }
+
+      function comentarioDe(decision) {
+        if (decision.comentario) return decision.comentario;
+        try {
+          var datos = typeof decision.datos === "string" ? JSON.parse(decision.datos) : decision.datos;
+          return (datos && datos.comentario) || "";
+        } catch (_) {
+          return "";
+        }
+      }
+
+      function renderHistory(decisions, vacio) {
+        if (!decisions.length) {
+          $("#historyContent").innerHTML = '<div class="comite-table-empty">' + escapeHtml(vacio) + "</div>";
+          return;
+        }
+        $("#historyContent").innerHTML =
+          '<div class="comite-table-wrap"><table><thead><tr>' +
+          "<th>Fecha</th><th>Expediente</th><th>Empresa</th><th>Acción</th><th>Comentario</th><th>Registrada por</th>" +
+          "</tr></thead><tbody>" +
+          decisions.map(function (d) {
+            var accion = NOMBRE_ACCION[d.accion] || d.accion || "--";
+            return "<tr>" +
+              "<td>" + escapeHtml(fechaLegible(d.fecha)) + "</td>" +
+              "<td><strong>" + escapeHtml(d.codigo_expediente || d.expediente_id || "--") + "</strong>" +
+              (d.estado_expediente ? '<br><span class="comite-status ' + statusClass(d.estado_expediente) + '">' + escapeHtml(d.estado_expediente) + "</span>" : "") +
+              "</td>" +
+              "<td>" + escapeHtml(d.empresa || "--") + "</td>" +
+              "<td>" + escapeHtml(accion) + "</td>" +
+              "<td>" + escapeHtml(comentarioDe(d) || "--") + "</td>" +
+              "<td>" + escapeHtml(d.usuario || "--") + "</td>" +
+              "</tr>";
+          }).join("") +
+          "</tbody></table></div>";
       }
 
       async function loadHistory() {
@@ -385,7 +480,7 @@
         try {
           const response = await api("/comite/decisiones-historicas");
           const decisions = response && response.decisiones || [];
-          $("#historyContent").innerHTML = decisions.length ? '<pre>' + escapeHtml(JSON.stringify(decisions, null, 2)) + '</pre>' : '<div class="comite-table-empty">Todavía no hay decisiones históricas para mostrar.</div>';
+          renderHistory(decisions, "Todavía no hay decisiones registradas.");
         } catch (error) {
           $("#historyContent").textContent = error.message;
         }
@@ -458,7 +553,7 @@
             anchor.click();
             URL.revokeObjectURL(blobUrl);
           }
-          $("#historyContent").innerHTML = decisions.length ? '<pre>' + escapeHtml(JSON.stringify(decisions, null, 2)) + '</pre>' : '<div class="comite-table-empty">Todavía no hay decisiones históricas para exportar.</div>';
+          renderHistory(decisions, "Todavía no hay decisiones para exportar.");
           showFeedback(decisions.length + (decisions.length === 1 ? " acción persistida exportada." : " acciones persistidas exportadas."), "success");
         } catch (error) {
           showFeedback(error.message, "error");
@@ -468,6 +563,7 @@
       loadExpedientes();
     })();
   </script>
+<script src="/static/nav.js"></script>
 </body>
 
 </html>

@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Responsables** | Marlon y Vanessa — apoyo de Javier |
-| **Implementado** | Bloques 1 a 4 (SOL-001 → 040) |
-| **Pendiente** | Bloques 5, 6 y 7 |
-| **Tamaño** | 43 endpoints · 40 permisos · 366 tests |
+| **Implementado** | Los siete bloques (SOL-001 → 070) |
+| **Pendiente** | Las pantallas de los bloques 5, 6 y 7 |
+| **Tamaño** | 76 endpoints · 70 permisos · 217 tests del módulo |
 
 ---
 
@@ -393,23 +393,32 @@ Bloques 2 y 3, sobre un borrador y desde el mismo portal:
 
 ## 9. Qué falta
 
+Los siete bloques ya tienen API:
+
 | Bloque | Permisos | Tema |
 |---|---|---|
 | 5 | SOL-041 → 050 | Asignación de auditores (aparecen los primeros `REQ` y `SA`) |
 | 6 | SOL-051 → 060 | Trazabilidad, bitácora inmutable y cierre |
 | 7 | SOL-061 → 070 | Cálculo del tiempo de auditoría |
 
-Los bloques 1 a 4 tienen API y pantallas: el portal de empresa (`/empresa`) y
-la revisión de Administración (`/revision-solicitudes`).
+El bloque 5 no duplica el módulo de asignación de auditores: trabaja sobre
+sus mismas tablas y solo añade la búsqueda filtrada desde la solicitud y el
+ciclo propuesta → aprobación → reasignación → cancelación, con el estado
+`Propuesto` como frontera.
+
+Lo que falta son **las pantallas** de esos tres bloques: los bloques 1 a 4 sí
+las tienen (el portal de empresa, `/empresa`, y la revisión de
+Administración, `/revision-solicitudes`).
 
 **Una decisión pendiente:** de dónde sale qué documentos exige cada norma ISO.
 Hoy la lista de tipos sugeridos está fija en el código; puede pasar a una tabla
 para que la administración la edite sin tocar el programa.
 
-**Un punto para el Bloque 6:** la tabla `historial_estado` no tiene columna de
-usuario, así que ahora mismo la traza de *quién* hizo cada cambio va dentro del
-texto de la observación. SOL-055 (bitácora inmutable) debería añadir
-`usuario_id` y `permiso_codigo` como columnas propias.
+**Resuelto en el Bloque 6:** la traza de *quién* hizo cada cambio ya no va
+dentro del texto de la observación. `historial_estado` sí tenía columna
+`id_usuario_actor` y ahora se usa, y SOL-055 añadió `bitacora_solicitud`, que
+guarda el código de permiso, el usuario, su rol y los datos de cada acción, y
+solo admite INSERT.
 
 ---
 

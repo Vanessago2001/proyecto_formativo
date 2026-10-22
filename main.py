@@ -9,6 +9,9 @@ from modules.mfa.mfa_router import router as mfa_router
 from modules.roles.roles_router import router as role_router
 from modules.users.user_router import router as users_router
 from modules.auth.auth_router import router as auth_router
+from time import perf_counter
+
+from core.arranque import debe_preparar_la_base, guardar_huella, huella
 from core.database import AsyncSessionLocal
 from core.logger import logger
 from core.security import hash_password
@@ -53,6 +56,11 @@ from modules.solicitudes.solicitud_router import router as solicitud_router
 from modules.solicitudes.documento_router import router as documento_router
 from modules.solicitudes.informacion_router import router as informacion_router
 from modules.solicitudes.sede_router import router as sede_router
+from modules.solicitudes.auditor_router import router as auditores_solicitud_router
+from modules.solicitudes.trazabilidad_router import router as trazabilidad_router
+from modules.solicitudes.calculo_router import router as calculo_router
+from modules.auditorias.auditoria_router import router as auditorias_router
+from modules.auditorias.auditoria_bootstrap import preparar_modulo_auditorias
 from modules.solicitudes.solicitud_bootstrap import preparar_modulo_solicitudes
 from modules.empresas.empresas_bootstrap import preparar_modulo_empresas
 
@@ -152,6 +160,27 @@ async def ensure_apelaciones_schema(session) -> None:
         );
     """))
 
+    # Cuando el Comite pide mas informacion (M10), deja por escrito que
+    # documentos necesita. Antes ese texto se guardaba en
+    # `apelacion.observaciones`, donde cada peticion pisaba a la anterior y
+    # se mezclaba con la respuesta final del Comite.
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS requerimiento_apelacion (
+            id_requerimiento UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id_apelacion UUID NOT NULL REFERENCES apelacion(id) ON DELETE CASCADE,
+            documentos TEXT NOT NULL,
+            observaciones TEXT,
+            estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
+            id_usuario_solicita UUID REFERENCES usuario(id_usuario),
+            fecha_solicitud TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            fecha_atendido TIMESTAMP WITH TIME ZONE
+        );
+    """))
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS idx_requerimiento_apelacion "
+        "ON requerimiento_apelacion (id_apelacion);"
+    ))
+
     await session.execute(text("""
         CREATE TABLE IF NOT EXISTS evidencia_apelacion (
             id_evidencia UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -245,14 +274,28 @@ async def lifespan(app: FastAPI):
     logger.info("  ¡API Modular Inicializada en Raíz con Éxito (Lifespan)!")
     logger.info("  Documentación interactiva: http://127.0.0.1:8000/docs")
     logger.info("==========================================================")
-    await seed_initial_data()
-    # Cada modulo prepara su parte de la base con su propia sesion.
-    await preparar_modulo_agenda()
-    await preparar_modulo_solicitudes()
-    await preparar_modulo_comite()
-    await preparar_modulo_empresas()
-    await preparar_aprobaciones()
-    await preparar_modulo_certificados()
+    # Preparar la base (indices, columnas y datos iniciales) tarda unos 35
+    # segundos y es idempotente: no hace falta repetirlo en cada arranque si
+    # nada cambio. `core/arranque.py` lo decide y explica por que.
+    preparar, motivo = await debe_preparar_la_base()
+    if preparar:
+        logger.info("Preparando la base de datos (%s)...", motivo)
+        comenzo = perf_counter()
+
+        await seed_initial_data()
+        # Cada modulo prepara su parte de la base con su propia sesion.
+        await preparar_modulo_agenda()
+        await preparar_modulo_solicitudes()
+        await preparar_modulo_auditorias()
+        await preparar_modulo_comite()
+        await preparar_modulo_empresas()
+        await preparar_aprobaciones()
+        await preparar_modulo_certificados()
+
+        guardar_huella(huella())
+        logger.info("Base preparada en %.1f s.", perf_counter() - comenzo)
+    else:
+        logger.info("Arranque directo: %s.", motivo)
     try:
         yield
     finally:
@@ -318,6 +361,12 @@ app.include_router(solicitud_router)
 app.include_router(documento_router)
 app.include_router(informacion_router)
 app.include_router(sede_router)
+app.include_router(auditores_solicitud_router)
+app.include_router(trazabilidad_router)
+app.include_router(calculo_router)
+
+# M7 - Auditorias
+app.include_router(auditorias_router)
 
 # M5 - Administrar Auditores
 app.include_router(administrar_auditores_router)
@@ -475,9 +524,12 @@ async def conflictos_auditor():
 async def catalogo_competencias_auditor():
     return FileResponse("static/catalogo_competencias_auditor.html")
 
-@app.get("/consultar-agenda-auditor-vista", response_class=HTMLResponse)
+# Esta ruta servia "consultar_agenda_auditor_vista.html", un archivo que no
+# existe (devolvia error). Se mantiene para no romper enlaces guardados, pero
+# ahora lleva a la agenda real.
+@app.get("/consultar-agenda-auditor-vista", include_in_schema=False)
 async def consultar_agenda_auditor_vista():
-    return FileResponse("static/consultar_agenda_auditor_vista.html")
+    return RedirectResponse("/consultar-agenda-auditor")
 
 @app.get("/notificaciones-auditor", response_class=HTMLResponse)
 async def notificaciones_auditor():

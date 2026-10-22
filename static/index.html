@@ -10,22 +10,23 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <link rel="stylesheet" href="/static/tema.css">
     <link rel="stylesheet" href="/static/styles.css">
     <style>
         .cd-resumen { color: #6b7280; font-size: 13px; margin: 14px 0 10px; }
-        .cd-card { background: #fff; border: 1px solid #e2e6ea; border-left: 4px solid #9aa5b1; border-radius: 3px; padding: 16px 18px; margin-bottom: 14px; text-align: left; }
+        .cd-card { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #9aa5b1; border-radius: 3px; padding: 16px 18px; margin-bottom: 14px; text-align: left; }
         .cd-card.ok { border-left-color: #2f7d32; }
         .cd-card.tramite { border-left-color: #f9a825; }
-        .cd-estado { display: inline-block; border-radius: 999px; padding: 3px 11px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 8px; background: #eef1f4; color: #4b5563; }
-        .cd-card.ok .cd-estado { background: #e6f4ea; color: #1a7f37; }
-        .cd-card.tramite .cd-estado { background: #fff8e1; color: #8d6e00; }
+        .cd-estado { display: inline-block; border-radius: 999px; padding: 3px 11px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 8px; background: #f1f5f9; color: #4b5563; }
+        .cd-card.ok .cd-estado { background: #e2e8f0; color: #1a7f37; }
+        .cd-card.tramite .cd-estado { background: #fffbeb; color: #8d6e00; }
         .cd-nombre { margin: 0; color: #2f7d32; font-size: 17px; font-weight: 700; }
         .cd-sub { margin: 2px 0 10px; color: #6b7280; font-size: 12px; }
         .cd-rows { display: grid; grid-template-columns: 150px 1fr; row-gap: 5px; font-size: 13px; }
         .cd-rows dt { color: #2f7d32; font-weight: 700; }
         .cd-rows dd { margin: 0; color: #374151; word-break: break-word; }
         .cd-msg { border-left: 3px solid #9aa5b1; padding: 3px 0 3px 12px; color: #4b5563; font-size: 13px; margin: 12px 0 0; line-height: 1.5; }
-        .cd-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 14px; text-align: left; }
+        .cd-error { background: #fffbeb; color: #b42318; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 14px; text-align: left; }
         #btnConsultar:disabled { opacity: .6; cursor: wait; }
     </style>
 </head>

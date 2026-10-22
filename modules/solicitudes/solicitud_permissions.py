@@ -6,6 +6,9 @@ Bloque 1: SOL-001 a SOL-010 (ciclo de vida).
 Bloque 2: SOL-011 a SOL-020 (información general).
 Bloque 3: SOL-021 a SOL-030 (sedes de la solicitud).
 Bloque 4: SOL-031 a SOL-040 (documentos adjuntos).
+Bloque 5: SOL-041 a SOL-050 (asignación de auditores).
+Bloque 6: SOL-051 a SOL-060 (trazabilidad, bitácora y cierre).
+Bloque 7: SOL-061 a SOL-070 (cálculo del tiempo de auditoría).
 
 La fuente de verdad es la hoja "M5 — GESTIÓN DE SOLICITUDES" del archivo
 documentacion/permisos.xlsx. Este módulo traduce esa matriz a código para que
@@ -155,7 +158,7 @@ def columna_de_rol(nombre_rol: str | None) -> str | None:
 
 
 # ============================================================
-# MATRIZ DE PERMISOS — BLOQUES 1 A 4
+# MATRIZ DE PERMISOS — BLOQUES 1 A 7
 # ============================================================
 # Transcripción literal de la hoja de cálculo.
 # Cada fila: código -> (descripción, valores en el orden de COLUMNAS_MATRIZ)
@@ -216,6 +219,47 @@ PERMISOS_M5: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
     "SOL-038": ("Aprobar documento adjunto",          (V,  V,  V,  F,  F,  F,  F,  F)),
     "SOL-039": ("Solicitar corrección",               (V,  V,  V,  F,  F,  F,  F,  F)),
     "SOL-040": ("Consultar historial documental",     (V,  V,  V,  V,  F,  F,  V,  F)),
+
+    # ---- BLOQUE 5: asignación de auditores (SOL-041 a SOL-050) ----
+    # La búsqueda y los filtros los hace la administración sobre el banco de
+    # auditores de M4; la empresa nunca elige quién la audita.
+    #                                          SUPERADM ADM AUX EMP AUD COM APR PUB
+    "SOL-041": ("Buscar auditores competentes",       (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-042": ("Filtrar por norma ISO",              (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-043": ("Filtrar por sector IAF",             (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-044": ("Filtrar por ciudad",                 (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-045": ("Filtrar por disponibilidad",         (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-046": ("Filtrar descartando conflictos",     (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-047": ("Proponer auditor para el servicio",  (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-048": ("Aprobar asignación de auditor",      (V,  V,  REQ,F,  F,  F,  F,  F)),
+    "SOL-049": ("Reasignar auditor",                  (SA, F,  REQ,F,  F,  F,  F,  F)),
+    "SOL-050": ("Cancelar asignación",                (V,  V,  REQ,F,  F,  F,  F,  F)),
+
+    # ---- BLOQUE 6: trazabilidad y cierre (SOL-051 a SOL-060) ----
+    #                                          SUPERADM ADM AUX EMP AUD COM APR PUB
+    "SOL-051": ("Consultar historial de solicitud",   (V,  V,  V,  V,  V,  V,  V,  F)),
+    "SOL-052": ("Registrar observación de control",   (V,  V,  V,  F,  V,  F,  F,  F)),
+    "SOL-053": ("Consultar observaciones",            (V,  V,  V,  V,  V,  V,  V,  F)),
+    "SOL-054": ("Cambiar estado de solicitud",        (V,  V,  REQ,F,  F,  F,  F,  F)),
+    "SOL-055": ("Consultar bitácora inmutable",       (V,  V,  V,  F,  F,  F,  V,  F)),
+    "SOL-056": ("Exportar historial de solicitudes",  (V,  V,  REQ,F,  F,  F,  F,  F)),
+    "SOL-057": ("Imprimir solicitud completa",        (V,  V,  V,  V,  F,  F,  F,  F)),
+    "SOL-058": ("Compartir expediente con Comité",    (V,  V,  REQ,F,  F,  F,  F,  F)),
+    "SOL-059": ("Generar reporte del módulo",         (V,  V,  REQ,F,  F,  F,  F,  F)),
+    "SOL-060": ("Cerrar solicitud definitivamente",   (V,  V,  REQ,F,  F,  F,  F,  F)),
+
+    # ---- BLOQUE 7: cálculo del tiempo de auditoría (SOL-061 a SOL-070) ----
+    #                                          SUPERADM ADM AUX EMP AUD COM APR PUB
+    "SOL-061": ("Registrar variables para cálculo",   (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-062": ("Calcular tiempo (Fórmula)",          (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-063": ("Recalcular tiempo de auditoría",     (V,  V,  REQ,F,  F,  F,  F,  F)),
+    "SOL-064": ("Consultar resultado del cálculo",    (V,  V,  V,  F,  V,  V,  V,  F)),
+    "SOL-065": ("Justificar ajustes de tiempo",       (V,  SA, REQ,F,  F,  F,  F,  F)),
+    "SOL-066": ("Modificar variables base",           (V,  SA, F,  F,  F,  F,  F,  F)),
+    "SOL-067": ("Consultar historial matemático",     (V,  V,  V,  F,  F,  F,  V,  F)),
+    "SOL-068": ("Exportar desglose de cálculo",       (V,  V,  REQ,F,  F,  F,  F,  F)),
+    "SOL-069": ("Validar cálculo antes de asignar",   (V,  V,  V,  F,  F,  F,  F,  F)),
+    "SOL-070": ("Bloquear cambios tras aprobación",   (V,  V,  V,  V,  V,  V,  V,  F)),
 }
 
 

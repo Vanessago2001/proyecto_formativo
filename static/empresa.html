@@ -8,35 +8,36 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/tema.css">
   <link rel="stylesheet" href="/static/styles.css">
   <style>
-    body { background: #f4f7f2; }
+    body { background: #f1f5f9; }
     .portal { max-width: 1200px; margin: 0 auto; padding: 28px; display: grid; grid-template-columns: 220px 1fr; gap: 24px; }
-    .side, .content, .panel { background: #fff; border: 1px solid #dbe4d4; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+    .side, .content, .panel { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
     .side a { display: block; padding: 11px 12px; color: #334155; text-decoration: none; border-left: 3px solid transparent; margin-bottom: 8px; }
-    .side a.active { color: #256d00; background: #f1f8ed; border-left-color: #3baa01; }
+    .side a.active { color: #256d00; background: #f1f5f9; border-left-color: #3baa01; }
     .content h2 { color: #256d00; font-size: 23px; margin-bottom: 8px; }
     .content p { color: #64748b; line-height: 1.5; }
-    .notice { margin: 22px 0; padding: 16px; background: #f1f8ed; border-left: 4px solid #3baa01; color: #365314; border-radius: 8px; }
+    .notice { margin: 22px 0; padding: 16px; background: #f1f5f9; border-left: 4px solid #3baa01; color: #1b4b12; border-radius: 8px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 16px; margin-top: 20px; }
     .field { display: flex; flex-direction: column; gap: 8px; }
-    .field input, .field select { padding: 10px 12px; border: 1px solid #cdd9cc; border-radius: 8px; font-size: 14px; }
+    .field input, .field select { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
     .field.full { grid-column: 1 / -1; }
     .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
     button { border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
-    .btn-primary { background: #3BAA01; color: white; }
-    .btn-secondary { background: #eef3ee; color: #1f3d12; }
-    .btn-danger { background: #e53935; color: white; }
-    .appeal-link { display: inline-block; padding: 6px 10px; border-radius: 6px; background: #edf7e5; color: #246400; text-decoration: none; font-weight: 700; }
+    .btn-primary { background: #3baa01; color: white; }
+    .btn-secondary { background: #f1f5f9; color: #1b4b12; }
+    .btn-danger { background: #dc2626; color: white; }
+    .appeal-link { display: inline-block; padding: 6px 10px; border-radius: 6px; background: #f3f9ef; color: #256d00; text-decoration: none; font-weight: 700; }
     .table-wrap { overflow: auto; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid #e8edf2; text-align: left; }
-    th { background: #3BAA01; color: white; }
-    .status-ok { color: #257a00; font-weight: 600; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    th { background: #3baa01; color: white; }
+    .status-ok { color: #256d00; font-weight: 600; }
     .status-no { color: #b42318; font-weight: 600; }
     .alert { padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; display: none; }
-    .alert.error { background: #fdecea; color: #7a1f1a; }
-    .alert.success { background: #eaf7ea; color: #185b2e; }
+    .alert.error { background: #fffbeb; color: #7a1f1a; }
+    .alert.success { background: #f1f5f9; color: #185b2e; }
     @media(max-width: 720px){ .portal { grid-template-columns: 1fr; padding: 18px; } .form-grid{ grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -153,184 +154,6 @@
     (() => {
       "use strict";
 
-    // ---------- sesion ----------
-    const token = localStorage.getItem("access_token");
-    let perfil;
-    try {
-      perfil = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    } catch (_) {
-      location.href = "/login";
-      return;
-    }
-    if (perfil.role_name !== "Empresa") { location.href = "/dashboard"; return; }
-    document.getElementById("title").textContent = "Portal de empresa: " + perfil.sub;
-    document.getElementById("logout").onclick = function (e) {
-      e.preventDefault(); localStorage.clear(); location.href = "/login";
-    };
-
-    // ---------- utilidades ----------
-    const $ = (id) => document.getElementById(id);
-    const aviso = $("aviso");
-    let solicitudActual = null;
-
-    function mostrar(mensaje, esError) {
-      aviso.textContent = mensaje;
-      aviso.className = "notice" + (esError ? " error" : "");
-      aviso.style.display = mensaje ? "block" : "none";
-      if (mensaje && !esError) setTimeout(() => { aviso.style.display = "none"; }, 5000);
-    }
-
-    function detalleError(cuerpo, respuesta) {
-      // La API devuelve el motivo en `detail`, a veces como objeto.
-      if (cuerpo && cuerpo.detail) {
-        if (typeof cuerpo.detail === "string") return cuerpo.detail;
-        if (Array.isArray(cuerpo.detail)) return cuerpo.detail.map(d => d.msg).join(" · ");
-        return JSON.stringify(cuerpo.detail);
-      }
-      return "Error " + respuesta.status;
-    }
-
-    async function api(ruta, opciones) {
-      opciones = opciones || {};
-      opciones.headers = Object.assign({ Authorization: "Bearer " + token }, opciones.headers || {});
-      const r = await fetch(ruta, opciones);
-      if (r.status === 401) { localStorage.clear(); location.href = "/login"; return null; }
-      const tipo = r.headers.get("content-type") || "";
-      const cuerpo = tipo.includes("json") ? await r.json().catch(() => null) : null;
-      if (!r.ok) throw new Error(detalleError(cuerpo, r));
-      return cuerpo;
-    }
-
-    const esc = (s) => String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    const fecha = (f) => f ? new Date(f).toLocaleDateString("es-CO") : "-";
-
-    // ---------- navegacion ----------
-    document.querySelectorAll(".side a[data-panel]").forEach((enlace) => {
-      enlace.onclick = function () {
-        document.querySelectorAll(".side a").forEach(a => a.classList.remove("active"));
-        enlace.classList.add("active");
-        document.querySelectorAll(".panel").forEach(p => p.classList.remove("visible"));
-        $("panel-" + enlace.dataset.panel).classList.add("visible");
-        if (enlace.dataset.panel === "solicitudes") cargarSolicitudes();
-        if (enlace.dataset.panel === "documentos") cargarDocumentos();
-      };
-    });
-    function irA(panel) {
-      document.querySelector('.side a[data-panel="' + panel + '"]').click();
-    }
-
-    // ---------- SOL-006: listar solicitudes ----------
-    async function cargarSolicitudes() {
-      const caja = $("lista-solicitudes");
-      caja.innerHTML = "<p>Cargando...</p>";
-      try {
-        const datos = await api("/solicitudes/");
-        if (!datos.length) {
-          caja.innerHTML = '<div class="vacio">Aun no tiene solicitudes. Use "Nueva solicitud" para crear la primera.</div>';
-          return;
-        }
-        caja.innerHTML =
-          '<table><thead><tr><th>Radicado</th><th>Estado</th><th>Alcance</th>' +
-          '<th>Sedes</th><th>Creada</th><th>Acciones</th></tr></thead><tbody>' +
-          datos.map(function (s) {
-            const esBorrador = s.estado === "Borrador";
-            const esRechazada = String(s.estado || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === "rechazada";
-            return '<tr>' +
-              '<td>' + esc(s.numero_radicado || "(borrador)") + '</td>' +
-              '<td><span class="chip ' + esc(s.estado) + '">' + esc(s.estado) + '</span></td>' +
-              '<td>' + esc((s.alcance_certificacion || "").slice(0, 46)) + '</td>' +
-              '<td>' + esc(s.numero_sedes) + '</td>' +
-              '<td>' + fecha(s.fecha_creacion) + '</td>' +
-              '<td>' +
-                '<button class="mini sec" data-doc="' + s.id_solicitud + '">Documentos</button> ' +
-                (esBorrador ? '<button class="mini" data-radicar="' + s.id_solicitud + '">Radicar</button> ' : '') +
-                (esRechazada ? '<a class="appeal-link" href="/apelacion?solicitud=' + encodeURIComponent(s.id_solicitud) + '">Apelar</a> ' : '') +
-                '<button class="mini sec" data-pdf="' + s.id_solicitud + '">PDF</button>' +
-              '</td></tr>';
-          }).join("") + '</tbody></table>';
-
-        caja.querySelectorAll("[data-doc]").forEach(b => b.onclick = () => {
-          solicitudActual = datos.find(s => s.id_solicitud === b.dataset.doc);
-          irA("documentos");
-        });
-        caja.querySelectorAll("[data-radicar]").forEach(b => b.onclick = () => radicar(b.dataset.radicar));
-        caja.querySelectorAll("[data-pdf]").forEach(b => b.onclick = () => descargarPdf(b.dataset.pdf));
-      } catch (e) {
-        caja.innerHTML = "";
-        mostrar(e.message, true);
-      }
-    }
-
-    // ---------- SOL-005: radicar ----------
-    async function radicar(id) {
-      if (!confirm("Al radicar, la solicitud deja de poder editarse. Continuar?")) return;
-      try {
-        const s = await api("/solicitudes/" + id + "/radicar", { method: "POST" });
-        mostrar("Solicitud radicada con el numero " + s.numero_radicado, false);
-        cargarSolicitudes();
-      } catch (e) { mostrar(e.message, true); }
-    }
-
-    // ---------- SOL-007: PDF ----------
-    async function descargarPdf(id) {
-      try {
-        const r = await fetch("/solicitudes/" + id + "/pdf", { headers: { Authorization: "Bearer " + token } });
-        if (!r.ok) throw new Error("No se pudo generar el PDF (" + r.status + ")");
-        const blob = await r.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = "solicitud-" + id.slice(0, 8) + ".pdf";
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
-      } catch (e) { mostrar(e.message, true); }
-    }
-
-    // ---------- SOL-011: normas disponibles ----------
-    async function cargarNormas() {
-      const sel = $("norma");
-      try {
-        const normas = await api("/solicitudes/normas");
-        sel.innerHTML = '<option value="">Seleccione una norma</option>' +
-          normas.map(n => '<option value="' + n.id_norma + '">' +
-            esc([n.codigo, n.nombre, n.version].filter(Boolean).join(" ")) + '</option>').join("");
-      } catch (e) {
-        sel.innerHTML = '<option value="">No se pudieron cargar las normas</option>';
-      }
-    }
-
-    // ---------- SOL-001: crear borrador ----------
-    $("form-nueva").onsubmit = async function (e) {
-      e.preventDefault();
-      const cuerpo = {
-        id_norma: $("norma").value || null,
-        alcance_certificacion: $("alcance").value.trim(),
-        numero_empleados: Number($("empleados").value),
-        numero_sedes: Number($("sedes").value),
-        persona_contacto: $("contacto").value.trim() || null,
-        observaciones: $("observaciones").value.trim() || null
-      };
-      try {
-        await api("/solicitudes/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cuerpo)
-        });
-        this.reset();
-        mostrar("Borrador guardado. Puede adjuntar documentos y radicarlo cuando este listo.", false);
-        irA("solicitudes");
-      } catch (err) { mostrar(err.message, true); }
-    };
-    $("cancelar-nueva").onclick = () => { $("form-nueva").reset(); irA("solicitudes"); };
-
-    // ---------- SOL-031..040: documentos ----------
-    async function cargarDocumentos() {
-      const cab = $("doc-cabecera");
-      const caja = $("doc-contenido");
-
-      if (!solicitudActual) {
-        cab.textContent = 'Seleccione primero una solicitud en "Mis solicitudes".';
-        caja.innerHTML = "";
       // ---------------- sesión ----------------
       const token = localStorage.getItem("access_token");
       if (!token) {
@@ -535,6 +358,9 @@
           await refrescarSolicitudes();
           const filas = estado.solicitudes.map((s) => {
             const borrador = s.estado === "Borrador";
+            // El Comite guarda "RECHAZADO" y M5 define "Rechazada": se aceptan ambas.
+            const rechazada = /^rechaz/.test(String(s.estado || "").normalize("NFD")
+              .replace(/[̀-ͯ]/g, "").trim().toLowerCase());
             return "<tr>" +
               "<td><strong>" + esc(s.numero_radicado || "Borrador") + "</strong></td>" +
               "<td>" + esc(nombreNorma(s.id_norma)) + "</td>" +
@@ -546,6 +372,7 @@
               accion("ir-sedes", "Sedes", s.id_solicitud) +
               accion("ir-documentos", "Documentos", s.id_solicitud) +
               (borrador ? accion("radicar", "Radicar", s.id_solicitud) : "") +
+              (rechazada ? '<a class="appeal-link" href="/apelacion?solicitud=' + encodeURIComponent(s.id_solicitud) + '">Apelar</a>' : "") +
               accion("pdf", "PDF", s.id_solicitud) +
               "</div></td></tr>";
           }).join("");
@@ -1022,6 +849,7 @@
     })();
   </script>
   <script src="/static/session.js"></script>
+<script src="/static/nav.js"></script>
 </body>
 
 </html>

@@ -1,8 +1,10 @@
+from datetime import date
 from typing import Literal, Optional
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +12,13 @@ from core.database import get_db
 from core.security import _normalize_role_name, get_current_user, require_role
 from modules.aprobaciones.aprobacion_service import AprobacionService
 from modules.empresas import empresas_aprobaciones  # noqa: F401  (registra las acciones REQ)
+from modules.empresas.documento_empresa_service import (
+    ESTADO_APROBADO,
+    ESTADO_CORRECCION,
+    ESTADO_RECHAZADO,
+    TIPOS_DOCUMENTO,
+    DocumentoEmpresaService,
+)
 from modules.empresas.empresas_service import EmpresasService
 
 router = APIRouter(prefix="/api/empresas", tags=["Empresas"])
@@ -33,6 +42,9 @@ ROLES_ELIMINACION = ["superadmin", "admin", "empresa"]
 ROLES_ESTADO = ["superadmin", "admin"]
 # EMP-008 reactivar: exclusivo del SuperAdministrador
 ROLES_REACTIVACION = ["superadmin"]
+# EMP-016 validar, EMP-017 rechazar, EMP-018 aprobar, EMP-019 pedir corrección:
+# la revisión la hace la administración, nunca la propia empresa.
+ROLES_REVISION_DOC = ["superadmin", "admin", "auxiliar"]
 # Roles con REQ en esas acciones: piden la acción y un superior la aprueba.
 ROLES_CON_APROBACION = ["auxiliar"]
 
@@ -107,6 +119,29 @@ class ContactoUpdate(BaseModel):
     cargo: Optional[str] = Field(default=None, max_length=100)
     telefono: Optional[str] = Field(default=None, max_length=30)
     correo: Optional[EmailStr] = None
+
+
+class RevisionDocumento(BaseModel):
+    """Cuerpo de EMP-017 (rechazar) y EMP-019 (solicitar corrección)."""
+
+    observaciones: str = Field(
+        ...,
+        min_length=5,
+        max_length=1000,
+        description="Motivo del rechazo o corrección pedida. Lo ve la empresa.",
+    )
+
+
+class AprobacionDocumento(BaseModel):
+    """Cuerpo de EMP-018 (aprobar). Las observaciones son opcionales."""
+
+    observaciones: Optional[str] = Field(default=None, max_length=1000)
+
+
+class DireccionSede(BaseModel):
+    """Cuerpo de EMP-025 (agregar dirección) y EMP-026 (editarla)."""
+
+    direccion: str = Field(..., min_length=5, max_length=255)
 
 
 @router.get("/")
@@ -263,7 +298,7 @@ async def get_sede_empresa(
     return sede
 
 
-@router.put("/{id_empresa}/sedes/{id_sede}")
+@router.put("/{id_empresa}/sedes/{id_sede}", summary="EMP-022 · Editar sede")
 async def update_sede_empresa(
     id_empresa: str,
     id_sede: str,
@@ -277,6 +312,38 @@ async def update_sede_empresa(
     if not updated:
         raise HTTPException(status_code=404, detail="Sede no encontrada")
     return updated
+
+
+@router.patch(
+    "/{id_empresa}/sedes/{id_sede}/direccion",
+    summary="EMP-025 · Agregar dirección de sede (EMP-026 si ya tenía)",
+)
+async def set_direccion_sede(
+    id_empresa: str,
+    id_sede: str,
+    data: DireccionSede,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_GESTION))
+):
+    """
+    Deja la dirección de la sede. La hoja separa registrarla (EMP-025) de
+    editarla (EMP-026); aquí es la misma ruta y la respuesta dice cuál de las
+    dos ocurrió, para que la pantalla no tenga que adivinarlo.
+    """
+    servicio = EmpresasService(db)
+    await servicio.exigir_acceso(current_user, id_empresa)
+
+    sede = await servicio.get_sede_by_id(id_empresa, id_sede)
+    if not sede:
+        raise HTTPException(status_code=404, detail="Sede no encontrada")
+
+    tenia_direccion = bool((sede.get("direccion") or "").strip())
+    actualizada = await servicio.update_sede(id_empresa, id_sede, {"direccion": data.direccion})
+    return {
+        "permiso": "EMP-026" if tenia_direccion else "EMP-025",
+        "accion": "Dirección actualizada" if tenia_direccion else "Dirección registrada",
+        "sede": actualizada,
+    }
 
 
 @router.delete("/{id_empresa}/sedes/{id_sede}")
@@ -365,7 +432,12 @@ async def delete_contacto_sede(
     return {"message": "Contacto eliminado correctamente", "contacto": contacto}
 
 
-@router.get("/{id_empresa}/documentos")
+# ============================================================
+# DOCUMENTOS DE SOPORTE (EMP-011 a EMP-020)
+# ============================================================
+
+
+@router.get("/{id_empresa}/documentos", summary="EMP-015 · Consultar documentos de la empresa")
 async def get_documentos_empresa(
     id_empresa: str,
     db: AsyncSession = Depends(get_db),
@@ -374,3 +446,160 @@ async def get_documentos_empresa(
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
     return await servicio.get_documentos_by_empresa(id_empresa)
+
+
+@router.get("/{id_empresa}/documentos/tipos", summary="EMP-011 · Tipos de documento admitidos")
+async def get_tipos_documento(
+    id_empresa: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    return {"tipos": list(TIPOS_DOCUMENTO)}
+
+
+@router.get("/{id_empresa}/documentos/historial", summary="EMP-020 · Historial documental")
+async def get_historial_documental(
+    id_empresa: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_GESTION))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    return await DocumentoEmpresaService(db).historial(UUID(id_empresa))
+
+
+@router.post(
+    "/{id_empresa}/documentos",
+    status_code=status.HTTP_201_CREATED,
+    summary="EMP-011 · Subir documento de soporte",
+)
+async def subir_documento_empresa(
+    id_empresa: str,
+    archivo: UploadFile = File(...),
+    tipo_documento: str = Form(...),
+    numero_documento: Optional[str] = Form(default=None),
+    fecha_expedicion: Optional[date] = Form(default=None),
+    fecha_vencimiento: Optional[date] = Form(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_GESTION))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    return await DocumentoEmpresaService(db).subir(
+        UUID(id_empresa),
+        archivo,
+        tipo_documento,
+        current_user,
+        numero_documento=numero_documento,
+        fecha_expedicion=fecha_expedicion,
+        fecha_vencimiento=fecha_vencimiento,
+    )
+
+
+@router.put("/{id_empresa}/documentos/{id_documento}", summary="EMP-012 · Reemplazar documento")
+async def reemplazar_documento_empresa(
+    id_empresa: str,
+    id_documento: UUID,
+    archivo: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_GESTION))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    return await DocumentoEmpresaService(db).reemplazar(
+        UUID(id_empresa), id_documento, archivo, current_user
+    )
+
+
+@router.get(
+    "/{id_empresa}/documentos/{id_documento}/archivo",
+    response_class=FileResponse,
+    summary="EMP-014 · Descargar documento",
+)
+async def descargar_documento_empresa(
+    id_empresa: str,
+    id_documento: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    servicio = DocumentoEmpresaService(db)
+    documento = await servicio._obtener(UUID(id_empresa), id_documento)
+    ruta = servicio.ruta_absoluta(documento["url_archivo"] or "")
+    if not documento["url_archivo"] or not ruta.is_file():
+        raise HTTPException(status_code=404, detail="El archivo ya no está disponible.")
+    return FileResponse(path=ruta, filename=documento["nombre_archivo"] or ruta.name)
+
+
+@router.get(
+    "/{id_empresa}/documentos/{id_documento}/validar",
+    summary="EMP-016 · Validar documento (automático/manual)",
+)
+async def validar_documento_empresa(
+    id_empresa: str,
+    id_documento: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_REVISION_DOC))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    return await DocumentoEmpresaService(db).validar(UUID(id_empresa), id_documento)
+
+
+@router.post("/{id_empresa}/documentos/{id_documento}/aprobar", summary="EMP-018 · Aprobar documento")
+async def aprobar_documento_empresa(
+    id_empresa: str,
+    id_documento: UUID,
+    data: AprobacionDocumento,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_REVISION_DOC))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    return await DocumentoEmpresaService(db).revisar(
+        UUID(id_empresa), id_documento, ESTADO_APROBADO, data.observaciones, current_user
+    )
+
+
+@router.post(
+    "/{id_empresa}/documentos/{id_documento}/rechazar",
+    summary="EMP-017 · Rechazar documento con motivo",
+)
+async def rechazar_documento_empresa(
+    id_empresa: str,
+    id_documento: UUID,
+    data: RevisionDocumento,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_REVISION_DOC))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    return await DocumentoEmpresaService(db).revisar(
+        UUID(id_empresa), id_documento, ESTADO_RECHAZADO, data.observaciones, current_user
+    )
+
+
+@router.post(
+    "/{id_empresa}/documentos/{id_documento}/correccion",
+    summary="EMP-019 · Solicitar corrección del documento",
+)
+async def solicitar_correccion_documento(
+    id_empresa: str,
+    id_documento: UUID,
+    data: RevisionDocumento,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_REVISION_DOC))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    return await DocumentoEmpresaService(db).revisar(
+        UUID(id_empresa), id_documento, ESTADO_CORRECCION, data.observaciones, current_user
+    )
+
+
+@router.get(
+    "/{id_empresa}/documentos/{id_documento}/historial",
+    summary="EMP-020 · Historial de un documento",
+)
+async def get_historial_de_documento(
+    id_empresa: str,
+    id_documento: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_GESTION))
+):
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    return await DocumentoEmpresaService(db).historial(UUID(id_empresa), id_documento)

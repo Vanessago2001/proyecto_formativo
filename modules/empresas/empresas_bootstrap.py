@@ -2,8 +2,9 @@
 M3 — EMPRESAS
 Preparación de la base de datos al arrancar la aplicación.
 
-Añade lo que necesitan el estado de la empresa (EMP-006 a EMP-008) y los
-contactos de sede (EMP-027 a EMP-029). Todas las sentencias son idempotentes
+Añade lo que necesitan el estado de la empresa (EMP-006 a EMP-008), los
+contactos de sede (EMP-027 a EMP-029) y los documentos de soporte
+(EMP-011 a EMP-020). Todas las sentencias son idempotentes
 y no modifican datos existentes: las empresas que ya estaban quedan 'Activa'.
 """
 
@@ -49,6 +50,61 @@ async def ensure_empresas_schema(session) -> None:
     await session.execute(text("""
         CREATE INDEX IF NOT EXISTS idx_contacto_sede_sede
             ON contacto_sede (id_sede);
+    """))
+
+    # EMP-011 a EMP-020: documentos de soporte de la empresa.
+    # `documento_empresa` ya existía para guardar el dato del documento
+    # (tipo y número). Para subirlo, revisarlo y versionarlo hacen falta
+    # estas columnas; todas se añaden sin tocar lo que ya hay.
+    for columna in (
+        "ADD COLUMN IF NOT EXISTS nombre_archivo VARCHAR(255)",
+        "ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1",
+        "ADD COLUMN IF NOT EXISTS usuario_subida UUID",
+        "ADD COLUMN IF NOT EXISTS usuario_revision UUID",
+        "ADD COLUMN IF NOT EXISTS fecha_revision TIMESTAMP",
+    ):
+        await session.execute(text(f"ALTER TABLE documento_empresa {columna};"))
+
+    # EMP-019 pide corregir un documento: es un estado más, y la restricción
+    # original no lo admitía. Añadirlo no invalida ninguna fila existente.
+    await session.execute(text("""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'chk_estado_doc_validacion'
+            ) THEN
+                ALTER TABLE documento_empresa DROP CONSTRAINT chk_estado_doc_validacion;
+            END IF;
+            ALTER TABLE documento_empresa
+            ADD CONSTRAINT chk_estado_doc_validacion
+            CHECK (estado_validacion IN ('Pendiente', 'Aprobado', 'Rechazado', 'Correccion', 'Vencido'));
+        END $$;
+    """))
+
+    # EMP-020: cada versión reemplazada se conserva, no se pisa.
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS historial_documento_empresa (
+            id_historial UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id_documento UUID NOT NULL,
+            id_empresa UUID NOT NULL REFERENCES empresa(id_empresa) ON DELETE CASCADE,
+            version INTEGER NOT NULL,
+            tipo_documento VARCHAR(100),
+            nombre_archivo VARCHAR(255),
+            url_archivo TEXT,
+            estado_validacion VARCHAR(20),
+            observaciones TEXT,
+            usuario_subida UUID,
+            fecha_subida TIMESTAMP,
+            fecha_reemplazo TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+    """))
+    await session.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_hist_doc_empresa_documento
+            ON historial_documento_empresa (id_documento);
+    """))
+    await session.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_documento_empresa_empresa
+            ON documento_empresa (id_empresa);
     """))
 
 

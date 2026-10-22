@@ -9,9 +9,9 @@
         :root {
             --green: #15803d;
             --dark: #16324f;
-            --bg: #f4f7f8;
-            --line: #dbe4e9;
-            --red: #b91c1c
+            --bg: #f1f5f9;
+            --line: #e2e8f0;
+            --red: #b42318
         }
 
         * {
@@ -21,7 +21,7 @@
         body {
             margin: 0;
             background: var(--bg);
-            font-family: Inter, Arial, sans-serif;
+            font-family: var(--tipografia);
             color: #1e293b
         }
 
@@ -69,17 +69,17 @@
         }
 
         .status.aprobado {
-            background: #dcfce7;
+            background: #e4f1dc;
             color: #166534
         }
 
         .status.rechazado {
             background: #fee2e2;
-            color: #991b1b
+            color: #b42318
         }
 
         .status.revision {
-            background: #fef3c7;
+            background: #fff3cd;
             color: #92400e
         }
 
@@ -135,7 +135,7 @@
 
         .doc.rejected {
             border-left: 4px solid #dc2626;
-            background: #fffafa
+            background: #f8fafc
         }
 
         .doc.pending {
@@ -170,14 +170,14 @@
         }
 
         .btn.red {
-            color: #b91c1c;
+            color: #b42318;
             border-color: #fecaca
         }
 
         .obs {
             margin-top: 10px;
-            background: #fef2f2;
-            color: #991b1b;
+            background: #f1f5f9;
+            color: #b42318;
             border: 1px solid #fecaca;
             padding: 10px;
             border-radius: 8px;
@@ -225,6 +225,7 @@
             }
         }
     </style>
+  <link rel="stylesheet" href="/static/tema.css">
 </head>
 
 <body>

@@ -14,36 +14,36 @@
     <link rel="stylesheet" href="/static/styles.css?v=6">
     <style>
         .va-wrap { max-width: 860px; margin: 0 auto; padding: 26px 18px 40px; }
-        .va-panel { background: #fff; border: 1px solid #e2e6ea; border-radius: 4px; padding: 26px 28px; }
+        .va-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 26px 28px; }
         .va-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
         .va-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
         .va-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
         .va-field { flex: 1 1 260px; min-width: 220px; }
         .va-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-        .va-field input { width: 100%; padding: 10px 12px; border: 1px solid #cfd6dd; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
+        .va-field input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
         .va-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
         .va-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
         .va-btn:hover { background: #388e3c; }
         .va-btn:disabled { opacity: .6; cursor: wait; }
         #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
-        .va-veredicto { border-radius: 4px; padding: 18px 20px; margin-top: 18px; border: 1px solid #e2e6ea; background: #fff; }
-        .va-veredicto.autentico { border-color: #bfe3c6; background: #e6f4ea; }
-        .va-veredicto.falso { border-color: #f5c6cb; background: #fdecea; }
+        .va-veredicto { border-radius: 4px; padding: 18px 20px; margin-top: 18px; border: 1px solid #e2e8f0; background: #fff; }
+        .va-veredicto.autentico { border-color: #cfe3c5; background: #e2e8f0; }
+        .va-veredicto.falso { border-color: #f5c6cb; background: #fffbeb; }
         .va-titulo { margin: 0 0 6px; font-size: 18px; font-weight: 700; }
         .va-veredicto.autentico .va-titulo { color: #1a7f37; }
-        .va-veredicto.falso .va-titulo { color: #b3261e; }
+        .va-veredicto.falso .va-titulo { color: #b42318; }
         .va-detalle { margin: 0; color: #4b5563; font-size: 13px; line-height: 1.5; }
-        .va-card { background: #fff; border: 1px solid #e2e6ea; border-left: 4px solid #2f7d32; border-radius: 3px; padding: 20px 22px; margin-top: 16px; }
-        .va-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px; background: #eef1f4; color: #4b5563; }
-        .va-card.ok .va-estado { background: #e6f4ea; color: #1a7f37; }
-        .va-card.por .va-estado { background: #fff8e1; color: #8d6e00; }
-        .va-card.vencido .va-estado { background: #fdecea; color: #b3261e; }
+        .va-card { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #2f7d32; border-radius: 3px; padding: 20px 22px; margin-top: 16px; }
+        .va-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px; background: #f1f5f9; color: #4b5563; }
+        .va-card.ok .va-estado { background: #e2e8f0; color: #1a7f37; }
+        .va-card.por .va-estado { background: #fffbeb; color: #8d6e00; }
+        .va-card.vencido .va-estado { background: #fffbeb; color: #b42318; }
         .va-empresa { margin: 0; color: #374151; font-size: 15px; font-weight: 600; }
         .va-sub { margin: 2px 0 12px; color: #6b7280; font-size: 12px; }
         .va-rows { display: grid; grid-template-columns: 190px 1fr; row-gap: 6px; font-size: 13px; }
         .va-rows dt { color: #2f7d32; font-weight: 700; }
         .va-rows dd { margin: 0; color: #374151; word-break: break-word; }
-        .va-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
+        .va-error { background: #fffbeb; color: #b42318; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
         @media (max-width: 700px) {
             .va-form { flex-direction: column; align-items: stretch; }
             .va-btn { width: 100%; }
@@ -57,6 +57,7 @@
             .va-card { box-shadow: none; break-inside: avoid; }
         }
     </style>
+  <link rel="stylesheet" href="/static/tema.css">
 </head>
 
 <body>
