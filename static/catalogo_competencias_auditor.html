@@ -119,7 +119,15 @@
         .btn-danger { background:#ef4444; color:#fff; }
         .btn-danger:hover:not(:disabled) { background:#dc2626; }
         .btn-sm { padding:6px 11px; font-size:12px; }
-        .acciones-tabla { display:flex; gap:8px; flex-wrap:wrap; }
+        .acciones-tabla {
+            display:flex;
+            gap:8px;
+            flex-wrap:nowrap;
+            align-items:center;
+        }
+        .acciones-tabla .btn { white-space:nowrap; }
+        .record-table th:last-child,
+        .record-table td:last-child { min-width:150px; }
 
         .modal {
             display:none;
@@ -143,6 +151,39 @@
         }
         .modal-card.modal-preview { width:min(1100px,100%); }
         .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; flex-wrap:wrap; }
+
+        .modal-confirm {
+            width:min(520px,100%);
+            text-align:center;
+        }
+        .modal-confirm .card-title {
+            text-align:center;
+            margin:0 0 10px;
+        }
+        .confirm-icon {
+            width:64px;
+            height:64px;
+            margin:0 auto 16px;
+            border-radius:50%;
+            background:#fee2e2;
+            color:#dc2626;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+        .confirm-icon svg { display:block; }
+        .confirm-texto {
+            color:#334155;
+            font-size:14px;
+            margin:0 0 8px;
+        }
+        .confirm-texto strong { color:#1f2937; word-break:break-word; }
+        .confirm-aviso {
+            color:#64748b;
+            font-size:12px;
+            margin:0;
+        }
+        .modal-confirm .modal-actions { justify-content:center; }
         .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
         .form-group { display:flex; flex-direction:column; gap:6px; }
         .form-group.full-width { grid-column:1/-1; }
@@ -489,6 +530,32 @@
         </div>
     </div>
 
+    <!-- ================================================
+         MODAL: CONFIRMAR ELIMINACIÓN
+    ================================================= -->
+    <div class="modal" id="modalConfirmarEliminacion" role="alertdialog" aria-modal="true"
+         aria-labelledby="tituloConfirmarEliminacion" aria-describedby="textoConfirmarEliminacion">
+        <div class="modal-card modal-confirm">
+            <div class="confirm-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </div>
+            <h2 class="card-title" id="tituloConfirmarEliminacion">Eliminar certificación</h2>
+            <p class="confirm-texto" id="textoConfirmarEliminacion">
+                ¿Está seguro de eliminar <strong id="confirmarNombreArchivo">esta certificación</strong>?
+            </p>
+            <p class="confirm-aviso">Se eliminará también el archivo asociado. Esta acción no se puede deshacer.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="btnCancelarEliminacion">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarEliminacion">Sí, eliminar</button>
+            </div>
+        </div>
+    </div>
+
     <footer class="footer">
         © 2026 CertiSENA - SENA. Todos los derechos reservados.
     </footer>
@@ -626,7 +693,7 @@
                         <td>
                             <div class="acciones-tabla">
                                 <button type="button" class="btn btn-secondary btn-sm" onclick="verCertificacion('${escapeHtml(item.id_certificacion)}')">Ver</button>
-                                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCertificacion('${escapeHtml(item.id_certificacion)}')">Eliminar</button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCertificacion('${escapeHtml(item.id_certificacion)}', this)">Eliminar</button>
                             </div>
                         </td>
                     </tr>
@@ -835,15 +902,57 @@
             document.getElementById('verPreviewContenido').innerHTML = '';
         }
 
-        async function eliminarCertificacion(id) {
+        function confirmarEliminacion(nombre) {
+            return new Promise(resolve => {
+                const modal = document.getElementById('modalConfirmarEliminacion');
+                const btnCancelar = document.getElementById('btnCancelarEliminacion');
+                const btnConfirmar = document.getElementById('btnConfirmarEliminacion');
+
+                document.getElementById('confirmarNombreArchivo').textContent =
+                    nombre || 'esta certificación';
+
+                const limpiar = () => {
+                    modal.classList.remove('active');
+                    btnConfirmar.removeEventListener('click', aceptar);
+                    btnCancelar.removeEventListener('click', cancelar);
+                    modal.removeEventListener('click', alFondo);
+                    document.removeEventListener('keydown', alTeclear);
+                };
+                const aceptar = () => { limpiar(); resolve(true); };
+                const cancelar = () => { limpiar(); resolve(false); };
+                const alFondo = evento => { if (evento.target === modal) cancelar(); };
+                const alTeclear = evento => {
+                    if (evento.key === 'Escape') {
+                        evento.stopImmediatePropagation();
+                        cancelar();
+                    }
+                };
+
+                btnConfirmar.addEventListener('click', aceptar);
+                btnCancelar.addEventListener('click', cancelar);
+                modal.addEventListener('click', alFondo);
+                document.addEventListener('keydown', alTeclear);
+
+                modal.classList.add('active');
+                btnCancelar.focus();
+            });
+        }
+
+        async function eliminarCertificacion(id, boton) {
             const item = certificaciones.find(c => String(c.id_certificacion) === String(id));
             const nombre = item ? item.nombre_archivo : 'esta certificación';
-            if (!confirm('¿Está seguro de eliminar ' + nombre + '? Esta acción no se puede deshacer.')) {
-                return;
-            }
+
+            const confirmado = await confirmarEliminacion(nombre);
+            if (!confirmado) return;
 
             const uid = await resolverUsuario();
             if (!uid) return;
+
+            const textoOriginal = boton ? boton.textContent : 'Eliminar';
+            if (boton) {
+                boton.disabled = true;
+                boton.textContent = 'Eliminando...';
+            }
 
             try {
                 const res = await fetch('/auditores/registro/' + uid + '/certificaciones/' + id, {
@@ -855,7 +964,11 @@
                 mostrarEstado('ok', data.mensaje || 'Certificación eliminada correctamente.');
                 await cargarCertificaciones();
             } catch (error) {
-                alert(error.message || 'No fue posible eliminar la certificación.');
+                mostrarEstado('error', error.message || 'No fue posible eliminar la certificación.');
+                if (boton && boton.isConnected) {
+                    boton.disabled = false;
+                    boton.textContent = textoOriginal;
+                }
             }
         }
 
@@ -885,6 +998,7 @@
         });
 
         document.querySelectorAll('.modal').forEach(modal => {
+            if (modal.id === 'modalConfirmarEliminacion') return;
             modal.addEventListener('click', evento => {
                 if (evento.target === modal) {
                     modal.classList.remove('active');
