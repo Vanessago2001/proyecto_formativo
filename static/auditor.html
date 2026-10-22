@@ -3677,6 +3677,57 @@
 
 
         /* =====================================================
+           PERMISOS DE EDICIÓN POR SECCIÓN
+
+           El botón "Editar borrador" reactivaba la sección completa
+           aunque la postulación ya no admitiera cambios. Ahora la sección
+           solo se puede editar cuando:
+
+             · la postulación está en Borrador o Correcciones; o
+             · es el Perfil y el auditor ya está aprobado, que es el único
+               caso que el backend permite modificar (guardar_perfil).
+        ===================================================== */
+
+        const ESTADOS_AUDITOR_PERFIL_EDITABLE = ['activo', 'aprobado', 'aprobada'];
+
+        function seccionEditable(formId) {
+
+            const estado = String(estadoPostulacionCargada || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+
+            if (!estado) {
+                return false;
+            }
+
+            if (ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                return true;
+            }
+
+            if (formId === 'formPerfil' && ESTADOS_AUDITOR_PERFIL_EDITABLE.includes(estadoUsuario)) {
+                return true;
+            }
+
+            return false;
+
+        }
+
+        function motivoSeccionNoEditable(formId) {
+            const estado = String(estadoPostulacionCargada || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditorCargado || '').trim().toLowerCase();
+            if (!estado) {
+                return 'Verificando el estado de la postulación…';
+            }
+            if (formId === 'formPerfil' && ESTADOS_AUDITOR_PERFIL_EDITABLE.includes(estadoUsuario)) {
+                return '';
+            }
+            if (!ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                return `La postulación está en estado '${estadoPostulacionCargada}' y no permite modificar esta sección.`;
+            }
+            return `Su estado de auditor ('${estadoAuditorCargado}') no permite modificar esta sección.`;
+        }
+
+
+        /* =====================================================
            BLOQUEAR SECCIÓN
         ====================================================== */
 
@@ -3751,7 +3802,19 @@
                 botonEditar.style.display =
                     'inline-block';
 
-                botonEditar.disabled = false;
+                // Solo se ofrece "Editar borrador" si la sección puede
+                // modificarse en el estado actual de la postulación.
+                const editable = seccionEditable(formId);
+                botonEditar.disabled = !editable;
+
+                if (editable) {
+                    botonEditar.removeAttribute('title');
+                } else {
+                    botonEditar.setAttribute(
+                        'title',
+                        motivoSeccionNoEditable(formId)
+                    );
+                }
 
             }
 
@@ -3768,6 +3831,14 @@
                 document.getElementById(formId);
 
             if (!form) {
+                return;
+            }
+
+            // Una sección que no es editable en el estado actual no se
+            // habilita: de lo contrario reopening el formulario reabriria
+            // campos que deben permanecer bloqueados.
+            if (!seccionEditable(formId)) {
+                bloquearSeccion(formId);
                 return;
             }
 
@@ -3815,6 +3886,16 @@
         ====================================================== */
 
         function editarSeccion(formId, nombreSeccion) {
+
+            // Guarda: la sección no se reactiva si el estado de la
+            // postulación no permite modificarla.
+            if (!seccionEditable(formId)) {
+                alert(
+                    motivoSeccionNoEditable(formId)
+                    || `No puede modificar la sección "${nombreSeccion}" en el estado actual.`
+                );
+                return;
+            }
 
             const confirmado =
                 confirm(
