@@ -2877,7 +2877,8 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="tipoDocumentoSoporte">Tipo de documento <span>*</span></label>
-                            <select id="tipoDocumentoSoporte" data-cierra-dropdown="mi-registro" class="form-control" required>
+                            <select id="tipoDocumentoSoporte" data-cierra-dropdown="mi-registro" class="form-control"
+                                required disabled title="Verificando el estado de la postulación…">
                                 <option value="">Seleccione...</option>
                                 <option value="Hoja de Vida">Hoja de Vida</option>
                                 <option value="Título">Título</option>
@@ -2889,12 +2890,14 @@
                         <div class="form-group">
                             <label for="archivoSoporte">Archivo <span>*</span></label>
                             <input type="file" id="archivoSoporte" class="form-control"
-                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" disabled
+                                title="Verificando el estado de la postulación…">
                             <span class="help-text">Formatos admitidos: PDF, DOC, DOCX, JPG, PNG o WEBP.</span>
                         </div>
                     </div>
 
-                    <button type="button" id="btnAdjuntarDocumento" class="btn-save-section">📎 Cargar
+                    <button type="button" id="btnAdjuntarDocumento" class="btn-save-section" disabled
+                        title="Verificando el estado de la postulación…">📎 Cargar
                         documento</button>
                 </div>
 
@@ -3085,6 +3088,10 @@
         let fotoProfesionalUrl = '';
         // Estado de la postulación actual
         let registroCanceladoORechazado = false;
+        // Estado de la postulación que se está editando y permisos derivados.
+        let estadoPostulacionCargada = '';
+        let estadoAuditorCargado = '';
+        let permisosAdjuntarDocumentos = { permitido: true, motivo: '' };
 
         const token = localStorage.getItem('access_token');
 
@@ -3501,6 +3508,74 @@
             return form.querySelectorAll(
                 'input:not([type="hidden"]), select, textarea'
             );
+
+        }
+
+
+        /* =====================================================
+           PERMISOS DE ADJUNTAR DOCUMENTOS
+
+           La sección de documentos de soporte es una <section> y no un
+           <form>, por lo que el bloqueo general del formulario no la
+           alcanzaba: los controles de adjuntar quedaban operativos en
+           postulaciones que el servidor ya no permite modificar.
+
+           Se replica aquí la misma regla del servidor:
+             · la postulación debe estar en Borrador o Correcciones;
+             · el estado del usuario debe permitir la edición.
+        ===================================================== */
+
+        const ESTADOS_POSTULACION_EDITABLES = ['borrador', 'correcciones'];
+
+        const ESTADOS_AUDITOR_EDITABLES = [
+            'borrador',
+            'postulante',
+            'pendiente',
+            'enviado',
+            'enviada',
+            'enviado por corrección'
+        ];
+
+        function aplicarPermisosAdjuntarDocumentos(estadoPostulacion, estadoAuditor) {
+
+            const estado = String(estadoPostulacion || '').trim().toLowerCase();
+            const estadoUsuario = String(estadoAuditor || '').trim().toLowerCase();
+
+            let permitido = true;
+            let motivo = '';
+
+            if (!estado) {
+                // Estado aún desconocido: los controles permanecen bloqueados
+                // hasta que la postulación se haya cargado.
+                permitido = false;
+                motivo = 'Verificando el estado de la postulación…';
+            } else if (!ESTADOS_POSTULACION_EDITABLES.includes(estado)) {
+                permitido = false;
+                motivo = `La postulación está en estado '${estadoPostulacion}' y no admite nuevos documentos.`;
+            } else if (!ESTADOS_AUDITOR_EDITABLES.includes(estadoUsuario)) {
+                permitido = false;
+                motivo = `Su estado de auditor ('${estadoAuditor}') no permite modificar la postulación.`;
+            }
+
+            permisosAdjuntarDocumentos = { permitido, motivo };
+
+            const controles = [
+                document.getElementById('tipoDocumentoSoporte'),
+                document.getElementById('archivoSoporte'),
+                document.getElementById('btnAdjuntarDocumento')
+            ];
+
+            controles.forEach((control) => {
+                if (!control) return;
+                control.disabled = !permitido;
+                if (permitido) {
+                    control.removeAttribute('title');
+                } else {
+                    control.setAttribute('title', motivo);
+                }
+            });
+
+            return permisosAdjuntarDocumentos;
 
         }
 
@@ -4084,6 +4159,13 @@
                 );
 
                 renderizarDocumentosSoporte();
+
+                // Los controles de adjuntar se mantienen sincronizados con el
+                // estado de la postulación aunque la lista se vuelva a pintar.
+                aplicarPermisosAdjuntarDocumentos(
+                    estadoPostulacionCargada,
+                    estadoAuditorCargado
+                );
 
                 (function () {
                     const rechazados = documentosSoporte.filter((documento) =>
@@ -4859,6 +4941,28 @@
 
                 }
 
+
+                /* =================================================
+                   PERMISOS DE ADJUNTAR DOCUMENTOS
+
+                   Se calculan con el estado de la postulación que se
+                   acaba de cargar (`data.estado`), que es el mismo que
+                   usa el servidor, y no con el listado de estados
+                   (que excluye los borradores).
+                ================================================== */
+
+                estadoPostulacionCargada = String(
+                    data.estado || ''
+                ).trim();
+
+                estadoAuditorCargado = String(
+                    data.estado_auditor || ''
+                ).trim();
+
+                aplicarPermisosAdjuntarDocumentos(
+                    estadoPostulacionCargada,
+                    estadoAuditorCargado
+                );
 
                 /* =================================================
                    TÍTULO
