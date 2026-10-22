@@ -47,6 +47,14 @@ class AuditorService:
 
     DIRECTORIO_DOCUMENTOS = Path("uploads/auditores")
     DIRECTORIO_FOTOS_PERFIL = Path("uploads/auditores/perfiles")
+    DIRECTORIO_CERTIFICACIONES = Path("uploads/auditores/certificaciones")
+
+    EXTENSIONES_CERTIFICACION = {
+        ".pdf",
+        ".jpg",
+        ".jpeg",
+        ".png",
+    }
 
     EXTENSIONES_PERMITIDAS = {
         ".pdf",
@@ -1979,6 +1987,226 @@ class AuditorService:
             {"id_usuario": id_usuario},
         )
         return [dict(row) for row in result.mappings().all()]
+
+    # ========================================================
+    # CERTIFICACIONES VIGENTES (TIPO + ARCHIVO)
+    # ========================================================
+
+    async def registrar_certificacion_vigente(
+        self,
+        id_usuario: UUID,
+        id_norma: UUID,
+        archivo: UploadFile,
+        descripcion: str | None = None,
+    ):
+        result = await self.db.execute(
+            text("""
+                SELECT id_usuario
+                FROM usuario
+                WHERE id_usuario = :id_usuario
+            """),
+            {"id_usuario": id_usuario},
+        )
+        if not result.mappings().first():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="El usuario no existe.",
+            )
+
+        result = await self.db.execute(
+            text("""
+                SELECT codigo, nombre
+                FROM norma
+                WHERE id_norma = :id_norma
+            """),
+            {"id_norma": id_norma},
+        )
+        norma = result.mappings().first()
+        if not norma:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El tipo de certificación seleccionado no es válido.",
+            )
+
+        tipo_certificacion = " - ".join(
+            parte
+            for parte in (norma["codigo"], norma["nombre"])
+            if parte
+        ) or "Certificación vigente"
+
+        if not archivo.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Debe seleccionar el archivo de la certificación.",
+            )
+
+        extension = Path(archivo.filename).suffix.lower()
+
+        if extension not in self.EXTENSIONES_CERTIFICACION:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Tipo de archivo no permitido. "
+                    "Solo se permiten PDF, JPG, JPEG y PNG."
+                ),
+            )
+
+        self.DIRECTORIO_CERTIFICACIONES.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        nombre_fisico = f"{id_usuario}_{uuid4()}{extension}"
+        ruta_archivo = self.DIRECTORIO_CERTIFICACIONES / nombre_fisico
+
+        try:
+            with ruta_archivo.open("wb") as buffer:
+                shutil.copyfileobj(archivo.file, buffer)
+        except Exception as error:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No fue posible guardar el archivo de la certificación.",
+            ) from error
+
+        url_archivo = (
+            f"/uploads/auditores/certificaciones/{nombre_fisico}"
+        )
+        descripcion_limpia = (descripcion or "").strip() or None
+
+        try:
+            result = await self.db.execute(
+                text("""
+                    INSERT INTO certificacion_auditor (
+                        id_usuario,
+                        id_norma,
+                        tipo_certificacion,
+                        nombre_archivo,
+                        url_archivo,
+                        descripcion
+                    )
+                    VALUES (
+                        :id_usuario,
+                        :id_norma,
+                        :tipo_certificacion,
+                        :nombre_archivo,
+                        :url_archivo,
+                        :descripcion
+                    )
+                    RETURNING
+                        id_certificacion,
+                        fecha_registro,
+                        estado
+                """),
+                {
+                    "id_usuario": id_usuario,
+                    "id_norma": id_norma,
+                    "tipo_certificacion": tipo_certificacion,
+                    "nombre_archivo": archivo.filename,
+                    "url_archivo": url_archivo,
+                    "descripcion": descripcion_limpia,
+                },
+            )
+            fila = result.mappings().first()
+            await self.db.commit()
+        except Exception as error:
+            await self.db.rollback()
+            if ruta_archivo.exists():
+                try:
+                    ruta_archivo.unlink()
+                except OSError:
+                    pass
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No fue posible registrar la certificación.",
+            ) from error
+
+        return {
+            "id_certificacion": fila["id_certificacion"],
+            "id_norma": id_norma,
+            "tipo_certificacion": tipo_certificacion,
+            "nombre_archivo": archivo.filename,
+            "url_archivo": url_archivo,
+            "descripcion": descripcion_limpia,
+            "fecha_registro": fila["fecha_registro"],
+            "estado": fila["estado"],
+            "mensaje": "Certificación registrada correctamente.",
+        }
+
+    async def listar_certificaciones_vigentes(
+        self,
+        id_usuario: UUID,
+    ):
+        result = await self.db.execute(
+            text("""
+                SELECT
+                    c.id_certificacion,
+                    c.id_usuario,
+                    c.id_norma,
+                    c.tipo_certificacion,
+                    c.nombre_archivo,
+                    c.url_archivo,
+                    c.descripcion,
+                    c.fecha_registro,
+                    c.estado,
+                    n.codigo AS norma_codigo,
+                    n.nombre AS norma_nombre
+                FROM certificacion_auditor c
+                LEFT JOIN norma n
+                    ON n.id_norma = c.id_norma
+                WHERE c.id_usuario = :id_usuario
+                ORDER BY c.fecha_registro DESC
+            """),
+            {"id_usuario": id_usuario},
+        )
+        return [
+            dict(row)
+            for row in result.mappings().all()
+        ]
+
+    async def eliminar_certificacion_vigente(
+        self,
+        id_usuario: UUID,
+        id_certificacion: UUID,
+    ):
+        result = await self.db.execute(
+            text("""
+                DELETE FROM certificacion_auditor
+                WHERE id_certificacion = :id_certificacion
+                  AND id_usuario = :id_usuario
+                RETURNING url_archivo
+            """),
+            {
+                "id_certificacion": id_certificacion,
+                "id_usuario": id_usuario,
+            },
+        )
+        fila = result.mappings().first()
+
+        if not fila:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    "La certificación no existe o no pertenece "
+                    "al auditor."
+                ),
+            )
+
+        await self.db.commit()
+
+        url_archivo = fila["url_archivo"] or ""
+
+        if url_archivo.startswith("/uploads/"):
+            ruta = Path(url_archivo.lstrip("/"))
+            if ruta.exists():
+                try:
+                    ruta.unlink()
+                except OSError:
+                    pass
+
+        return {
+            "id_certificacion": id_certificacion,
+            "mensaje": "Certificación eliminada correctamente.",
+        }
 
     async def consultar_historial_academico(
         self,

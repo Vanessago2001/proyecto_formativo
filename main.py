@@ -34,6 +34,7 @@ from modules.asignacion_auditores.asignacion_router import router as asignacion_
 
 from modules.administrar_auditores.administrar_auditores_router import router as administrar_auditores_router
 from modules.auditores.auditor_router import router as auditor_router
+from modules.auditores.auditor_bootstrap import preparar_modulo_auditores
 from modules.competencias_auditor.competencias_router import router as competencias_auditor_router
 from modules.conflictos_auditor.conflictos_router import router as conflictos_auditor_router
 from modules.agenda_auditor.agenda_router import router as agenda_auditor_router
@@ -252,6 +253,7 @@ async def lifespan(app: FastAPI):
     logger.info("==========================================================")
     await seed_initial_data()
     # Cada modulo prepara su parte de la base con su propia sesion.
+    await preparar_modulo_auditores()
     await preparar_modulo_agenda()
     await preparar_modulo_solicitudes()
     await preparar_modulo_comite()

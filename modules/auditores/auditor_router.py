@@ -6,6 +6,7 @@ from fastapi import (
     status,
     UploadFile,
     File,
+    Form,
     Query,
 )
 
@@ -409,6 +410,57 @@ async def registrar_certificacion(
     return await AuditorService(db).registrar_certificacion(
         id_usuario=id_usuario,
         data=data,
+    )
+
+
+# ============================================================
+# CERTIFICACIONES VIGENTES (TIPO + ARCHIVO)
+# ============================================================
+
+@router.get(
+    "/registro/{id_usuario}/certificaciones",
+)
+async def listar_certificaciones_vigentes(
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return {
+        "certificaciones":
+            await AuditorService(db).listar_certificaciones_vigentes(
+                id_usuario
+            )
+    }
+
+
+@router.post(
+    "/registro/{id_usuario}/certificaciones",
+)
+async def registrar_certificacion_vigente(
+    id_usuario: UUID,
+    id_norma: UUID = Form(...),
+    descripcion: str = Form(""),
+    archivo: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).registrar_certificacion_vigente(
+        id_usuario=id_usuario,
+        id_norma=id_norma,
+        archivo=archivo,
+        descripcion=descripcion,
+    )
+
+
+@router.delete(
+    "/registro/{id_usuario}/certificaciones/{id_certificacion}",
+)
+async def eliminar_certificacion_vigente(
+    id_usuario: UUID,
+    id_certificacion: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).eliminar_certificacion_vigente(
+        id_usuario=id_usuario,
+        id_certificacion=id_certificacion,
     )
 
 
