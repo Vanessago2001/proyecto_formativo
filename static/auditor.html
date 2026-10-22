@@ -484,6 +484,76 @@
             line-height: 1.6;
         }
 
+        /* Aviso de postulación rechazada: habilita volver a diligenciar */
+        .aviso-repostulacion {
+            padding: 16px 18px;
+            margin: 18px 0 22px;
+            border: 1px solid #f4c7b8;
+            border-left: 4px solid #d97706;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #fff7ed, #fffdf9);
+            color: #7c2d12;
+            font-size: 13.5px;
+            line-height: 1.6;
+        }
+
+        .aviso-repostulacion .aviso-repostulacion-titulo {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 800;
+            font-size: 13.5px;
+            color: #9a3412;
+        }
+
+        .aviso-repostulacion .aviso-repostulacion-observacion {
+            display: block;
+            margin-top: 8px;
+            padding: 9px 11px;
+            border-radius: 8px;
+            background: #fff1e7;
+            border: 1px solid #f6d3bd;
+            font-size: 12.5px;
+        }
+
+        .aviso-repostulacion .aviso-repostulacion-acciones {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 13px;
+        }
+
+        .btn-repostular {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            height: 38px;
+            padding: 0 16px;
+            border: 0;
+            border-radius: 8px;
+            background: var(--sena-green-bright);
+            color: #fff;
+            font: inherit;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .18s ease, opacity .18s ease;
+        }
+
+        .btn-repostular:hover:not(:disabled) {
+            background: var(--sena-green-hover);
+        }
+
+        .btn-repostular:disabled {
+            background: #b9c7b4;
+            cursor: not-allowed;
+        }
+
+        .aviso-repostulacion .aviso-repostulacion-pista {
+            color: #8a5a3b;
+            font-size: 12.5px;
+        }
+
         .form-section {
             margin-top: 0;
             padding-top: 0;
@@ -2310,6 +2380,24 @@
                 Cargando estado del registro...
             </div>
 
+            <!-- =====================================================
+       AVISO DE POSTULACIÓN RECHAZADA: PERMITE VOLVER A DILIGENCIAR
+    ====================================================== -->
+            <div class="aviso-repostulacion hidden" id="avisoRepostulacion" role="status" aria-live="polite">
+                <span class="aviso-repostulacion-titulo" id="avisoRepostulacionTitulo">Su postulación fue rechazada</span>
+                <span id="avisoRepostulacionTexto">
+                    Puede diligenciar de nuevo el formulario: la información ya registrada se conserva y solo deberá
+                    corregir lo observado y volver a adjuntar los soportes.
+                </span>
+                <span class="aviso-repostulacion-observacion hidden" id="avisoRepostulacionObservacion"></span>
+                <div class="aviso-repostulacion-acciones">
+                    <button type="button" class="btn-repostular" id="btnNuevaPostulacionRegistro">
+                        Diligenciar de nuevo el formulario
+                    </button>
+                    <span class="aviso-repostulacion-pista" id="avisoRepostulacionPista"></span>
+                </div>
+            </div>
+
             <div id="panelInicio" class="panel-inicio">
                 <div class="panel-inicio-cabecera">
                     <div class="panel-inicio-icono" aria-hidden="true">✓</div>
@@ -3503,8 +3591,127 @@
             );
 
         }
-        function obtenerControlesFormulario(form) {
+        /* =====================================================
+           AVISO DE POSTULACIÓN RECHAZADA O CANCELADA
 
+           El auditor puede diligenciar de nuevo el formulario. La
+           postulación anterior queda en el historial y la nueva se crea
+           como un borrador en blanco conservando el perfil, las
+           competencias, los conflictos, los títulos y las experiencias.
+        ===================================================== */
+
+        function mostrarAvisoRepostulacion(estado, observacion) {
+
+            const aviso = document.getElementById('avisoRepostulacion');
+            if (!aviso) return;
+
+            const titulo = document.getElementById('avisoRepostulacionTitulo');
+            const texto = document.getElementById('avisoRepostulacionTexto');
+            const bloqueObservacion = document.getElementById('avisoRepostulacionObservacion');
+            const pista = document.getElementById('avisoRepostulacionPista');
+
+            const esRechazada = estado === 'rechazado';
+
+            if (titulo) {
+                titulo.textContent = esRechazada
+                    ? 'Su postulación fue rechazada'
+                    : 'Su postulación fue cancelada';
+            }
+
+            if (texto) {
+                texto.textContent = esRechazada
+                    ? 'Puede diligenciar de nuevo el formulario: la información ya registrada se conserva y solo deberá corregir lo observado y volver a adjuntar los soportes.'
+                    : 'Puede diligenciar de nuevo el formulario: la información ya registrada se conserva y solo deberá volver a adjuntar los soportes.';
+            }
+
+            if (bloqueObservacion) {
+                const detalle = String(observacion || '').trim();
+                if (detalle) {
+                    bloqueObservacion.textContent = `Observación: ${detalle}`;
+                    bloqueObservacion.classList.remove('hidden');
+                } else {
+                    bloqueObservacion.classList.add('hidden');
+                    bloqueObservacion.textContent = '';
+                }
+            }
+
+            if (pista) {
+                pista.textContent = 'La postulación anterior se conserva en el historial de “Consultar estado del registro”.';
+            }
+
+            aviso.classList.remove('hidden');
+
+        }
+
+        function ocultarAvisoRepostulacion() {
+            document.getElementById('avisoRepostulacion')?.classList.add('hidden');
+        }
+
+        async function iniciarNuevaPostulacion() {
+
+            const boton = document.getElementById('btnNuevaPostulacionRegistro');
+            const pista = document.getElementById('avisoRepostulacionPista');
+
+            const confirmado = confirm(
+                'Se creará una nueva postulación en blanco.\n\n' +
+                'La postulación anterior seguirá conservada en el historial ' +
+                'y la información que ya registró (perfil, competencias, conflictos, ' +
+                'títulos y experiencias) se conservará.\n\n' +
+                '¿Desea continuar?'
+            );
+
+            if (!confirmado) return;
+
+            if (boton) {
+                boton.disabled = true;
+                boton.textContent = 'Preparando nueva postulación...';
+            }
+            if (pista) {
+                pista.textContent = 'Creando la nueva postulación...';
+            }
+
+            try {
+                const response = await fetch('/auditores/registro/nueva-postulacion', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ id_usuario: userId })
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail || 'No fue posible iniciar una nueva postulación.'
+                    );
+                }
+
+                // La nueva postulación es un borrador: se recarga el formulario.
+                window.location.href = '/auditor';
+
+            } catch (error) {
+
+                console.error('Error iniciando nueva postulación:', error);
+
+                if (pista) {
+                    pista.textContent = error.message
+                        || 'No fue posible iniciar una nueva postulación.';
+                }
+
+                if (boton) {
+                    boton.disabled = false;
+                    boton.textContent = 'Diligenciar de nuevo el formulario';
+                }
+
+            }
+
+        }
+
+
+        function obtenerControlesFormulario(form) {
             return form.querySelectorAll(
                 'input:not([type="hidden"]), select, textarea'
             );
@@ -5132,19 +5339,30 @@
                 }
 
 
+                estadoPostulacionCargada = String(
+                    data.estado || ''
+                ).trim();
+
+                estadoAuditorCargado = String(
+                    data.estado_auditor || ''
+                ).trim();
+
                 // =====================================================
                 // CANCELADO / RECHAZADO
                 // NO CARGAR DATOS DEL REGISTRO ANTERIOR
                 // =====================================================
 
+                const estadoRechazadoOCancelado =
+                    estadoPostulacionCargada.toLowerCase();
+
                 if (
-                    estadoPostulacion === 'cancelado' ||
-                    estadoPostulacion === 'rechazado'
+                    estadoRechazadoOCancelado === 'cancelado' ||
+                    estadoRechazadoOCancelado === 'rechazado'
                 ) {
                     registroCanceladoORechazado = true;
                     console.log(
                         '🧹 La última postulación está',
-                        estadoPostulacion,
+                        estadoRechazadoOCancelado,
                         '. Se prepara un nuevo registro.'
                     );
 
@@ -5158,6 +5376,16 @@
 
                     // Continuar con el flujo normal para recuperar datos guardados.
 
+                    // Se informa que puede diligenciar de nuevo el formulario.
+                    mostrarAvisoRepostulacion(
+                        estadoRechazadoOCancelado,
+                        data.observaciones_rechazo || ''
+                    );
+
+                } else {
+
+                    ocultarAvisoRepostulacion();
+
                 }
 
 
@@ -5169,14 +5397,6 @@
                    usa el servidor, y no con el listado de estados
                    (que excluye los borradores).
                 ================================================== */
-
-                estadoPostulacionCargada = String(
-                    data.estado || ''
-                ).trim();
-
-                estadoAuditorCargado = String(
-                    data.estado_auditor || ''
-                ).trim();
 
                 aplicarPermisosAdjuntarDocumentos(
                     estadoPostulacionCargada,
@@ -5555,6 +5775,25 @@
                         'formPerfil',
                         'Perfil del Auditor'
                     );
+
+                }
+            );
+
+
+        /* =====================================================
+           DILIGENCIAR DE NUEVO EL FORMULARIO
+           (postulación rechazada o cancelada)
+        ====================================================== */
+
+        document
+            .getElementById(
+                'btnNuevaPostulacionRegistro'
+            )
+            ?.addEventListener(
+                'click',
+                () => {
+
+                    iniciarNuevaPostulacion();
 
                 }
             );

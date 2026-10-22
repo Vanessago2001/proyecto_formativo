@@ -3880,7 +3880,11 @@ class AuditorService:
             {"id_usuario": id_usuario},
         )
         ultima = result.mappings().first()
-        if ultima and ultima["estado"] not in ("Rechazado", "Cancelado", "Correcciones"):
+        # Solo un rechazo o una cancelación habilitan una nueva postulación.
+        # En estado Correcciones se reutiliza la MISMA postulación, por lo que
+        # no debe permitirse crear otra (dejaría huérfana la que debe
+        # corregirse, con sus documentos rechazados).
+        if ultima and ultima["estado"] not in ("Rechazado", "Cancelado"):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
