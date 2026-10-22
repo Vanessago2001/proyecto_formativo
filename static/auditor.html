@@ -484,6 +484,12 @@
             line-height: 1.6;
         }
 
+        /* Clase utilitaria: oculta un bloque. La pagina usa ademas la
+           propiedad nativa `hidden`, que ya oculta por si sola. */
+        .hidden {
+            display: none !important;
+        }
+
         /* Aviso de postulación rechazada: habilita volver a diligenciar */
         .aviso-repostulacion {
             padding: 16px 18px;
@@ -2383,13 +2389,13 @@
             <!-- =====================================================
        AVISO DE POSTULACIÓN RECHAZADA: PERMITE VOLVER A DILIGENCIAR
     ====================================================== -->
-            <div class="aviso-repostulacion hidden" id="avisoRepostulacion" role="status" aria-live="polite">
+            <div class="aviso-repostulacion" id="avisoRepostulacion" role="status" aria-live="polite" hidden>
                 <span class="aviso-repostulacion-titulo" id="avisoRepostulacionTitulo">Su postulación fue rechazada</span>
                 <span id="avisoRepostulacionTexto">
                     Puede diligenciar de nuevo el formulario: la información ya registrada se conserva y solo deberá
                     corregir lo observado y volver a adjuntar los soportes.
                 </span>
-                <span class="aviso-repostulacion-observacion hidden" id="avisoRepostulacionObservacion"></span>
+                <span class="aviso-repostulacion-observacion" id="avisoRepostulacionObservacion" hidden></span>
                 <div class="aviso-repostulacion-acciones">
                     <button type="button" class="btn-repostular" id="btnNuevaPostulacionRegistro">
                         Diligenciar de nuevo el formulario
@@ -3628,9 +3634,9 @@
                 const detalle = String(observacion || '').trim();
                 if (detalle) {
                     bloqueObservacion.textContent = `Observación: ${detalle}`;
-                    bloqueObservacion.classList.remove('hidden');
+                    bloqueObservacion.hidden = false;
                 } else {
-                    bloqueObservacion.classList.add('hidden');
+                    bloqueObservacion.hidden = true;
                     bloqueObservacion.textContent = '';
                 }
             }
@@ -3639,12 +3645,16 @@
                 pista.textContent = 'La postulación anterior se conserva en el historial de “Consultar estado del registro”.';
             }
 
-            aviso.classList.remove('hidden');
+            aviso.hidden = false;
 
         }
 
         function ocultarAvisoRepostulacion() {
-            document.getElementById('avisoRepostulacion')?.classList.add('hidden');
+            const avisoRepostulacion =
+                document.getElementById('avisoRepostulacion');
+            if (avisoRepostulacion) {
+                avisoRepostulacion.hidden = true;
+            }
         }
 
         async function iniciarNuevaPostulacion() {
