@@ -5,6 +5,7 @@ La asignación relaciona auditor, solicitud y rol. Las fechas, la disponibilidad
 por intervalo y los cruces horarios se validan al programar desde Agenda.
 """
 
+from datetime import date
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status

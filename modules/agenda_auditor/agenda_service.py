@@ -10,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from modules.auditores.auditor_service import AuditorService
 from modules.agenda_auditor.agenda_schema import (
     DisponibilidadEditar,
+    DisponibilidadExtraordinariaCrear,
     DisponibilidadSemanalCrear,
     FechaNoDisponibleCrear,
     ProgramacionAuditoriaCrear,
