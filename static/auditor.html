@@ -426,6 +426,8 @@
             position: sticky;
             top: 20px;
             align-self: start;
+            /* FIX: Asegura que toda la barra lateral esté sobre el contenido */
+            z-index: 100;
         }
 
         /* El menú se reduce ligeramente, sin alterar el header. */
@@ -548,6 +550,9 @@
             border-radius: 9px;
             font-size: 13.5px;
             transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+            /* Prevenir que los selects nativos traspasen el dropdown */
+            position: relative;
+            z-index: 1;
         }
 
         .form-control:hover:not(:disabled):not([readonly]) {
@@ -1992,10 +1997,12 @@
 
 
         /* =====================================================
-       DROPDOWN "MI REGISTRO" (solo diseño, sin afectar la lógica)
+       DROPDOWN "MI REGISTRO" (Diseño profesional y z-index)
     ====================================================== */
         .side .dropdown-registro {
             position: relative;
+            z-index: 101;
+            /* Asegura que este contenedor esté sobre el contenido */
         }
 
         .side .dropdown-registro>a.menu-toggle {
@@ -2021,56 +2028,87 @@
         .side .dropdown-registro .dropdown-content {
             position: absolute;
             top: 0;
-            left: 100%;
-            margin-left: 6px;
-            min-width: 230px;
+            left: calc(100% + 10px);
+            /* Separación del botón */
+            min-width: 240px;
             display: flex;
             flex-direction: column;
-            gap: 1px;
-            padding: 7px;
+            gap: 2px;
+            padding: 8px;
             background: #ffffff;
             border: 1px solid var(--portal-border);
             border-radius: 12px;
-            box-shadow: 0 14px 34px rgba(15, 35, 22, .14);
+            box-shadow: 0 10px 40px rgba(15, 35, 22, .18);
+            /* Sombra más fuerte para separar del form */
             opacity: 0;
             visibility: hidden;
-            transform: translateX(-6px);
-            transition: opacity .18s ease, transform .18s ease, visibility .18s ease;
-            z-index: 100;
+            transform: translateX(-10px) translateZ(0);
+            /* translateZ arregla el bug de los selects nativos */
+            transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 9999;
+            /* Por encima de todo */
             pointer-events: none;
+            isolation: isolate;
+        }
+
+        /* Flecha del tooltip */
+        .side .dropdown-registro .dropdown-content::before {
+            content: "";
+            position: absolute;
+            top: 16px;
+            left: -6px;
+            width: 10px;
+            height: 10px;
+            background: #ffffff;
+            border-left: 1px solid var(--portal-border);
+            border-bottom: 1px solid var(--portal-border);
+            transform: rotate(45deg);
+            z-index: 1;
+        }
+
+        /* Puente invisible para evitar que el menú se cierre al mover el ratón */
+        .side .dropdown-registro .dropdown-content::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -15px;
+            width: 15px;
+            height: 100%;
         }
 
         .side .dropdown-registro:hover .dropdown-content,
         .side .dropdown-registro:focus-within .dropdown-content {
             opacity: 1;
             visibility: visible;
-            transform: translateX(0);
+            transform: translateX(0) translateZ(0);
             pointer-events: auto;
         }
 
         .side .dropdown-registro .dropdown-content a {
-            display: block;
-            padding: 9px 12px;
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
             margin: 0;
             color: #334155;
             font-size: 13px;
-            line-height: 1.35;
+            font-weight: 500;
+            line-height: 1.4;
             text-decoration: none;
+            border-radius: 8px;
+            border-left: none;
+            /* Quitamos la línea para look flotante */
+            transition: background .15s ease, color .15s ease;
             white-space: nowrap;
-            border-left: 3px solid transparent;
-            border-radius: 0 9px 9px 0;
-            transition: background .15s ease, color .15s ease, border-color .15s ease;
         }
 
         .side .dropdown-registro .dropdown-content a:hover {
-            background: #f6faf4;
+            background: var(--sena-green-soft);
             color: var(--sena-green);
         }
 
         .side .dropdown-registro .dropdown-content a.active {
             color: var(--sena-green);
             background: var(--sena-green-soft);
-            border-left-color: var(--sena-green-bright);
             font-weight: 700;
         }
 
@@ -2082,18 +2120,16 @@
             font-weight: 700;
         }
 
-        /* Cierre explícito del desplegable "Mi registro".
-           Se aplica al pulsar un <select> de sus secciones para que el menú
-           no siga abierto encima del formulario. La regla se declara después
-           de las de :hover / :focus-within para prevalecer sobre ellas. */
+        /* Cierre explícito del desplegable "Mi registro" */
         .side .dropdown-registro.cerrado .dropdown-content {
             opacity: 0;
             visibility: hidden;
-            transform: translateX(-6px);
+            transform: translateX(-10px) translateZ(0);
             pointer-events: none;
+            transition-duration: 0.15s;
         }
 
-        /* Adaptación móvil: el dropdown se muestra inline */
+        /*         /* Adaptación móvil: el dropdown se muestra inline */
         @media (max-width: 720px) {
             .side .dropdown-registro {
                 grid-column: 1 / -1;
@@ -2128,6 +2164,12 @@
                 display: none;
             }
 
+            .side .dropdown-registro .dropdown-content::before,
+            .side .dropdown-registro .dropdown-content::after {
+                display: none;
+                /* Ocultar flecha y puente en móvil */
+            }
+
             .side .dropdown-registro:hover .dropdown-content,
             .side .dropdown-registro:focus-within .dropdown-content {
                 display: flex;
@@ -2137,6 +2179,7 @@
                 white-space: normal;
                 border-left: 3px solid transparent;
                 border-radius: 0 8px 8px 0;
+                padding: 8px 10px;
             }
         }
     </style>
@@ -4815,6 +4858,7 @@
                     // Continuar con el flujo normal para recuperar datos guardados.
 
                 }
+
 
                 /* =================================================
                    TÍTULO
