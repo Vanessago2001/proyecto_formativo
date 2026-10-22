@@ -97,11 +97,15 @@ class ConsultasPublicasService:
                     TRIM(c.estado_certificado) AS estado,
                     c.fecha_emision,
                     c.fecha_vencimiento,
-                    c.url_certificado
+                    c.url_certificado,
+                    n.codigo AS norma_codigo,
+                    n.nombre AS norma_nombre,
+                    n.version AS norma_version
                 FROM certificado c
                 JOIN solicitud s
                   ON s.id_solicitud = c.id_solicitud
                   OR s.id_certificado = c.id_certificado
+                LEFT JOIN norma n ON n.id_norma = s.id_norma
                 WHERE s.id_empresa = :eid
                   AND (c.fecha_vencimiento IS NULL OR c.fecha_vencimiento >= CURRENT_DATE)
                 ORDER BY c.fecha_emision DESC NULLS LAST;
@@ -150,7 +154,9 @@ class ConsultasPublicasService:
                     s.numero_sedes,
                     s.persona_contacto,
                     s.fecha_radicacion,
-                    n.nombre AS norma
+                    n.codigo AS norma_codigo,
+                    n.nombre AS norma,
+                    n.version AS norma_version
                 FROM solicitud s
                 LEFT JOIN norma n ON n.id_norma = s.id_norma
                 WHERE s.id_empresa = :eid

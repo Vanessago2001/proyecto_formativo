@@ -13,7 +13,9 @@ es otra cosa:
    públicas y no enlace a rutas inexistentes.
 """
 
+import base64
 import re
+import zlib
 from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
@@ -595,3 +597,100 @@ async def test_las_paginas_nuevas_apuntan_al_api_del_modulo(cliente):
     assert f"{BASE}/constancia/" in constancia
 
 
+
+
+def _texto_del_pdf(pdf: bytes) -> str:
+    """
+    Descodifica los flujos comprimidos del PDF para afirmar sobre su contenido.
+
+    reportlab guarda el contenido de la página en ASCII85 + Flate, así que los
+    textos no aparecen a simple vista en los bytes de la respuesta.
+    """
+    fragmentos = []
+    for trozo in re.finditer(rb"stream\r?\n(.*?)endstream", pdf, re.DOTALL):
+        datos = trozo.group(1).rstrip(b"\r\n")
+        for intento in (lambda d: base64.a85decode(d, adobe=True), lambda d: d):
+            try:
+                fragmentos.append(zlib.decompress(intento(datos)))
+                break
+            except Exception:
+                continue
+    return "\n".join(f.decode("latin-1") for f in fragmentos)
+
+
+def _cargar_empresa_certificada(db, certificados, ultima):
+    db.execute.side_effect = [
+        _filas([dict(EMPRESA)]),
+        _filas(certificados),   # certificados vigentes
+        _filas(certificados),   # historial de certificados
+        _conteo(1),             # total de solicitudes
+        _conteo(1),             # total de sedes
+        _conteo(1),             # total de documentos
+        _una_fila(ultima),      # última solicitud
+        _filas([]),             # últimas 10 solicitudes
+    ]
+    return db
+
+
+CERTIFICADO_CON_NORMA = {
+    "codigo_verificacion": "CERT-2026-0001",
+    "estado": "VIGENTE",
+    "fecha_emision": date(2026, 10, 13),
+    "fecha_vencimiento": date(2027, 10, 13),
+    "url_certificado": None,
+    "norma_codigo": "NTC",
+    "norma_nombre": "ISO 9001",
+    "norma_version": "2015",
+}
+
+
+async def test_la_constancia_lleva_el_logo_y_el_verde_del_sena(db, cliente):
+    _cargar_empresa_certificada(
+        db, [dict(CERTIFICADO_CON_NORMA)], dict(ULTIMA_SOLICITUD, norma_codigo="NTC", norma_version="2015")
+    )
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/constancia/900123456-7/pdf")
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert b"/Subtype /Image" in respuesta.content, "el PDF no incrusta el logo"
+
+    texto = _texto_del_pdf(respuesta.content)
+    assert ".223529 .662745 0 rg" in texto, "falta el verde SENA (#39A900)"
+    assert "Servicio Nacional de Aprendizaje" in texto
+
+
+async def test_la_constancia_indica_la_norma_evaluada(db, cliente):
+    _cargar_empresa_certificada(
+        db, [dict(CERTIFICADO_CON_NORMA)], dict(ULTIMA_SOLICITUD, norma_codigo="NTC", norma_version="2015")
+    )
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/constancia/900123456-7/pdf")
+
+    texto = _texto_del_pdf(respuesta.content)
+    assert "NORMA BAJO LA CUAL SE EVALU" in texto
+    assert "NTC ISO 9001 2015" in texto
+    assert "Verificada" in texto
+
+
+async def test_sin_certificado_la_norma_sale_de_la_ultima_solicitud(db, cliente):
+    _cargar_empresa_certificada(db, [], dict(ULTIMA_SOLICITUD, norma_codigo="NTC", norma_version="2015"))
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/constancia/900123456-7/pdf")
+
+    texto = _texto_del_pdf(respuesta.content)
+    assert "NTC ISO 9001 2015" in texto
+    assert "En proceso" in texto
+
+
+async def test_sin_norma_registrada_la_constancia_lo_dice(db, cliente):
+    sin_norma = {k: v for k, v in ULTIMA_SOLICITUD.items() if not k.startswith("norma")}
+    _cargar_empresa_certificada(db, [], sin_norma)
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/constancia/900123456-7/pdf")
+
+    texto = _texto_del_pdf(respuesta.content)
+    assert "Sin norma registrada" in texto

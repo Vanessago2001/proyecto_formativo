@@ -53,6 +53,11 @@ from modules.solicitudes.solicitud_router import router as solicitud_router
 from modules.solicitudes.documento_router import router as documento_router
 from modules.solicitudes.informacion_router import router as informacion_router
 from modules.solicitudes.sede_router import router as sede_router
+
+# ============================================================
+# M12 - REPORTES POR ROL
+# ============================================================
+from modules.reportes.reportes_router import router as reportes_router
 from modules.solicitudes.solicitud_bootstrap import preparar_modulo_solicitudes
 from modules.empresas.empresas_bootstrap import preparar_modulo_empresas
 
@@ -318,6 +323,7 @@ app.include_router(solicitud_router)
 app.include_router(documento_router)
 app.include_router(informacion_router)
 app.include_router(sede_router)
+app.include_router(reportes_router)
 
 # M5 - Administrar Auditores
 app.include_router(administrar_auditores_router)
@@ -535,6 +541,12 @@ async def buscar_empresa_page(request: Request):
 async def revision_solicitudes_page(request: Request):
     """M5: Administración revisa las solicitudes radicadas y valida sus sedes."""
     return FileResponse("static/revision-solicitudes.html")
+
+
+@app.get("/reportes", response_class=HTMLResponse)
+async def reportes_page(request: Request):
+    """M12: el catálogo de reportes lo arma la API según el rol de la sesión."""
+    return FileResponse("static/reportes.html")
 
 
 # /buscar_empresa lo sirve modules/consultas_p/paginas_router.py: la página del
