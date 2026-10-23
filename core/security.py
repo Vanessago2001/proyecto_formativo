@@ -20,6 +20,9 @@ def validar_password_segura(password: str) -> tuple[bool, str]:
     """Verifica la creación de contraseña segura."""
     if not password:
         return False, "La contraseña es obligatoria."
+    # bcrypt rechaza entradas de más de 72 bytes con ValueError.
+    if len(password.encode("utf-8")) > 72:
+        return False, "La contraseña es demasiado larga (máximo 72 bytes)."
     if len(password) < 8:
         return False, "La contraseña contener 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial."
     if not re.search(r"[A-Z]", password):

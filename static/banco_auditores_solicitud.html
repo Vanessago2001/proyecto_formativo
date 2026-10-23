@@ -493,6 +493,104 @@
 
         }
 
+        /* Modal propio: evita depender de prompt(), que el navegador
+           puede bloquear silenciosamente. */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, .55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .modal-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 22px;
+            width: min(460px, 100%);
+            box-shadow: 0 20px 50px rgba(15, 23, 42, .25);
+        }
+
+        .modal-card h3 {
+            margin: 0 0 8px;
+            color: #1f2937;
+            font-size: 18px;
+        }
+
+        .modal-card p {
+            margin: 0 0 12px;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .modal-card textarea {
+            width: 100%;
+            box-sizing: border-box;
+            resize: vertical;
+            min-height: 96px;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font: inherit;
+        }
+
+        .modal-error {
+            color: #b42318;
+            font-size: 13px;
+            margin: 8px 0 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .modal-actions button {
+            border-radius: 6px;
+            border: 1px solid transparent;
+            padding: 9px 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .modal-cancel {
+            background: #f1f5f9;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+
+        .modal-confirm {
+            background: #b42318;
+            color: #fff;
+        }
+
+        .modal-confirm:hover {
+            background: #991b1b;
+        }
+
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            max-width: 360px;
+            background: #1f2937;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1100;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+        }
+
+        .toast.error {
+            background: #b42318;
+        }
+
 
         @media (max-width: 900px) {
 
@@ -976,6 +1074,35 @@
     </div>
 
 </main>
+
+<div
+    id="revisionModal"
+    class="modal-overlay hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="revisionModalTitle"
+>
+    <div class="modal-card">
+        <h3 id="revisionModalTitle">Rechazar</h3>
+        <p id="revisionModalDesc"></p>
+        <textarea
+            id="revisionObservacion"
+            maxlength="500"
+            placeholder="Escriba la observación..."
+        ></textarea>
+        <p id="revisionModalError" class="modal-error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="modal-cancel" id="revisionCancelar">
+                Cancelar
+            </button>
+            <button type="button" class="modal-confirm" id="revisionConfirmar">
+                Rechazar
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast hidden" role="status"></div>
 
 
 <script>
@@ -2287,21 +2414,82 @@
 
     }
 
+    function mostrarToast(mensaje, esError = false) {
+        const toast = document.getElementById("toast");
+        if (!toast) { return; }
+
+        toast.textContent = mensaje;
+        toast.classList.toggle("error", esError);
+        toast.classList.remove("hidden");
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => toast.classList.add("hidden"), 4000);
+    }
+
+    function pedirObservacion(titulo, descripcion) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById("revisionModal");
+            const tituloEl = document.getElementById("revisionModalTitle");
+            const descEl = document.getElementById("revisionModalDesc");
+            const input = document.getElementById("revisionObservacion");
+            const errorEl = document.getElementById("revisionModalError");
+            const btnCancelar = document.getElementById("revisionCancelar");
+            const btnConfirmar = document.getElementById("revisionConfirmar");
+
+            tituloEl.textContent = titulo;
+            descEl.textContent = descripcion;
+            input.value = "";
+            errorEl.textContent = "";
+            errorEl.classList.add("hidden");
+            overlay.classList.remove("hidden");
+            input.focus();
+
+            const cerrar = (valor) => {
+                overlay.classList.add("hidden");
+                btnCancelar.removeEventListener("click", onCancelar);
+                btnConfirmar.removeEventListener("click", onConfirmar);
+                overlay.removeEventListener("click", onFondo);
+                document.removeEventListener("keydown", onTecla);
+                resolve(valor);
+            };
+
+            const onCancelar = () => cerrar(null);
+
+            const onConfirmar = () => {
+                const valor = input.value.trim();
+                if (!valor) {
+                    errorEl.textContent = "La observación es obligatoria para rechazar.";
+                    errorEl.classList.remove("hidden");
+                    input.focus();
+                    return;
+                }
+                cerrar(valor);
+            };
+
+            const onFondo = (event) => {
+                if (event.target === overlay) { cerrar(null); }
+            };
+
+            const onTecla = (event) => {
+                if (event.key === "Escape") { cerrar(null); }
+            };
+
+            btnCancelar.addEventListener("click", onCancelar);
+            btnConfirmar.addEventListener("click", onConfirmar);
+            overlay.addEventListener("click", onFondo);
+            document.addEventListener("keydown", onTecla);
+        });
+    }
+
     async function revisarCompetencia(idCompetencia, nuevoEstado) {
         let observacion = "";
 
         if (nuevoEstado === "Rechazado") {
-            observacion =
-                window.prompt(
-                    "Indique la observaci��n para rechazar esta competencia:"
-                );
+            observacion = await pedirObservacion(
+                "Rechazar competencia",
+                "Indique la observación para rechazar esta competencia."
+            );
 
-            if (!observacion) {
-                alert(
-                    "La observaci��n es obligatoria para rechazar la competencia."
-                );
-                return;
-            }
+            if (observacion === null) { return; }
         }
 
         try {
@@ -2335,10 +2523,16 @@
             }
 
             await cargarSolicitud();
+            mostrarToast(
+                nuevoEstado === "Rechazado"
+                    ? "Competencia rechazada correctamente."
+                    : "Competencia aprobada correctamente."
+            );
         } catch (error) {
-            alert(
+            mostrarToast(
                 error.message ||
-                "No fue posible revisar la competencia."
+                "No fue posible revisar la competencia.",
+                true
             );
         }
     }
@@ -2347,15 +2541,12 @@
         let observacion = "";
 
         if (nuevoEstado === "Rechazado") {
-            observacion =
-                window.prompt(
-                    "Indique la observación para rechazar este documento:"
-                );
+            observacion = await pedirObservacion(
+                "Rechazar documento",
+                "Indique la observación para rechazar este documento."
+            );
 
-            if (!observacion) {
-                alert("La observación es obligatoria para rechazar el documento.");
-                return;
-            }
+            if (observacion === null) { return; }
         }
 
         try {
@@ -2389,10 +2580,16 @@
             }
 
             await cargarSolicitud();
+            mostrarToast(
+                nuevoEstado === "Rechazado"
+                    ? "Documento rechazado correctamente."
+                    : "Documento aprobado correctamente."
+            );
         } catch (error) {
-            alert(
+            mostrarToast(
                 error.message ||
-                "No fue posible revisar el documento."
+                "No fue posible revisar el documento.",
+                true
             );
         }
     }

@@ -1,4 +1,5 @@
 from typing import AsyncGenerator
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from core.config import settings
 from core.logger import logger
@@ -11,8 +12,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         try:
             yield session
+        except HTTPException:
+            # Errores de negocio esperados (400/403/404): no son fallos de la DB.
+            await session.rollback()
+            raise
         except Exception as e:
-            logger.error(f"Error en la sesión de DB: {str(e)}")
+            logger.exception(f"Error en la sesión de DB: {str(e)}")
             await session.rollback()
             raise e
         finally:

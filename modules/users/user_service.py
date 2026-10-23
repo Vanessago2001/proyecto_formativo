@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.logger import logger
 from core.security import hash_password, validar_password_segura
@@ -28,7 +29,8 @@ class UserService:
 
     dup = await self.db.execute(
         text(
-            'SELECT id_usuario FROM usuario WHERE nombre = :nombre OR correo = :correo;'
+            'SELECT id_usuario FROM usuario '
+            'WHERE nombre = :nombre OR LOWER(correo) = LOWER(:correo);'
         ),
         {'nombre': user_data.nombre, 'correo': user_data.correo},
     )
@@ -36,6 +38,18 @@ class UserService:
       raise HTTPException(
           status_code=status.HTTP_400_BAD_REQUEST,
           detail='El usuario o correo ya existen.',
+      )
+
+    # num_doc tiene restricción UNIQUE; sin esta verificación el INSERT fallaba
+    # con un 500 genérico al repetir una cédula o un NIT.
+    dup_doc = await self.db.execute(
+        text('SELECT id_usuario FROM usuario WHERE num_doc = :num_doc;'),
+        {'num_doc': user_data.num_doc},
+    )
+    if dup_doc.first():
+      raise HTTPException(
+          status_code=status.HTTP_400_BAD_REQUEST,
+          detail='El número de documento ya está registrado.',
       )
 
     role_check = await self.db.execute(
@@ -79,9 +93,27 @@ class UserService:
       await self.db.commit()
       row = result.mappings().first()
       return {k: v for k, v in row.items()} if row else {}
+    except IntegrityError as e:
+      await self.db.rollback()
+      detalle = str(getattr(e, 'orig', e))
+      logger.warning('Registro rechazado por restricción única: %s', detalle)
+      if 'uq_usuario_num_doc' in detalle:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='El número de documento ya está registrado.',
+        )
+      if 'usuario_correo_key' in detalle:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='El correo ya está registrado.',
+        )
+      raise HTTPException(
+          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          detail='Error al crear el usuario.',
+      )
     except Exception as e:
       await self.db.rollback()
-      logger.error(f'Error al guardar usuario: {str(e)}')
+      logger.exception(f'Error al guardar usuario: {str(e)}')
       raise HTTPException(
           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
           detail='Error al crear el usuario.',
