@@ -2,10 +2,10 @@ from datetime import datetime, timedelta, timezone
 import random
 import secrets
 
-from modules.mfa.mfa_service import MFAService
 from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from modules.mfa.mfa_service import MFAService
 
 from core.config import settings
 from core.logger import logger
@@ -17,6 +17,7 @@ from core.security import (
     verify_verification_code,
     validar_password_segura,
 )
+from core.datetime_utils import system_now_utc, system_now_utc_naive
 
 from modules.auth.mail_service import MailService
 
@@ -46,19 +47,30 @@ class AuthService:
     def _ahora(self) -> datetime:
         """
         Devuelve la fecha y hora actual en UTC (naive) para comparar con fechas de la BD.
+
+        Debe ser naive: todas las fechas que salen de la base se normalizan con
+        `_a_naive_utc()` antes de compararlas, y Python no deja comparar una
+        fecha con zona horaria contra una sin ella.
         """
-        return datetime.now(timezone.utc).replace(tzinfo=None)
+        return system_now_utc_naive()
+
+    def _ahora_utc(self) -> datetime:
+        """
+        Instante actual en UTC **con zona horaria**.
+
+        Se usa para escribir en columnas TIMESTAMPTZ: si se envia un valor
+        naive, el motor lo interpreta en la zona horaria local (Bogota) y
+        guarda el dato desplazado (por ejemplo, +5 horas).
+        """
+        return system_now_utc()
 
     def _a_naive_utc(self, valor: datetime) -> datetime:
         """
-        Normaliza un datetime a UTC naive para poder compararlo con _ahora().
-
-        Las columnas TIMESTAMPTZ (p. ej. password_reset_tokens.fecha_expiracion)
-        devuelven datetimes *aware*; compararlos directamente con _ahora() (naive)
-        lanza TypeError. Este helper deja ambos lados en la misma forma.
+        Convierte cualquier fecha a UTC sin zona horaria.
         """
         if valor.tzinfo is not None:
             return valor.astimezone(timezone.utc).replace(tzinfo=None)
+
         return valor
 
     def _generar_codigo(self) -> str:
@@ -141,7 +153,7 @@ class AuthService:
         resultado = await self.db.execute(
             text("""
                 SELECT
-                    id,
+                    id_usuario,
                     correo,
                     codigo_verificacion,
                     codigo_expira,
@@ -186,7 +198,7 @@ class AuthService:
                 nuevo_codigo = self._generar_codigo()
                 nuevo_codigo_hash = hash_verification_code(nuevo_codigo)
 
-                nueva_expiracion = self._ahora() + timedelta(minutes=5)
+                nueva_expiracion = self._ahora_utc() + timedelta(minutes=5)
 
                 await self.db.execute(
                     text("""
@@ -196,19 +208,19 @@ class AuthService:
                             codigo_expira=:expira,
                             intentos_codigo=0,
                             ultimo_envio_codigo=:ahora
-                        WHERE id=:id
+                        WHERE id_usuario=:id_usuario
                     """),
                     {
                         "codigo": nuevo_codigo_hash,
                         "expira": nueva_expiracion,
-                        "ahora": self._ahora().replace(tzinfo=None),
-                        "id": usuario["id"],
+                        "ahora": self._ahora(),
+                        "id_usuario": usuario["id_usuario"],
                     },
                 )
 
                 await self.db.commit()
 
-                await MailService.enviar_codigo(
+                await MailService.enviar_codigo_verificacion(
                     destinatario=correo,
                     codigo=nuevo_codigo,
                 )
@@ -225,11 +237,11 @@ class AuthService:
                 text("""
                     UPDATE usuario
                     SET intentos_codigo=:intentos
-                    WHERE id=:id
+                    WHERE id_usuario=:id_usuario
                 """),
                 {
                     "intentos": intentos_codigo,
-                    "id": usuario["id"],
+                    "id_usuario": usuario["id_usuario"],
                 },
             )
 
@@ -252,10 +264,10 @@ class AuthService:
                     intentos_codigo=0,
                     ultimo_envio_codigo=NULL,
                     codigo_verificado=TRUE
-                WHERE id=:id
+                WHERE id_usuario=:id_usuario
             """),
             {
-                "id": usuario["id"],
+                "id_usuario": usuario["id_usuario"],
             },
         )
 
@@ -281,7 +293,7 @@ class AuthService:
 
         query = text("""
             SELECT
-                u.id,
+                u.id_usuario,
                 u.nombre,
                 u.correo,
                 u.contrasena AS password_hash,
@@ -293,11 +305,11 @@ class AuthService:
                 u.bloqueado_hasta,
                 u.rol_id,
                 COALESCE(u.codigo_verificado, FALSE) AS codigo_verificado,
+                u.fecha_cambio_password,
                 u.mfa_activado,
                 u.mfa_codigo,
                 u.mfa_expira,
                 u.mfa_verificado,
-                u.fecha_cambio_password,
                 u.ultimo_inicio_sesion,
                 r.nombre AS rol_nombre
             FROM usuario u
@@ -354,17 +366,17 @@ class AuthService:
                         codigo_verificacion=NULL,
                         codigo_expira=NULL,
                         intentos_codigo=0
-                    WHERE id=:id
+                    WHERE id_usuario=:id_usuario
                 """),
                 {
-                    "id": user["id"],
+                    "id_usuario": user["id_usuario"],
                 },
             )
 
             await self.db.commit()
         if user["estado"] and user["estado"].strip().lower() == "inactivo":
             await self._log_access(
-                user["id"],
+                user["id_usuario"],
                 user["correo"],
                 client_ip,
                 False,
@@ -385,7 +397,7 @@ class AuthService:
             and bloqueado_hasta > self._ahora()
         ):
             await self._log_access(
-                user["id"],
+               user["id_usuario"],
                 user["correo"],
                 client_ip,
                 False,
@@ -407,10 +419,10 @@ class AuthService:
                         bloqueado_hasta=NULL,
                         intentos_fallidos=0,
                         ultimo_intento=NULL
-                    WHERE id=:id
+                    WHERE id_usuario=:id_usuario
                 """),
                 {
-                    "id": user["id"],
+                    "id_usuario": user["id_usuario"],
                 },
             )
 
@@ -447,7 +459,8 @@ class AuthService:
                     # ----- FASE 1: enviar código de verificación al correo -----
                     codigo = self._generar_codigo()
                     codigo_hash = hash_verification_code(codigo)
-                    expira = ahora + timedelta(minutes=5)
+                    # TIMESTAMPTZ: se guarda con zona horaria para no desplazar la hora.
+                    expira = self._ahora_utc() + timedelta(minutes=5)
 
                     await self.db.execute(
                         text("""
@@ -457,25 +470,25 @@ class AuthService:
                                 ultimo_intento = :ultimo_intento,
                                 codigo_verificacion = :codigo,
                                 codigo_expira = :expira
-                            WHERE id = :id
+                            WHERE id_usuario = :id_usuario
                         """),
                         {
                             "intentos": nuevos_intentos,
-                            "ultimo_intento": ahora,
+                            "ultimo_intento": self._ahora_utc(),
                             "codigo": codigo_hash,
                             "expira": expira,
-                            "id": user["id"],
+                            "id_usuario": user["id_usuario"],
                         },
                     )
                     await self.db.commit()
 
-                    await MailService.enviar_codigo(
+                    await MailService.enviar_codigo_verificacion(
                         destinatario=user["correo"],
                         codigo=codigo,
                     )
 
                     await self._log_access(
-                        user["id"],
+                        user["id_usuario"],
                         user["correo"],
                         client_ip,
                         False,
@@ -494,10 +507,10 @@ class AuthService:
                     )
 
                 # ----- FASE 2: enviar enlace de restablecimiento de contraseña -----
-                enlace = await self._crear_enlace_reset(user["id"], ahora)
+                enlace = await self._crear_enlace_reset(user["id_usuario"])
 
                 # Bloquear la cuenta temporalmente y limpiar contadores de intentos.
-                bloqueo = ahora + timedelta(minutes=TIEMPO_BLOQUEO_MINUTOS)
+                bloqueo = self._ahora_utc() + timedelta(minutes=TIEMPO_BLOQUEO_MINUTOS)
                 await self.db.execute(
                     text("""
                         UPDATE usuario
@@ -505,11 +518,11 @@ class AuthService:
                             intentos_fallidos = 0,
                             ultimo_intento = NULL,
                             bloqueado_hasta = :bloqueo
-                        WHERE id = :id
+                        WHERE id_usuario = :id_usuario
                     """),
                     {
                         "bloqueo": bloqueo,
-                        "id": user["id"],
+                        "id_usuario": user["id_usuario"],
                     },
                 )
                 await self.db.commit()
@@ -520,7 +533,7 @@ class AuthService:
                 )
 
                 await self._log_access(
-                    user["id"],
+                    user["id_usuario"],
                     user["correo"],
                     client_ip,
                     False,
@@ -545,18 +558,18 @@ class AuthService:
                     SET
                         intentos_fallidos = :intentos,
                         ultimo_intento = :ultimo_intento
-                    WHERE id = :id
+                    WHERE id_usuario = :id_usuario
                 """),
                 {
                     "intentos": nuevos_intentos,
-                    "ultimo_intento": ahora,
-                    "id": user["id"],
+                    "ultimo_intento": self._ahora_utc(),
+                    "id_usuario": user["id_usuario"],
                 },
             )
             await self.db.commit()
 
             await self._log_access(
-                user["id"],
+                user["id_usuario"],
                 user["correo"],
                 client_ip,
                 False,
@@ -589,7 +602,7 @@ class AuthService:
         if dias_expiracion > 0 and fecha_cambio is not None:
             fecha_limite = self._a_naive_utc(fecha_cambio) + timedelta(days=dias_expiracion)
 
-            if self._ahora() > fecha_limite:
+            if self._a_naive_utc(self._ahora()) > fecha_limite:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Su contraseña ha expirado. Debe cambiarla antes de iniciar sesión."
@@ -607,309 +620,175 @@ class AuthService:
                 )
 
         await self.db.execute(
-            text("""
-                UPDATE usuario
-                SET
-                    intentos_fallidos = 0,
-                    ultimo_intento = NULL,
-                    codigo_verificacion = NULL,
-                    codigo_expira = NULL,
-                    intentos_codigo = 0,
-                    ultimo_envio_codigo = NULL,
-                    codigo_verificado = FALSE,
-                    bloqueado_hasta = NULL,
-                    ultimo_inicio_sesion = NOW()
-                WHERE id = :id
-            """),
-            {
-                "id": user["id"],
-            },
-        )
+    text("""
+        UPDATE usuario
+        SET
+            intentos_fallidos = 0,
+            ultimo_intento = NULL,
+            codigo_verificacion = NULL,
+            codigo_expira = NULL,
+            intentos_codigo = 0,
+            ultimo_envio_codigo = NULL,
+            codigo_verificado = FALSE,
+            bloqueado_hasta = NULL,
+            ultimo_inicio_sesion = NOW()
+        WHERE id_usuario = :id_usuario
+    """),
+    {
+        "id_usuario": user["id_usuario"]
+    }
+)
 
         await self.db.commit()
-
-        # =====================================================
-        # Verificar si el usuario tiene MFA activado Neider
-        # =====================================================
-
+        # nuevo Sneider
         if user["mfa_activado"]:
+          mfa = MFAService(self.db)
 
-            mfa = MFAService(self.db)
+          await mfa.login_request(user["correo"])
 
-            await mfa.login_request(user["correo"])
-
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "accion": "mfa",
-                    "mensaje": (
-                        "Se envió un código de verificación a su correo."
-                    ),
-                    "correo": user["correo"]
-                }
-            )
+          raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "accion": "mfa",
+                "mensaje": "Se envió un código de verificación a su correo.",
+                "correo": user["correo"]
+            }
+        )
 
         await self._log_access(
-            user["id"],
+            user["id_usuario"],
             user["correo"],
             client_ip,
             True,
             "Autenticación exitosa",
         )
 
-        # nuevo Sneider SI EL USUARIO TIENE MFA ACTIVADO
-       
+        return create_access_token(
+            data={
+                "sub": user.get("nombre") or user.get("correo") or identifier,
+                "user_id": str(user["id_usuario"]),
+                "role_id": str(user["rol_id"]) if user.get("rol_id") is not None else None,
+                "role_name": user.get("rol_nombre"),
+            }
+        )
 
-        if user["mfa_activado"]:
-
-            codigo = str(random.randint(100000, 999999))
-
-            expira = datetime.now(timezone.utc) + timedelta(minutes=10)
-
+    # nuevo Sneider
+    # nuevo Sneider login MFA
+    
+    async def login_mfa(self,correo: str,codigo: str,):
+             # --------------------------------------------------------
+        # Buscar usuario
+        # --------------------------------------------------------
+            result = await self.db.execute(
+                text("""
+                SELECT
+                    u.id_usuario,
+                    u.nombre,
+                    u.correo,
+                    u.rol_id,
+                    u.mfa_codigo,
+                    u.mfa_expira,
+                    r.nombre AS rol_nombre
+                FROM usuario u
+                LEFT JOIN rol r
+                    ON r.id_rol = u.rol_id
+                WHERE LOWER(u.correo)=LOWER(:correo)
+                LIMIT 1
+                """),
+                {
+                    "correo": correo
+                }
+            )
+    
+            user = result.mappings().first()
+    
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuario no encontrado."
+                )
+    
+            # --------------------------------------------------------
+            # Verificar que exista un código MFA pendiente
+    
+            print("=== LOGIN MFA ===")
+            print("Correo recibido:", correo)
+            print("Usuario:", user)
+            print("mfa_codigo:", user["mfa_codigo"])
+            print("mfa_expira:", user["mfa_expira"])
+            if user["mfa_codigo"] is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No existe un código MFA pendiente."
+                )
+    
+            # --------------------------------------------------------
+            # Verificar expiración
+            # --------------------------------------------------------
+    
+            if user["mfa_expira"] is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El código MFA expiró."
+                )
+    
+            if self._a_naive_utc(user["mfa_expira"]) < self._a_naive_utc(self._ahora()):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El código MFA expiró."
+                )
+    
+            # --------------------------------------------------------
+            # Verificar código
+            # --------------------------------------------------------
+    
+            if user["mfa_codigo"] != codigo:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Código MFA incorrecto."
+                )
+    
+            # --------------------------------------------------------
+            # Limpiar el código MFA para que no pueda reutilizarse
+            # --------------------------------------------------------
+    
             await self.db.execute(
                 text("""
                     UPDATE usuario
                     SET
-                        mfa_codigo = :codigo,
-                        mfa_expira = :expira,
-                        mfa_verificado = FALSE
-                    WHERE id = :id
+                        mfa_codigo = NULL,
+                        mfa_expira = NULL,
+                        mfa_verificado = TRUE
+                    WHERE id_usuario = :id_usuario
                 """),
                 {
-                    "codigo": codigo,
-                    "expira": expira,
-                    "id": user["id"]
+                    "id_usuario": user["id_usuario"]
                 }
             )
-
+    
             await self.db.commit()
-
-            await MailService.enviar_codigo(
-                destinatario=user["correo"],
-                codigo=codigo
+    
+            # --------------------------------------------------------
+            # Generar JWT
+            # --------------------------------------------------------
+    
+            token = create_access_token(
+                data={
+                    "sub": user.get("nombre"),
+                    "user_id": str(user["id_usuario"]),
+                    "role_id": user["rol_id"],
+                    "role_name": user["rol_nombre"],
+                }
             )
-
+            print("LOGIN NORMAL - Generando token")
+            print(token)
+    
             return {
-                "mfa_required": True,
-                "correo": user["correo"],
-                "message": "Se envió un código de verificación a su correo."
+                "access_token": token,
+                "token_type": "bearer",
             }
 
-
-
-
-
-
-
-        return create_access_token(
-            data={
-                "sub": user.get("nombre") or user.get("correo") or identifier,
-                "user_id": str(user["id"]),
-                "role_id": int(user["rol_id"]) if user.get("rol_id") is not None else None,
-                "role_name": user.get("rol_nombre"),
-            }
-        )
-    # nuevo Sneider login MFA
-    async def login_mfa(self,correo: str,codigo: str,):
-         # --------------------------------------------------------
-    # Buscar usuario
-    # --------------------------------------------------------
-        result = await self.db.execute(
-            text("""
-            SELECT
-                u.id,
-                u.nombre,
-                u.correo,
-                u.rol_id,
-                u.mfa_codigo,
-                u.mfa_expira,
-                r.nombre AS rol_nombre
-            FROM usuario u
-            LEFT JOIN rol r
-                ON r.id_rol = u.rol_id
-            WHERE LOWER(u.correo)=LOWER(:correo)
-            LIMIT 1
-            """),
-            {
-                "correo": correo
-            }
-        )
-
-        user = result.mappings().first()
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Usuario no encontrado."
-            )
-
-        # --------------------------------------------------------
-        # Verificar que exista un código MFA pendiente
-
-
-        if user["mfa_codigo"] is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No existe un código MFA pendiente."
-            )
-
-        # --------------------------------------------------------
-        # Verificar expiración
-        # --------------------------------------------------------
-
-        if user["mfa_expira"] is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El código MFA expiró."
-            )
-
-        if user["mfa_expira"] < datetime.now(timezone.utc):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El código MFA expiró."
-            )
-
-        # --------------------------------------------------------
-        # Verificar código
-        # --------------------------------------------------------
-
-        if user["mfa_codigo"] != codigo:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Código MFA incorrecto."
-            )
-
-        # --------------------------------------------------------
-        # Limpiar el código MFA para que no pueda reutilizarse
-        # --------------------------------------------------------
-
-        await self.db.execute(
-            text("""
-                UPDATE usuario
-                SET
-                    mfa_codigo = NULL,
-                    mfa_expira = NULL,
-                    mfa_verificado = TRUE
-                WHERE id = :id
-            """),
-            {
-                "id": user["id"]
-            }
-        )
-
-        await self.db.commit()
-
-        # --------------------------------------------------------
-        # Generar JWT
-        # --------------------------------------------------------
-
-        token = create_access_token(
-            data={
-                "sub": user["nombre"],
-                "user_id": str(user["id"]),
-                "role_id": user["rol_id"],
-                "role_name": user["rol_nombre"],
-            }
-        )
-
-        return {
-            "access_token": token,
-            "token_type": "bearer",
-        }
-
-
-
-
-
-
-
-        # --------------------------------------------------------
-        # Verificar que exista un código pendiente
-        # --------------------------------------------------------
-        if user["mfa_codigo"] is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No existe un código MFA pendiente."
-            )
-
-        # --------------------------------------------------------
-        # Verificar expiración
-        # --------------------------------------------------------
-        if user["mfa_expira"] is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El código expiró."
-            )
-
-        if self._a_naive_utc(user["mfa_expira"]) < self._ahora():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El código MFA expiró."
-            )
-
-        # --------------------------------------------------------
-        # Verificar código
-        # --------------------------------------------------------
-        if user["mfa_codigo"] != codigo:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Código incorrecto."
-            )
-
-        # --------------------------------------------------------
-        # Limpiar código MFA
-        # --------------------------------------------------------
-        await self.db.execute(
-            text("""
-            UPDATE usuario
-            SET
-                mfa_codigo = NULL,
-                mfa_expira = NULL,
-                mfa_verificado = TRUE
-            WHERE id = :id
-            """),
-            {
-                "id": user["id"]
-            }
-        )
-
-        await self.db.commit()
-
-        # --------------------------------------------------------
-        # Registrar acceso exitoso
-        # --------------------------------------------------------
-        await self._log_access(
-            user["id"],
-            user["correo"],
-            "unknown",
-            True,
-            "Inicio de sesión mediante MFA"
-        )
-
-        # --------------------------------------------------------
-        # Generar JWT
-        # --------------------------------------------------------
-        token = create_access_token(
-            data={
-                "sub": user["nombre"],
-                "user_id": str(user["id"]),
-                "role_id": int(user["rol_id"])
-                if user["rol_id"] is not None
-                else None,
-                "role_name": user["rol_nombre"],
-            }
-        )
-
-        return {
-            "access_token": token,
-            "token_type": "bearer"
-        }
-
-
-
-
-
-
+    # historial de accesos
     async def obtener_historial_accesos(
         self,
         limite: int = 100,
@@ -932,7 +811,7 @@ class AuthService:
                     r.nombre AS rol
                 FROM logs_acceso l
                 LEFT JOIN usuario u
-                    ON u.id = l.usuario_id
+                    ON u.id_usuario = l.usuario_id
                 LEFT JOIN rol r
                     ON r.id_rol = u.rol_id
                 ORDER BY l.fecha_hora DESC
@@ -970,7 +849,6 @@ class AuthService:
     async def _crear_enlace_reset(
         self,
         user_id,
-        ahora: datetime,
     ) -> str:
         """
         Genera un token seguro de un solo uso, lo guarda en la base de datos y
@@ -979,7 +857,8 @@ class AuthService:
         await self._ensure_reset_table()
 
         token = secrets.token_urlsafe(32)
-        expira = ahora + timedelta(minutes=RESET_TOKEN_MINUTOS)
+        # TIMESTAMPTZ: se guarda con zona horaria para no desplazar la hora.
+        expira = self._ahora_utc() + timedelta(minutes=RESET_TOKEN_MINUTOS)
 
         await self.db.execute(
             text("""
@@ -994,6 +873,12 @@ class AuthService:
                 "fecha_expiracion": expira,
             },
         )
+
+        # Escribir también en Redis, con TTL igual a la vigencia del token
+        from core.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        ttl_segundos = RESET_TOKEN_MINUTOS * 60
+        await redis_client.set(f"password_reset_token:{token}", str(user_id), ex=ttl_segundos)
 
         base_url = settings.APP_BASE_URL.rstrip("/")
         return f"{base_url}/reset-password?token={token}"
@@ -1050,7 +935,7 @@ class AuthService:
         usuario_id = registro.get("usuario_id") or registro.get("user_id")
 
         # 2. Consultar la contraseña actual almacenada en la base de datos
-        query_usuario = text("SELECT contrasena FROM usuario WHERE id = :usuario_id;")
+        query_usuario = text("SELECT contrasena FROM usuario WHERE id_usuario = :usuario_id;")
         result = await self.db.execute(query_usuario, {"usuario_id": usuario_id})
         usuario = result.mappings().first()
 
@@ -1094,11 +979,11 @@ class AuthService:
                     ultimo_envio_codigo = NULL,
                     codigo_verificado = FALSE,
                     bloqueado_hasta = NULL
-                WHERE id = :id
+                WHERE id_usuario = :id_usuario
             """),
             {
                 "contrasena": nuevo_hash,
-                "id": registro["usuario_id"],
+                "id_usuario": registro["usuario_id"],
             },
         )
 
@@ -1107,12 +992,17 @@ class AuthService:
             text("""
                 UPDATE password_reset_tokens
                 SET utilizado = TRUE
-                WHERE id = :id
+                WHERE token = :token
             """),
-            {"id": registro["id"]},
+            {"token": token},
         )
 
         await self.db.commit()
+
+        # Invalidar también en Redis (evita reutilización mientras dure el TTL)
+        from core.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        await redis_client.delete(f"password_reset_token:{token}")
 
         return {
             "mensaje": (
@@ -1143,7 +1033,7 @@ class AuthService:
 
         resultado = await self.db.execute(
             text("""
-                SELECT id, correo
+                SELECT id_usuario, correo
                 FROM usuario
                 WHERE LOWER(correo) = LOWER(:correo)
                 LIMIT 1
@@ -1157,8 +1047,7 @@ class AuthService:
         if not usuario:
             return mensaje_generico
 
-        ahora = self._ahora()
-        enlace = await self._crear_enlace_reset(usuario["id"], ahora)
+        enlace = await self._crear_enlace_reset(usuario["id_usuario"])
 
         await self.db.commit()
 
@@ -1176,8 +1065,8 @@ class AuthService:
         password_nueva: str,
     ):
         resultado = await self.db.execute(
-            text("SELECT id, contrasena FROM usuario WHERE id = :id"),
-            {"id": user_id},
+            text("SELECT id_usuario, contrasena FROM usuario WHERE id_usuario = :id_usuario"),
+            {"id_usuario": user_id},
         )
         usuario = resultado.mappings().first()
 
@@ -1197,9 +1086,9 @@ class AuthService:
             text("""
                 UPDATE usuario
                 SET contrasena = :contrasena, fecha_cambio_password = NOW()
-                WHERE id = :id
+                WHERE id_usuario = :id_usuario
             """),
-            {"contrasena": nuevo_hash, "id": user_id},
+            {"contrasena": nuevo_hash, "id_usuario": user_id},
         )
         await self.db.commit()
 
@@ -1212,7 +1101,7 @@ class AuthService:
         password_nueva: str,
     ):
         resultado = await self.db.execute(
-            text("SELECT id, contrasena FROM usuario WHERE LOWER(correo) = LOWER(:correo)"),
+            text("SELECT id_usuario, contrasena FROM usuario WHERE LOWER(correo) = LOWER(:correo)"),
             {"correo": correo},
         )
         usuario = resultado.mappings().first()
@@ -1231,21 +1120,11 @@ class AuthService:
 
         await self.db.execute(
             text("""
-            UPDATE usuario
-            SET
-                contrasena = :contrasena,
-                fecha_cambio_password = NOW(),
-                intentos_fallidos = 0,
-                ultimo_intento = NULL,
-                codigo_verificacion = NULL,
-                codigo_expira = NULL,
-                intentos_codigo = 0,
-                ultimo_envio_codigo = NULL,
-                codigo_verificado = FALSE,
-                bloqueado_hasta = NULL
-            WHERE id = :id
+                UPDATE usuario
+                SET contrasena = :contrasena, fecha_cambio_password = NOW()
+                WHERE id_usuario = :id_usuario
             """),
-            {"contrasena": nuevo_hash, "id": usuario["id"]},
+            {"contrasena": nuevo_hash, "id_usuario": usuario["id_usuario"]},
         )
         await self.db.commit()
 

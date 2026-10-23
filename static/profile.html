@@ -9,10 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <link rel="stylesheet" href="/static/tema.css">
     <link rel="stylesheet" href="/static/styles.css">
     <style>
         .profile-layout {
-            max-width: 800px;
+            max-width: var(--ancho-contenido);
             margin: 0 auto;
             padding: 20px;
         }
@@ -23,7 +24,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,.08);
         }
         .profile-card h2 {
-            color: #3BAA01;
+            color: #3baa01;
             margin-bottom: 20px;
             text-align: center;
         }
@@ -35,7 +36,7 @@
         }
         .profile-info .info-item {
             padding: 12px;
-            background: #f5f7fa;
+            background: #f1f5f9;
             border-radius: 8px;
         }
         .profile-info .info-label {
@@ -57,7 +58,7 @@
             width: 80px;
             height: 80px;
             border-radius: 50%;
-            background: #3BAA01;
+            background: #3baa01;
             color: white;
             display: flex;
             align-items: center;
@@ -132,6 +133,7 @@
 
     <div class="profile-actions">
       <a href="/dashboard" class="btn-login">Volver al Dashboard</a>
+      <a href="/empresa" class="btn-login" id="companyProfileLink" style="display: none;">Ir a mi empresa</a>
       <a href="/login" class="btn-login" id="logoutLink">Cerrar sesión</a>
     </div>
 
@@ -192,6 +194,7 @@ function loadProfile() {
     const userName = payload.sub || "";
     const userId = payload.user_id || "";
     const roleName = payload.role_name || "";
+    const isCompany = /empresa/i.test(roleName || "");
 
     document.getElementById("profileNombre").textContent = userName;
     document.getElementById("profileCorreo").textContent = "Cargando...";
@@ -199,6 +202,10 @@ function loadProfile() {
     document.getElementById("profileRol").textContent = roleName;
     document.getElementById("profileIcon").textContent = userName.charAt(0).toUpperCase();
     document.getElementById("profileIconLarge").textContent = userName.charAt(0).toUpperCase();
+    const companyProfileLink = document.getElementById("companyProfileLink");
+    if (companyProfileLink) {
+        companyProfileLink.style.display = isCompany ? "inline-block" : "none";
+    }
 
     fetch("/users/me", { headers: { "Authorization": `Bearer ${token}` } })
       .then(response => response.ok ? response.json() : null)
@@ -215,6 +222,7 @@ document.getElementById("logoutLink").addEventListener("click", function(e) {
 // Inicializar
 loadProfile();
 </script>
-
+<script src="/static/session.js"></script>
+<script src="/static/nav.js"></script>
 </body>
 </html>

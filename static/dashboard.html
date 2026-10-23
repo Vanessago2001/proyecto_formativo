@@ -5,10 +5,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CertiSENA | Administracion</title>
+  <link rel="stylesheet" href="/static/tema.css">
   <link rel="stylesheet" href="/static/styles.css" />
   <style>
     .app-shell {
-      max-width: 1320px;
+      max-width: var(--ancho-contenido);
       margin: 0 auto;
       padding: 28px;
     }
@@ -62,19 +63,41 @@
       height: max-content;
     }
 
+    .admin-nav-heading {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 10px 12px 14px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #1f2937;
+      font-weight: 700;
+    }
+
+    .admin-nav-heading span {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
     .admin-nav a {
       display: block;
       color: #334155;
       text-decoration: none;
-      padding: 12px;
+      padding: 11px 12px;
+      font-size: 13px;
+      line-height: 1.35;
       border-left: 3px solid transparent;
     }
 
     .admin-nav a.active,
     .admin-nav a:hover {
-      background: #f1f8ed;
+      background: #f1f5f9;
       color: #256d00;
       border-left-color: #3baa01;
+      font-weight: 700;
     }
 
     .surface {
@@ -97,9 +120,9 @@
     }
 
     .metric {
-      border: 1px solid #dbe7d4;
+      border: 1px solid #e4f1dc;
       padding: 18px;
-      background: #fbfdf9;
+      background: #f8fafc;
     }
 
     .metric b {
@@ -154,7 +177,7 @@
     }
 
     .primary-action:hover {
-      background: #2d8700;
+      background: #2f8f00;
     }
 
     .table-wrap {
@@ -188,12 +211,12 @@
     }
 
     .status.active {
-      background: #e8f5e2;
+      background: #e4f1dc;
       color: #256d00;
     }
 
     .status.inactive {
-      background: #feecec;
+      background: #fffbeb;
       color: #b42318;
     }
 
@@ -210,6 +233,21 @@
 
     .non-admin {
       display: none;
+    }
+
+    .committee-access-note {
+      margin-top: 24px;
+      padding: 16px;
+      border-left: 4px solid #3baa01;
+      background: #f1f5f9;
+      color: #1b4b12;
+      line-height: 1.5;
+    }
+
+    .committee-access-note strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #256d00;
     }
 
     @media (max-width: 800px) {
@@ -247,8 +285,13 @@
           <p class="subtitle">Gestion de certificados</p>
         </div>
       </div>
-      <a class="profile-button" href="/profile" title="Ir a mi perfil"><span class="profile-label">Mi perfil</span><span
-          class="avatar" id="headerAvatar">U</span></a>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <a id="companyHeaderLink" class="profile-button" href="/empresa" title="Ir a mi empresa"
+          style="display:none;"><span class="profile-label">Mi empresa</span><span class="avatar"
+            id="companyAvatar">E</span></a>
+        <a class="profile-button" href="/profile" title="Ir a mi perfil"><span class="profile-label">Mi
+            perfil</span><span class="avatar" id="headerAvatar">U</span></a>
+      </div>
     </div>
   </header>
   <main class="app-shell">
@@ -258,13 +301,31 @@
         <p id="roleDescription">Cargando informacion de la cuenta...</p>
       </div>
     </div>
-    <div id="adminView" class="admin-grid non-admin">
-      <nav class="admin-nav">
-        <a class="active" href="/dashboard">Resumen</a><a href="/empresas">Empresas registradas</a><a
-          href="#usuarios">Gestionar usuarios</a><a href="/profile">Mi perfil</a>
-        <a href="#" id="mfaLink">Activar autenticación en dos pasos</a>
-        <a href="/login" id="logoutLink">Cerrar sesion</a>
-      </nav>
+   <div id="adminView" class="admin-grid non-admin">
+  <nav class="admin-nav">
+    <div class="admin-nav-heading">
+      <span>Administración</span>
+      Panel principal
+    </div>
+    <a class="active" href="/dashboard">Resumen</a>
+    <a href="/empresas">Empresas registradas</a>
+    <a href="#usuarios">Gestionar usuarios</a>
+    <a href="/asignacion-auditores">Asignación de auditores</a>
+    <a href="/consultar-auditorias-programadas-admin">Consultar auditorías programadas</a>
+    <a href="/consultar-auditorias-programadas-admin#futuras">Consultar programaciones futuras</a>
+    <a href="/consultar-agenda-auditor">Consultar agenda de auditor</a>
+    <a href="/revision-solicitudes">Revisión de solicitudes</a>
+    <a href="/banco-auditores">Banco de auditores</a>
+    <a href="/conflictos-administrador">Conflictos de interés</a>
+    <a href="/gestion-certificados">Gestión de certificados</a>
+    <a href="/apelacion">Apelaciones</a>
+    <a href="/comite">Ir al Comité de certificación</a>
+    <a href="/reportes">Reportes</a>
+    <a href="/profile">Mi perfil</a>
+    <a href="#" id="mfaLink">Activar autenticación en dos pasos</a>
+    <a href="/login" id="logoutLink">Cerrar sesion</a>
+  </nav>
+
       <div>
         <section class="metrics">
           <div class="metric">
@@ -301,7 +362,9 @@
               <label for="numDoc">Numero de documento</label><input id="numDoc" required />
             </div>
             <div>
-              <label for="rol">Permiso o rol</label><select id="rol" required></select>
+              <label for="rol">Permiso o rol</label><select id="rol" required disabled>
+                <option value="">Cargando roles...</option>
+              </select>
             </div>
             <div class="form-action">
               <button class="primary-action" type="submit">
@@ -309,6 +372,12 @@
               </button>
             </div>
           </form>
+          <div class="committee-access-note">
+            <strong>¿Cómo habilitar a una persona para el Comité?</strong>
+            En el campo «Permiso o rol», selecciona <b>Comité</b> al crear la cuenta. Para un usuario existente, cambia
+            su rol a <b>Comité</b> en la tabla «Control de usuarios». La persona debe quedar en estado <b>Activo</b>;
+            después podrá iniciar sesión y será enviada automáticamente al módulo de Comité.
+          </div>
         </section>
         <section class="surface" style="margin-top: 24px">
           <h3>Control de usuarios</h3>
@@ -337,8 +406,8 @@
         consultar los datos de tu sesion.
       </p>
       <p style="margin-top: 18px">
-        <a class="primary-action" style="display: inline-block; width: auto; text-decoration: none" href="/profile">Ir a
-          mi perfil</a>
+        <a id="companyLink" class="primary-action" style="display: inline-block; width: auto; text-decoration: none"
+          href="/profile">Ir a mi perfil</a>
       </p>
     </section>
 
@@ -447,17 +516,30 @@
       location.href = "/login";
     }
     const isAdmin = user && user.role_name === "Administrador";
+    const isCompany = user && /empresa/i.test(user.role_name || "");
     document.getElementById("welcomeTitle").textContent =
       "Bienvenido, " + (user.sub || "usuario");
     document.getElementById("roleDescription").textContent = isAdmin
       ? "Administracion de cuentas, permisos y empresas"
-      : "Perfil de " + (user.role_name || "usuario");
+      : isCompany
+        ? "Gestion de la empresa asociada a tu cuenta"
+        : "Perfil de " + (user.role_name || "usuario");
     document.getElementById("headerAvatar").textContent = (user.sub || "U")
       .charAt(0)
       .toUpperCase();
+    const companyHeaderLink = document.getElementById("companyHeaderLink");
+    if (companyHeaderLink) {
+      companyHeaderLink.style.display = isCompany ? "flex" : "none";
+      document.getElementById("companyAvatar").textContent = "E";
+    }
     document.getElementById(
       isAdmin ? "adminView" : "regularView",
     ).style.display = isAdmin ? "grid" : "block";
+    const companyLink = document.getElementById("companyLink");
+    if (companyLink) {
+      companyLink.href = isCompany ? "/empresa" : "/profile";
+      companyLink.textContent = isCompany ? "Ir a mi empresa" : "Ir a mi perfil";
+    }
     function headers() {
       return {
         "Content-Type": "application/json",
@@ -482,9 +564,9 @@
 
     // Mostrar modal de confirmación
     function mostrarConfirmacion(titulo, mensaje) {
-
+      console.log("Abriendo modal");
       return new Promise(resolve => {
-
+        console.log("Promise creada");
         confirmTitle.textContent = titulo;
 
         confirmText.textContent = mensaje;
@@ -492,9 +574,9 @@
         confirmModal.classList.remove("hidden");
 
         btnAceptar.onclick = () => {
-
+          console.log("ACEPTAR");
           confirmModal.classList.add("hidden");
-
+          console.log("CANCELAR");
           resolve(true);
 
         };
@@ -553,14 +635,14 @@
 
     }
     // Validar que el código ingresado sea numérico y de 6 dígitos
-    // console.log("mfaLink:", mfaLink);
-    // console.log("confirmModal:", confirmModal);
-    // console.log("btnAceptar:", btnAceptar);
-    // console.log("btnCancelar:", btnCancelar);
-    // console.log("codigoModal:", codigoModal);
-    // console.log("codigoInput:", codigoInput);
-    // console.log("btnCancelarCodigo:", btnCancelarCodigo);
-    // console.log("btnVerificarCodigo:", btnVerificarCodigo);
+    console.log("mfaLink:", mfaLink);
+    console.log("confirmModal:", confirmModal);
+    console.log("btnAceptar:", btnAceptar);
+    console.log("btnCancelar:", btnCancelar);
+    console.log("codigoModal:", codigoModal);
+    console.log("codigoInput:", codigoInput);
+    console.log("btnCancelarCodigo:", btnCancelarCodigo);
+    console.log("btnVerificarCodigo:", btnVerificarCodigo);
     codigoInput.addEventListener("input", () => {
 
       codigoInput.value = codigoInput.value
@@ -617,7 +699,7 @@
         // DESACTIVAR MFA Sneider
         // =====================================
         if (mfaLink.dataset.estado === "on") {
-
+          console.log("1. Entró al bloque DESACTIVAR");
           const confirmar = await mostrarConfirmacion(
 
             "Desactivar autenticación",
@@ -625,12 +707,13 @@
             "¿Está seguro de desactivar la autenticación en dos pasos?"
 
           );
-
+          console.log("2. Resultado del modal:", confirmar);
           if (!confirmar) {
 
             return;
 
           }
+          console.log("3. Va a llamar /mfa/disable");
 
           const response = await fetch("/mfa/disable", {
 
@@ -639,13 +722,14 @@
             headers: headers()
 
           });
-
+          console.log("4. Respuesta HTTP:", response.status);
           const data = await response.json();
-
+          console.log("5. Respuesta:", data);
           if (!response.ok) {
 
-            errorMessage.textContent =
-              data.detail || "No fue posible enviar el código.";
+            // errorMessage.textContent =
+            //   data.detail || "No fue posible enviar el código.";
+            alert(data.detail || "No fue posible enviar el código.");
 
             return;
 
@@ -681,8 +765,9 @@
 
           if (!verify.ok) {
 
-            errorMessage.textContent =
-              verifyData.detail || "Código incorrecto.";
+            // errorMessage.textContent =
+            //   verifyData.detail || "Código incorrecto.";
+            alert(data.detail || "No fue posible enviar el código.");
 
             return;
 
@@ -800,18 +885,27 @@
       el.textContent = text;
       el.className = "message" + (success ? " success" : "");
     }
+    let availableRoles = [];
     async function loadRoles() {
       const res = await fetch("/rol/", { headers: headers() });
       if (!res.ok) throw new Error("No se pudieron cargar los permisos.");
       const roles = await res.json();
       const select = document.getElementById("rol");
       const displayed = new Set();
-      roles.forEach((r) => {
-        if (!displayed.has(r.nombre)) {
-          select.add(new Option(r.nombre, r.id_rol));
-          displayed.add(r.nombre);
-        }
+      availableRoles = roles.filter((role) => {
+        if (!role.nombre || displayed.has(role.nombre)) return false;
+        displayed.add(role.nombre);
+        return true;
       });
+      if (!availableRoles.length) {
+        throw new Error("No hay roles disponibles para asignar.");
+      }
+      select.replaceChildren(new Option("Selecciona un rol", "", true, true));
+      select.options[0].disabled = true;
+      availableRoles.forEach((role) => {
+        select.add(new Option(role.nombre, role.id_rol));
+      });
+      select.disabled = false;
     }
     async function loadUsers() {
       const res = await fetch("/users/all-users", { headers: headers() });
@@ -824,24 +918,31 @@
       document.getElementById("auxUsers").textContent = users.filter((u) =>
         ["Auxiliar", "Instructor"].includes(u.rol_nombre),
       ).length;
-      const roles = [...document.querySelectorAll("#rol option")];
       const body = document.getElementById("usersBody");
       body.textContent = "";
       users.forEach((u) => {
         const tr = document.createElement("tr");
         const roleSelect = document.createElement("select");
-        roles.forEach((r) =>
+        availableRoles.forEach((r) =>
           roleSelect.add(
             new Option(
-              r.text,
-              r.value,
+              r.nombre,
+              r.id_rol,
               false,
-              String(r.value) === String(u.rol_id),
+              String(r.id_rol) === String(u.rol_id),
             ),
           ),
         );
+        if (!availableRoles.some((role) => String(role.id_rol) === String(u.rol_id))) {
+          roleSelect.add(new Option(
+            u.rol_nombre || "Rol " + u.rol_id,
+            u.rol_id,
+            true,
+            true,
+          ));
+        }
         roleSelect.addEventListener("change", () =>
-          updateUser(u.id, { rol: Number(roleSelect.value) }),
+          updateUser(u.id, { rol: roleSelect.value }),
         );
         const state = document.createElement("select");
         state.className =
@@ -890,7 +991,7 @@
           contrasena: document.getElementById("contrasena").value,
           tipo_doc: document.getElementById("tipoDoc").value,
           num_doc: document.getElementById("numDoc").value.trim(),
-          rol: Number(document.getElementById("rol").value),
+          rol: document.getElementById("rol").value,
         };
         const res = await fetch("/users/create-user", {
           method: "POST",
@@ -916,16 +1017,17 @@
       location.href = "/login";
     });
     if (isAdmin)
-      Promise.all([loadRoles(), loadUsers()]).catch((e) =>
-        show("tableMessage", e.message, false),
-      );
+      loadRoles()
+        .then(loadUsers)
+        .catch((e) => show("tableMessage", e.message, false));
 
 
-      
+
   </script>
 
 
-<script src="/static/session.js"></script>
+  <script src="/static/session.js"></script>
+<script src="/static/nav.js"></script>
 </body>
 
 </html>

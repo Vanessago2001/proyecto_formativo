@@ -1,0 +1,2920 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>CertiSENA | Asignación de Auditores</title>
+
+  <link rel="stylesheet" href="/static/tema.css">
+  <link rel="stylesheet" href="/static/styles.css" />
+
+  <style>
+    /* =========================================================
+       BASE
+    ========================================================= */
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f1f5f9;
+      color: #263238;
+    }
+
+    .app-shell {
+      max-width: var(--ancho-contenido);
+      margin: 0 auto;
+      padding: 18px 16px 40px;
+    }
+
+    /* =========================================================
+       HEADER
+    ========================================================= */
+
+    .login-header {
+      padding: 20px 16px;
+    }
+
+    .login-header .header-content {
+      max-width: var(--ancho-contenido);
+    }
+
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .header-title h2 {
+      margin: 0;
+      color: #256d00;
+      font-size: 24px;
+    }
+
+    .header-title p {
+      margin: 6px 0 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .profile-button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #1f2937;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #3baa01;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    /* =========================================================
+       GRID (menú más pegado a la pared, contenido más amplio)
+    ========================================================= */
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 232px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    /* =========================================================
+       SIDEBAR
+    ========================================================= */
+
+    .admin-nav {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      height: max-content;
+      box-shadow: 0 4px 14px rgba(15, 35, 22, .04);
+    }
+
+    .admin-nav h3 {
+      margin: 7px 10px 13px;
+      color: #64748b;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .admin-nav a {
+      display: block;
+      color: #334155;
+      text-decoration: none;
+      padding: 11px 12px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      font-size: 14px;
+      transition: .2s ease;
+    }
+
+    .admin-nav a:hover {
+      background: #f1f5f9;
+      color: #256d00;
+    }
+
+    .admin-nav a.active {
+      background: #3baa01;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .logout-link {
+      margin-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 15px !important;
+      color: #b42318 !important;
+    }
+
+    .logout-link:hover {
+      background: #f1f5f9 !important;
+      color: #b42318 !important;
+    }
+
+    /* =========================================================
+       SURFACE
+    ========================================================= */
+
+    .surface {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 14px rgba(15, 35, 22, .04);
+    }
+
+    .page-title h3 {
+      margin: 0 0 6px;
+      color: #1f2937;
+      font-size: 21px;
+    }
+
+    .page-title p {
+      margin: 0;
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* =========================================================
+       MESSAGE
+    ========================================================= */
+
+    .message {
+      display: none;
+      margin: 18px 0;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.success {
+      background: #f1f5f9;
+      border: 1px solid #b8dfaa;
+      color: #256d00;
+    }
+
+    .message.error {
+      background: #f1f5f9;
+      border: 1px solid #efb5b1;
+      color: #b42318;
+    }
+
+    .message.info {
+      background: #f1f5f9;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    /* =========================================================
+       SECTION
+    ========================================================= */
+
+    .section-title {
+      margin: 26px 0 14px;
+      color: #1f2937;
+      font-size: 17px;
+    }
+
+    /* =========================================================
+       AVISO INFORMATIVO
+    ========================================================= */
+
+    .aviso-informativo {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 18px 0;
+      padding: 14px 16px;
+      border: 1px solid #fcd9a8;
+      border-left: 5px solid #f59e0b;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #f8fafc, #fff3cd);
+      color: #7c4a03;
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.55;
+    }
+
+    .aviso-informativo .aviso-icono {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #f59e0b;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .aviso-informativo strong {
+      color: #7c4a03;
+      font-weight: 800;
+    }
+
+    /* =========================================================
+       FORM (todos los controles a 42px para alineación)
+    ========================================================= */
+
+    .assignment-form {
+      background: #f8fafc;
+      border: 1px solid #e4f1dc;
+      border-radius: 10px;
+      padding: 18px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .form-group label {
+      margin-bottom: 6px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-control {
+      width: 100%;
+      height: 42px;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      background: #fff;
+      color: #263238;
+      font: inherit;
+      font-size: 13px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .form-group input:hover,
+    .form-group select:hover,
+    .form-control:hover {
+      border-color: #a9c59d;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-control:focus {
+      border-color: #3baa01;
+      box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+    }
+
+    .form-group input:disabled,
+    .form-group select:disabled {
+      background: #f1f5f9;
+      cursor: not-allowed;
+    }
+
+    .form-help {
+      margin-top: 5px;
+      color: #7b847e;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    /* Botones principales/secundarios (altura 42px unificada) */
+    .primary-action,
+    .secondary-action {
+      height: 42px;
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 7px;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: .2s ease;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .primary-action {
+      background: #3baa01;
+      color: #fff;
+      box-shadow: 0 3px 8px rgba(59, 170, 1, .20);
+    }
+
+    .primary-action:hover {
+      background: #2f8f00;
+      box-shadow: 0 4px 12px rgba(59, 170, 1, .28);
+    }
+
+    .primary-action:disabled {
+      background: #a9c59d;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .secondary-action {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .secondary-action:hover {
+      background: #e2e8f0;
+    }
+
+    /* Botones tipo .btn usados en el filtro de solicitudes */
+    .btn {
+      height: 42px;
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 7px;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: .2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: #3baa01;
+      color: #fff;
+      box-shadow: 0 3px 8px rgba(59, 170, 1, .20);
+    }
+
+    .btn-primary:hover {
+      background: #2f8f00;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    /* =========================================================
+       SOLICITUD INFO
+    ========================================================= */
+
+    .request-info {
+      display: none;
+      margin-top: 16px;
+      padding: 15px;
+      border: 1px solid #e4f1dc;
+      border-radius: 9px;
+      background: #f8fafc;
+    }
+
+    .request-info.show {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .info-item {
+      min-width: 0;
+    }
+
+    .info-label {
+      display: block;
+      margin-bottom: 3px;
+      color: #7b847e;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    .info-value {
+      color: #263238;
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    /* =========================================================
+       VALIDATION BOX
+    ========================================================= */
+
+    .validation-box {
+      display: none;
+      margin-top: 16px;
+      padding: 15px;
+      border-radius: 9px;
+      border: 1px solid #e4f1dc;
+      background: #fff;
+    }
+
+    .validation-box.show {
+      display: block;
+    }
+
+    .validation-title {
+      margin-bottom: 11px;
+      color: #1f2937;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .validation-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .validation-item {
+      padding: 9px 10px;
+      border-radius: 7px;
+      background: #f8fafc;
+      font-size: 12px;
+    }
+
+    .validation-item.ok {
+      color: #256d00;
+      background: #f1f5f9;
+    }
+
+    .validation-item.fail {
+      color: #b42318;
+      background: #f1f5f9;
+    }
+
+    .validation-item.neutral {
+      color: #64748b;
+    }
+
+    /* =========================================================
+       TABLE
+    ========================================================= */
+
+    .table-card {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(37, 109, 0, .06);
+    }
+
+    .table-section {
+      margin-top: 28px;
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 13px;
+    }
+
+    .table-header h3 {
+      margin: 0;
+      color: #1f2937;
+      font-size: 17px;
+    }
+
+    .table-counter {
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+
+    thead {
+      background: #f8fafc;
+    }
+
+    th {
+      padding: 12px 11px;
+      text-align: left;
+      color: #475569;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    td {
+      padding: 12px 11px;
+      color: #374151;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    /* =========================================================
+       STATUS
+    ========================================================= */
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status.active,
+    .status.assigned {
+      background: #e4f1dc;
+      color: #256d00;
+    }
+
+    .status.pending {
+      background: #fff3cd;
+      color: #896500;
+    }
+
+    .status.inactive {
+      background: #f1f5f9;
+      color: #68706b;
+    }
+
+    /* =========================================================
+       ACTIONS
+    ========================================================= */
+
+    .actions {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      border: 0;
+      border-radius: 6px;
+      padding: 6px 9px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .15s ease;
+    }
+
+    .action-view {
+      background: #e2e8f0;
+      color: #256d00;
+    }
+
+    .action-view:hover {
+      background: #e4f1dc;
+    }
+
+    /* =========================================================
+       EMPTY / LOADING
+    ========================================================= */
+
+    .empty-state {
+      padding: 35px 20px;
+      text-align: center;
+      color: #778078;
+    }
+
+    .empty-state strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #334155;
+    }
+
+    .loading {
+      padding: 25px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    /* =========================================================
+       AUDITOR CARDS
+    ========================================================= */
+
+    .auditors-section {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .auditors-section.show {
+      display: block;
+    }
+
+    .auditors-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 12px;
+    }
+
+    .auditors-header h4 {
+      margin: 0;
+      color: #1f2937;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .auditors-header span {
+      color: #64748b;
+      font-size: 11px;
+      text-align: right;
+    }
+
+    .auditors-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    /* ---- FILTROS DE AUDITORES ---- */
+    .auditor-filters {
+      display: grid;
+      grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(140px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+      padding: 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      align-items: end;
+    }
+
+    .auditor-filters .form-group {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .auditor-filters .form-group label {
+      margin-bottom: 6px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .auditor-filters input,
+    .auditor-filters select {
+      width: 100%;
+      min-width: 0;
+      height: 42px;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      background: #fff;
+      color: #263238;
+      font: inherit;
+      font-size: 13px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .auditor-filters input:hover,
+    .auditor-filters select:hover {
+      border-color: #a9c59d;
+    }
+
+    .auditor-filters input:focus,
+    .auditor-filters select:focus {
+      border-color: #3baa01;
+      box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
+    }
+
+    /* ---- Checkbox "Descartar conflictos" - reducido y alineado ---- */
+    .auditor-filters .form-group.checkbox-field {
+      display: flex;
+      align-items: end;
+      justify-content: flex-end;
+    }
+
+    .auditor-filters .form-group.checkbox-field label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 42px;
+      padding: 0 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      background: #fff;
+      color: #334155;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      box-sizing: border-box;
+      white-space: nowrap;
+      transition: border-color .15s ease, box-shadow .15s ease;
+      width: 100%;
+    }
+
+    .auditor-filters .form-group.checkbox-field label:hover {
+      border-color: #a9c59d;
+    }
+
+    #auditorDescartarConflictos {
+      width: 16px;
+      height: 16px;
+      min-height: 16px;
+      margin: 0;
+      flex: 0 0 16px;
+      accent-color: #3baa01;
+      cursor: pointer;
+    }
+
+    /* ---- Acciones de los filtros ---- */
+    .auditor-filter-actions {
+      display: flex;
+      align-items: end;
+      gap: 8px;
+      grid-column: 1 / -1;
+      justify-content: flex-end;
+    }
+
+    /* ---- Paginación ---- */
+    .pagination-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .pagination-info {
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .pagination-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pagination-actions button {
+      min-width: 88px;
+    }
+
+    .pagination-actions button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .auditor-card.ineligible {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+    }
+
+    .auditor-card.ineligible .auditor-name {
+      color: #64748b;
+    }
+
+    .auditor-card .auditor-meta {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .auditor-card .eligibility-note {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #b42318;
+    }
+
+    .auditor-card .auditor-role-picker select {
+      width: 100%;
+      min-height: 35px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .auditor-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 9px;
+      background: #fff;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .auditor-card:hover {
+      border-color: #a9c59d;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, .05);
+    }
+
+    .auditor-card.selected {
+      border-color: #3baa01;
+      background: #f8fafc;
+      box-shadow: 0 0 0 2px rgba(59, 170, 1, .10);
+    }
+
+    .auditor-checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 6px;
+      margin-top: 7px;
+    }
+
+    .auditor-checks .check {
+      font-size: 11px;
+      padding: 2px 5px;
+    }
+
+    .auditor-role-picker {
+      margin-top: 8px;
+    }
+
+    .auditor-role-picker select {
+      font-size: 12px;
+      padding: 5px 7px;
+    }
+
+    .auditor-name {
+      color: #263238;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .auditor-email {
+      margin-top: 3px;
+      color: #64748b;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    .check {
+      padding: 4px 7px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .check.ok {
+      background: #e4f1dc;
+      color: #256d00;
+    }
+
+    .check.fail {
+      background: #f1f5f9;
+      color: #b42318;
+    }
+
+    .no-auditors {
+      padding: 25px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 9px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    /* =========================================================
+       MODAL
+    ========================================================= */
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(20, 30, 23, .48);
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 15px 45px rgba(0, 0, 0, .20);
+    }
+
+    .modal h3 {
+      margin: 0 0 8px;
+      color: #256d00;
+      font-size: 18px;
+    }
+
+    .modal p {
+      margin: 0 0 17px;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .modal-details {
+      padding: 14px;
+      margin-bottom: 18px;
+      border-radius: 9px;
+      background: #f1f5f9;
+    }
+
+    .modal-detail {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 8px 0;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 13px;
+    }
+
+    .modal-detail:last-child {
+      border-bottom: 0;
+    }
+
+    .modal-detail span:first-child {
+      color: #778078;
+    }
+
+    .modal-detail span:last-child {
+      color: #1f2937;
+      font-weight: 700;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+    }
+
+    /* =========================================================
+       ACCESS DENIED
+    ========================================================= */
+
+    .access-denied {
+      display: none;
+    }
+
+    .access-denied.show {
+      display: block;
+    }
+
+    .access-denied h3 {
+      margin-top: 0;
+      color: #b42318;
+    }
+
+    /* =========================================================
+       FOOTER
+    ========================================================= */
+
+    .footer {
+      margin-top: 22px;
+      color: #8a928c;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* =========================================================
+       AUDITOR CARDS: checkbox y modal extendido
+    ========================================================= */
+
+    .auditor-check-input {
+      margin-right: 8px;
+      width: 18px;
+      height: 18px;
+      vertical-align: middle;
+      accent-color: #3baa01;
+      cursor: pointer;
+    }
+
+    .auditor-card .auditor-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* =========================================================
+       AUDITOR MODAL
+    ========================================================= */
+
+    .auditor-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 30, 23, .55);
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 18px;
+      backdrop-filter: blur(2px);
+    }
+
+    .auditor-modal.show {
+      display: flex;
+      animation: auditorModalFade .18s ease both;
+    }
+
+    @keyframes auditorModalFade {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .auditor-modal-card {
+      background: #fff;
+      border-radius: 14px;
+      width: min(980px, 100%);
+      max-height: 90vh;
+      overflow: auto;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+      animation: auditorModalPop .22s ease both;
+    }
+
+    @keyframes auditorModalPop {
+      from {
+        transform: translateY(8px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .auditor-modal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-bottom: 6px;
+    }
+
+    .audit-modal-field {
+      padding: 12px 14px;
+      border: 1px solid #e2e8f0;
+      border-left: 3px solid #3baa01;
+      border-radius: 9px;
+      background: #f8fafc;
+      min-width: 0;
+    }
+
+    .audit-modal-field label {
+      font-weight: 700;
+      color: #256d00;
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    .audit-modal-field span {
+      color: #263238;
+      font-size: 13px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+      display: block;
+    }
+
+    .auditor-modal-card .modal-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .auditor-modal-card .modal-section h3 {
+      margin: 0 0 12px;
+      color: #256d00;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -.01em;
+    }
+
+    .audit-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .audit-list li {
+      padding: 11px 13px;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      background: #f8fafc;
+      color: #374151;
+      font-size: 12.5px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .audit-list li:hover {
+      border-color: #cfe3c5;
+      box-shadow: 0 3px 10px rgba(15, 35, 22, .04);
+    }
+
+    .audit-list li strong {
+      color: #1e3b28;
+      font-weight: 800;
+    }
+
+    .audit-photo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 110px;
+      margin-top: 12px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .audit-photo img {
+      width: 110px;
+      height: 110px;
+      max-width: none;
+      max-height: none;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 4px solid #cfe3c5;
+      box-shadow: 0 6px 16px rgba(37, 109, 0, .12);
+    }
+
+    .doc-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .doc-open-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: #256d00;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .audit-empty {
+      padding: 16px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 9px;
+      background: #f8fafc;
+      color: #647567;
+      font-size: 12.5px;
+      text-align: center;
+    }
+
+    .auditor-modal-card::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .auditor-modal-card::-webkit-scrollbar-thumb {
+      background: #cfe3c5;
+      border-radius: 8px;
+    }
+
+    .auditor-modal-card::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    /* =========================================================
+       RESPONSIVE
+    ========================================================= */
+
+    @media (max-width: 1000px) {
+      .admin-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-nav {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px;
+      }
+
+      .admin-nav h3 {
+        grid-column: 1 / -1;
+      }
+
+      .logout-link {
+        border-top: 0;
+        margin-top: 0;
+        padding-top: 11px !important;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        padding: 14px 12px 32px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group.full {
+        grid-column: auto;
+      }
+
+      .request-info.show {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .validation-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .auditors-list {
+        grid-template-columns: 1fr;
+      }
+
+      .auditor-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .auditor-filters .form-group:first-child {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .auditors-list {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-header {
+        align-items: flex-start;
+      }
+
+      .header-title h2 {
+        font-size: 20px;
+      }
+
+      .profile-label {
+        display: none;
+      }
+
+      .admin-nav {
+        grid-template-columns: 1fr;
+      }
+
+      .surface {
+        padding: 18px;
+      }
+
+      .request-info.show,
+      .validation-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .auditor-filters {
+        grid-template-columns: 1fr;
+      }
+
+      .auditor-filters .form-group:first-child {
+        grid-column: auto;
+      }
+
+      .auditor-filter-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .pagination-wrap {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .pagination-actions button {
+        flex: 1;
+      }
+
+      .form-actions {
+        flex-direction: column;
+      }
+
+      .primary-action,
+      .secondary-action {
+        width: 100%;
+      }
+
+      .auditor-modal-card {
+        padding: 18px;
+        border-radius: 12px;
+      }
+
+      .audit-modal-field {
+        padding: 10px 12px;
+      }
+    }
+  </style>
+</head>
+
+
+<body>
+
+  <header class="login-header">
+
+    <div class="header-content">
+
+      <div class="header-left">
+
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco" />
+
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Gestión de certificados</p>
+        </div>
+
+      </div>
+
+      <div style="display:flex; gap:12px; align-items:center;">
+
+        <a class="profile-button" href="/profile" title="Ir a mi perfil">
+          <span class="profile-label">Mi perfil</span>
+
+          <span class="avatar" id="headerAvatar">
+            U
+          </span>
+
+        </a>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <main class="app-shell">
+
+    <!-- HEADER DE PÁGINA -->
+    <div class="admin-header">
+      <div class="header-title">
+        <h2 id="welcomeTitle">Asignación de Auditores</h2>
+        <p id="roleDescription">Gestión y asignación de auditores para solicitudes aprobadas.</p>
+      </div>
+    </div>
+
+
+    <!-- =======================================================
+         VISTA ADMIN
+    ======================================================== -->
+
+    <div id="adminView" class="admin-grid" style="display:none;">
+
+      <!-- SIDEBAR -->
+      <nav class="admin-nav">
+        <h3>Administración</h3>
+        <a href="/dashboard">Resumen</a>
+        <a href="/empresas">Empresas registradas</a>
+        <a href="/dashboard#usuarios">Gestionar usuarios</a>
+        <a href="/asignacion-auditores" class="active">Asignación de auditores</a>
+        <a href="/auditor">Gestión de auditorías</a>
+        <a href="/reportes">Reportes</a>
+        <a href="/profile">Mi perfil</a>
+        <a href="#" id="mfaLink">Activar autenticación en dos pasos</a>
+        <a href="/login" id="logoutLink" class="logout-link">Cerrar sesión</a>
+      </nav>
+
+
+      <!-- CONTENIDO -->
+      <div>
+
+        <section class="surface">
+
+          <div class="page-title">
+            <h3>Asignación de Auditores</h3>
+            <p>
+              Selecciona una solicitud de certificación aprobada.
+              El sistema verificará automáticamente la elegibilidad
+              de los auditores antes de permitir la asignación.
+            </p>
+          </div>
+
+          <!-- MENSAJES -->
+          <div id="message" class="message"></div>
+
+          <!-- NUEVA ASIGNACIÓN -->
+          <h3 class="section-title">Nueva asignación</h3>
+
+          <div class="aviso-informativo" role="note">
+            <span class="aviso-icono" aria-hidden="true">!</span>
+            <span>
+              <strong>Importante:</strong> Este módulo permite únicamente <strong>crear y cargar la asignación del
+                auditor</strong>.
+              La programación completa de la auditoría —fechas, horarios y detalles de la visita— debe gestionarse
+              desde <strong>"Consultar agenda de auditor"</strong>.
+            </span>
+          </div>
+
+          <div class="table-section table-card">
+
+            <!-- FORMULARIO DE ASIGNACIÓN -->
+            <form id="assignmentForm" class="assignment-form">
+
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label>Solicitud de certificación</label>
+
+                  <div id="solicitudesContainer" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+
+                    <!-- Fila de filtros superiores -->
+                    <div style="padding:10px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+                      <div
+                        style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:8px;">
+                        <input id="solBuscar" class="form-control" placeholder="Buscar..." autocomplete="off">
+                        <input id="solCiudad" class="form-control" placeholder="Ciudad" autocomplete="off">
+                        <input id="solNorma" class="form-control" placeholder="Norma ISO" autocomplete="off">
+                        <input id="solSector" class="form-control" placeholder="Sector IAF" autocomplete="off">
+                      </div>
+                      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
+                        <input id="solDesde" type="date" class="form-control">
+                        <input id="solHasta" type="date" class="form-control">
+                        <button type="button" class="btn btn-secondary"
+                          onclick="limpiarFiltrosSolicitudes()">Limpiar</button>
+                        <button type="button" class="btn btn-primary" onclick="cargarSolicitudes(1)">Aplicar</button>
+                      </div>
+                    </div>
+
+                    <!-- Tabla de solicitudes -->
+                    <div style="max-height:300px;overflow-y:auto;">
+                      <table class="record-table" style="min-width:600px;margin:0;">
+                        <thead>
+                          <tr>
+                            <th>Solicitud</th>
+                            <th>Empresa</th>
+                            <th>Norma</th>
+                            <th>Fecha</th>
+                            <th>Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody id="solicitudesBody"></tbody>
+                      </table>
+                    </div>
+
+                    <div id="solicitudesEmpty" class="empty-state" style="display:none;">
+                      <strong>No hay solicitudes</strong>
+                      <span>Ajuste los filtros para ver más resultados.</span>
+                    </div>
+
+                    <!-- Paginación -->
+                    <div
+                      style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;background:#f8fafc;gap:8px;flex-wrap:wrap;">
+                      <span id="solicitudesSummary" class="pagination-info">Cargando solicitudes...</span>
+                      <div class="pagination-actions">
+                        <button type="button" id="solPrevPage" class="btn btn-secondary"
+                          onclick="cargarSolicitudes(paginaSolicitudes - 1)" disabled>Anterior</button>
+                        <button type="button" id="solNextPage" class="btn btn-secondary"
+                          onclick="cargarSolicitudes(paginaSolicitudes + 1)" disabled>Siguiente</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span class="form-help">Seleccione una solicitud para asignar auditores.</span>
+                </div>
+              </div>
+
+              <!-- INFORMACIÓN DE SOLICITUD -->
+              <div id="requestInfo" class="request-info">
+                <div class="info-item">
+                  <span class="info-label">Radicado</span>
+                  <span id="infoRadicado" class="info-value">-</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Empresa</span>
+                  <span id="infoEmpresa" class="info-value">-</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Norma</span>
+                  <span id="infoNorma" class="info-value">-</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Versión</span>
+                  <span id="infoVersion" class="info-value">-</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Estado</span>
+                  <span id="infoEstado" class="info-value">-</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Fecha solicitud</span>
+                  <span id="infoFechaSolicitud" class="info-value">-</span>
+                </div>
+              </div>
+
+              <!-- AUDITORES ELEGIBLES -->
+              <div id="auditorsSection" class="auditors-section">
+                <div class="auditors-header">
+                  <h4>Auditores candidatos · validación de elegibilidad</h4>
+                  <span id="auditorsCounter">0 disponibles</span>
+                </div>
+
+                <div id="auditorFilters" class="auditor-filters" aria-label="Filtros de auditores">
+                  <div class="form-group">
+                    <label for="auditorSearch">Nombre, correo o documento</label>
+                    <input id="auditorSearch" type="search" placeholder="Buscar por nombre o documento"
+                      autocomplete="off" />
+                  </div>
+                  <div class="form-group">
+                    <label for="auditorCityFilter">Ciudad</label>
+                    <input id="auditorCityFilter" type="search" placeholder="Ej. Pereira" autocomplete="off" />
+                  </div>
+                  <div class="form-group">
+                    <label for="auditorModalityFilter">Modalidad preferida</label>
+                    <select id="auditorModalityFilter">
+                      <option value="">Todas las modalidades</option>
+                      <option value="Presencial">Presencial</option>
+                      <option value="Remota">Remota</option>
+                      <option value="Híbrida">Híbrida</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="auditorCompetenceFilter">Competencia en la norma</label>
+                    <select id="auditorCompetenceFilter">
+                      <option value="">Todas</option>
+                      <option value="si">Sí tiene competencia</option>
+                      <option value="no">No tiene competencia</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="auditorConflictFilter">Conflicto de interés</label>
+                    <select id="auditorConflictFilter">
+                      <option value="">Todos</option>
+                      <option value="si">Con conflicto</option>
+                      <option value="no">Sin conflicto</option>
+                    </select>
+                  </div>
+                  <div class="form-group checkbox-field">
+                    <label for="auditorDescartarConflictos">
+                      <input type="checkbox" id="auditorDescartarConflictos" />
+                      Descartar conflictos
+                    </label>
+                  </div>
+                  <div class="auditor-filter-actions">
+                    <button type="button" id="applyAuditorFilters" class="primary-action">Filtrar</button>
+                    <button type="button" id="clearAuditorFilters" class="secondary-action">Limpiar filtros</button>
+                  </div>
+                </div>
+
+                <div id="auditorsList" class="auditors-list"></div>
+
+                <div class="pagination-wrap" id="auditorPagination">
+                  <span id="auditorPageInfo" class="pagination-info">Selecciona una solicitud para consultar
+                    auditores.</span>
+                  <div class="pagination-actions">
+                    <button type="button" id="auditorPrevPage" class="secondary-action" disabled>Anterior</button>
+                    <button type="button" id="auditorNextPage" class="secondary-action" disabled>Siguiente</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- VALIDACIONES -->
+              <div id="validationBox" class="validation-box">
+                <div class="validation-title" id="validationTitle">
+                  Validaciones del auditor seleccionado
+                </div>
+                <div class="validation-grid">
+                  <div id="checkEstado" class="validation-item neutral">Usuario activo</div>
+                  <div id="checkAuditor" class="validation-item neutral">Auditor aprobado</div>
+                  <div id="checkNorma" class="validation-item neutral">Competencia en norma</div>
+                  <div id="checkSector" class="validation-item neutral">Experiencia sectorial</div>
+                  <div id="checkConflicto" class="validation-item neutral">Sin conflicto de interés</div>
+                  <div id="checkDisponibilidad" class="validation-item neutral">Disponibilidad real: se valida en Agenda
+                  </div>
+                  <div id="checkAgenda" class="validation-item neutral">Cruces horarios: se validan en Agenda</div>
+                </div>
+              </div>
+
+              <!-- ACCIONES -->
+              <div class="form-actions">
+                <button type="button" id="clearBtn" class="secondary-action">Limpiar</button>
+                <button type="submit" id="assignBtn" class="primary-action" disabled>Asignar auditores</button>
+              </div>
+            </form>
+
+
+            <!-- =================================================
+                 ASIGNACIONES EXISTENTES (h3 movido aquí)
+            ================================================== -->
+            <div class="table-header" style="margin-top: 28px;">
+              <div>
+                <h3>Auditores asignados</h3>
+              </div>
+              <span id="assignmentCounter" class="table-counter">0 asignaciones</span>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Solicitud</th>
+                    <th>Auditor</th>
+                    <th>Correo</th>
+                    <th>Fecha de inicio</th>
+                    <th>Fecha de finalización</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="assignmentsTableBody"></tbody>
+              </table>
+
+              <div id="emptyState" class="empty-state" style="display:none;">
+                <strong>No hay auditores asignados</strong>
+                <span>Las asignaciones realizadas aparecerán aquí.</span>
+              </div>
+
+              <div id="tableLoading" class="loading">Cargando asignaciones...</div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- =======================================================
+             MODAL RESULTADO DE ASIGNACIÓN
+        ======================================================== -->
+
+        <div id="assignmentResultModal" class="modal-overlay">
+
+          <div class="modal">
+
+            <h3 id="assignmentResultTitle">
+              Resultado de la asignación
+            </h3>
+
+            <p id="assignmentResultBody" style="white-space:pre-line;">
+              -
+            </p>
+
+            <div class="modal-actions">
+
+              <button
+                type="button"
+                class="primary-action"
+                onclick="cerrarResultadoAsignacion()"
+              >
+                Aceptar
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="footer">
+          CertiSENA · Sistema de gestión de certificados
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ACCESO NO AUTORIZADO -->
+    <section id="regularView" class="surface access-denied">
+      <h3>Acceso no autorizado</h3>
+      <p>Tu cuenta no tiene permisos de administración para acceder al módulo de asignación de auditores.</p>
+      <p style="margin-top:18px;">
+        <a href="/profile" class="primary-action" style="display:inline-block;width:auto;text-decoration:none;">
+          Ir a mi perfil
+        </a>
+      </p>
+    </section>
+
+
+    <!-- MODAL ADVERTENCIA -->
+    <div id="modalAdvertencia" class="modal-overlay">
+      <div class="modal">
+        <h3>Advertencia: <span style="color:#c00;">auditor no elegible</span></h3>
+        <p id="advertenciaTexto">Este auditor no cumple las condiciones automáticas de asignación.</p>
+        <h4 style="color:#256d00;margin:18px 0 8px;">Competencia del auditor</h4>
+        <div id="advertenciaCompetencias" class="audit-empty">Cargando competencias...</div>
+        <div class="modal-actions">
+          <button type="button" class="secondary-action" onclick="cerrarModalAdvertencia()">Cancelar</button>
+          <button type="button" class="primary-action" onclick="confirmarAsignacionNoElegible()">Asignar de todas
+            formas</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DETALLES -->
+    <div id="detailsModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Detalles de la asignación</h3>
+        <p>Información de la asignación seleccionada.</p>
+        <div class="modal-details">
+          <div class="modal-detail"><span>Solicitud</span><span id="detailSolicitud">-</span></div>
+          <div class="modal-detail"><span>Auditor</span><span id="detailAuditor">-</span></div>
+          <div class="modal-detail"><span>Correo</span><span id="detailCorreo">-</span></div>
+          <div class="modal-detail"><span>Rol</span><span id="detailRol">-</span></div>
+          <div class="modal-detail"><span>Inicio</span><span id="detailInicio">-</span></div>
+          <div class="modal-detail"><span>Fin</span><span id="detailFin">-</span></div>
+          <div class="modal-detail"><span>Estado</span><span id="detailEstado">-</span></div>
+        </div>
+        <div class="modal-actions">
+          <button id="closeDetailsBtn" class="secondary-action">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+
+  <script>
+
+    /* =========================================================
+       AUTENTICACIÓN
+    ========================================================= */
+
+    function tokenPayload() {
+      try {
+        const token = localStorage.getItem("access_token");
+        if (!token) return null;
+        const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        return JSON.parse(atob(payload));
+      } catch (error) {
+        console.error("No se pudo leer el token:", error);
+        return null;
+      }
+    }
+
+    const token = localStorage.getItem("access_token");
+    const user = tokenPayload();
+
+    if (!token || !user) {
+      location.href = "/login";
+    }
+
+    const isAdmin = user && user.role_name === "Administrador";
+
+
+    /* =========================================================
+       ELEMENTOS
+    ========================================================= */
+
+    const adminView = document.getElementById("adminView");
+    const regularView = document.getElementById("regularView");
+    const welcomeTitle = document.getElementById("welcomeTitle");
+    const roleDescription = document.getElementById("roleDescription");
+    const headerAvatar = document.getElementById("headerAvatar");
+    const message = document.getElementById("message");
+    const solicitudSelect = document.getElementById("solicitud");
+
+    const auditorSearchInput = document.getElementById("auditorSearch");
+    const auditorCityFilter = document.getElementById("auditorCityFilter");
+    const auditorModalityFilter = document.getElementById("auditorModalityFilter");
+    const auditorCompetenceFilter = document.getElementById("auditorCompetenceFilter");
+    const auditorConflictFilter = document.getElementById("auditorConflictFilter");
+    const auditorDescartarConflictos = document.getElementById("auditorDescartarConflictos");
+    const auditorPageInfo = document.getElementById("auditorPageInfo");
+    const auditorPrevPage = document.getElementById("auditorPrevPage");
+    const auditorNextPage = document.getElementById("auditorNextPage");
+    const applyAuditorFilters = document.getElementById("applyAuditorFilters");
+    const clearAuditorFilters = document.getElementById("clearAuditorFilters");
+
+    const assignBtn = document.getElementById("assignBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const requestInfo = document.getElementById("requestInfo");
+    const auditorsSection = document.getElementById("auditorsSection");
+    const auditorsList = document.getElementById("auditorsList");
+    const auditorsCounter = document.getElementById("auditorsCounter");
+    const validationBox = document.getElementById("validationBox");
+    const assignmentsTableBody = document.getElementById("assignmentsTableBody");
+    const assignmentCounter = document.getElementById("assignmentCounter");
+    const emptyState = document.getElementById("emptyState");
+    const tableLoading = document.getElementById("tableLoading");
+    const assignmentForm = document.getElementById("assignmentForm");
+
+
+    /* =========================================================
+       DATOS LOCALES
+    ========================================================= */
+
+    let solicitudes = [];
+    let auditores = [];
+    let auditorSeleccionado = null;
+    let auditorAdvertenciaActual = null;
+    const auditoresSeleccionados = new Map();
+    const auditoresForzados = new Set();
+    const auditorRolesAsignados = new Map();
+
+    let asignaciones = [];
+    let paginaAuditores = 1;
+    let paginaSolicitudes = 1;
+    let totalPaginasAuditores = 0;
+    let totalAuditoresFiltrados = 0;
+    const tamanoPaginaAuditores = 12;
+
+
+    /* =========================================================
+       USUARIO
+    ========================================================= */
+
+    const currentName = user?.nombre || user?.name || user?.sub || "Usuario";
+    const currentRole = user?.role_name || "Usuario";
+
+    welcomeTitle.textContent = "Bienvenido, " + currentName;
+    roleDescription.textContent = isAdmin
+      ? "Asignación y control de auditores"
+      : "Acceso restringido";
+    headerAvatar.textContent = currentName.charAt(0).toUpperCase();
+
+
+    /* =========================================================
+       VISTA SEGÚN ROL
+    ========================================================= */
+
+    if (isAdmin) {
+      adminView.style.display = "grid";
+    } else {
+      regularView.classList.add("show");
+    }
+
+
+    /* =========================================================
+       HEADERS
+    ========================================================= */
+
+    function headers() {
+      return {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      };
+    }
+
+
+    /* =========================================================
+       MENSAJES
+    ========================================================= */
+
+    let messageTimer = null;
+
+    function showMessage(text, type = "success") {
+      clearTimeout(messageTimer);
+      message.textContent = text;
+      message.className = "message show " + type;
+      messageTimer = setTimeout(() => {
+        message.className = "message";
+        message.textContent = "";
+      }, 5000);
+    }
+
+
+    /* =========================================================
+       FORMATEAR FECHA
+    ========================================================= */
+
+    function formatDate(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleDateString("es-CO");
+    }
+
+    function formatDateTime(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" });
+    }
+
+
+    /* =========================================================
+       CARGAR SOLICITUDES APROBADAS
+    ========================================================= */
+
+    async function loadSolicitudes() {
+      if (solicitudSelect) solicitudSelect.innerHTML = '<option value="">Cargando solicitudes...</option>';
+      try {
+        const response = await fetch("/asignacion-auditores/solicitudes", { headers: headers() });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(typeof data.detail === "string" ? data.detail : "No se pudieron cargar las solicitudes.");
+        }
+
+        solicitudes = Array.isArray(data.items)
+          ? data.items
+          : (Array.isArray(data.asignaciones)
+            ? data.asignaciones
+            : (Array.isArray(data) ? data : []));
+
+        const isTable = !!document.getElementById('solicitudesBody');
+        if (isTable) {
+          renderSolicitudesTable(solicitudes);
+          const total = Number(data.total || 0);
+          const totalPages = Number(data.total_pages || 1);
+          const info = document.getElementById('solicitudesSummary');
+          if (info) info.textContent = `Mostrando ${Math.min((paginaSolicitudes - 1) * 12 + 1, total)}-${Math.min(paginaSolicitudes * 12, total)} de ${total} solicitudes. Página ${paginaSolicitudes} de ${totalPages}.`;
+          const prev = document.getElementById('solPrevPage');
+          const next = document.getElementById('solNextPage');
+          if (prev) prev.disabled = paginaSolicitudes <= 1;
+          if (next) next.disabled = paginaSolicitudes >= totalPages;
+          return;
+        }
+
+        if (!solicitudSelect) return;
+
+        solicitudSelect.innerHTML = '<option value="">Seleccione una solicitud</option>';
+
+        if (solicitudes.length === 0) {
+          solicitudSelect.innerHTML = '<option value="">No hay solicitudes aprobadas</option>';
+          return;
+        }
+
+        solicitudes.forEach((solicitud) => {
+          const option = document.createElement("option");
+          option.value = solicitud.id_solicitud;
+          const radicado = solicitud.numero_radicado || "Sin radicado";
+          const empresa = solicitud.empresa_nombre || "Empresa sin nombre";
+          const norma = solicitud.norma_codigo || solicitud.norma_nombre || "Norma no disponible";
+          option.textContent = `${radicado} - ${empresa} - ${norma}`;
+          solicitudSelect.appendChild(option);
+        });
+
+      } catch (error) {
+        console.error(error);
+        if (solicitudSelect) solicitudSelect.innerHTML = '<option value="">Error al cargar solicitudes</option>';
+        showMessage(error.message, "error");
+      }
+    }
+
+
+    /* =========================================================
+       MOSTRAR INFORMACIÓN SOLICITUD
+    ========================================================= */
+
+    function showRequestInfo(solicitud) {
+      if (!solicitud) {
+        requestInfo.classList.remove("show");
+        return;
+      }
+      document.getElementById("infoRadicado").textContent = solicitud.numero_radicado || "Sin radicado";
+      document.getElementById("infoEmpresa").textContent = solicitud.empresa_nombre || "No disponible";
+      document.getElementById("infoNorma").textContent = solicitud.norma_codigo || solicitud.norma_nombre || "No disponible";
+      document.getElementById("infoVersion").textContent = solicitud.norma_version || "No disponible";
+      document.getElementById("infoEstado").textContent = solicitud.estado || "No disponible";
+      document.getElementById("infoFechaSolicitud").textContent = formatDate(solicitud.fecha);
+      requestInfo.classList.add("show");
+    }
+
+
+    /* =========================================================
+       OBTENER SOLICITUD SELECCIONADA
+    ========================================================= */
+
+    let solicitudSeleccionada = null;
+
+    function getSelectedSolicitud() {
+      return solicitudSeleccionada;
+    }
+
+
+    /* =========================================================
+       CARGAR AUDITORES ELEGIBLES
+    ========================================================= */
+
+    async function loadAuditores(page = paginaAuditores) {
+      const solicitud = getSelectedSolicitud();
+      if (!solicitud) {
+        auditorsSection.classList.remove("show");
+        validationBox.classList.remove("show");
+        auditorsList.innerHTML = "";
+        auditorSeleccionado = null;
+        auditorPageInfo.textContent = "Selecciona una solicitud para consultar auditores.";
+        auditorPrevPage.disabled = true;
+        auditorNextPage.disabled = true;
+        updateAssignButton();
+        return;
+      }
+
+      paginaAuditores = Math.max(1, page);
+      auditorsList.innerHTML = '<div class="loading">Consultando candidatos...</div>';
+      auditorsSection.classList.add("show");
+      validationBox.classList.remove("show");
+
+      try {
+        const params = new URLSearchParams({
+          page: String(paginaAuditores),
+          page_size: String(tamanoPaginaAuditores)
+        });
+        if (auditorSearchInput.value.trim()) params.set("buscar", auditorSearchInput.value.trim());
+        if (auditorCityFilter.value.trim()) params.set("ciudad", auditorCityFilter.value.trim());
+        if (auditorModalityFilter.value) params.set("modalidad", auditorModalityFilter.value);
+        if (auditorCompetenceFilter.value) params.set("competencia", auditorCompetenceFilter.value);
+        const conflictoFiltro = auditorDescartarConflictos?.checked ? "no" : (auditorConflictFilter?.value || "");
+        if (conflictoFiltro) params.set("conflicto", conflictoFiltro);
+
+        const response = await fetch(
+          `/asignacion-auditores/solicitudes/${encodeURIComponent(solicitud.id_solicitud)}/auditores?${params.toString()}`,
+          { headers: headers() }
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(typeof data.detail === "string" ? data.detail : "No se pudieron consultar los auditores.");
+        }
+
+        auditores = Array.isArray(data.items) ? data.items : [];
+        paginaAuditores = Number(data.page || 1);
+        totalPaginasAuditores = Number(data.total_pages || 0);
+        totalAuditoresFiltrados = Number(data.total || 0);
+        auditorsCounter.textContent = `${totalAuditoresFiltrados} resultado(s)`;
+        auditorPageInfo.textContent = totalAuditoresFiltrados
+          ? `Página ${paginaAuditores} de ${totalPaginasAuditores} · ${totalAuditoresFiltrados} auditor(es)`
+          : "No hay resultados para los filtros seleccionados.";
+        auditorPrevPage.disabled = paginaAuditores <= 1 || totalPaginasAuditores === 0;
+        auditorNextPage.disabled = paginaAuditores >= totalPaginasAuditores || totalPaginasAuditores === 0;
+        renderAuditors(auditores);
+        updateAssignButton();
+      } catch (error) {
+        console.error(error);
+        auditores = [];
+        auditorsList.innerHTML = `<div class="no-auditors">${escapeHTML(error.message)}</div>`;
+        auditorsCounter.textContent = "0 resultados";
+        auditorPageInfo.textContent = "No fue posible cargar los auditores.";
+        auditorPrevPage.disabled = true;
+        auditorNextPage.disabled = true;
+      }
+    }
+
+
+    /* =========================================================
+       RENDER AUDITORES
+    ========================================================= */
+    function renderAuditors(lista) {
+      auditorsList.innerHTML = "";
+      if (!lista.length) {
+        auditorsList.innerHTML = '<div class="no-auditors">No hay auditores que coincidan con los filtros. Prueba con otros criterios.</div>';
+        return;
+      }
+
+      lista.forEach((auditor) => {
+        const id = String(auditor.id_usuario);
+        const seleccionado = auditoresSeleccionados.has(id);
+        const rolActual = auditorRolesAsignados.get(id) || "";
+        const card = document.createElement("div");
+        card.className = `auditor-card${seleccionado ? " selected" : ""}${auditor.elegible ? "" : " ineligible"}`;
+        card.dataset.auditorId = id;
+
+        const estadoCompetencia = auditor.competencia_norma
+          ? '<span class="check ok">Competencia vigente: ' + escapeHTML((auditor.norma_codigo ? auditor.norma_codigo + " - " : "") + (auditor.norma_nombre || "Sin nombre")) + '</span>'
+          : '<span class="check fail">Sin competencia vigente</span>';
+        const estadoConflicto = auditor.conflicto_interes
+          ? '<span class="check fail">Conflicto de interés</span>'
+          : '<span class="check ok">Sin conflicto</span>';
+        const estadoAsignacion = auditor.ya_asignado
+          ? '<span class="check fail">Ya asignado</span>'
+          : '';
+        const estadoElegibilidad = auditor.elegible
+          ? '<span class="check ok">Elegible para asignación</span>'
+          : '<span class="check fail">No elegible</span>';
+
+        card.innerHTML = `
+          <div class="auditor-header">
+            <input type="checkbox" class="auditor-check-input"
+              data-auditor-id="${escapeHTML(id)}"
+              aria-label="Seleccionar ${escapeHTML(auditor.nombre || "auditor")}"
+              ${seleccionado ? "checked" : ""}
+              onchange="toggleAuditorCheckedById(this.dataset.auditorId, this.checked)" />
+            <div>
+              <div class="auditor-name">${escapeHTML(auditor.nombre || "Sin nombre")}</div>
+              <div class="auditor-email">${escapeHTML(auditor.correo || "Sin correo")}</div>
+              <div class="auditor-meta">Documento: ${escapeHTML([auditor.tipo_doc, auditor.num_doc].filter(Boolean).join(" ") || "No registrado")}</div>
+              <div class="auditor-meta">Ciudad: ${escapeHTML(auditor.ciudad_residencia || "No registrada")} · Modalidad: ${escapeHTML(auditor.modalidad_preferida || "No definida")}</div>
+            </div>
+          </div>
+          <div class="auditor-checks">
+            ${estadoElegibilidad}
+            ${estadoCompetencia}
+            ${estadoConflicto}
+            ${estadoAsignacion}
+            <span class="check">Disponibilidad y cruces: Agenda</span>
+          </div>
+          ${auditor.elegible ? "" : `<div class="eligibility-note">${escapeHTML(auditor.motivo || "No cumple las condiciones de asignación.")}</div>`}
+          <div class="auditor-role-picker" style="display:${seleccionado ? "block" : "none"};margin-top:12px;" onclick="event.stopPropagation();">
+            <label style="display:block;font-weight:700;color:#256d00;margin-bottom:6px;">Rol para este auditor</label>
+            <select class="form-control role-select" data-auditor-role-id="${escapeHTML(id)}"
+              onclick="event.stopPropagation();" onchange="setAuditorRoleById(this.dataset.auditorRoleId, this.value)">
+              <option value="">Seleccione un rol</option>
+              <option value="Auditor líder" ${rolActual === "Auditor líder" ? "selected" : ""}>Auditor líder</option>
+              <option value="Experto técnicos" ${rolActual === "Experto técnicos" ? "selected" : ""}>Experto técnicos</option>
+              <option value="Auditor integral" ${rolActual === "Auditor integral" ? "selected" : ""}>Auditor integral</option>
+              <option value="Observador" ${rolActual === "Observador" ? "selected" : ""}>Observador</option>
+            </select>
+          </div>`;
+
+        card.addEventListener("click", (event) => {
+          if (event.target?.type === "checkbox" || event.target?.closest(".auditor-role-picker")) return;
+          abrirModalAuditor(auditor);
+        });
+        auditorsList.appendChild(card);
+      });
+    }
+
+
+    /* =========================================================
+       SELECCIONAR AUDITOR
+    ========================================================= */
+
+    function selectAuditor(auditor, card) {
+      document.querySelectorAll(".auditor-card").forEach(item => item.classList.remove("selected"));
+      card.classList.add("selected");
+      auditorSeleccionado = auditor;
+      renderValidacionesSeleccionados();
+      updateAssignButton();
+    }
+
+
+    /* =========================================================
+       MODAL RESULTADO
+    ========================================================= */
+
+    function mostrarResultadoAsignacion(texto, tipo) {
+      const modal = document.getElementById("assignmentResultModal");
+      const title = document.getElementById("assignmentResultTitle");
+      const body = document.getElementById("assignmentResultBody");
+      title.textContent =
+        tipo === "success"
+          ? "Asignación realizada"
+          : tipo === "error"
+            ? "Error en la asignación"
+            : "Resultado de la asignación";
+      title.style.color =
+        tipo === "success"
+          ? "#256d00"
+          : tipo === "error"
+            ? "#b42318"
+            : "#1d4ed8";
+      body.textContent = texto;
+      modal.classList.add("show");
+    }
+
+    function cerrarResultadoAsignacion() {
+      document
+        .getElementById("assignmentResultModal")
+        .classList.remove("show");
+    }
+
+    document
+      .getElementById("assignmentResultModal")
+      .addEventListener("click", (event) => {
+        if (event.target.id === "assignmentResultModal") {
+          event.currentTarget.classList.remove("show");
+        }
+      });
+
+    /* =========================================================
+       VALIDACIONES VISUALES
+    ========================================================= */
+
+    function setCheck(id, texto, estado) {
+      const element = document.getElementById(id);
+      element.textContent = texto;
+      element.className = "validation-item " + (estado === true ? "ok" : estado === false ? "fail" : "neutral");
+    }
+
+    function renderValidacionesSeleccionados() {
+      const box = document.getElementById("validationBox");
+      const seleccionados = Array.from(auditoresSeleccionados.values());
+      if (!seleccionados.length) {
+        box.classList.remove("show");
+        return;
+      }
+      box.classList.add("show");
+      const html = seleccionados.map((auditor) => {
+        const normaTexto = auditor.norma_nombre
+          ? (auditor.norma_codigo ? auditor.norma_codigo + " - " : "") + auditor.norma_nombre
+          : "Norma no especificada";
+        const checks = [
+          { texto: "Usuario activo", estado: auditor.estado_usuario === "Activo" },
+          { texto: "Auditor aprobado", estado: ["Activo", "Aprobada", "Aprobado"].includes(auditor.estado_auditor) },
+          { texto: "Competencia en norma: " + normaTexto, estado: auditor.competencia_norma === true },
+          { texto: "Sin conflicto de interés", estado: auditor.conflicto_interes === false },
+          { texto: "Disponibilidad real: se valida en Agenda", estado: null },
+          { texto: "Cruces horarios: se validan en Agenda", estado: null },
+        ];
+        return `
+          <div class="validation-auditor" style="margin-bottom:14px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+            <div style="margin-bottom:8px;font-weight:700;color:#256d00;">${escapeHTML(auditor.nombre || "Auditor")}</div>
+            <div class="validation-grid">
+              ${checks.map(c => `<div class="validation-item ${c.estado === true ? "ok" : c.estado === false ? "fail" : "neutral"}">${escapeHTML(c.texto)}</div>`).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+      box.innerHTML = `<div style="margin-bottom:12px;font-weight:700;color:#1f2937;">Validaciones de auditores seleccionados</div>` + html;
+    }
+
+    function toggleAuditorChecked(auditor, checked) {
+      toggleAuditorCheckedById(String(auditor.id_usuario), checked);
+    }
+
+    async function toggleAuditorCheckedById(id, checked) {
+      id = String(id);
+      const auditor = auditores.find(item => String(item.id_usuario) === id);
+      if (!auditor) return;
+
+      const card = document.querySelector(`.auditor-card[data-auditor-id="${CSS.escape(id)}"]`);
+      const checkbox = card ? card.querySelector('.auditor-check-input') : null;
+      const picker = card ? card.querySelector('.auditor-role-picker') : null;
+      if (checked && !auditor.elegible) {
+        if (checkbox) checkbox.checked = false;
+        await abrirModalAdvertencia(auditor);
+        return;
+      }
+
+      if (checked) {
+        auditoresSeleccionados.set(id, auditor);
+        if (picker) picker.style.display = 'block';
+        auditorSeleccionado = auditor;
+        renderValidacionesSeleccionados();
+      } else {
+        auditoresSeleccionados.delete(id);
+        auditorRolesAsignados.delete(id);
+        auditoresForzados.delete(id);
+        if (picker) picker.style.display = 'none';
+        if (auditorSeleccionado && String(auditorSeleccionado.id_usuario) === id) {
+          auditorSeleccionado = null;
+          validationBox.classList.remove("show");
+        }
+      }
+      if (card) card.classList.toggle("selected", checked);
+      updateAssignButton();
+    }
+
+    async function abrirModalAdvertencia(auditor) {
+      const id = String(auditor.id_usuario);
+      document.getElementById('advertenciaTexto').textContent =
+        auditor.motivo || 'Este auditor no cumple las condiciones automáticas de asignación.';
+      const lista = document.getElementById('advertenciaCompetencias');
+      lista.innerHTML = 'Cargando competencias...';
+      document.getElementById('modalAdvertencia').classList.add('show');
+      auditorAdvertenciaActual = auditor;
+      try {
+        const response = await fetch(`/auditores/registro/${encodeURIComponent(id)}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        });
+        const data = await response.json().catch(() => ({}));
+        const competencias = Array.isArray(data.competencias) ? data.competencias : [];
+        if (!competencias.length) {
+          lista.innerHTML = 'No tiene competencias registradas.';
+          return;
+        }
+        lista.innerHTML = competencias.map(item => {
+          const titulo = item.titulo_institucion || 'Sin título';
+          const tipo = item.tipo_competencia || 'Competencia';
+          const norma = item.norma_nombre || item.norma_codigo || 'Sin nombre de norma';
+          return `<li><strong>${tipo}</strong> — ${titulo} — Norma: ${norma}</li>`;
+        }).join('');
+      } catch {
+        lista.innerHTML = 'No fue posible cargar las competencias.';
+      }
+    }
+
+    function cerrarModalAdvertencia() {
+      document.getElementById('modalAdvertencia').classList.remove('show');
+      auditorAdvertenciaActual = null;
+    }
+
+    function confirmarAsignacionNoElegible() {
+      const auditor = auditorAdvertenciaActual;
+      if (!auditor) return;
+      const id = String(auditor.id_usuario);
+      auditoresSeleccionados.set(id, auditor);
+      auditoresForzados.add(id);
+      auditorRolesAsignados.set(id, auditorRolesAsignados.get(id) || 'Observador');
+      const card = document.querySelector(`.auditor-card[data-auditor-id="${CSS.escape(id)}"]`);
+      const checkbox = card ? card.querySelector('.auditor-check-input') : null;
+      const picker = card ? card.querySelector('.auditor-role-picker') : null;
+      if (checkbox) checkbox.checked = true;
+      if (picker) picker.style.display = 'block';
+      if (card) card.classList.add('selected');
+      cerrarModalAdvertencia();
+      renderValidacionesSeleccionados();
+      updateAssignButton();
+    }
+
+    function setAuditorRoleById(id, rol) {
+      id = String(id);
+      const rolesPermitidos = ["Auditor líder", "Experto técnicos", "Auditor integral", "Observador"];
+      if (auditoresSeleccionados.has(id) && rolesPermitidos.includes(rol)) {
+        auditorRolesAsignados.set(id, rol);
+      } else {
+        auditorRolesAsignados.delete(id);
+      }
+      updateAssignButton();
+    }
+
+    function updateAssignButton() {
+      const solicitud = getSelectedSolicitud();
+      const seleccionados = Array.from(auditoresSeleccionados.values());
+      const rolesValidos = seleccionados.length > 0 && seleccionados.every(auditor => {
+        const id = String(auditor.id_usuario);
+        return (auditor.elegible === true || auditoresForzados.has(id)) && auditorRolesAsignados.has(id) && !!auditorRolesAsignados.get(id);
+      });
+      const cantidadLideres = seleccionados.filter(auditor => auditorRolesAsignados.get(String(auditor.id_usuario)) === "Auditor líder").length;
+      const valido = Boolean(isAdmin && solicitud && seleccionados.length > 0 && rolesValidos && cantidadLideres <= 1);
+      assignBtn.disabled = !valido;
+      assignBtn.title = cantidadLideres > 1
+        ? "Solo puede haber un auditor líder por solicitud."
+        : (!rolesValidos ? "Selecciona auditores elegibles y asigna un rol individual a cada uno." : "");
+      if (auditorsSection.classList.contains("show")) {
+        auditorsCounter.textContent = `${totalAuditoresFiltrados} resultado(s) · ${auditoresSeleccionados.size} seleccionado(s)`;
+      }
+    }
+
+
+    /* =========================================================
+       CAMBIOS DEL FORMULARIO
+    ========================================================= */
+
+    const buscarSolicitudesDebounced = debounce(() => cargarSolicitudes(1), 350);
+    document.getElementById('solBuscar')?.addEventListener('input', buscarSolicitudesDebounced);
+    document.getElementById('solCiudad')?.addEventListener('input', buscarSolicitudesDebounced);
+    document.getElementById('solNorma')?.addEventListener('change', () => cargarSolicitudes(1));
+    document.getElementById('solSector')?.addEventListener('change', () => cargarSolicitudes(1));
+    document.getElementById('solDesde')?.addEventListener('change', () => cargarSolicitudes(1));
+    document.getElementById('solHasta')?.addEventListener('change', () => cargarSolicitudes(1));
+
+    function debounce(fn, delay = 350) {
+      let timer = null;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+      };
+    }
+
+    const buscarAuditoresDebounced = debounce(() => loadAuditores(1), 350);
+    auditorSearchInput.addEventListener("input", buscarAuditoresDebounced);
+    auditorCityFilter.addEventListener("input", buscarAuditoresDebounced);
+    auditorModalityFilter.addEventListener("change", () => loadAuditores(1));
+    auditorCompetenceFilter.addEventListener("change", () => loadAuditores(1));
+    auditorConflictFilter.addEventListener("change", () => loadAuditores(1));
+    auditorDescartarConflictos.addEventListener("change", () => loadAuditores(1));
+
+    clearAuditorFilters.addEventListener("click", () => {
+      auditorSearchInput.value = "";
+      auditorCityFilter.value = "";
+      auditorModalityFilter.value = "";
+      auditorCompetenceFilter.value = "";
+      auditorConflictFilter.value = "";
+      auditorDescartarConflictos.checked = false;
+      loadAuditores(1);
+    });
+    auditorPrevPage.addEventListener("click", () => {
+      if (paginaAuditores > 1) loadAuditores(paginaAuditores - 1);
+    });
+    auditorNextPage.addEventListener("click", () => {
+      if (paginaAuditores < totalPaginasAuditores) loadAuditores(paginaAuditores + 1);
+    });
+
+
+    /* =========================================================
+       CREAR ASIGNACIÓN
+    ========================================================= */
+
+    assignmentForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const solicitud = getSelectedSolicitud();
+      if (!solicitud) {
+        showMessage("Seleccione una solicitud aprobada.", "error");
+        return;
+      }
+      const seleccionados = Array.from(auditoresSeleccionados.values());
+      if (!seleccionados.length) {
+        showMessage("Seleccione al menos un auditor elegible.", "error");
+        return;
+      }
+      const sinRol = seleccionados.filter(auditor => !auditorRolesAsignados.get(String(auditor.id_usuario)));
+      if (sinRol.length) {
+        showMessage(`Asigne un rol individual a: ${sinRol.map(item => item.nombre).join(", ")}.`, "error");
+        return;
+      }
+      const lideres = seleccionados.filter(auditor => auditorRolesAsignados.get(String(auditor.id_usuario)) === "Auditor líder");
+      if (lideres.length > 1) {
+        showMessage("Solo puede asignarse un auditor líder por solicitud. Ajuste los roles individuales.", "error");
+        return;
+      }
+
+      assignBtn.disabled = true;
+      assignBtn.textContent = "Asignando...";
+      const resultados = [];
+
+      try {
+        for (const selected of seleccionados) {
+          const payload = {
+            id_solicitud: solicitud.id_solicitud,
+            id_auditor: selected.id_usuario,
+            rol_auditor: auditorRolesAsignados.get(String(selected.id_usuario))
+          };
+          try {
+            const response = await fetch("/asignacion-auditores/", {
+              method: "POST",
+              headers: headers(),
+              body: JSON.stringify(payload)
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+              throw new Error(typeof data.detail === "string" ? data.detail : "No fue posible asignar el auditor.");
+            }
+            resultados.push({ ok: true, text: `${selected.nombre}: ${data.mensaje || "asignación realizada."}` });
+          } catch (error) {
+            console.error(error);
+            resultados.push({ ok: false, text: `${selected.nombre}: ${error.message}` });
+          }
+        }
+
+        const correctos = resultados.filter(item => item.ok).length;
+        const fallidos = resultados.length - correctos;
+        mostrarResultadoAsignacion(
+          resultados.map(item => item.text).join("\n"),
+          fallidos ? (correctos ? "info" : "error") : "success"
+        );
+
+        auditoresSeleccionados.clear();
+        auditorRolesAsignados.clear();
+        auditoresForzados.clear();
+        auditorSeleccionado = null;
+        validationBox.classList.remove("show");
+        await loadAsignaciones();
+        await loadAuditores(paginaAuditores);
+      } catch (error) {
+        console.error(error);
+        showMessage(error?.message || String(error), "error");
+      } finally {
+        assignBtn.textContent = "Asignar auditores";
+        updateAssignButton();
+      }
+    });
+
+
+    /* =========================================================
+       LIMPIAR
+    ========================================================= */
+
+    clearBtn.addEventListener("click", resetForm);
+
+    function resetForm() {
+      assignmentForm.reset();
+      if (solicitudSelect) solicitudSelect.value = "";
+      auditorSearchInput.value = "";
+      auditorCityFilter.value = "";
+      auditorModalityFilter.value = "";
+      auditorCompetenceFilter.value = "";
+      requestInfo.classList.remove("show");
+      auditorsSection.classList.remove("show");
+      validationBox.classList.remove("show");
+      auditorsList.innerHTML = "";
+      auditorSeleccionado = null;
+      auditorsCounter.textContent = "0 resultados";
+      auditorPageInfo.textContent = "Selecciona una solicitud para consultar auditores.";
+      auditorPrevPage.disabled = true;
+      auditorNextPage.disabled = true;
+      paginaAuditores = 1;
+      auditoresSeleccionados.clear();
+      auditorRolesAsignados.clear();
+      auditoresForzados.clear();
+      updateAssignButton();
+    }
+
+
+    /* =========================================================
+       CARGAR ASIGNACIONES
+    ========================================================= */
+
+    async function loadAsignaciones() {
+      tableLoading.style.display = "block";
+      emptyState.style.display = "none";
+      try {
+        const response = await fetch("/asignacion-auditores/", { headers: headers() });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(typeof data.detail === "string" ? data.detail : "No se pudieron cargar las asignaciones.");
+        }
+        asignaciones = Array.isArray(data)
+          ? data.filter(item => String(item.estado_asignacion || "").toUpperCase() !== "CANCELADA")
+          : [];
+        renderAsignaciones();
+      } catch (error) {
+        console.error(error);
+        tableLoading.style.display = "none";
+        showMessage(error.message, "error");
+      }
+    }
+
+
+    /* =========================================================
+       RENDER ASIGNACIONES
+    ========================================================= */
+
+    function renderAsignaciones() {
+      tableLoading.style.display = "none";
+      assignmentsTableBody.innerHTML = "";
+
+      assignmentCounter.textContent = `${asignaciones.length} ${asignaciones.length === 1 ? "asignación" : "asignaciones"}`;
+
+      if (asignaciones.length === 0) {
+        emptyState.style.display = "block";
+        return;
+      }
+      emptyState.style.display = "none";
+
+      asignaciones.forEach((asignacion) => {
+        const row = document.createElement("tr");
+        let statusClass = "assigned";
+        const estado = asignacion.tiene_programacion
+          ? (asignacion.estado_programacion || "Programada")
+          : (asignacion.estado_asignacion || "Asignado");
+        const estadoVisible = (!asignacion.fecha_inicio_planificada && !asignacion.fecha_fin_planificada && !/cancelad/i.test(estado))
+          ? "Asignado · pendiente de programación"
+          : estado;
+
+        if (/pendiente/i.test(estadoVisible)) statusClass = "pending";
+        if (/inactivo|cancelado|eliminado/i.test(estado)) statusClass = "inactive";
+
+        row.innerHTML = `
+          <td>${escapeHTML(asignacion.numero_radicado || String(asignacion.id_solicitud))}</td>
+          <td>${escapeHTML(asignacion.auditor_nombre || "-")}</td>
+          <td>${escapeHTML(asignacion.auditor_correo || "-")}</td>
+          <td>${escapeHTML(asignacion.fecha_inicio_planificada ? formatDateTime(asignacion.fecha_inicio_planificada) : "Pendiente en Agenda")}</td>
+          <td>${escapeHTML(asignacion.fecha_fin_planificada ? formatDateTime(asignacion.fecha_fin_planificada) : "Pendiente en Agenda")}</td>
+          <td>${escapeHTML(asignacion.especialidad || "-")}</td>
+          <td><span class="status ${statusClass}">${escapeHTML(estadoVisible)}</span></td>
+          <td>
+            <div class="actions">
+              <button type="button" class="action-btn action-view">Ver</button>
+              <button type="button" class="action-btn action-cancel" ${asignacion.tiene_programacion ? 'disabled' : ''}>Cancelar asignación</button>
+            </div>
+          </td>`;
+
+        const viewButton = row.querySelector(".action-view");
+        viewButton.addEventListener("click", () => viewAssignment(asignacion));
+
+        const cancelButton = row.querySelector(".action-cancel");
+        cancelButton.addEventListener("click", async () => {
+          if (!confirm("¿Desea cancelar esta asignación?")) return;
+          try {
+            const response = await fetch(`/asignacion-auditores/${encodeURIComponent(asignacion.id)}`, {
+              method: "DELETE",
+              headers: headers()
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+              throw new Error(typeof data.detail === "string" ? data.detail : "No fue posible cancelar la asignación.");
+            }
+            showMessage(data.mensaje || "Asignación cancelada correctamente.", "success");
+            await loadAsignaciones();
+          } catch (error) {
+            console.error(error);
+            showMessage(error.message, "error");
+          }
+        });
+
+        assignmentsTableBody.appendChild(row);
+      });
+    }
+
+
+    /* =========================================================
+       VER DETALLES
+    ========================================================= */
+
+    function viewAssignment(assignment) {
+      document.getElementById("detailSolicitud").textContent = assignment.numero_radicado || assignment.id_solicitud || "-";
+      document.getElementById("detailAuditor").textContent = assignment.auditor_nombre || "-";
+      document.getElementById("detailCorreo").textContent = assignment.auditor_correo || "-";
+      document.getElementById("detailRol").textContent = assignment.especialidad || "-";
+      document.getElementById("detailInicio").textContent = assignment.fecha_inicio_planificada
+        ? formatDateTime(assignment.fecha_inicio_planificada)
+        : "Pendiente de programación en Agenda";
+      document.getElementById("detailFin").textContent = assignment.fecha_fin_planificada
+        ? formatDateTime(assignment.fecha_fin_planificada)
+        : "Pendiente de programación en Agenda";
+      document.getElementById("detailEstado").textContent = assignment.estado_asignacion || "-";
+      document.getElementById("detailsModal").classList.add("show");
+    }
+
+
+    /* =========================================================
+       CERRAR MODAL
+    ========================================================= */
+
+    document.getElementById("closeDetailsBtn").addEventListener("click", () => {
+      document.getElementById("detailsModal").classList.remove("show");
+    });
+
+    document.getElementById("detailsModal").addEventListener("click", (event) => {
+      if (event.target.id === "detailsModal") {
+        event.currentTarget.classList.remove("show");
+      }
+    });
+
+
+    /* =========================================================
+       ESCAPAR HTML
+    ========================================================= */
+
+    function escapeHTML(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+
+    /* =========================================================
+       LOGOUT
+    ========================================================= */
+
+    document.getElementById("logoutLink").addEventListener("click", (event) => {
+      event.preventDefault();
+      localStorage.removeItem("access_token");
+      location.href = "/login";
+    });
+
+
+    /* =========================================================
+       RENDER SOLICITUDES TABLA
+    ========================================================= */
+
+    function renderSolicitudesTable(lista) {
+      const tbody = document.getElementById('solicitudesBody');
+      if (!tbody) return;
+      const empty = document.getElementById('solicitudesEmpty');
+      if (!lista.length) {
+        tbody.innerHTML = '';
+        if (empty) empty.style.display = 'block';
+        return;
+      }
+      if (empty) empty.style.display = 'none';
+      tbody.innerHTML = lista.map((solicitud) => {
+        const radicado = solicitud.numero_radicado || solicitud.id_solicitud || '-';
+        const empresa = solicitud.empresa_nombre || '-';
+        const normaCodigo = solicitud.norma_codigo || '-';
+        const normaNombre = solicitud.norma_nombre || '-';
+        const fecha = solicitud.fecha ? new Date(solicitud.fecha).toLocaleDateString('es-CO') : '-';
+        return `<tr>
+          <td>${escapeHTML(radicado)}</td>
+          <td>${escapeHTML(empresa)}</td>
+          <td>${escapeHTML(normaCodigo)}<br><span class="help-text">${escapeHTML(normaNombre)}</span></td>
+          <td>${escapeHTML(fecha)}</td>
+          <td class="row-actions">
+            <button class="mini-btn" type="button" onclick="seleccionarSolicitud('${escapeHTML(solicitud.id_solicitud)}')">Seleccionar</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function cargarSolicitudes(page = 1) {
+      paginaSolicitudes = page;
+      const params = new URLSearchParams();
+      params.set('page', page);
+      const buscar = document.getElementById('solBuscar')?.value.trim();
+      const ciudad = document.getElementById('solCiudad')?.value.trim();
+      const desde = document.getElementById('solDesde')?.value;
+      const hasta = document.getElementById('solHasta')?.value;
+      const norma = document.getElementById('solNorma')?.value.trim();
+      const sector = document.getElementById('solSector')?.value.trim();
+      if (buscar) params.set('buscar', buscar);
+      if (ciudad) params.set('ciudad', ciudad);
+      if (desde) params.set('desde', desde);
+      if (hasta) params.set('hasta', hasta);
+      if (norma) params.set('norma', norma);
+      if (sector) params.set('sector', sector);
+      try {
+        const res = await fetch('/asignacion-auditores/solicitudes?' + params.toString(), { headers: headers() });
+        const data = await res.json().catch(() => ({}));
+        solicitudes = Array.isArray(data.items) ? data.items : [];
+        renderSolicitudesTable(solicitudes);
+        const total = Number(data.total || 0);
+        const totalPages = Number(data.total_pages || 1);
+        const info = document.getElementById('solicitudesSummary');
+        if (info) info.textContent = `Mostrando ${Math.min((page - 1) * 12 + 1, total)}-${Math.min(page * 12, total)} de ${total} solicitudes. Página ${page} de ${totalPages}.`;
+        const prev = document.getElementById('solPrevPage');
+        const next = document.getElementById('solNextPage');
+        if (prev) prev.disabled = page <= 1;
+        if (next) next.disabled = page >= totalPages;
+      } catch (error) {
+        console.error('No se pudieron cargar las solicitudes:', error);
+      }
+    }
+
+    function limpiarFiltrosSolicitudes() {
+      ['solBuscar', 'solCiudad', 'solNorma', 'solSector'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      ['solDesde', 'solHasta'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      cargarSolicitudes(1);
+    }
+
+    function seleccionarSolicitud(id) {
+      const solicitud = solicitudes.find(item => String(item.id_solicitud) === String(id));
+      if (!solicitud) return;
+      solicitudSeleccionada = solicitud;
+      document.getElementById('infoRadicado').textContent = solicitud.numero_radicado || solicitud.id_solicitud || '-';
+      document.getElementById('infoEmpresa').textContent = solicitud.empresa_nombre || '-';
+      document.getElementById('infoNorma').textContent = (solicitud.norma_codigo || '') + (solicitud.norma_nombre ? ' - ' + solicitud.norma_nombre : '');
+      document.getElementById('infoVersion').textContent = solicitud.norma_version || '-';
+      document.getElementById('infoEstado').textContent = solicitud.estado || '-';
+      document.getElementById('infoFechaSolicitud').textContent = solicitud.fecha ? new Date(solicitud.fecha).toLocaleDateString('es-CO') : '-';
+      requestInfo.classList.add('show');
+      auditoresSeleccionados.clear();
+      auditorRolesAsignados.clear();
+      auditoresForzados.clear();
+      auditorSeleccionado = null;
+      validationBox.classList.remove('show');
+      updateAssignButton();
+      loadAuditores(1);
+      document.getElementById('auditorsSection')?.classList.add('show');
+    }
+
+    async function initialize() {
+      if (!isAdmin) return;
+      await Promise.all([
+        cargarSolicitudes(1),
+        loadAsignaciones()
+      ]);
+    }
+
+    initialize();
+
+  </script>
+
+
+  <script src="/static/session.js"></script>
+
+
+  <div id="auditorModal" class="auditor-modal">
+    <div class="auditor-modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <h2 id="auditorModalTitle" style="color:#256d00;margin:0;">Auditor</h2>
+        <button type="button" onclick="cerrarModalAuditor()"
+          style="border:none;background:#94a3b8;color:#fff;border-radius:6px;padding:8px 14px;cursor:pointer;">Cerrar</button>
+      </div>
+      <div id="auditorModalBody" style="margin-top:16px;">Cargando...</div>
+    </div>
+  </div>
+
+  <script>
+    async function abrirModalAuditor(auditor) {
+      const modal = document.getElementById('auditorModal');
+      const title = document.getElementById('auditorModalTitle');
+      const body = document.getElementById('auditorModalBody');
+      modal.classList.add('show');
+      title.textContent = auditor.nombre || 'Auditor';
+      body.innerHTML = '<div class="audit-empty">Cargando...</div>';
+      const token = localStorage.getItem('access_token');
+      try {
+        const response = await fetch(`/auditores/registro/${auditor.id_usuario}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        });
+        const data = await response.json().catch(() => ({}));
+        const competencias = Array.isArray(data.competencias) ? data.competencias : [];
+        const documentos = Array.isArray(data.documentos) ? data.documentos : [];
+        const normalizarBooleano = function (valor) { return valor === true ? 'Sí' : valor === false ? 'No' : (valor === null || valor === undefined ? 'No disponible' : String(valor)); };
+        const fotoUrl = data?.perfil?.foto_url ? data.perfil.foto_url : '';
+        body.innerHTML = `
+          <div class="auditor-modal-grid">
+            <div class="audit-modal-field"><label>Nombre</label><span>${escapeHTML(data.nombre || auditor.nombre || '-')}</span></div>
+            <div class="audit-modal-field"><label>Correo</label><span>${escapeHTML(data.correo || auditor.correo || '-')}</span></div>
+            <div class="audit-modal-field"><label>Estado auditor</label><span>${escapeHTML(data.estado_auditor || auditor.estado_auditor || '-')}</span></div>
+            <div class="audit-modal-field"><label>Observaciones</label><span>${escapeHTML(data.observaciones_tecnicas || '-')}</span></div>
+            <div class="audit-modal-field"><label>Foto del auditor</label>
+               <div class="audit-photo">
+                 ${fotoUrl ? `<img src="${escapeHTML(fotoUrl)}" alt="Foto del auditor" onerror="this.parentNode.innerHTML='<div class=&quot;audit-empty&quot;>No disponible.</div>'" />` : '<div class="audit-empty">Sin foto registrada.</div>'}
+               </div>
+            </div>
+          </div>
+          <div class="modal-section">
+            <h3>Competencias</h3>
+            ${competencias.length ? '<ul class="audit-list">' + competencias.map(c => '<li><strong>' + escapeHTML(c.tipo_competencia || '-') + '</strong> — Norma: ' + escapeHTML(c.norma_nombre || '-') + ' (' + escapeHTML(c.norma_codigo || '-') + ')' + ' — Sector IAF: ' + escapeHTML(c.codigo_sector_iaf || '-') + ' — ' + escapeHTML(c.titulo_institucion || '-') + ' — Vigente: ' + normalizarBooleano(c.es_vigente) + '</li>').join('') + '</ul>' : '<div class="audit-empty">Sin competencias registradas.</div>'}
+          </div>
+          <div class="modal-section">
+            <h3>Documentos adjuntos</h3>
+            ${documentos.length ? documentos.map(d => '<div class="doc-item"><div style="flex:1;"><strong>' + escapeHTML(d.tipo_documento || '-') + '</strong> — ' + escapeHTML(d.estado_revision || '-') + ' — ' + escapeHTML(d.nombre_archivo || '-') + '</div>' + (d.url_archivo ? '<a class="doc-open-link" href="' + escapeHTML(d.url_archivo) + '" target="_blank" rel="noopener">👁️</a>' : '') + '</div>').join('') : '<div class="audit-empty">Sin documentos registrados.</div>'}
+          </div>
+        `;
+      } catch {
+        body.innerHTML = '<div class="audit-empty">No fue posible cargar la información.</div>';
+      }
+    }
+
+    function cerrarModalAuditor() { document.getElementById('auditorModal').classList.remove('show'); }
+  </script>
+ <script src="/static/session.js"></script>
+<script src="/static/nav.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA - Consultar vigencia y plazos</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/styles.css?v=6">
+    <style>
+        .vg-wrap { max-width: var(--ancho-contenido); margin: 0 auto; padding: 26px 18px 40px; }
+        .vg-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 26px 28px; }
+        .vg-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
+        .vg-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
+        .vg-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+        .vg-field { flex: 1 1 240px; min-width: 200px; }
+        .vg-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .vg-field input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
+        .vg-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
+        .vg-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .vg-btn:hover { background: #388e3c; }
+        .vg-btn:disabled { opacity: .6; cursor: wait; }
+        #conteo { color: #6b7280; font-size: 13px; margin: 16px 2px 10px; }
+        #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
+        .vg-card { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #9aa5b1; border-radius: 3px; padding: 20px 22px; margin-bottom: 16px; }
+        .vg-card.ok { border-left-color: #2f7d32; }
+        .vg-card.por { border-left-color: #f9a825; }
+        .vg-card.vencido { border-left-color: #dc2626; }
+        .vg-top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+        .vg-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; background: #f1f5f9; color: #4b5563; }
+        .vg-card.ok .vg-estado { background: #e2e8f0; color: #1a7f37; }
+        .vg-card.por .vg-estado { background: #fffbeb; color: #8d6e00; }
+        .vg-card.vencido .vg-estado { background: #fffbeb; color: #b42318; }
+        .vg-plazo { font-size: 20px; font-weight: 700; color: #374151; }
+        .vg-card.ok .vg-plazo { color: #1a7f37; }
+        .vg-card.por .vg-plazo { color: #8d6e00; }
+        .vg-card.vencido .vg-plazo { color: #b42318; }
+        .vg-empresa { margin: 12px 0 0; color: #374151; font-size: 15px; font-weight: 600; }
+        .vg-sub { margin: 2px 0 12px; color: #6b7280; font-size: 12px; }
+        .vg-rows { display: grid; grid-template-columns: 190px 1fr; row-gap: 6px; font-size: 13px; }
+        .vg-rows dt { color: #2f7d32; font-weight: 700; }
+        .vg-rows dd { margin: 0; color: #374151; word-break: break-word; }
+        .vg-msg { border-left: 3px solid #9aa5b1; padding: 4px 0 4px 12px; color: #4b5563; font-size: 13px; margin: 14px 0 0; line-height: 1.5; }
+        .vg-error { background: #fffbeb; color: #b42318; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
+        @media (max-width: 700px) {
+            .vg-form { flex-direction: column; align-items: stretch; }
+            .vg-btn { width: 100%; }
+            .vg-rows { grid-template-columns: 1fr; row-gap: 2px; }
+            .vg-rows dt { margin-top: 8px; }
+        }
+        @media print {
+            .login-header, .login-footer, .vg-panel, .vg-btn, #loader, #conteo, .hamburger-btn, .mobile-menu { display: none !important; }
+            body { background: #fff; }
+            .vg-wrap { max-width: 100%; padding: 0; }
+            .vg-card { box-shadow: none; break-inside: avoid; }
+        }
+    </style>
+  <link rel="stylesheet" href="/static/tema.css">
+</head>
+
+<body>
+
+    <header class="login-header">
+
+        <div class="header-content">
+
+            <div class="header-left">
+
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Plataforma de gestión y consulta de certificados</p>
+                    <p style="font-size:12px;opacity:.85;margin-top:4px;">
+                        Servicio Nacional de Aprendizaje • CertiSENA
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="header-buttons">
+
+                <div class="nav-dropdown">
+                    <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+                        Consulta pública <span class="nav-caret">▼</span>
+                    </button>
+                    <div class="nav-dropdown-menu">
+                        <div class="nav-dropdown-panel">
+                            <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                            <a href="/">Consultar estado de vigencia</a>
+                            <a href="/verificar-certificado">Verificar certificado</a>
+                            <a href="/consulta-norma">Consultar norma evaluada</a>
+                            <a href="/vigencia">Consultar vigencia y plazos</a>
+                            <a href="/validar">Validar autenticidad</a>
+                            <a href="/constancia">Descargar constancia pública</a>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="/login" class="btn-login">Iniciar sesión</a>
+                <a href="/register" class="btn-login">Registrarse</a>
+
+            </div>
+
+            <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+        </div>
+
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="/login">Iniciar sesión</a>
+            <a href="/register">Registrarse</a>
+            <div class="mobile-menu-group">
+                <span class="mobile-menu-label">Consulta pública</span>
+                <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                <a href="/">Consultar estado de vigencia</a>
+                <a href="/verificar-certificado">Verificar certificado</a>
+                <a href="/consulta-norma">Consultar norma evaluada</a>
+                <a href="/vigencia">Consultar vigencia y plazos</a>
+                <a href="/validar">Validar autenticidad</a>
+                <a href="/constancia">Descargar constancia pública</a>
+            </div>
+        </div>
+
+    </header>
+
+    <main class="vg-wrap">
+
+        <section class="vg-panel">
+
+            <h2>Consultar vigencia y plazos</h2>
+
+            <p class="vg-desc">
+                Vea cuánto tiempo sigue vigente un certificado y cuánto lleva el trámite en curso.
+                Ingrese el número de radicado o el NIT. No necesita iniciar sesión.
+            </p>
+
+            <form id="searchForm" class="vg-form">
+
+                <div class="vg-field">
+                    <label for="radicado">Radicado del trámite</label>
+                    <input type="text" id="radicado" name="codigo" placeholder="RAD-2026-001">
+                </div>
+
+                <div class="vg-field">
+                    <label for="nit">NIT de la empresa</label>
+                    <input type="text" id="nit" name="nit" placeholder="900123456-7">
+                </div>
+
+                <button type="submit" class="vg-btn" id="btnConsultar">Consultar</button>
+
+            </form>
+
+        </section>
+
+        <p id="conteo" class="hidden-section"></p>
+
+        <div id="loader" class="hidden-section">Consultando...</div>
+
+        <div id="resultados"></div>
+
+        <div id="mensajeError" class="vg-error hidden-section"></div>
+
+    </main>
+
+    <footer class="login-footer">
+        <p>© 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+
+        // Menú hamburguesa
+        const hamburgerBtn = document.getElementById("hamburgerBtn");
+        const mobileMenu = document.getElementById("mobileMenu");
+
+        hamburgerBtn.addEventListener("click", () => {
+            hamburgerBtn.classList.toggle("active");
+            mobileMenu.classList.toggle("open");
+        });
+
+        document.querySelectorAll(".mobile-menu a").forEach(link => {
+            link.addEventListener("click", () => {
+                hamburgerBtn.classList.remove("active");
+                mobileMenu.classList.remove("open");
+            });
+        });
+
+        // Vigencia y plazos (M11)
+        const searchForm = document.getElementById("searchForm");
+        const radicadoInput = document.getElementById("radicado");
+        const nitInput = document.getElementById("nit");
+        const btnConsultar = document.getElementById("btnConsultar");
+        const loader = document.getElementById("loader");
+        const conteo = document.getElementById("conteo");
+        const resultados = document.getElementById("resultados");
+        const mensajeError = document.getElementById("mensajeError");
+
+        const esc = (v) => String(v ?? "--")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+
+        function mostrarError(texto) {
+            mensajeError.textContent = texto;
+            mensajeError.classList.remove("hidden-section");
+        }
+
+        function limpiar() {
+            mensajeError.textContent = "";
+            mensajeError.classList.add("hidden-section");
+            resultados.innerHTML = "";
+            conteo.classList.add("hidden-section");
+            conteo.textContent = "";
+        }
+
+        function claseVigencia(estado) {
+            if (estado === "VIGENTE") return "ok";
+            if (estado === "POR VENCER") return "por";
+            if (estado === "VENCIDO") return "vencido";
+            return "";
+        }
+
+        function textoPlazo(fila) {
+            const dias = fila.dias_restantes;
+            if (dias === null || dias === undefined) return "Sin certificado emitido";
+            if (dias < 0) return `Venció hace ${-dias} día(s)`;
+            if (dias === 0) return "Vence hoy";
+            return `Faltan ${dias} día(s)`;
+        }
+
+        function textoTramite(fila) {
+            const dias = fila.dias_desde_radicacion;
+            if (dias === null || dias === undefined) return "--";
+            return `${dias} día(s) desde la radicación`;
+        }
+
+        function tarjeta(fila) {
+            const vigencia = fila.estado_vigencia || "SIN CERTIFICADO";
+            return `<article class="vg-card ${claseVigencia(vigencia)}">
+                <div class="vg-top">
+                    <span class="vg-estado">${esc(vigencia)}</span>
+                    <span class="vg-plazo">${esc(textoPlazo(fila))}</span>
+                </div>
+                <p class="vg-empresa">${esc(fila.empresa)}</p>
+                <p class="vg-sub">NIT ${esc(fila.nit)}${fila.ciudad ? " - " + esc(fila.ciudad) : ""}</p>
+                <dl class="vg-rows">
+                    <dt>Estado del trámite</dt><dd>${esc(fila.estado_general)}</dd>
+                    <dt>Radicado</dt><dd>${esc(fila.numero_radicado)}</dd>
+                    <dt>Norma</dt><dd>${esc(fila.norma_completa)}</dd>
+                    <dt>Emitido el</dt><dd>${esc(fila.cert_emision)}</dd>
+                    <dt>Vence el</dt><dd>${esc(fila.cert_vence)}</dd>
+                    <dt>Tiempo en trámite</dt><dd>${esc(textoTramite(fila))}</dd>
+                </dl>
+                <p class="vg-msg"></p>
+            </article>`;
+        }
+
+        async function consultarVigencia() {
+            const codigo = radicadoInput.value.trim();
+            const nit = nitInput.value.trim();
+
+            limpiar();
+
+            if (!codigo && !nit) {
+                mostrarError("Ingrese el radicado del trámite o el NIT de la empresa.");
+                return;
+            }
+
+            loader.classList.remove("hidden-section");
+            btnConsultar.disabled = true;
+
+            try {
+                const params = new URLSearchParams();
+                if (codigo) params.set("codigo", codigo);
+                if (nit) params.set("nit", nit);
+
+                const respuesta = await fetch(`/api/consultas-publicas/documentos?${params.toString()}`);
+
+                loader.classList.add("hidden-section");
+                btnConsultar.disabled = false;
+
+                if (!respuesta.ok) {
+                    let detalle = "No se pudo completar la consulta.";
+                    try {
+                        const datos = await respuesta.json();
+                        detalle = datos.detail || detalle;
+                    } catch (e) { /* respuesta no JSON */ }
+                    mostrarError(detalle);
+                    return;
+                }
+
+                const filas = await respuesta.json();
+
+                if (!Array.isArray(filas) || filas.length === 0) {
+                    mostrarError("No se encontraron trámites con esos datos.");
+                    return;
+                }
+
+                conteo.textContent = `${filas.length} resultado(s)`;
+                conteo.classList.remove("hidden-section");
+                resultados.innerHTML = filas.map(tarjeta).join("");
+
+                // El mensaje lo envía el servidor, así que se pone con textContent.
+                resultados.querySelectorAll(".vg-card").forEach((card, i) => {
+                    card.querySelector(".vg-msg").textContent = filas[i].mensaje || "";
+                });
+
+            } catch (error) {
+                console.error("Error en la consulta:", error);
+                loader.classList.add("hidden-section");
+                btnConsultar.disabled = false;
+                mostrarError("Error de conexión con el servidor.");
+            }
+        }
+
+        searchForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            consultarVigencia();
+        });
+
+        radicadoInput.focus();
+
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CertiSENA | Reportes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/tema.css">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body class="comite-page">
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Módulo de reportes</p>
+        </div>
+      </div>
+      <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="comite-shell">
+    <div class="comite-layout">
+
+      <aside class="comite-sidebar" aria-label="Navegación de reportes">
+        <div class="comite-sidebar-heading">
+          <span class="comite-kicker">Reportes disponibles</span>
+          <strong id="sidebarTitle">Cargando catálogo...</strong>
+        </div>
+        <nav id="listaReportes">
+          <p class="comite-muted">Cargando...</p>
+        </nav>
+        <div class="comite-access-note">
+          <span id="roleLabel">Validando permisos...</span>
+          <small>El catálogo lo decide el servidor según tu rol. Cuando un reporte es de alcance limitado, las filas
+            llegan ya recortadas: una empresa solo ve las suyas y un auditor solo lo propio.</small>
+        </div>
+      </aside>
+
+      <section class="comite-content">
+        <div class="comite-page-heading">
+          <div>
+            <span class="comite-kicker">Módulo de reportes</span>
+            <h2 id="viewTitle">Selecciona un reporte</h2>
+            <p id="viewDescription">Elige una opción del menú para ejecutarla.</p>
+          </div>
+          <button id="refreshButton" class="comite-button secondary" type="button" disabled>Actualizar</button>
+        </div>
+
+        <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
+
+        <div class="comite-workspace">
+          <section class="comite-panel">
+            <div class="comite-panel-heading">
+              <div>
+                <h3 id="panelTitle">Resultado</h3>
+                <p id="resultCount">Sin reporte ejecutado.</p>
+              </div>
+            </div>
+            <div id="tablaWrap" class="comite-table-wrap">
+              <div class="comite-empty-state">
+                <span class="comite-empty-icon">▤</span>
+                <h3>Ningún reporte ejecutado</h3>
+                <p>Las filas aparecerán aquí en cuanto elijas un reporte del menú.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const payload = leerToken(token);
+      if (!payload) return;
+
+      const $ = (selector) => document.querySelector(selector);
+
+      const estado = {
+        catalogo: [],
+        seleccionado: null
+      };
+
+      // Encabezados legibles. Las claves que no estén aquí se humanizan solas.
+      const ETIQUETAS = {
+        empresa: "Empresa",
+        nit: "NIT",
+        ciudad: "Ciudad",
+        solicitudes: "Solicitudes",
+        certificados_vigentes: "Certificados vigentes",
+        auditor: "Auditor",
+        auditores: "Auditores",
+        asignaciones: "Asignaciones",
+        auditorias: "Auditorías",
+        ejecutadas: "Ejecutadas",
+        numero_radicado: "Radicado",
+        radicado: "Radicado",
+        estado: "Estado",
+        fecha: "Fecha",
+        dias_abierta: "Días abierta",
+        fecha_inicio: "Fecha inicio",
+        fecha_fin: "Fecha fin",
+        codigo_verificacion: "Código de verificación",
+        fecha_emision: "Fecha de emisión",
+        fecha_vencimiento: "Vence",
+        dias_restantes: "Días restantes",
+        motivo: "Motivo",
+        fallo: "Fallo",
+        fecha_resolucion: "Resuelta el",
+        presenta: "Presenta",
+        revisa: "Revisa",
+        tipo_conflicto: "Tipo de conflicto",
+        bloquea_asignacion: "Bloquea asignación",
+        fecha_declaracion: "Declarado el",
+        descripcion: "Descripción",
+        dia_semana: "Día",
+        tipo_registro: "Tipo de registro"
+      };
+
+      $("#roleLabel").textContent = "Rol: " + (payload.role_name || "Usuario");
+
+      function leerToken(valor) {
+        try {
+          const parte = valor.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+          return JSON.parse(decodeURIComponent(atob(parte).split("").map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")));
+        } catch (_) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
+        }
+      }
+
+      async function api(ruta) {
+        const respuesta = await fetch(ruta, { headers: { Authorization: "Bearer " + token } });
+        if (respuesta.status === 401) {
+          localStorage.clear();
+          window.location.href = "/login";
+          return null;
+        }
+        const cuerpo = await respuesta.json().catch(() => null);
+        if (!respuesta.ok) {
+          const detalle = cuerpo && cuerpo.detail;
+          throw new Error(typeof detalle === "string" ? detalle : "No fue posible ejecutar el reporte (" + respuesta.status + ").");
+        }
+        return cuerpo;
+      }
+
+      function avisar(mensaje, tipo) {
+        const caja = $("#feedback");
+        caja.textContent = mensaje || "";
+        caja.className = "comite-feedback" + (mensaje ? " " + tipo : "");
+      }
+
+      function escapar(valor) {
+        return String(valor).replace(/[&<>"']/g, (c) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[c]);
+      }
+
+      function etiqueta(clave) {
+        if (ETIQUETAS[clave]) return ETIQUETAS[clave];
+        const texto = clave.replace(/_/g, " ");
+        return texto.charAt(0).toUpperCase() + texto.slice(1);
+      }
+
+      function fechaLegible(valor) {
+        const [fecha, hora] = String(valor).split("T");
+        const [anio, mes, dia] = fecha.split("-");
+        if (!anio || !mes || !dia) return String(valor);
+        const base = dia + "/" + mes + "/" + anio;
+        return hora ? base + " " + hora.slice(0, 5) : base;
+      }
+
+      function celda(clave, valor) {
+        if (valor === null || valor === undefined || valor === "") return "—";
+        if (typeof valor === "boolean") return valor ? "Sí" : "No";
+        if (/^fecha|_el$|_fecha$/.test(clave) && /^\d{4}-\d{2}-\d{2}/.test(String(valor))) {
+          return fechaLegible(valor);
+        }
+        return escapar(valor);
+      }
+
+      function columnas(filas) {
+        // Los identificadores internos no aportan nada a quien lee el reporte.
+        return Object.keys(filas[0]).filter((clave) => !/^id_/.test(clave));
+      }
+
+      function pintarTabla(reporte) {
+        const filas = reporte.filas;
+        if (!filas.length) {
+          $("#tablaWrap").innerHTML = '<div class="comite-empty-state"><span class="comite-empty-icon">∅</span>' +
+            "<h3>Sin filas</h3><p>El reporte se ejecutó correctamente pero no encontró datos que mostrar.</p></div>";
+          return;
+        }
+
+        const claves = columnas(filas);
+        const encabezado = claves.map((clave) => "<th>" + escapar(etiqueta(clave)) + "</th>").join("");
+        const cuerpo = filas.map((fila) =>
+          "<tr>" + claves.map((clave) => "<td>" + celda(clave, fila[clave]) + "</td>").join("") + "</tr>"
+        ).join("");
+
+        $("#tablaWrap").innerHTML =
+          '<table style="min-width:0"><thead><tr>' + encabezado + "</tr></thead><tbody>" + cuerpo + "</tbody></table>";
+      }
+
+      function pintarCatalogo() {
+        const nav = $("#listaReportes");
+        if (!estado.catalogo.length) {
+          $("#sidebarTitle").textContent = "Sin reportes";
+          nav.innerHTML = '<p class="comite-muted">Tu rol no tiene reportes asignados.</p>';
+          avisar("Tu rol no tiene reportes disponibles. Si crees que es un error, avísale al administrador.", "error");
+          return;
+        }
+
+        $("#sidebarTitle").textContent = estado.catalogo.length + " reporte(s)";
+        nav.innerHTML = estado.catalogo.map((reporte) =>
+          '<button class="comite-nav-link" type="button" data-codigo="' + escapar(reporte.codigo) + '" title="' +
+          escapar(reporte.descripcion) + '">' + escapar(reporte.titulo) + "</button>"
+        ).join("");
+
+        nav.querySelectorAll("button[data-codigo]").forEach((boton) => {
+          boton.addEventListener("click", () => ejecutar(boton.dataset.codigo));
+        });
+      }
+
+      function marcarActivo(codigo) {
+        $("#listaReportes").querySelectorAll("button[data-codigo]").forEach((boton) => {
+          boton.classList.toggle("active", boton.dataset.codigo === codigo);
+        });
+      }
+
+      async function ejecutar(codigo) {
+        const datos = estado.catalogo.find((item) => item.codigo === codigo);
+        if (!datos) return;
+
+        estado.seleccionado = codigo;
+        marcarActivo(codigo);
+        $("#refreshButton").disabled = false;
+        $("#viewTitle").textContent = datos.titulo;
+        $("#viewDescription").textContent = datos.descripcion;
+        $("#panelTitle").textContent = datos.titulo;
+        $("#resultCount").textContent = "Ejecutando reporte...";
+        $("#tablaWrap").innerHTML = '<p class="comite-loading">Consultando la base de datos...</p>';
+        avisar("");
+
+        try {
+          const reporte = await api("/api/reportes/" + encodeURIComponent(codigo));
+          if (!reporte) return;
+          pintarTabla(reporte);
+          $("#resultCount").textContent = reporte.total + " fila(s) · generado el " +
+            fechaLegible(String(reporte.generado_el).replace(/(Z|\+00:00)$/, "")) + " UTC";
+        } catch (error) {
+          $("#resultCount").textContent = "No se pudo ejecutar el reporte.";
+          $("#tablaWrap").innerHTML = '<div class="comite-empty-state"><span class="comite-empty-icon">!</span>' +
+            "<h3>Reporte no disponible</h3><p>Vuelve a intentarlo en unos momentos.</p></div>";
+          avisar(error.message, "error");
+        }
+      }
+
+      async function cargarCatalogo() {
+        try {
+          const catalogo = await api("/api/reportes");
+          if (!catalogo) return;
+          estado.catalogo = catalogo;
+          pintarCatalogo();
+        } catch (error) {
+          $("#sidebarTitle").textContent = "Error";
+          $("#listaReportes").innerHTML = "";
+          avisar(error.message, "error");
+        }
+      }
+
+      $("#refreshButton").addEventListener("click", () => {
+        if (estado.seleccionado) ejecutar(estado.seleccionado);
+      });
+
+      $("#logoutButton").addEventListener("click", () => {
+        localStorage.clear();
+        window.location.href = "/login";
+      });
+
+      cargarCatalogo();
+    })();
+  </script>
+<script src="/static/nav.js"></script>
+</body>
+
+</html>

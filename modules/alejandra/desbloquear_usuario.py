@@ -9,7 +9,7 @@ async def desbloquear_usuario(user_id: str, db: AsyncSession) -> bool:
         UPDATE usuario 
         SET bloqueado_hasta = NULL, 
             estado = 'Activo' 
-        WHERE id = :user_id
+        WHERE id_usuario = :user_id
     """)
     result = await db.execute(query, {"user_id": user_id})
     await db.commit()

@@ -10,6 +10,11 @@ from modules.auth.auth_schema import (
     CambiarPasswordRequest,
     CambiarPasswordExpiradaRequest,
 )
+from modules.auth.auth_schema import (
+    LoginRequest,
+    CodigoRequest,
+    LoginMFARequest,
+)
 from core.security import get_current_user
 from modules.auth.auth_schema import LoginRequest, CodigoRequest
 from modules.auth.auth_schema import (
@@ -77,7 +82,7 @@ async def cambiar_password(
     service = AuthService(db)
 
     return await service.cambiar_password(
-        current_user["id"],
+        current_user["id_usuario"],
         data.password_actual,
         data.password_nueva,
     )
@@ -98,7 +103,7 @@ async def cambiar_password_expirada(
 @router.get("/test-mail")
 async def test_mail():
 
-    await MailService.enviar_codigo(
+    await MailService.enviar_codigo_activar_mfa(
         destinatario="marlontaborda12@gmail.com",
         codigo="123456"
     )
@@ -170,3 +175,14 @@ async def historial_accesos(
         "total": len(logs),
         "registros": logs,
     }
+@router.post("/login-mfa")
+async def login_mfa(
+    datos: LoginMFARequest,
+    db: AsyncSession = Depends(get_db)
+):
+    service = AuthService(db)
+
+    return await service.login_mfa(
+        datos.correo,
+        datos.codigo
+    )

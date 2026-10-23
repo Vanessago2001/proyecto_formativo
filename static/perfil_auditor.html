@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Perfil del auditor</title>
+    <link rel="stylesheet" href="/static/tema.css">
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .portal-shell { max-width: var(--ancho-contenido); margin:0 auto; padding:28px; }
+        .header-logo { display:flex; align-items:center; gap:16px; }
+        .header-logo img { width:76px; height:auto; }
+        .header-logo h1 { font-size:30px; margin:0; }
+        .header-logo p { font-size:13px; opacity:.92; margin-top:6px; }
+        .card { background:#fff; border:1px solid #cbd5e1; border-radius:12px; padding:22px; margin-bottom:22px; box-shadow:0 2px 8px rgba(37,109,0,.06); }
+        .card-title { color:#256d00; font-size:20px; margin:0 0 14px; }
+        .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+        .form-group { display:flex; flex-direction:column; gap:6px; }
+        .form-control { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; color:#1f2937; background:#fff; }
+        .form-control:focus { outline:3px solid rgba(23,107,58,.14); border-color:#3baa01; }
+        .help-text { color:#5f6f69; font-size:13px; }
+        .btn { border:0; border-radius:8px; padding:10px 16px; font-weight:700; cursor:pointer; font-size:14px; transition:.2s ease; }
+        .btn-primary { background:#3baa01; color:#fff; box-shadow:0 3px 8px rgba(59,170,1,.20); }
+        .btn-primary:hover { background:#2f8f00; }
+        .btn-secondary { background:#e2e8f0; color:#334155; }
+        .btn-danger { background:#ef4444; color:#fff; }
+        .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+        .photo-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; }
+        .photo { width:150px; height:150px; border-radius:50%; object-fit:cover; border:4px solid #cfe3c5; box-shadow:0 6px 16px rgba(37,109,0,.12); background:#f1f5f9; }
+        .photo-placeholder { width:150px; height:150px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#f1f5f9; border:4px dashed #cbd5e1; color:#64748b; font-size:12px; text-align:center; padding:10px; }
+        .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+        .badge { display:inline-block; padding:4px 10px; border-radius:999px; background:#f1f5f9; color:#205d35; font-size:12px; font-weight:700; }
+        .footer { text-align:center; padding:18px 0; color:#64748b; font-size:12px; border-top:1px solid #cbd5e1; margin-top:28px; }
+        .back-button { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:6px; background:#e2e8f0; color:#334155; text-decoration:none; font-weight:600; font-size:13px; }
+        @media(max-width:720px){ .form-grid{grid-template-columns:1fr;} }
+    </style>
+</head>
+<body>
+    <header class="login-header">
+        <div class="header-content header-logo">
+            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+            <div>
+                <h1>CertiSENA</h1>
+                <p class="subtitle">Perfil del auditor</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="portal-shell">
+        <div style="margin-bottom:18px;display:flex;gap:10px;flex-wrap:wrap;">
+            <a class="back-button" href="/auditor">Volver al Dashboard</a>
+            <button type="button" class="btn btn-danger" onclick="cerrarSesion()">Cerrar sesión</button>
+        </div>
+
+        <div id="mensaje" style="display:none;padding:12px 14px;border-radius:8px;margin-bottom:16px;font-weight:600;"></div>
+
+        <!-- TARJETA: FOTO + DATOS BÁSICOS -->
+        <div class="card">
+            <h2 class="card-title">Datos básicos</h2>
+            <div class="row" style="align-items:flex-start;gap:24px;">
+                <div class="photo-wrap">
+                    <div id="fotoContainer">
+                        <div class="photo-placeholder">Sin foto</div>
+                    </div>
+                    <div class="actions" style="margin-top:0;">
+                        <label for="fotoInput" class="btn btn-secondary" style="cursor:pointer;">Cambiar fotografía</label>
+                        <input id="fotoInput" type="file" accept="image/*" style="display:none;">
+                        <button type="button" class="btn btn-danger" onclick="eliminarFoto()">Eliminar</button>
+                    </div>
+                    <span class="help-text" style="text-align:center;">JPG, PNG o WEBP · máx. 5 MB</span>
+                </div>
+                <div style="flex:1;min-width:260px;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nombre completo</label>
+                            <input id="nombre" class="form-control" placeholder="Nombre del auditor">
+                        </div>
+                        <div class="form-group">
+                            <label>Correo electrónico</label>
+                            <input id="correo" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Ciudad de residencia</label>
+                            <input id="ciudad" class="form-control" placeholder="Ciudad">
+                        </div>
+                        <div class="form-group">
+                            <label>Departamento de residencia</label>
+                            <input id="departamento" class="form-control" placeholder="Departamento">
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button type="button" class="btn btn-primary" onclick="guardarBasicos()">Guardar datos básicos</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TARJETA: PERFIL PROFESIONAL -->
+        <div class="card">
+            <h2 class="card-title">Perfil profesional</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Modalidad preferida</label>
+                    <select id="modalidad" class="form-control">
+                        <option value="">Seleccione...</option>
+                        <option value="Presencial">Presencial</option>
+                        <option value="Remota">Remota</option>
+                        <option value="Híbrida">Híbrida</option>
+                    </select>
+                </div>
+                <div class="form-group full-width" style="grid-column:1/-1;">
+                    <label>Resumen profesional</label>
+                    <textarea id="resumen" class="form-control" rows="5" placeholder="Describa su experiencia y competencias como auditor..."></textarea>
+                </div>
+            </div>
+            <div class="actions">
+                <button type="button" class="btn btn-primary" onclick="guardarProfesional()">Guardar perfil profesional</button>
+            </div>
+        </div>
+
+        <!-- TARJETA: ESTADO -->
+        <div class="card">
+            <h2 class="card-title">Estado del auditor</h2>
+            <div class="row">
+                <span class="badge" id="estadoAuditor">-</span>
+                <span class="help-text" id="calificacion">Calificación promedio: -</span>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        © 2026 CertiSENA - SENA. Todos los derechos reservados.
+    </footer>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        let usuarioId = null;
+        let fotoUrlActual = null;
+
+        function escapeHtml(v){ return (v===null||v===undefined)?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+        function mostrarMensaje(texto, tipo) {
+            const el = document.getElementById('mensaje');
+            el.textContent = texto;
+            el.style.display = 'block';
+            el.style.background = tipo === 'ok' ? '#e2e8f0' : '#f1f5f9';
+            el.style.color = tipo === 'ok' ? '#17582c' : '#8a2020';
+            el.style.border = tipo === 'ok' ? '1px solid #cfe3c5' : '1px solid #e7bfbb';
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+
+        async function resolverUsuario() {
+            if (usuarioId) return usuarioId;
+            if (!token) return null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
+                return usuarioId;
+            } catch { return null; }
+        }
+
+        async function cargarPerfil() {
+            const uid = await resolverUsuario();
+            if (!uid) { mostrarMensaje('No se pudo identificar al auditor.', 'error'); return; }
+            try {
+                const res = await fetch('/auditores/registro/' + encodeURIComponent(uid), {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No se pudo cargar el perfil.');
+
+                document.getElementById('nombre').value = data.nombre || '';
+                document.getElementById('correo').value = data.correo || '';
+                document.getElementById('estadoAuditor').textContent = data.estado_auditor || '-';
+
+                const perfil = data.perfil || {};
+                document.getElementById('ciudad').value = perfil.ciudad_residencia || '';
+                document.getElementById('departamento').value = perfil.departamento_residencia || '';
+                document.getElementById('modalidad').value = perfil.modalidad_preferida || '';
+                document.getElementById('resumen').value = perfil.resumen_profesional || '';
+                document.getElementById('calificacion').textContent = 'Calificación promedio: ' + (perfil.calificacion_promedio ?? '-');
+
+                fotoUrlActual = perfil.foto_url || null;
+                renderFoto(fotoUrlActual);
+            } catch (e) {
+                mostrarMensaje(e.message || 'Error cargando el perfil.', 'error');
+            }
+        }
+
+        function renderFoto(url) {
+            const cont = document.getElementById('fotoContainer');
+            if (url) {
+                cont.innerHTML = `<img class="photo" src="${escapeHtml(url)}" alt="Foto profesional" onerror="this.parentNode.innerHTML='<div class=\\'photo-placeholder\\'>Sin foto</div>'">`;
+            } else {
+                cont.innerHTML = '<div class="photo-placeholder">Sin foto profesional</div>';
+            }
+        }
+
+        async function guardarBasicos() {
+            const uid = await resolverUsuario();
+            if (!uid) return;
+            if (!confirm('⚠️ Advertencia: va a modificar los datos básicos del perfil. ¿Desea continuar?')) return;
+            const payload = {
+                nombre: document.getElementById('nombre').value.trim(),
+                ciudad_residencia: document.getElementById('ciudad').value.trim(),
+                departamento_residencia: document.getElementById('departamento').value.trim(),
+                modalidad_preferida: document.getElementById('modalidad').value || 'Presencial',
+                resumen_profesional: document.getElementById('resumen').value.trim(),
+                foto_url: fotoUrlActual || ''
+            };
+            try {
+                const res = await fetch('/auditores/registro/' + encodeURIComponent(uid) + '/perfil', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No fue posible guardar los datos básicos.');
+                mostrarMensaje(data.mensaje || 'Datos básicos guardados correctamente.', 'ok');
+            } catch (e) {
+                mostrarMensaje(e.message || 'Error guardando datos básicos.', 'error');
+            }
+        }
+
+        async function guardarProfesional() {
+            const uid = await resolverUsuario();
+            if (!uid) return;
+            if (!confirm('⚠️ Advertencia: va a modificar el perfil profesional. ¿Desea continuar?')) return;
+            const payload = {
+                nombre: document.getElementById('nombre').value.trim(),
+                ciudad_residencia: document.getElementById('ciudad').value.trim(),
+                departamento_residencia: document.getElementById('departamento').value.trim(),
+                modalidad_preferida: document.getElementById('modalidad').value || 'Presencial',
+                resumen_profesional: document.getElementById('resumen').value.trim(),
+                foto_url: fotoUrlActual || ''
+            };
+            try {
+                const res = await fetch('/auditores/registro/' + encodeURIComponent(uid) + '/perfil', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No fue posible guardar el perfil profesional.');
+                mostrarMensaje(data.mensaje || 'Perfil profesional guardado correctamente.', 'ok');
+            } catch (e) {
+                mostrarMensaje(e.message || 'Error guardando perfil profesional.', 'error');
+            }
+        }
+
+        document.getElementById('fotoInput').addEventListener('change', async (e) => {
+            const archivo = e.target.files[0];
+            if (!archivo) return;
+            if (!confirm('⚠️ Advertencia: va a reemplazar la fotografía profesional. ¿Desea continuar?')) { e.target.value = ''; return; }
+            const uid = await resolverUsuario();
+            if (!uid) return;
+            const fd = new FormData();
+            fd.append('archivo', archivo);
+            try {
+                const res = await fetch('/auditores/registro/' + encodeURIComponent(uid) + '/perfil/foto', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: fd
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No fue posible subir la foto.');
+                fotoUrlActual = data.foto_url || fotoUrlActual;
+                renderFoto(fotoUrlActual);
+                mostrarMensaje(data.mensaje || 'Foto actualizada correctamente.', 'ok');
+            } catch (err) {
+                mostrarMensaje(err.message || 'Error subiendo la foto.', 'error');
+            }
+            e.target.value = '';
+        });
+
+        async function eliminarFoto() {
+            const uid = await resolverUsuario();
+            if (!uid) return;
+            if (!confirm('¿Eliminar la fotografía profesional?')) return;
+            try {
+                const res = await fetch('/auditores/registro/' + encodeURIComponent(uid) + '/perfil/foto', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No fue posible eliminar la foto.');
+                fotoUrlActual = null;
+                renderFoto(null);
+                mostrarMensaje(data.mensaje || 'Foto eliminada.', 'ok');
+            } catch (err) {
+                mostrarMensaje(err.message || 'Error eliminando la foto.', 'error');
+            }
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem('access_token');
+            window.location.href = '/login';
+        }
+
+        cargarPerfil();
+    </script>
+</body>
+</html>

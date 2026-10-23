@@ -32,7 +32,7 @@ class MFAService:
 
         result = await self.db.execute(
             text("""
-            SELECT id
+            SELECT id_usuario
             FROM usuario
             WHERE LOWER(correo) = LOWER(:correo)
             """),
@@ -73,12 +73,12 @@ class MFAService:
                 mfa_codigo = :codigo,
                 mfa_expira = :expira,
                 mfa_verificado = FALSE
-                WHERE id = :id
+                WHERE id_usuario = :id_usuario
                 """),
                 {
                     "codigo": codigo,
                     "expira": expira,
-                    "id": usuario["id"],
+                    "id_usuario": usuario["id_usuario"],
                 },
             )
     
@@ -88,7 +88,7 @@ class MFAService:
         # Enviar código al correo
         # --------------------------------------------------------
     
-        await MailService.enviar_codigo(
+        await MailService.enviar_codigo_activar_mfa(
             destinatario=correo,
             codigo=codigo,
          )
@@ -119,7 +119,7 @@ class MFAService:
 
         result = await self.db.execute(
             text("""
-            SELECT id
+            SELECT id_usuario
             FROM usuario
             WHERE LOWER(correo)=LOWER(:correo)
             """),
@@ -158,22 +158,23 @@ class MFAService:
                 mfa_codigo=:codigo,
                 mfa_expira=:expira,
                 mfa_verificado=FALSE
-            WHERE id=:id
+            WHERE id_usuario=:id_usuario
             """),
             {
                 "codigo": codigo,
                 "expira": expira,
-                "id": usuario["id"]
+                "id_usuario": usuario["id_usuario"]
             },
         )
-
+        print("UPDATE ejecutado")
         await self.db.commit()
+        print("COMMIT realizado")
 
         # --------------------------------------------------------
         # Enviar correo
         # --------------------------------------------------------
 
-        await MailService.enviar_codigo(
+        await MailService.enviar_codigo_login_mfa(
             destinatario=correo,
             codigo=codigo
         )
@@ -211,7 +212,7 @@ class MFAService:
         result = await self.db.execute(
             text("""
             SELECT
-            id,
+            id_usuario,
             mfa_codigo,
             mfa_expira,
             mfa_verificado
@@ -293,10 +294,10 @@ class MFAService:
             mfa_verificado = TRUE,
             mfa_codigo = NULL,
             mfa_expira = NULL
-            WHERE id = :id
+            WHERE id_usuario = :id_usuario
             """),
             {
-                "id": usuario["id"]
+                "id_usuario": usuario["id_usuario"]
             },
         )
 
@@ -342,6 +343,8 @@ class MFAService:
     # ============================================================
 
     async def disable(self, current_user: dict):
+        print("===== ENTRÓ A DISABLE =====")
+        print(current_user)
 
         # --------------------------------------------------------
         # Obtener correo del usuario autenticado
@@ -356,7 +359,7 @@ class MFAService:
         result = await self.db.execute(
             text("""
             SELECT
-            id,
+            id_usuario,
             mfa_activado
             FROM usuario
             WHERE LOWER(correo) = LOWER(:correo)
@@ -410,12 +413,12 @@ class MFAService:
             mfa_codigo = :codigo,
             mfa_expira = :expira,
             mfa_verificado = FALSE
-            WHERE id = :id
+            WHERE id_usuario = :id_usuario
             """),
             {
                 "codigo": codigo,
                 "expira": expira,
-                "id": usuario["id"],
+                "id_usuario": usuario["id_usuario"],
             },
         )
 
@@ -424,11 +427,12 @@ class MFAService:
         # --------------------------------------------------------
         # Enviar código al correo del usuario
         # --------------------------------------------------------
-
-        await MailService.enviar_codigo(
+        print("Generando correo para:", correo)
+        await MailService.enviar_codigo_desactivar_mfa(
             destinatario=correo,
             codigo=codigo,
         )
+        print("Correo enviado")
 
         return {
         "message": "Código para desactivar MFA enviado correctamente al correo."
@@ -457,7 +461,7 @@ class MFAService:
         result = await self.db.execute(
             text("""
             SELECT
-            id,
+            id_usuario,
             mfa_activado,
             mfa_codigo,
             mfa_expira,
@@ -550,10 +554,10 @@ class MFAService:
             mfa_verificado = FALSE,
             mfa_codigo = NULL,
             mfa_expira = NULL
-            WHERE id = :id
+            WHERE id_usuario = :id_usuario
             """),
             {
-                "id": usuario["id"]
+                "id_usuario": usuario["id_usuario"]
             },
         )
 

@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CertiSENA | Apelaciones</title>
+  <link rel="stylesheet" href="/static/tema.css">
+  <link rel="stylesheet" href="/static/styles.css" />
+  <style>
+    :root {
+      --verde-900: #1b4b12;
+      --verde-800: #256d00;
+      --verde-700: #256d00;
+      --verde-600: #3baa01;
+      --verde-100: #f1f5f9;
+      --verde-50: #f1f5f9;
+      --gris-900: #1f2937;
+      --gris-700: #475569;
+      --gris-500: #64748b;
+      --gris-200: #e2e8f0;
+      --gris-100: #f1f5f9;
+      --azul-100: #e8f1ff;
+      --azul-700: #1e4db8;
+      --amarillo-100: #fff3cd;
+      --amarillo-700: #7a5400;
+      --rojo-100: #fffbeb;
+      --rojo-700: #b42318;
+      --blanco: #ffffff;
+      --sombra: 0 12px 28px rgba(22, 35, 12, 0.08);
+      --borde: 1px solid #e2e8f0;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--tipografia);
+      background: var(--gris-100);
+      color: var(--gris-900);
+    }
+
+    .page-shell {
+      max-width: var(--ancho-contenido);
+      margin: 32px auto;
+      padding: 0 20px 48px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .brand h1 {
+      margin: 8px 0 0;
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      color: var(--verde-800);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--verde-100);
+      color: var(--verde-700);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ghost-link,
+    button {
+      font: inherit;
+    }
+
+    .ghost-link {
+      color: var(--verde-800);
+      text-decoration: none;
+      font-weight: 700;
+      border: 1px solid var(--gris-200);
+      background: var(--blanco);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+
+    .panel {
+      background: var(--blanco);
+      border: var(--borde);
+      border-radius: 16px;
+      box-shadow: var(--sombra);
+      padding: 24px;
+    }
+
+    .alert {
+      display: none;
+      margin-bottom: 18px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .alert.success {
+      display: block;
+      background: #f1f5f9;
+      color: #205531;
+      border: 1px solid #cfe3c5;
+    }
+
+    .alert.error {
+      display: block;
+      background: #fffbeb;
+      color: #7a1f1a;
+      border: 1px solid #f8c7c4;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .metric {
+      background: var(--blanco);
+      border: var(--borde);
+      border-radius: 14px;
+      padding: 18px 18px 16px;
+      box-shadow: var(--sombra);
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--gris-500);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+    }
+
+    .metric-value {
+      margin-top: 14px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--verde-800);
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      gap: 22px;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .side-title {
+      margin: 0; color: var(--verde-800); font-size: 1.1rem;
+    }
+
+    .flow-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .flow-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px 10px;
+      border-radius: 10px;
+      background: var(--verde-50);
+      border: 1px solid #e2e8f0;
+      color: var(--verde-900);
+      font-weight: 600;
+    }
+
+    .flow-number {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: var(--verde-600);
+      color: var(--blanco);
+      display: grid;
+      place-items: center;
+      font-size: 0.8rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .field,
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 700;
+      color: var(--verde-800);
+    }
+
+    input, textarea, select, button {
+      font: inherit;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid #cfe3c5;
+      background: #ffffff;
+      padding: 11px 12px;
+      color: var(--gris-900);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .read-only {
+      background: #f8fafc;
+      color: var(--gris-700);
+    }
+
+    .two-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 18px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 11px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter 0.2s ease;
+    }
+
+    button:hover { filter: brightness(0.97); }
+    button:active { filter: brightness(0.94); }
+
+    .primary { background: var(--verde-600); color: var(--blanco); }
+    .secondary { background: #f1f5f9; color: var(--verde-900); }
+    .muted-action { background: #f1f5f9; color: var(--azul-700); }
+    .warning { background: var(--amarillo-100); color: var(--amarillo-700); }
+    .danger { background: #dc2626; color: var(--blanco); }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 140px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .status.sin_solicitud { background: #f1f5f9; color: #475569; }
+    .status.enviada { background: var(--verde-100); color: var(--verde-700); }
+    .status.en_revision { background: var(--azul-100); color: var(--azul-700); }
+    .status.informacion_solicitada { background: var(--amarillo-100); color: var(--amarillo-700); }
+    .status.aprobada { background: #e4f1dc; color: #1e7d4d; }
+    .status.rechazada { background: var(--rojo-100); color: var(--rojo-700); }
+    .status.cancelada { background: #e2e8f0; color: #4b5563; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .section-header h2,
+    .section-header h3 {
+      margin: 0;
+      color: var(--verde-800);
+    }
+
+    .support-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .support-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 14px 16px;
+    }
+
+    .support-item strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--gris-900);
+    }
+
+    .support-item small {
+      color: var(--gris-500);
+    }
+
+    .timeline {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .timeline-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      border-left: 3px solid #cfe3c5;
+      padding-left: 12px;
+      color: var(--gris-700);
+    }
+
+    .timeline-dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 8px;
+      border-radius: 50%;
+      background: var(--verde-600);
+      flex-shrink: 0;
+    }
+
+    /* Un boton que todavia no se puede usar tiene que verse asi. */
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .vista-nav {
+      display: grid;
+      gap: 4px;
+      margin-top: 14px;
+    }
+
+    .vista-link {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--gris-700);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .vista-link:hover {
+      background: var(--verde-50);
+      color: var(--verde-800);
+    }
+
+    .vista-link.activa {
+      background: var(--verde-100);
+      color: var(--verde-800);
+      box-shadow: inset 3px 0 0 var(--verde-600);
+    }
+
+    .vista-link[hidden] { display: none; }
+
+    .plegable > summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--verde-800);
+      list-style: none;
+    }
+
+    .plegable > summary::after {
+      content: " ▾";
+      color: var(--gris-500);
+    }
+
+    .plegable[open] > summary::after { content: " ▴"; }
+
+    .archivo-fila {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+
+    .archivo-fila small { color: var(--gris-500); }
+
+    .quitar-archivo {
+      border: 0;
+      background: transparent;
+      color: var(--rojo-700);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .hint {
+      margin: 10px 0 0;
+      color: var(--gris-500);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .badge-soft {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--verde-100);
+      color: var(--verde-800);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .expediente-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .expediente-bloque {
+      border: var(--borde);
+      border-radius: 14px;
+      background: var(--verde-50);
+      padding: 16px 18px;
+    }
+
+    .dato-lista {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 6px 14px;
+      margin: 14px 0 0;
+      font-size: 14px;
+    }
+
+    .dato-lista dt {
+      color: var(--gris-500);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      align-self: center;
+    }
+
+    .dato-lista dd {
+      margin: 0;
+      color: var(--gris-900);
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .miembro-fila {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .miembro-fila input[type="checkbox"] {
+      margin-top: 4px;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--verde-600);
+    }
+
+    .miembro-vetado {
+      opacity: 0.72;
+    }
+
+    .marca-vetado {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--amarillo-100);
+      color: var(--amarillo-700);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .marca-asignado {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--azul-100);
+      color: var(--azul-700);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .empty-state {
+      padding: 16px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+      background: #f8fafc;
+      color: var(--gris-500);
+    }
+
+    @media (max-width: 880px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .content-grid { grid-template-columns: 1fr; }
+      .two-cols { grid-template-columns: 1fr; }
+      .expediente-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .metrics { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="badge">Módulo de apelaciones</span>
+        <h1>Gestión y revisión</h1>
+      </div>
+      <div class="header-actions">
+        <a class="ghost-link" id="backLink" href="/empresa">Volver a mis solicitudes</a>
+        <button class="secondary" id="logoutBtn" type="button">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <div id="alertBox" class="alert"></div>
+
+    <section class="metrics">
+      <div class="metric">
+        <div class="metric-label">Estado</div>
+        <div class="metric-value" id="metricEstado">Sin solicitud</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Solicitud</div>
+        <div class="metric-value" id="metricSolicitud">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Radicado</div>
+        <div class="metric-value" id="metricRadicado">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Último cambio</div>
+        <div class="metric-value" id="metricFecha">--</div>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <aside class="sidebar">
+        <div class="panel">
+          <h3 class="side-title">Apelaciones</h3>
+          <nav class="vista-nav" id="vistaNav">
+            <button class="vista-link" type="button" data-vista="bandeja">Bandeja del comité</button>
+            <button class="vista-link" type="button" data-vista="expediente">Expediente</button>
+            <button class="vista-link" type="button" data-vista="apelacion">Mi apelación</button>
+            <button class="vista-link" type="button" data-vista="requerimientos">Requerimientos</button>
+            <button class="vista-link" type="button" data-vista="decision">Decisión del comité</button>
+            <button class="vista-link" type="button" data-vista="asignar">Asignar comité</button>
+          </nav>
+          <p class="hint" id="vistaAyuda">Seleccione una apelación de la bandeja.</p>
+        </div>
+
+        <!-- Se usan poco: se guardan plegados para no robar espacio. -->
+        <details class="panel plegable">
+          <summary>Flujo y búsqueda</summary>
+
+          <h3 class="side-title">Flujo de la apelación</h3>
+          <div class="flow-list">
+            <div class="flow-item"><span class="flow-number">1</span><span>Solicitud rechazada</span></div>
+            <div class="flow-item"><span class="flow-number">2</span><span>Empresa presenta apelación</span></div>
+            <div class="flow-item"><span class="flow-number">3</span><span>Comité revisa evidencias</span></div>
+            <div class="flow-item"><span class="flow-number">4</span><span>Aprobación o rechazo final</span></div>
+          </div>
+
+          <h3 class="side-title" style="margin-top: 18px;">Buscar solicitud</h3>
+          <div class="stack">
+            <label for="solicitudId">ID de la solicitud</label>
+            <input id="solicitudId" type="text" placeholder="ID de la solicitud" />
+          </div>
+          <div class="actions">
+            <button class="primary" id="btnBuscar" type="button">Buscar</button>
+          </div>
+        </details>
+      </aside>
+
+      <main class="main-column">
+        <!-- =============== BANDEJA =============== -->
+        <section class="panel" data-vista-panel="bandeja" hidden>
+          <div class="section-header">
+            <h2>Bandeja del comité</h2>
+            <button class="secondary" id="btnActualizarBandeja" type="button">Actualizar</button>
+          </div>
+          <p class="hint">Las apelaciones que le corresponde revisar. Abra una para ver su expediente.</p>
+          <div id="listaApelaciones" class="support-list"></div>
+        </section>
+
+        <!-- =============== EXPEDIENTE =============== -->
+        <section class="panel" data-vista-panel="expediente" hidden>
+          <div class="section-header">
+            <h2>Expediente de la apelación</h2>
+            <span class="badge-soft" id="expedienteRadicado">--</span>
+          </div>
+          <p class="hint">La solicitud original, la evaluación previa del Comité y la apelación con sus evidencias.</p>
+
+          <div class="expediente-grid">
+            <article class="expediente-bloque">
+              <h3 class="side-title">Solicitud original</h3>
+              <dl id="expedienteSolicitud" class="dato-lista"></dl>
+            </article>
+
+            <article class="expediente-bloque">
+              <h3 class="side-title">Comité asignado a la apelación</h3>
+              <div id="expedienteComite" class="support-list"></div>
+            </article>
+          </div>
+
+          <article class="expediente-bloque" style="margin-top: 18px;">
+            <h3 class="side-title">Evaluación previa del Comité</h3>
+            <div id="expedienteEvaluacion" class="support-list"></div>
+          </article>
+
+          <article class="expediente-bloque" style="margin-top: 18px;">
+            <h3 class="side-title">Evidencias aportadas por la empresa</h3>
+            <div id="expedienteEvidencias" class="support-list"></div>
+          </article>
+
+          <article class="expediente-bloque" style="margin-top: 18px;">
+            <h3 class="side-title">Motivo de la apelación</h3>
+            <p id="expedienteMotivo" class="hint">--</p>
+          </article>
+        </section>
+
+        <!-- =============== MI APELACIÓN (empresa) =============== -->
+        <section class="panel" data-vista-panel="apelacion" hidden>
+          <div class="section-header">
+            <h2>Mi apelación</h2>
+            <span id="estadoBadge" class="status sin_solicitud">Sin apelación</span>
+          </div>
+
+          <div class="two-cols">
+            <div class="stack">
+              <label for="razonesRechazo">Razones del rechazo inicial</label>
+              <textarea id="razonesRechazo" class="read-only" readonly>El sistema todavía no registra una razón de rechazo para esta solicitud. Revise la evaluación previa del auditor.</textarea>
+            </div>
+
+            <div class="stack">
+              <label for="motivo">Motivo de la apelación</label>
+              <textarea id="motivo" placeholder="Explique de forma clara y precisa por qué considera que la decisión fue incorrecta y qué desea corregir."></textarea>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="btnCrear" type="button">Enviar apelación</button>
+            <button class="secondary" id="btnGuardar" type="button">Guardar cambios</button>
+            <button class="danger" id="btnCancelar" type="button">Cancelar apelación</button>
+          </div>
+        </section>
+
+        <!-- =============== DOCUMENTOS (empresa) =============== -->
+        <section class="panel" data-vista-panel="apelacion" style="margin-top: 22px;" hidden>
+          <div class="section-header">
+            <h3>Documentos de la apelación</h3>
+          </div>
+
+          <div id="avisoRequerimiento" class="empty-state" hidden></div>
+
+          <div class="two-cols" style="margin-top: 16px;">
+            <div class="stack">
+              <label for="evidenciaArchivo">Adjuntar documentos</label>
+              <input id="evidenciaArchivo" type="file" multiple />
+              <p class="hint">Puede elegir varios a la vez, o ir añadiéndolos de uno en uno.</p>
+            </div>
+            <div class="stack">
+              <label for="evidenciaDescripcion">Descripción</label>
+              <textarea id="evidenciaDescripcion" placeholder="Describa qué documentos adjunta y por qué respaldan la apelación."></textarea>
+            </div>
+          </div>
+
+          <div class="stack" style="margin-top: 14px;">
+            <label>Listos para enviar</label>
+            <div id="listaPorEnviar" class="support-list"></div>
+          </div>
+
+          <div class="actions">
+            <button class="muted-action" id="btnAdjuntar" type="button">Enviar documentos</button>
+          </div>
+
+          <div class="section-header" style="margin-top: 24px;">
+            <h3>Documentos ya enviados</h3>
+          </div>
+          <div id="listaEvidencias" class="support-list"></div>
+        </section>
+
+        <!-- =============== REQUERIMIENTOS =============== -->
+        <section class="panel" data-vista-panel="requerimientos" hidden>
+          <div class="section-header">
+            <h2>Requerimientos de información</h2>
+            <button class="secondary" id="btnActualizarRequerimientos" type="button">Actualizar</button>
+          </div>
+          <p class="hint">Lo que el Comité ha pedido en esta apelación y si ya fue atendido.</p>
+          <div id="listaRequerimientos" class="support-list"></div>
+        </section>
+
+        <!-- =============== DECISIÓN DEL COMITÉ =============== -->
+        <section class="panel" data-vista-panel="decision" hidden>
+          <div class="section-header">
+            <h2>Decisión del comité</h2>
+            <span id="estadoDecision" class="badge-soft">--</span>
+          </div>
+
+          <article class="expediente-bloque">
+            <h3 class="side-title">Solicitar más información</h3>
+            <p class="hint">
+              Escriba qué documentos debe adjuntar la empresa. El texto se le muestra tal cual,
+              así que conviene enumerarlos.
+            </p>
+            <div class="stack" style="margin-top: 12px;">
+              <label for="documentosRequeridos">Documentos que debe adjuntar la empresa</label>
+              <textarea id="documentosRequeridos" rows="4"
+                placeholder="1) Certificado de cámara de comercio vigente.&#10;2) Acta del comité de calidad con el plan de acción.&#10;3) Registro fotográfico del área corregida."></textarea>
+              <small id="ayudaRequerimiento" class="hint">Mínimo 10 caracteres.</small>
+            </div>
+            <div class="stack" style="margin-top: 12px;">
+              <label for="observacionRequerimiento">Nota interna (opcional)</label>
+              <input id="observacionRequerimiento" type="text"
+                     placeholder="Por ejemplo: se concede un plazo de 5 días hábiles." />
+            </div>
+            <div class="actions">
+              <button class="warning" id="btnSolicitarInfo" type="button">Solicitar más información</button>
+            </div>
+          </article>
+
+          <article class="expediente-bloque" style="margin-top: 18px;">
+            <h3 class="side-title">Respuesta del comité</h3>
+            <textarea id="comentariosComite" placeholder="Fundamento de la decisión. Lo verá la empresa."></textarea>
+            <div class="actions" style="margin-top: 18px;">
+              <button class="primary" id="btnAprobar" type="button">Aprobar apelación</button>
+              <button class="danger" id="btnRechazar" type="button">Rechazar apelación</button>
+            </div>
+            <p class="hint" id="avisoDecision"></p>
+          </article>
+        </section>
+
+        <!-- =============== ASIGNAR COMITÉ (administración) =============== -->
+        <section class="panel" data-vista-panel="asignar" hidden>
+          <div class="section-header">
+            <h2>Asignar el comité de la apelación</h2>
+            <button class="secondary" id="btnActualizarElegibles" type="button">Actualizar</button>
+          </div>
+          <p class="hint">
+            Debe ser un comité distinto al que evaluó la solicitud original: quienes
+            ya la evaluaron aparecen marcados y no se pueden seleccionar. Si elige a
+            un auditor, el sistema le pasa el rol a Comité al asignarlo.
+          </p>
+          <div id="listaElegibles" class="support-list"></div>
+          <div class="actions">
+            <button class="primary" id="btnAsignarComite" type="button">Asignar comité</button>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('access_token');
+    const state = {
+      currentAppealId: null,
+      currentSolicitudId: null,
+      role: null,
+      vista: null,
+      estado: null,           // estado de la apelación abierta
+      apelable: false,        // la solicitud está rechazada y se puede apelar
+      comiteAsignado: 0,      // miembros del comité asignados
+      archivos: [],           // documentos elegidos y todavía sin enviar
+    };
+
+    function parseUserRole() {
+      if (!token) return null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return payload.role_name || payload.rol || payload.roles || null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function setAlert(message, kind) {
+      const alertBox = document.getElementById('alertBox');
+      alertBox.textContent = message;
+      alertBox.className = 'alert ' + kind;
+    }
+
+    function normalizeStatus(status) {
+      if (!status) return 'sin_solicitud';
+      return String(status).toLowerCase().replace(/[^a-z]/g, '_');
+    }
+
+    function renderStatus(status) {
+      const badge = document.getElementById('estadoBadge');
+      const metric = document.getElementById('metricEstado');
+      const label = status || 'Sin apelación';
+      badge.textContent = label;
+      badge.className = 'status ' + normalizeStatus(label);
+      metric.textContent = label;
+      metric.className = 'metric-value';
+    }
+
+    function formatDate(value) {
+      if (!value) return '--';
+      const safeValue = value.includes('T') ? value : `${value}T00:00:00`;
+      const date = new Date(safeValue);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    async function api(url, options = {}) {
+      if (!token) {
+        setAlert('Debe iniciar sesión para gestionar la apelación.', 'error');
+        return null;
+      }
+
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      const payload = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+
+      if (!response.ok) {
+        throw new Error(payload?.detail || 'Error en la petición');
+      }
+
+      return payload;
+    }
+
+    function fieldValue(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function setValuesFromAppeal(data) {
+      state.currentAppealId = data.id || state.currentAppealId;
+      state.currentSolicitudId = data.id_solicitud || state.currentSolicitudId;
+      document.getElementById('solicitudId').value = data.id_solicitud || '';
+      document.getElementById('motivo').value = data.motivo || '';
+      document.getElementById('razonesRechazo').value = data.razones_rechazo || 'La solicitud fue rechazada y aún no se registró una explicación detallada en la evaluación inicial.';
+      document.getElementById('comentariosComite').value = data.observaciones || '';
+      document.getElementById('metricSolicitud').textContent = data.id_solicitud || '--';
+      document.getElementById('metricRadicado').textContent = data.radicado || '--';
+      document.getElementById('metricFecha').textContent = formatDate(data.fecha || data.fecha_decision);
+      state.estado = data.estado || null;
+      renderStatus(data.estado || 'Sin apelación');
+      const motivo = document.getElementById('expedienteMotivo');
+      if (motivo) motivo.textContent = data.motivo || 'Sin motivo registrado.';
+      cargarEvidencias(state.currentAppealId);
+      cargarRequerimientos();
+      actualizarDisponibilidad();
+    }
+
+    function esComite() {
+      const roles = Array.isArray(state.role) ? state.role : [state.role];
+      return roles.some((role) => {
+        const normalized = String(role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        return normalized.includes('comite') || normalized.includes('admin');
+      });
+    }
+
+    function normalizarRol(valor) {
+      return String(valor || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    }
+
+    function esAdministracion() {
+      const roles = Array.isArray(state.role) ? state.role : [state.role];
+      return roles.some((role) => {
+        const normalizado = normalizarRol(role);
+        return normalizado.includes('admin') || normalizado.includes('auxiliar');
+      });
+    }
+
+    function esEmpresa() {
+      const roles = Array.isArray(state.role) ? state.role : [state.role];
+      return roles.some((role) => String(role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === 'empresa');
+    }
+
+    function configurarAccionesPorRol() {
+      const company = esEmpresa();
+
+      configurarNavegacion();
+      document.getElementById('btnBuscar').style.display = company ? '' : 'none';
+      document.getElementById('solicitudId').readOnly = !company;
+      document.getElementById('motivo').readOnly = !company;
+      document.getElementById('evidenciaDescripcion').readOnly = !company;
+      document.getElementById('backLink').href = company ? '/empresa' : '/dashboard';
+      document.getElementById('backLink').textContent = company
+        ? 'Volver a mis solicitudes'
+        : 'Volver al panel';
+
+      mostrarVista(company ? 'apelacion' : 'bandeja');
+    }
+
+    async function cargarBandejaComite() {
+      if (!esComite()) return;
+      const container = document.getElementById('listaApelaciones');
+      container.innerHTML = '<div class="empty-state">Cargando apelaciones...</div>';
+      try {
+        const apelaciones = await api('/api/apelaciones/');
+        if (!Array.isArray(apelaciones) || apelaciones.length === 0) {
+          container.innerHTML = '<div class="empty-state">No hay apelaciones radicadas.</div>';
+          return;
+        }
+        container.innerHTML = apelaciones.map((item) => `
+          <div class="support-item">
+            <strong>${escapeHtml(item.radicado || 'Apelación ' + item.id)}</strong>
+            <div>Solicitud: ${escapeHtml(item.id_solicitud || '--')} · Estado: ${escapeHtml(item.estado || '--')}</div>
+            <small>Fecha: ${formatDate(item.fecha)}</small>
+            <div class="actions"><button class="secondary" type="button" data-appeal-id="${item.id}">Revisar</button></div>
+          </div>
+        `).join('');
+        container.querySelectorAll('[data-appeal-id]').forEach((button) => {
+          button.addEventListener('click', () => cargarDetalleApelacion(button.dataset.appealId));
+        });
+      } catch (error) {
+        container.innerHTML = '<div class="empty-state">No se pudo cargar la bandeja del comité.</div>';
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function cargarDetalleApelacion(id) {
+      try {
+        const data = await api(`/api/apelaciones/${id}`);
+        if (data) {
+          setValuesFromAppeal(data);
+          await cargarExpediente(id);
+          mostrarVista('expediente');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setAlert('Apelación abierta. Revise el expediente antes de decidir.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function buscarApelacionPorSolicitud() {
+      const idSolicitud = fieldValue('solicitudId');
+      if (!idSolicitud) {
+        setAlert('Digite el ID de la solicitud rechazada para continuar.', 'error');
+        return;
+      }
+
+      try {
+        // El contexto dice si la solicitud se puede apelar y por que la
+        // rechazo el Comite, sin depender del texto exacto del estado.
+        const [listado, contexto] = await Promise.all([
+          api('/api/apelaciones/'),
+          api(`/api/apelaciones/solicitud/${encodeURIComponent(idSolicitud)}/contexto`),
+        ]);
+        const item = Array.isArray(listado) ? listado.find((a) => String(a.id_solicitud) === String(idSolicitud)) : null;
+
+        if (!item) {
+          const estaRechazada = Boolean(contexto.apelable);
+          const razones = contexto.motivo_rechazo || '';
+          state.currentAppealId = null;
+          state.currentSolicitudId = idSolicitud;
+          document.getElementById('motivo').value = '';
+          document.getElementById('razonesRechazo').value = razones || 'El Comité no dejó un motivo escrito al rechazar la solicitud.';
+          document.getElementById('metricSolicitud').textContent = idSolicitud;
+          document.getElementById('metricRadicado').textContent = '--';
+          document.getElementById('metricFecha').textContent = '--';
+          state.estado = null;
+          state.apelable = estaRechazada;
+          renderStatus(estaRechazada ? 'Sin apelación' : (contexto.estado || 'Solicitud no disponible'));
+          actualizarDisponibilidad();
+          document.getElementById('listaEvidencias').innerHTML = '<div class="empty-state">Aún no hay evidencia asociada a esta solicitud.</div>';
+          setAlert(estaRechazada
+            ? 'No hay apelación creada. Puede presentarla desde aquí.'
+            : `La apelación solo se habilita cuando la solicitud está rechazada (estado actual: ${contexto.estado || 'desconocido'}).`,
+            estaRechazada ? 'success' : 'error');
+          return;
+        }
+
+        const detail = await api(`/api/apelaciones/${item.id}`);
+        document.getElementById('btnCrear').disabled = true;
+        setValuesFromAppeal(detail || item);
+        setAlert('Se cargó la apelación asociada a la solicitud.', 'success');
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function crearApelacion() {
+      const idSolicitud = fieldValue('solicitudId');
+      const motivo = fieldValue('motivo');
+      if (!idSolicitud || !motivo) {
+        setAlert('Debe ingresar la solicitud y explicar el motivo de la apelación.', 'error');
+        return;
+      }
+
+      try {
+        const payload = {
+          id_solicitud: idSolicitud,
+          motivo,
+          razones_rechazo: fieldValue('razonesRechazo') || 'Rechazo por revisión inicial.',
+          id_empresa: String(state.role || 'empresa'),
+        };
+
+        const data = await api('/api/apelaciones/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (data) {
+          document.getElementById('btnCrear').disabled = true;
+          setValuesFromAppeal(data);
+          setAlert('La apelación fue creada correctamente.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function guardarCambios() {
+      if (!state.currentAppealId) {
+        setAlert('Primero cree o busque la apelación.', 'error');
+        return;
+      }
+
+      try {
+        const payload = {
+          motivo: fieldValue('motivo') || undefined,
+          razones_rechazo: fieldValue('razonesRechazo') || undefined,
+        };
+
+        const data = await api(`/api/apelaciones/${state.currentAppealId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (data) {
+          setValuesFromAppeal(data);
+          setAlert('Se guardaron los cambios de la apelación.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+
+    const NOMBRE_ACCION = {
+      'rechazar': 'Rechazó el expediente',
+      'aprobar': 'Aprobó el expediente',
+      'decision-definitiva': 'Registró la decisión definitiva',
+      'decisiones': 'Registró decisiones',
+      'solicitar-info': 'Solicitó más información',
+      'observacion': 'Dejó una observación',
+    };
+
+    function fechaHora(valor) {
+      if (!valor) return '--';
+      const texto = String(valor);
+      const fecha = new Date(texto.includes('T') ? texto : texto.replace(' ', 'T'));
+      if (Number.isNaN(fecha.getTime())) return texto;
+      return fecha.toLocaleString('es-CO', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
+    }
+
+    function filaDeDato(etiqueta, valor) {
+      if (valor === null || valor === undefined || valor === '') return '';
+      return `<dt>${escapeHtml(etiqueta)}</dt><dd>${escapeHtml(valor)}</dd>`;
+    }
+
+    function pintarSolicitudOriginal(solicitud) {
+      const contenedor = document.getElementById('expedienteSolicitud');
+      if (!solicitud) {
+        contenedor.innerHTML = '';
+        return;
+      }
+      const norma = [solicitud.norma_codigo, solicitud.norma_version].filter(Boolean).join(' · ');
+      contenedor.innerHTML = [
+        filaDeDato('Radicado', solicitud.numero_radicado),
+        filaDeDato('Estado', solicitud.estado),
+        filaDeDato('Empresa', solicitud.empresa_nombre),
+        filaDeDato('NIT', solicitud.empresa_nit),
+        filaDeDato('Norma', norma),
+        filaDeDato('Alcance', solicitud.alcance_certificacion),
+        filaDeDato('Sedes', solicitud.numero_sedes),
+        filaDeDato('Radicada el', fechaHora(solicitud.fecha_radicacion)),
+      ].join('');
+    }
+
+    function pintarEvaluacionPrevia(acciones) {
+      const contenedor = document.getElementById('expedienteEvaluacion');
+      if (!Array.isArray(acciones) || acciones.length === 0) {
+        contenedor.innerHTML = '<div class="empty-state">El Comité no registró actuaciones sobre la solicitud original.</div>';
+        return;
+      }
+      contenedor.innerHTML = acciones.map((item) => `
+        <div class="support-item">
+          <strong>${escapeHtml(NOMBRE_ACCION[item.accion] || item.accion || 'Actuación del Comité')}</strong>
+          <div>${escapeHtml(item.comentario || 'Sin comentario escrito.')}</div>
+          <small>${escapeHtml(fechaHora(item.fecha))} · ${escapeHtml(item.usuario || 'Sin registrar')}</small>
+        </div>
+      `).join('');
+    }
+
+    function pintarComiteAsignado(miembros) {
+      const contenedor = document.getElementById('expedienteComite');
+      if (!Array.isArray(miembros) || miembros.length === 0) {
+        contenedor.innerHTML = '<div class="empty-state">El Administrador aún no asigna el comité de esta apelación.</div>';
+        return;
+      }
+      contenedor.innerHTML = miembros.map((item) => `
+        <div class="support-item">
+          <strong>${escapeHtml(item.nombre || 'Miembro del comité')}</strong>
+          <small>${escapeHtml(item.correo || '')}</small>
+        </div>
+      `).join('');
+    }
+
+    function pintarEvidenciasDelExpediente(evidencias) {
+      const contenedor = document.getElementById('expedienteEvidencias');
+      if (!Array.isArray(evidencias) || evidencias.length === 0) {
+        contenedor.innerHTML = '<div class="empty-state">La empresa no adjuntó evidencias a la apelación.</div>';
+        return;
+      }
+      contenedor.innerHTML = evidencias.map((item) => `
+        <div class="support-item">
+          <strong>${escapeHtml(item.nombre_archivo || 'Evidencia sin nombre')}</strong>
+          <div>${escapeHtml(item.descripcion || 'Sin descripción.')}</div>
+          <small>${escapeHtml(item.tipo_evidencia || 'Documento')} · ${escapeHtml(fechaHora(item.fecha_subida))}</small>
+          <div class="actions"><button class="secondary" type="button" data-evidence-id="${escapeHtml(item.id_evidencia)}">Descargar</button></div>
+        </div>
+      `).join('');
+      contenedor.querySelectorAll('[data-evidence-id]').forEach((boton) => {
+        boton.addEventListener('click', () => descargarEvidencia(boton.dataset.evidenceId));
+      });
+    }
+
+    function limpiarExpediente(mensaje) {
+      document.getElementById('expedienteRadicado').textContent = '--';
+      document.getElementById('expedienteSolicitud').innerHTML = '';
+      const aviso = '<div class="empty-state">' + escapeHtml(mensaje) + '</div>';
+      document.getElementById('expedienteEvaluacion').innerHTML = aviso;
+      document.getElementById('expedienteComite').innerHTML = '';
+      document.getElementById('expedienteEvidencias').innerHTML = '';
+    }
+
+    async function cargarExpediente(id) {
+      if (!esComite()) return;
+      if (!id) {
+        limpiarExpediente('Abra una apelación de la bandeja para ver su expediente.');
+        return;
+      }
+      try {
+        const expediente = await api(`/api/apelaciones/${id}/expediente`);
+        if (!expediente) return;
+        const apelacion = expediente.apelacion || {};
+        document.getElementById('expedienteRadicado').textContent = apelacion.radicado || '--';
+        pintarSolicitudOriginal(expediente.solicitud_original);
+        pintarEvaluacionPrevia(expediente.evaluacion_previa);
+        state.comiteAsignado = (expediente.comite_asignado || []).length;
+        pintarComiteAsignado(expediente.comite_asignado);
+        pintarEvidenciasDelExpediente(expediente.evidencias);
+      } catch (error) {
+        limpiarExpediente(error.message);
+      }
+      if (esAdministracion()) await cargarComiteElegible(id);
+    }
+
+    async function cargarComiteElegible(id) {
+      const contenedor = document.getElementById('listaElegibles');
+      if (!id) {
+        contenedor.innerHTML = '<div class="empty-state">Abra una apelación de la bandeja para asignarle comité.</div>';
+        return;
+      }
+      contenedor.innerHTML = '<div class="empty-state">Cargando miembros del Comité...</div>';
+      try {
+        const miembros = await api(`/api/apelaciones/${id}/comite-elegible`);
+        if (!Array.isArray(miembros) || miembros.length === 0) {
+          contenedor.innerHTML = '<div class="empty-state">No hay miembros del Comité activos.</div>';
+          return;
+        }
+        contenedor.innerHTML = miembros.map((item) => `
+          <div class="support-item${item.ya_evaluo ? ' miembro-vetado' : ''}">
+            <label class="miembro-fila">
+              <input type="checkbox" value="${escapeHtml(item.id_usuario)}"
+                     ${item.ya_evaluo ? 'disabled' : ''} ${item.asignado ? 'checked' : ''} />
+              <span>
+                <strong>${escapeHtml(item.nombre || 'Sin nombre')}</strong>
+                <small>${escapeHtml(item.correo || '')}</small>
+                ${item.ya_evaluo ? '<span class="marca-vetado">Evaluó la solicitud original</span>' : ''}
+                ${item.asignado ? '<span class="marca-asignado">Ya asignado</span>' : ''}
+              </span>
+            </label>
+          </div>
+        `).join('');
+      } catch (error) {
+        contenedor.innerHTML = '<div class="empty-state">' + escapeHtml(error.message) + '</div>';
+      }
+    }
+
+    async function asignarComite() {
+      if (!state.currentAppealId) {
+        setAlert('Abra una apelación de la bandeja antes de asignar el comité.', 'error');
+        return;
+      }
+      const seleccionados = Array.from(
+        document.querySelectorAll('#listaElegibles input[type="checkbox"]:checked')
+      ).map((casilla) => casilla.value);
+
+      if (seleccionados.length === 0) {
+        setAlert('Seleccione al menos un miembro para el comité de la apelación.', 'error');
+        return;
+      }
+
+      const boton = document.getElementById('btnAsignarComite');
+      boton.disabled = true;
+      try {
+        await api(`/api/apelaciones/${state.currentAppealId}/asignar-comite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ miembros_comite: seleccionados }),
+        });
+        setAlert('Comité de la apelación asignado.', 'success');
+        await cargarExpediente(state.currentAppealId);
+      } catch (error) {
+        setAlert(error.message, 'error');
+      } finally {
+        boton.disabled = false;
+      }
+    }
+
+    // ==========================================================
+    // VISTAS
+    // ==========================================================
+    // La pantalla ya no muestra todo a la vez: cada parte del proceso es
+    // una vista y la barra lateral deja pasar solo a las que el rol puede
+    // usar. Así la bandeja y el expediente dejan de competir por el espacio.
+
+    const VISTAS_POR_ROL = {
+      empresa: ['apelacion', 'requerimientos'],
+      comite: ['bandeja', 'expediente', 'requerimientos', 'decision'],
+      administracion: ['bandeja', 'expediente', 'requerimientos', 'asignar'],
+    };
+
+    function vistasPermitidas() {
+      if (esAdministracion()) {
+        // La administración asigna el comité y además ve lo que ve el comité.
+        return Array.from(new Set(VISTAS_POR_ROL.administracion.concat(VISTAS_POR_ROL.comite)));
+      }
+      if (esComite()) return VISTAS_POR_ROL.comite;
+      if (esEmpresa()) return VISTAS_POR_ROL.empresa;
+      return [];
+    }
+
+    function mostrarVista(nombre) {
+      const permitidas = vistasPermitidas();
+      if (!permitidas.includes(nombre)) nombre = permitidas[0];
+      state.vista = nombre;
+
+      document.querySelectorAll('[data-vista-panel]').forEach((panel) => {
+        panel.hidden = panel.dataset.vistaPanel !== nombre;
+      });
+      document.querySelectorAll('.vista-link').forEach((enlace) => {
+        enlace.classList.toggle('activa', enlace.dataset.vista === nombre);
+      });
+
+      if (nombre === 'requerimientos') cargarRequerimientos();
+      if (nombre === 'expediente') cargarExpediente(state.currentAppealId);
+      if (nombre === 'asignar') cargarComiteElegible(state.currentAppealId);
+      actualizarDisponibilidad();
+    }
+
+    function configurarNavegacion() {
+      const permitidas = vistasPermitidas();
+      document.querySelectorAll('.vista-link').forEach((enlace) => {
+        enlace.hidden = !permitidas.includes(enlace.dataset.vista);
+        enlace.addEventListener('click', () => mostrarVista(enlace.dataset.vista));
+      });
+      document.getElementById('vistaAyuda').textContent = esEmpresa()
+        ? 'Presente su apelación y adjunte los documentos que le pidan.'
+        : 'Abra una apelación de la bandeja para trabajar con ella.';
+    }
+
+    // ==========================================================
+    // CONDICIONES: cada acción aparece cuando toca
+    // ==========================================================
+    // Los estados en los que la apelación todavía admite cambios. Son los
+    // mismos que acepta el servicio, para no ofrecer botones que fallarían.
+
+    const ESTADOS_ABIERTOS = ['ENVIADA', 'EN_REVISION', 'INFORMACION_SOLICITADA'];
+
+    function estaAbierta() {
+      return ESTADOS_ABIERTOS.includes(String(state.estado || '').toUpperCase());
+    }
+
+    function mostrar(id, visible) {
+      const elemento = document.getElementById(id);
+      if (elemento) elemento.style.display = visible ? '' : 'none';
+    }
+
+    function habilitar(id, activo) {
+      const elemento = document.getElementById(id);
+      if (elemento) elemento.disabled = !activo;
+    }
+
+    function actualizarDisponibilidad() {
+      const hayApelacion = Boolean(state.currentAppealId);
+      const abierta = hayApelacion && estaAbierta();
+
+      // --- Empresa ---
+      // Enviar solo cuando hay una solicitud rechazada y aún no hay apelación.
+      mostrar('btnCrear', esEmpresa() && !hayApelacion);
+      habilitar('btnCrear', Boolean(state.apelable) && !hayApelacion);
+      mostrar('btnGuardar', esEmpresa() && hayApelacion);
+      habilitar('btnGuardar', abierta);
+      mostrar('btnCancelar', esEmpresa() && hayApelacion);
+      habilitar('btnCancelar', abierta);
+      mostrar('btnAdjuntar', esEmpresa());
+      habilitar('btnAdjuntar', abierta && state.archivos.length > 0);
+      const campoArchivos = document.getElementById('evidenciaArchivo');
+      if (campoArchivos) campoArchivos.disabled = !abierta;
+
+      // --- Comité ---
+      // Pedir información exige haber escrito qué documentos se piden.
+      const documentos = (document.getElementById('documentosRequeridos') || {}).value || '';
+      habilitar('btnSolicitarInfo', abierta && documentos.trim().length >= 10);
+      // Decidir exige que haya comité asignado y la apelación siga abierta.
+      const puedeDecidir = abierta && state.comiteAsignado > 0;
+      habilitar('btnAprobar', puedeDecidir);
+      habilitar('btnRechazar', puedeDecidir);
+
+      const aviso = document.getElementById('avisoDecision');
+      if (aviso) {
+        if (!hayApelacion) aviso.textContent = 'Abra una apelación de la bandeja.';
+        else if (!estaAbierta()) aviso.textContent = `La apelación está ${state.estado} y ya no admite decisiones.`;
+        else if (!state.comiteAsignado) aviso.textContent = 'Primero la administración debe asignar el comité de la apelación.';
+        else aviso.textContent = '';
+      }
+
+      // --- Administración ---
+      const seleccionados = document.querySelectorAll('#listaElegibles input:checked').length;
+      habilitar('btnAsignarComite', hayApelacion && seleccionados > 0);
+
+      const estadoDecision = document.getElementById('estadoDecision');
+      if (estadoDecision) estadoDecision.textContent = state.estado || 'Sin apelación';
+    }
+
+    // ==========================================================
+    // REQUERIMIENTOS DE INFORMACIÓN
+    // ==========================================================
+
+    function pintarRequerimientos(requerimientos) {
+      const contenedor = document.getElementById('listaRequerimientos');
+      if (!Array.isArray(requerimientos) || requerimientos.length === 0) {
+        contenedor.innerHTML = '<div class="empty-state">El comité no ha pedido documentos en esta apelación.</div>';
+        return;
+      }
+      contenedor.innerHTML = requerimientos.map((item) => `
+        <div class="support-item">
+          <strong>${item.estado === 'Atendido' ? 'Atendido' : 'Pendiente de respuesta'}</strong>
+          <div style="white-space: pre-line">${escapeHtml(item.documentos)}</div>
+          ${item.observaciones ? `<div><em>${escapeHtml(item.observaciones)}</em></div>` : ''}
+          <small>
+            Pedido el ${escapeHtml(fechaHora(item.fecha_solicitud))} por ${escapeHtml(item.solicitado_por || 'el comité')}
+            ${item.fecha_atendido ? ' · atendido el ' + escapeHtml(fechaHora(item.fecha_atendido)) : ''}
+          </small>
+        </div>
+      `).join('');
+    }
+
+    async function cargarRequerimientos() {
+      const contenedor = document.getElementById('listaRequerimientos');
+      if (!state.currentAppealId) {
+        contenedor.innerHTML = '<div class="empty-state">Todavía no hay una apelación cargada.</div>';
+        mostrarAvisoDeRequerimiento([]);
+        return;
+      }
+      try {
+        const requerimientos = await api(`/api/apelaciones/${state.currentAppealId}/requerimientos`);
+        pintarRequerimientos(requerimientos || []);
+        mostrarAvisoDeRequerimiento(requerimientos || []);
+      } catch (error) {
+        contenedor.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    function mostrarAvisoDeRequerimiento(requerimientos) {
+      // La empresa tiene que ver lo que le piden sin ir a buscarlo.
+      const aviso = document.getElementById('avisoRequerimiento');
+      if (!aviso) return;
+      const pendiente = (requerimientos || []).find((r) => r.estado !== 'Atendido');
+      if (!pendiente || !esEmpresa()) {
+        aviso.hidden = true;
+        return;
+      }
+      aviso.hidden = false;
+      aviso.innerHTML =
+        '<strong>El comité le pide estos documentos:</strong>' +
+        `<div style="white-space: pre-line; margin-top: 6px">${escapeHtml(pendiente.documentos)}</div>`;
+    }
+
+    async function solicitarInformacion() {
+      if (!state.currentAppealId) {
+        setAlert('Abra la apelación antes de solicitar información.', 'error');
+        return;
+      }
+      const documentos = fieldValue('documentosRequeridos');
+      if (documentos.length < 10) {
+        setAlert('Escriba qué documentos debe adjuntar la empresa.', 'error');
+        return;
+      }
+
+      const boton = document.getElementById('btnSolicitarInfo');
+      boton.disabled = true;
+      try {
+        const data = await api(`/api/apelaciones/${state.currentAppealId}/solicitar-info`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requerimiento: documentos,
+            observaciones: fieldValue('observacionRequerimiento') || null,
+          }),
+        });
+        if (data) {
+          state.estado = data.estado || state.estado;
+          renderStatus(state.estado);
+          document.getElementById('documentosRequeridos').value = '';
+          document.getElementById('observacionRequerimiento').value = '';
+          await cargarRequerimientos();
+          setAlert('Requerimiento enviado a la empresa.', 'success');
+          mostrarVista('requerimientos');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      } finally {
+        actualizarDisponibilidad();
+      }
+    }
+
+    // ==========================================================
+    // DOCUMENTOS: varios a la vez, y el botón suma
+    // ==========================================================
+
+    function pintarArchivosPorEnviar() {
+      const contenedor = document.getElementById('listaPorEnviar');
+      if (!contenedor) return;
+      if (state.archivos.length === 0) {
+        contenedor.innerHTML = '<div class="empty-state">Todavía no ha elegido documentos.</div>';
+        actualizarDisponibilidad();
+        return;
+      }
+      contenedor.innerHTML = state.archivos.map((archivo, indice) => `
+        <div class="archivo-fila">
+          <span>${escapeHtml(archivo.name)} <small>${Math.round(archivo.size / 1024)} KB</small></span>
+          <button class="quitar-archivo" type="button" data-quitar="${indice}">Quitar</button>
+        </div>
+      `).join('');
+      contenedor.querySelectorAll('[data-quitar]').forEach((boton) => {
+        boton.addEventListener('click', () => {
+          state.archivos.splice(Number(boton.dataset.quitar), 1);
+          pintarArchivosPorEnviar();
+        });
+      });
+      actualizarDisponibilidad();
+    }
+
+    function agregarArchivos(lista) {
+      // Se suman a los que ya estaban elegidos, sin repetir el mismo archivo.
+      Array.from(lista || []).forEach((archivo) => {
+        const repetido = state.archivos.some(
+          (otro) => otro.name === archivo.name && otro.size === archivo.size
+        );
+        if (!repetido) state.archivos.push(archivo);
+      });
+      pintarArchivosPorEnviar();
+    }
+
+    async function guardarEvidencia() {
+      if (!state.currentAppealId) {
+        setAlert('Debe crear o cargar primero la apelación.', 'error');
+        return;
+      }
+      if (state.archivos.length === 0) {
+        setAlert('Elija al menos un documento para adjuntarlo.', 'error');
+        return;
+      }
+
+      const boton = document.getElementById('btnAdjuntar');
+      boton.disabled = true;
+      try {
+        const formulario = new FormData();
+        state.archivos.forEach((archivo) => formulario.append('archivos', archivo));
+        formulario.append('descripcion', fieldValue('evidenciaDescripcion'));
+
+        const data = await api(`/api/apelaciones/${state.currentAppealId}/evidencias`, {
+          method: 'POST',
+          body: formulario,
+        });
+
+        if (data) {
+          const cuantos = data.agregadas || state.archivos.length;
+          state.archivos = [];
+          document.getElementById('evidenciaArchivo').value = '';
+          document.getElementById('evidenciaDescripcion').value = '';
+          pintarArchivosPorEnviar();
+          await cargarEvidencias(state.currentAppealId);
+          await cargarRequerimientos();
+          setAlert(
+            cuantos === 1
+              ? 'El documento fue adjuntado correctamente.'
+              : `Se adjuntaron ${cuantos} documentos correctamente.`,
+            'success',
+          );
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      } finally {
+        actualizarDisponibilidad();
+      }
+    }
+
+    async function cargarEvidencias(id) {
+      if (!id) {
+        document.getElementById('listaEvidencias').innerHTML = '<div class="empty-state">Aún no hay evidencias asociadas.</div>';
+        return;
+      }
+
+      try {
+        const evidencias = await api(`/api/apelaciones/${id}/evidencias`);
+        const container = document.getElementById('listaEvidencias');
+
+        if (!Array.isArray(evidencias) || evidencias.length === 0) {
+          container.innerHTML = '<div class="empty-state">No hay evidencias adjuntas en esta apelación.</div>';
+          return;
+        }
+
+        container.innerHTML = evidencias.map((item) => `
+          <div class="support-item">
+            <strong>${escapeHtml(item.nombre_archivo || 'Evidencia sin nombre')}</strong>
+            <div>${escapeHtml(item.descripcion || 'Sin descripción.')}</div>
+            <small>Tipo: ${escapeHtml(item.tipo_evidencia || 'Documento')} · ${escapeHtml(formatDate(item.fecha_subida))}</small>
+            <div class="actions"><button class="secondary" type="button" data-evidence-id="${escapeHtml(item.id_evidencia)}">Descargar</button></div>
+          </div>
+        `).join('');
+        container.querySelectorAll('[data-evidence-id]').forEach((button) => {
+          button.addEventListener('click', () => descargarEvidencia(button.dataset.evidenceId));
+        });
+      } catch (error) {
+        document.getElementById('listaEvidencias').innerHTML = '<div class="empty-state">No se pudieron cargar las evidencias.</div>';
+      }
+    }
+
+    async function descargarEvidencia(idEvidencia) {
+      try {
+        const response = await fetch(`/api/apelaciones/${state.currentAppealId}/evidencias/${idEvidencia}/archivo`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.detail || 'No se pudo descargar la evidencia.');
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'evidencia-apelacion';
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+
+    async function cancelarApelacion() {
+      if (!state.currentAppealId) {
+        setAlert('Debe cargar la apelación antes de cancelarla.', 'error');
+        return;
+      }
+
+      try {
+        const data = await api(`/api/apelaciones/${state.currentAppealId}/cancelar`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: 'CANCELADA' }),
+        });
+
+        if (data) {
+          renderStatus(data.estado || 'CANCELADA');
+          setAlert('La apelación fue cancelada correctamente.', 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    async function resolverApelacion(decision) {
+      if (!state.currentAppealId) {
+        setAlert('Debe cargar la apelación antes de emitir una decisión.', 'error');
+        return;
+      }
+
+      try {
+        const data = await api(`/api/apelaciones/${state.currentAppealId}/resolve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            decision,
+            observaciones: document.getElementById('comentariosComite').value || 'Decisión registrada por el comité.',
+          }),
+        });
+
+        if (data) {
+          renderStatus(data.estado || decision);
+          setAlert(`La apelación fue ${decision.toLowerCase()} correctamente.`, 'success');
+        }
+      } catch (error) {
+        setAlert(error.message, 'error');
+      }
+    }
+
+    document.getElementById('btnBuscar').addEventListener('click', buscarApelacionPorSolicitud);
+    document.getElementById('btnCrear').addEventListener('click', crearApelacion);
+    document.getElementById('btnGuardar').addEventListener('click', guardarCambios);
+    document.getElementById('btnAdjuntar').addEventListener('click', guardarEvidencia);
+    document.getElementById('btnSolicitarInfo').addEventListener('click', solicitarInformacion);
+    document.getElementById('btnCancelar').addEventListener('click', cancelarApelacion);
+    document.getElementById('btnAprobar').addEventListener('click', () => resolverApelacion('APROBADA'));
+    document.getElementById('btnRechazar').addEventListener('click', () => resolverApelacion('RECHAZADA'));
+    document.getElementById('btnActualizarBandeja').addEventListener('click', cargarBandejaComite);
+    document.getElementById('btnActualizarRequerimientos').addEventListener('click', cargarRequerimientos);
+    document.getElementById('evidenciaArchivo').addEventListener('change', (evento) => {
+      agregarArchivos(evento.target.files);
+      evento.target.value = '';          // permite volver a elegir el mismo archivo
+    });
+    document.getElementById('documentosRequeridos').addEventListener('input', actualizarDisponibilidad);
+    document.getElementById('listaElegibles').addEventListener('change', actualizarDisponibilidad);
+    document.getElementById('btnAsignarComite').addEventListener('click', asignarComite);
+    document.getElementById('btnActualizarElegibles')
+      .addEventListener('click', () => cargarComiteElegible(state.currentAppealId));
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    });
+
+    state.role = parseUserRole();
+    configurarAccionesPorRol();
+    cargarBandejaComite();
+    cargarExpediente(null);
+    if (esAdministracion()) cargarComiteElegible(null);
+    renderStatus('Sin apelación');
+    document.getElementById('metricSolicitud').textContent = '--';
+    document.getElementById('metricRadicado').textContent = '--';
+    document.getElementById('metricFecha').textContent = '--';
+    document.getElementById('listaEvidencias').innerHTML = '<div class="empty-state">Aún no hay documentos enviados.</div>';
+    pintarArchivosPorEnviar();
+    cargarRequerimientos();
+    actualizarDisponibilidad();
+    const solicitudInicial = new URLSearchParams(window.location.search).get('solicitud');
+    if (solicitudInicial) {
+      document.getElementById('solicitudId').value = solicitudInicial;
+      buscarApelacionPorSolicitud();
+    }
+  </script>
+</body>
+</html>

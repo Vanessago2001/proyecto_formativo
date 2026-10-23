@@ -12,10 +12,13 @@ router = APIRouter(prefix="/users", tags=["Usuarios"])
 @router.get("/public-roles")
 async def read_public_roles(db: AsyncSession = Depends(get_db)):
     result = await db.execute(text("""
-        SELECT MIN(id_rol) AS id_rol, nombre FROM rol
+        -- DISTINCT ON evita que el selector muestre el mismo rol dos veces:
+        -- la tabla `rol` no tiene restriccion UNIQUE sobre `nombre`, y ya han
+        -- aparecido duplicados antes (ver los comentarios del seed en main.py).
+        SELECT DISTINCT ON (nombre) id_rol, nombre
+        FROM rol
         WHERE nombre IN ('Auditor', 'Empresa')
-        GROUP BY nombre
-        ORDER BY nombre;
+        ORDER BY nombre, id_rol;
     """))
     return [dict(row) for row in result.mappings().all()]
 
