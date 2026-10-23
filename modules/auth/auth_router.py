@@ -1,27 +1,13 @@
 from fastapi import APIRouter, Depends, Request, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
-from modules.auth.auth_schema import LoginMFARequest
 from modules.auth.auth_service import AuthService
-from modules.auth.mail_service import MailService
 from modules.auth.auth_schema import (
     LoginRequest,
     CodigoRequest,
     CambiarPasswordRequest,
     CambiarPasswordExpiradaRequest,
-)
-from modules.auth.auth_schema import (
-    LoginRequest,
-    CodigoRequest,
     LoginMFARequest,
-)
-from core.security import get_current_user
-from modules.auth.auth_schema import LoginRequest, CodigoRequest
-from modules.auth.auth_schema import (
-    LoginRequest,
-    CodigoRequest,
-    CambiarPasswordRequest,
-    CambiarPasswordExpiradaRequest,
     ResetPasswordRequest,
     ForgotPasswordRequest,
 )
@@ -100,18 +86,6 @@ async def cambiar_password_expirada(
         data.password_nueva,
     )
 
-@router.get("/test-mail")
-async def test_mail():
-
-    await MailService.enviar_codigo_activar_mfa(
-        destinatario="marlontaborda12@gmail.com",
-        codigo="123456"
-    )
-
-    return {
-        "mensaje": "Correo enviado correctamente"
-    }
-
 @router.post("/verificar-codigo")
 async def verificar_codigo(
     datos: CodigoRequest,
@@ -175,14 +149,3 @@ async def historial_accesos(
         "total": len(logs),
         "registros": logs,
     }
-@router.post("/login-mfa")
-async def login_mfa(
-    datos: LoginMFARequest,
-    db: AsyncSession = Depends(get_db)
-):
-    service = AuthService(db)
-
-    return await service.login_mfa(
-        datos.correo,
-        datos.codigo
-    )

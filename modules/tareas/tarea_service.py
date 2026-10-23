@@ -14,7 +14,7 @@ Para reactivarlo hacen falta dos cosas:
   2. Descomentar el import y el `include_router` en main.py.
 """
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 

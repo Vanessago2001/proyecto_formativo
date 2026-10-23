@@ -1,7 +1,5 @@
-from datetime import datetime
 from uuid import UUID, uuid4
 
-import os
 import shutil
 from pathlib import Path
 from fastapi import HTTPException, status, UploadFile
@@ -9,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import StreamingResponse
 
-from core.security import hash_password
+from core.security import hash_password, validar_password_segura
 
 from modules.auditores.auditor_schema import (
     IniciarRegistroAuditor,
@@ -1322,8 +1320,6 @@ class AuditorService:
         )
         return result.scalar()
 
-        return usuario
-
     # ========================================================
     # INICIAR REGISTRO
     # ========================================================
@@ -1337,6 +1333,13 @@ class AuditorService:
         tipo_doc = data.tipo_doc.strip()
         num_doc = data.num_doc.strip()
         correo = data.correo.strip().lower()
+
+        es_valida, mensaje_password = validar_password_segura(data.password)
+        if not es_valida:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=mensaje_password,
+            )
 
         # ----------------------------------------------------
         # Verificar correo

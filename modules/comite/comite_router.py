@@ -499,7 +499,7 @@ async def filtrar_expedientes_por_norma_sector(
         )
     if sector:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="El esquema de empresas no contiene un campo de sector para filtrar expedientes.",
         )
     resultado = await db.execute(text("""

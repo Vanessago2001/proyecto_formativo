@@ -242,7 +242,7 @@ class SolicitudService:
         if normalizar_rol(usuario.get("role_name")) == ROL_SUPERADM:
             if id_empresa is None:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail="El SuperAdministrador debe indicar 'id_empresa'.",
                 )
             return str(id_empresa)
@@ -268,7 +268,7 @@ class SolicitudService:
 
         if len(empresas) > 1:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=(
                     "El usuario está asociado a varias empresas: indique "
                     "'id_empresa' en la solicitud."
@@ -493,7 +493,7 @@ class SolicitudService:
         ]
         if faltantes:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=(
                     "No se puede radicar: faltan campos obligatorios "
                     f"({', '.join(faltantes)})."

@@ -278,12 +278,12 @@ class AsignacionAuditorService:
 
         if competencia not in (None, "si", "no"):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="El filtro competencia debe ser 'si' o 'no'.",
             )
         if conflicto not in (None, "si", "no"):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="El filtro conflicto debe ser 'si' o 'no'.",
             )
 

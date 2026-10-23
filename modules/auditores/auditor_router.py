@@ -3,6 +3,8 @@ from uuid import UUID
 from fastapi import (
     APIRouter,
     Depends,
+    HTTPException,
+    Request,
     status,
     UploadFile,
     File,
@@ -14,12 +16,14 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
+from core.logger import logger
+from core.security import get_current_user
+from modules.auth.dependencies import es_rol_administrativo
 
 from modules.auditores.auditor_schema import (
     IniciarRegistroAuditor,
     RegistroAuditorRespuesta,
     BorradorAuditorRespuesta,
-    ConsultaEstadoAuditorRespuesta,
     EstadoAuditorRespuesta,
     PerfilAuditorCrear,
     CompetenciaAuditorCrear,
@@ -30,16 +34,61 @@ from modules.auditores.auditor_schema import (
     ExperienciaLaboralCrear,
     ExperienciaAuditoriaCrear,
     NuevaPostulacionRequest,
-    RevisarDocumentoRequest,
     ReenviarCorreccionesRequest,
 )
 
 from modules.auditores.auditor_service import AuditorService
 
 
+async def require_auditor_access(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    if es_rol_administrativo(current_user):
+        return current_user
+
+    id_usuario = request.path_params.get("id_usuario")
+    if id_usuario is not None and str(id_usuario) != str(current_user["id_usuario"]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para acceder a los datos de otro usuario.",
+        )
+
+    id_postulacion = request.path_params.get("id_postulacion")
+    if id_postulacion is not None:
+        resultado = await db.execute(
+            text("""
+                SELECT 1
+                FROM postulacion_auditor
+                WHERE id_postulacion = :id_postulacion
+                  AND id_usuario = :id_usuario
+                LIMIT 1
+            """),
+            {
+                "id_postulacion": id_postulacion,
+                "id_usuario": current_user["id_usuario"],
+            },
+        )
+        if resultado.first() is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permisos para acceder a esta postulación.",
+            )
+
+    return current_user
+
+
+# Rutas abiertas: registro inicial, consulta de estado y catálogos de referencia.
+public_router = APIRouter(
+    prefix="/auditores",
+    tags=["Auditores"],
+)
+
 router = APIRouter(
     prefix="/auditores",
     tags=["Auditores"],
+    dependencies=[Depends(require_auditor_access)],
 )
 
 
@@ -47,7 +96,7 @@ router = APIRouter(
 # INICIAR REGISTRO
 # ============================================================
 
-@router.post(
+@public_router.post(
     "/registro/iniciar",
     response_model=RegistroAuditorRespuesta,
     status_code=status.HTTP_201_CREATED,
@@ -62,7 +111,7 @@ async def iniciar_registro_auditor(
 # CONSULTAR ESTADO POR CORREO
 # ============================================================
 
-@router.get("/registro/estado")
+@public_router.get("/registro/estado")
 async def consultar_estado_auditor(
     correo: str,
     db: AsyncSession = Depends(get_db),
@@ -71,23 +120,6 @@ async def consultar_estado_auditor(
         correo=correo
     )
 
-
-
-# ============================================================
-# OBTENER BORRADOR / REGISTRO
-# ============================================================
-
-@router.get(
-    "/registro/{id_usuario}",
-    response_model=BorradorAuditorRespuesta,
-)
-async def obtener_borrador_auditor(
-    id_usuario: UUID,
-    db: AsyncSession = Depends(get_db),
-):
-    return await AuditorService(db).obtener_borrador(
-        id_usuario
-    )
 
 
 # ============================================================
@@ -190,34 +222,6 @@ async def eliminar_documento_soporte(
     return await AuditorService(db).eliminar_documento(
         id_usuario=id_usuario,
         id_documento=id_documento,
-    )
-
-
-# ============================================================
-# REVISIÓN INDIVIDUAL DE DOCUMENTOS
-#
-# APROBADO:
-#   El auditor ya no puede reemplazar/eliminar.
-#
-# RECHAZADO:
-#   El auditor puede reemplazarlo.
-# ============================================================
-
-@router.put(
-    "/postulacion/{id_postulacion}/documento/{id_documento}/revision",
-)
-async def revisar_documento(
-    id_postulacion: UUID,
-    id_documento: UUID,
-    data: RevisarDocumentoRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    return await AuditorService(db).revisar_documento(
-        id_postulacion=id_postulacion,
-        id_documento=id_documento,
-        estado_revision=data.estado_revision,
-        observacion=data.observacion,
-        id_usuario_actor=data.id_usuario_actor,
     )
 
 
@@ -482,8 +486,18 @@ async def listar_conflictos(
 async def eliminar_conflicto(
     id_conflicto: UUID,
     id_usuario: UUID,
+    usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if (
+        not es_rol_administrativo(usuario)
+        and str(id_usuario) != str(usuario["id_usuario"])
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para eliminar conflictos de otro usuario.",
+        )
+
     return await AuditorService(db).eliminar_conflicto(
         id_usuario=id_usuario,
         id_conflicto=id_conflicto,
@@ -512,7 +526,7 @@ async def validar_conflicto_antes_asignacion(
         id_empresa=UUID(str(data.get("id_empresa"))),
     )
 
-@router.get(
+@public_router.get(
     "/registro/catalogo-competencias",
 )
 async def consultar_catalogo_competencias(
@@ -522,7 +536,7 @@ async def consultar_catalogo_competencias(
         "catalogo": await AuditorService(db).consultar_catalogo_competencias()
     }
 
-@router.get(
+@public_router.get(
     "/registro/sectores-iaf",
 )
 async def consultar_sectores_iaf(
@@ -736,8 +750,18 @@ async def eliminar_experiencia_auditoria(
 )
 async def enviar_formulario_inscripcion(
     data: EnviarSolicitudAuditor,
+    usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if (
+        not es_rol_administrativo(usuario)
+        and str(data.id_usuario) != str(usuario["id_usuario"])
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para enviar la postulación de otro usuario.",
+        )
+
     return await AuditorService(db).enviar_solicitud(
         data.id_usuario
     )
@@ -772,8 +796,18 @@ async def reenviar_postulacion_correcciones(
 )
 async def crear_nueva_postulacion(
     data: NuevaPostulacionRequest,
+    usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if (
+        not es_rol_administrativo(usuario)
+        and str(data.id_usuario) != str(usuario["id_usuario"])
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para crear una postulación de otro usuario.",
+        )
+
     return await AuditorService(db).crear_nueva_postulacion(
         data.id_usuario
     )
@@ -815,7 +849,7 @@ async def eliminar_datos_postulacion_cancelada(
 # CATÁLOGO DE NORMAS
 # ============================================================
 
-@router.get(
+@public_router.get(
     "/catalogos/normas",
 )
 async def listar_normas(
@@ -846,7 +880,7 @@ async def listar_normas(
 # CATÁLOGO DE EMPRESAS
 # ============================================================
 
-@router.get(
+@public_router.get(
     "/catalogos/empresas",
 )
 async def listar_empresas(
@@ -965,38 +999,31 @@ async def diagnostico_auditor(
             "conflictos": conflictos,
         }
 
-    except Exception as e:
-
-        return {
-            "error": True,
-            "detalle": str(e),
-        }
+    except Exception:
+        logger.exception(
+            "Error generando el diagnóstico del auditor %s",
+            id_usuario,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No fue posible generar el diagnóstico.",
+        )
 
 
 # ============================================================
-# DEBUG CONSTRAINTS
+# OBTENER BORRADOR / REGISTRO
+# Va al final para que las rutas literales /registro/... tengan
+# prioridad sobre este parámetro dinámico.
 # ============================================================
 
 @router.get(
-    "/debug/check-tipo-competencia",
+    "/registro/{id_usuario}",
+    response_model=BorradorAuditorRespuesta,
 )
-async def debug_check_tipo_competencia(
+async def obtener_borrador_auditor(
+    id_usuario: UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        text("""
-            SELECT
-                conname,
-                pg_get_constraintdef(oid)
-                    AS constraint_definition
-            FROM pg_constraint
-            WHERE conrelid =
-                'postulacion_auditor'::regclass
-            AND contype = 'c';
-        """)
+    return await AuditorService(db).obtener_borrador(
+        id_usuario
     )
-
-    return [
-        dict(row)
-        for row in result.mappings().all()
-    ]

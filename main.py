@@ -36,7 +36,10 @@ from modules.system.system_router import router as system_router
 from modules.asignacion_auditores.asignacion_router import router as asignacion_auditores_router
 
 from modules.administrar_auditores.administrar_auditores_router import router as administrar_auditores_router
-from modules.auditores.auditor_router import router as auditor_router
+from modules.auditores.auditor_router import (
+    public_router as auditor_public_router,
+    router as auditor_router,
+)
 from modules.auditores.auditor_bootstrap import preparar_modulo_auditores
 from modules.competencias_auditor.competencias_router import router as competencias_auditor_router
 from modules.conflictos_auditor.conflictos_router import router as conflictos_auditor_router
@@ -343,6 +346,7 @@ app.include_router(alejandra_router)
 app.include_router(mfa_router)
 app.include_router(system_router)
 app.include_router(asignacion_auditores_router)
+app.include_router(auditor_public_router)
 app.include_router(auditor_router)
 app.include_router(competencias_auditor_router)
 app.include_router(conflictos_auditor_router)
@@ -608,7 +612,3 @@ async def reportes_page(request: Request):
 # /buscar_empresa lo sirve modules/consultas_p/paginas_router.py: la página del
 # portal público vive junto a los endpoints que la alimentan.
 
-
-@app.on_event("shutdown")
-async def shutdown_redis_pool():
-    await redis_pool.disconnect()

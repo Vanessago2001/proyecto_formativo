@@ -5,7 +5,6 @@ from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 
 from modules.auditores.auditor_service import AuditorService
 from modules.agenda_auditor.agenda_schema import (
@@ -163,12 +162,12 @@ class AgendaAuditorService(AuditorService):
         conflicto = (conflicto or "").strip().lower() or None
         if competencia not in (None, "si", "no"):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="El filtro competencia debe ser 'si' o 'no'.",
             )
         if conflicto not in (None, "si", "no"):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="El filtro conflicto debe ser 'si' o 'no'.",
             )
 
@@ -946,12 +945,12 @@ class AgendaAuditorService(AuditorService):
     ) -> dict:
         if hora_fin <= hora_inicio:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="La hora final debe ser posterior a la hora inicial.",
             )
         if hora_inicio.date() != fecha or hora_fin.date() != fecha:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="El intervalo consultado debe corresponder a la fecha seleccionada.",
             )
 

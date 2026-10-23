@@ -14,8 +14,6 @@ from core.database import get_db
 from typing import Any
 from typing import Callable, List
 import uuid
-import jwt
-import re
  
 
 def validar_password_segura(password: str) -> tuple[bool, str]:
@@ -44,7 +42,13 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     # \"\"\"Compara el texto plano con el hash almacenado en la base de datos transformando ambos a bytes\"\"\"
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    if not hashed_password:
+        return False
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except ValueError:
+        # Hash vacío o con formato inválido: se trata como credencial incorrecta.
+        return False
 
 def hash_verification_code(codigo: str) -> str:
     """

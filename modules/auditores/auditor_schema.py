@@ -368,26 +368,6 @@ class ExperienciaAuditoriaRespuesta(BaseModel):
 
 
 # ============================================================
-# REVISIÓN INDIVIDUAL DE DOCUMENTOS
-# ============================================================
-
-class RevisarDocumentoRequest(BaseModel):
-    estado_revision: str = Field(
-        ...,
-        pattern=r"^(Aprobado|Rechazado)$",
-    )
-
-    observacion: str = ""
-
-    id_usuario_actor: UUID
-
-    @field_validator("observacion")
-    @classmethod
-    def limpiar_observacion(cls, value):
-        return value.strip()
-
-
-# ============================================================
 # NUEVA POSTULACIÓN
 # ============================================================
 

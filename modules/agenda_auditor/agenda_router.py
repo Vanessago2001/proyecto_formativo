@@ -521,7 +521,7 @@ async def editar_programacion(
         fecha_fin = datetime.fromisoformat(data["fecha_fin"]) if data.get("fecha_fin") else None
     except (ValueError, TypeError) as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Formato de fecha/hora inválido: {exc}",
         )
     return await AgendaAuditorService(db).editar_programacion(
