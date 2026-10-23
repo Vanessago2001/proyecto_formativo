@@ -21,21 +21,15 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.solicitudes import bitacora
+from modules.solicitudes import estado_solicitud as estados
 from modules.solicitudes.solicitud_service import SolicitudService
 
 # Estados que la administración puede fijar con SOL-054. Se incluyen los que
 # escriben otros módulos (el Comité guarda 'APROBADO' / 'RECHAZADO') para que
 # el historial pueda reflejar lo que de verdad hay en la base.
-ESTADOS_ADMINISTRACION = (
-    "Radicada",
-    "En revision",
-    "Aprobada",
-    "Rechazada",
-    "Cancelada",
-    "Cerrada",
-)
+ESTADOS_ADMINISTRACION = tuple(e for e in estados.ESTADOS if e != estados.BORRADOR)
 
-ESTADO_CERRADA = "Cerrada"
+ESTADO_CERRADA = estados.CERRADA
 
 TIPOS_OBSERVACION = ("Control", "Tecnica", "Administrativa")
 

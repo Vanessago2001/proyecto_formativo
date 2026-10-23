@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import _normalize_role_name, get_current_user
+from modules.solicitudes import estado_solicitud as estados
 from modules.comite.comite_service import ComiteService
 from modules.solicitudes.documento_service import CARPETA_ARCHIVOS, DocumentoService
 
@@ -153,9 +154,13 @@ async def consultar_expedientes_pendientes(
         LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
         LEFT JOIN norma n ON n.id_norma = s.id_norma
         WHERE s.deleted_at IS NULL
-          AND UPPER(s.estado) IN ('RADICADA', 'EN REVISION', 'EN_REVISION', 'PENDIENTE')
+          -- Los estados vienen del catalogo de M5, no de una lista a mano.
+          AND s.estado IN (:estado_radicada, :estado_en_revision)
         ORDER BY s.fecha_creacion DESC;
-    """))
+    """), {
+        "estado_radicada": estados.RADICADA,
+        "estado_en_revision": estados.EN_REVISION,
+    })
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-001",

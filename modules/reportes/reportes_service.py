@@ -17,6 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import _normalize_role_name
+from modules.solicitudes import estado_solicitud as estados
 from modules.reportes import reportes_roles as roles_m12
 
 EMPRESA = roles_m12.EMPRESA
@@ -121,6 +122,11 @@ class ReportesService:
     async def _solicitudes_criticas(self):
         extra, params = self._filtros(empresa=True)
         params["dias"] = roles_m12.DIAS_SOLICITUD_CRITICA
+        # Los estados salen del catalogo de M5: antes se enumeraban aqui las
+        # grafias una por una y bastaba con que apareciera otra para que el
+        # reporte dejara de ver esas solicitudes.
+        params["radicada"] = estados.RADICADA
+        params["en_revision"] = estados.EN_REVISION
         resultado = await self.db.execute(text(f"""
             SELECT
                 s.numero_radicado,
@@ -131,7 +137,7 @@ class ReportesService:
                 e.nit
             FROM solicitud s
             JOIN empresa e ON e.id_empresa = s.id_empresa
-            WHERE UPPER(TRIM(s.estado)) IN ('RADICADO', 'RADICADA', 'EN_REVISION', 'EN REVISION')
+            WHERE s.estado IN (:radicada, :en_revision)
               AND s.fecha IS NOT NULL
               AND (CURRENT_DATE - s.fecha::date) > :dias {extra}
             ORDER BY dias_abierta DESC;

@@ -12,6 +12,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from modules.solicitudes import estado_solicitud as estados
+
 
 class EstadoSolicitud(str, Enum):
     """
@@ -22,16 +24,21 @@ class EstadoSolicitud(str, Enum):
         En revision  -> la administración la tomó; deja de ser cancelable (SOL-009)
         Cancelada    -> retirada por la empresa antes de la revisión (SOL-009)
 
-    Los estados posteriores (aprobación y cierre) llegan con los bloques 6 y 7.
-    Se escriben capitalizados y sin tilde, como el resto de estados del
-    proyecto ('Activo', 'Inactivo', 'Bloqueado').
+        Aprobada     -> el Comité aceptó el expediente
+        Cerrada      -> se cerró definitivamente (SOL-060)
+
+    Los valores salen de `estado_solicitud`, que es el catálogo unico del
+    proyecto: ahi se decide como se escribe cada estado y se reconocen las
+    grafias anteriores ('RADICADO', 'APROBADO'...).
     """
 
-    borrador = "Borrador"
-    radicada = "Radicada"
-    en_revision = "En revision"
-    rechazada = "Rechazada"
-    cancelada = "Cancelada"
+    borrador = estados.BORRADOR
+    radicada = estados.RADICADA
+    en_revision = estados.EN_REVISION
+    aprobada = estados.APROBADA
+    rechazada = estados.RECHAZADA
+    cancelada = estados.CANCELADA
+    cerrada = estados.CERRADA
 
 
 # Estados en los que la solicitud todavía es un borrador editable.

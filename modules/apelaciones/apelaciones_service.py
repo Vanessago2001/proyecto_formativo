@@ -1,4 +1,3 @@
-import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -9,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import _normalize_role_name
+from modules.solicitudes import estado_solicitud as estados
 from modules.solicitudes.solicitud_service import SolicitudService
 
 
@@ -24,16 +24,13 @@ EXTENSIONES_EVIDENCIA = {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"}
 
 def estado_es_rechazada(estado) -> bool:
     """
-    ¿La solicitud está rechazada?
+    Una solicitud rechazada es apelable, se haya escrito como se haya escrito.
 
-    Cada módulo escribe el estado a su manera: el Comité guarda 'RECHAZADO'
-    (modules/comite/comite_service.py) y M5 define 'Rechazada'. Comparar con
-    un texto exacto dejaba sin apelación a las solicitudes rechazadas desde
-    el Comité, que son casi todas.
+    El Comite guardaba 'RECHAZADO' y M5 'Rechazada'; ahora las dos llegan al
+    mismo valor por el catalogo de estados del proyecto.
     """
-    texto = unicodedata.normalize("NFD", str(estado or ""))
-    texto = texto.encode("ascii", "ignore").decode().strip().upper()
-    return texto.startswith("RECHAZ")
+    return estados.es(estado, estados.RECHAZADA)
+
 
 # La base solo admite estos tipos (restriccion chk_tipo_evidencia), asi que se
 # traduce la extension del archivo a uno de ellos.

@@ -7,21 +7,20 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from modules.solicitudes import estado_solicitud as estados
 
-ESTADOS_FINALES = {
-    "APROBADO",
-    "APROBADA",
-    "RECHAZADO",
-    "RECHAZADA",
-    "CERRADO",
-    "CERRADA",
-}
-ESTADOS_DICTAMEN = {"APROBADO", "APROBADA", "RECHAZADO", "RECHAZADA"}
+
+# Los estados los pone el catalogo de M5, que es el dueno del ciclo de vida
+# de la solicitud. Antes aqui se escribia 'APROBADO' mientras M5 guardaba
+# 'Aprobada': para una consulta no son lo mismo, y las solicitudes que pasaban
+# por el Comite desaparecian de las listas del resto de modulos.
+ESTADOS_FINALES = {estados.APROBADA, estados.RECHAZADA, estados.CERRADA}
+ESTADOS_DICTAMEN = {estados.APROBADA, estados.RECHAZADA}
 CAMBIOS_ESTADO = {
-    "aprobar": "APROBADO",
-    "rechazar": "RECHAZADO",
-    "cerrar-expediente": "CERRADO",
-    "reabrir-dictamen": "En revision",
+    "aprobar": estados.APROBADA,
+    "rechazar": estados.RECHAZADA,
+    "cerrar-expediente": estados.CERRADA,
+    "reabrir-dictamen": estados.EN_REVISION,
 }
 
 
@@ -70,8 +69,10 @@ class ComiteService:
 
         estado_actual = solicitud["estado"]
         nuevo_estado = CAMBIOS_ESTADO.get(accion)
-        estado_normalizado = str(estado_actual).strip().upper()
-        if estado_normalizado in {"CERRADO", "CERRADA"} and accion != "reabrir-dictamen":
+        # Se compara por el valor canonico, no por mayusculas: asi da igual
+        # como estuviera escrito el estado en la base.
+        estado_normalizado = estados.normalizar(estado_actual) or str(estado_actual).strip()
+        if estado_normalizado == estados.CERRADA and accion != "reabrir-dictamen":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"El expediente ya está en estado {estado_actual}.",
