@@ -99,8 +99,9 @@ CATALOGO_REPORTES: dict[str, dict] = {
     "disponibilidad-horaria": {
         "titulo": "Reporte de disponibilidad horaria",
         "descripcion": (
-            "Franjas declaradas por los auditores por día de semana, para "
-            "programar visitas. Un auditor solo ve su disponibilidad."
+            "Una fila por auditor, identificado por su documento, con los días "
+            "que tiene activos para programar visitas. No incluye lo cancelado. "
+            "Un auditor solo ve su disponibilidad."
         ),
         "roles": [SUPERADMIN, ADMIN, AUDITOR],
         "alcance_empresa": False,
