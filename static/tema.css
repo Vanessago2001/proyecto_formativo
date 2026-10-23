@@ -81,6 +81,9 @@ en lugar de escribir colores o tamanos sueltos.
   --borde: #e2e8f0;
   --borde-fuerte: #cbd5e1;
 
+  /* Ancho del contenedor principal: igual en todas las pantallas. */
+  --ancho-contenido: 1360px;
+
   /* --- Espaciado --- */
   --esp-1: 4px;
   --esp-2: 8px;

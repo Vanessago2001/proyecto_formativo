@@ -10,6 +10,7 @@
       Si ese panel es la pantalla actual, el enlace se oculta.
    2. En la pantalla de perfil no se muestra el enlace al perfil.
    3. En el resto, ese enlace se muestra como un icono.
+   4. El menú lateral es el mismo en todas las pantallas del rol.
    ========================================================== */
 (function () {
   "use strict";
@@ -95,9 +96,117 @@
     });
   }
 
+
+  /* ----------------------------------------------------------
+     4. El menú lateral es el mismo en todas las pantallas.
+
+     Cada pantalla traía su propia lista: unas con nueve opciones,
+     otras con dos, y ninguna igual a la siguiente. Aquí se dibuja
+     la del rol que entró, conservando las clases de la página para
+     que cada una siga viéndose como estaba.
+
+     No se tocan dos casos, porque ahí el menú hace otra cosa:
+       · los menús con botones, que cambian de vista dentro de la
+         misma pantalla (Comité, Apelaciones);
+       · los que navegan por secciones con enlaces "#", como el
+         formulario de registro del auditor.
+     ---------------------------------------------------------- */
+
+  var MENU_ADMINISTRACION = [
+    ["/dashboard", "Resumen"],
+    ["/dashboard#usuarios", "Gestionar usuarios"],
+    ["/empresas", "Empresas registradas"],
+    ["/revision-solicitudes", "Revisión de solicitudes"],
+    ["/asignacion-auditores", "Asignación de auditores"],
+    ["/banco-auditores", "Banco de auditores"],
+    ["/consultar-auditorias-programadas-admin", "Consultar auditorías programadas"],
+    ["/consultar-auditorias-programadas-admin#futuras", "Consultar programaciones futuras"],
+    ["/consultar-agenda-auditor", "Consultar agenda de auditor"],
+    ["/conflictos-administrador", "Conflictos de interés"],
+    ["/gestion-certificados", "Gestión de certificados"],
+    ["/comite", "Comité de certificación"],
+    ["/apelacion", "Apelaciones"],
+    ["/reportes", "Reportes"],
+    ["/profile", "Mi perfil"]
+  ];
+
+  var MENU_AUDITOR = [
+    ["/auditor", "Mi registro"],
+    ["/consultar-estado", "Estado del registro"],
+    ["/catalogo-competencias-auditor", "Catálogo de competencias"],
+    ["/conflictos-auditor", "Conflictos registrados"],
+    ["/consultar-auditorias-programadas", "Auditorías programadas"],
+    ["/programaciones-futuras-auditor", "Programaciones futuras"],
+    ["/disponibilidad-auditor", "Disponibilidad semanal"],
+    ["/notificaciones-auditor", "Notificaciones"],
+    ["/perfil-auditor", "Mi perfil"],
+    ["/reportes", "Reportes"]
+  ];
+
+  function menuDelRol(rol) {
+    if (/admin|auxiliar/.test(rol)) return MENU_ADMINISTRACION;
+    if (/auditor/.test(rol)) return MENU_AUDITOR;
+    return null;                          // empresa y comité tienen el suyo
+  }
+
+  function navegaPorSecciones(nav) {
+    /*
+      Un menu que apunta a secciones de la propia pantalla (el formulario
+      de registro del auditor) no se toca. Se reconoce porque esos
+      destinos "#" existen aqui: un "#usuarios" que vive en otra pantalla
+      no es navegacion interna, es un enlace que ademas no funciona.
+    */
+    var internos = nav.querySelectorAll('a[href^="#"]');
+    if (!internos.length) return false;
+    return Array.prototype.some.call(internos, function (enlace) {
+      var destino = (enlace.getAttribute("href") || "").slice(1);
+      return destino && document.getElementById(destino);
+    });
+  }
+
+  function marcarActivo(enlace, destino) {
+    var ruta = destino.split("#")[0];
+    if (ruta && enLaMismaPagina(ruta)) enlace.classList.add("active");
+  }
+
+  function unificarMenuLateral(rol) {
+    var menu = menuDelRol(rol);
+    if (!menu) return;
+
+    var contenedores = document.querySelectorAll(
+      "nav.admin-nav, aside.comite-sidebar nav, aside.sidebar nav, nav.module-menu"
+    );
+
+    Array.prototype.forEach.call(contenedores, function (nav) {
+      var enlaces = nav.querySelectorAll("a[href]");
+      if (!enlaces.length) return;
+      if (nav.querySelector("button")) return;      // cambia de vista en la misma pantalla
+      if (navegaPorSecciones(nav)) return;          // indice de secciones de la pantalla
+
+      // Se conserva el enlace de salir: su comportamiento está atado a ese
+      // elemento, así que se mueve en vez de volver a crearlo.
+      var salir = nav.querySelector('#logoutLink, a[href="/login"]');
+      var clase = enlaces[0].className;
+
+      nav.innerHTML = "";
+      menu.forEach(function (opcion) {
+        var enlace = document.createElement("a");
+        enlace.setAttribute("href", opcion[0]);
+        enlace.textContent = opcion[1];
+        if (clase) enlace.className = clase;
+        marcarActivo(enlace, opcion[0]);
+        nav.appendChild(enlace);
+      });
+      if (salir) nav.appendChild(salir);
+    });
+  }
+
   function aplicar() {
     var rol = rolDelUsuario();
-    if (rol) ajustarEnlacesAlPanel(panelDelRol(rol));
+    if (rol) {
+      unificarMenuLateral(rol);
+      ajustarEnlacesAlPanel(panelDelRol(rol));
+    }
     ajustarEnlacesDePerfil();
   }
 

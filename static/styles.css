@@ -30,7 +30,7 @@ HEADER
 
 .header-content{
 
-    max-width:1500px;
+    max-width: var(--ancho-contenido);
     margin:auto;
 
     display:flex;
@@ -635,7 +635,7 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
 }
 
 .comite-shell {
-    max-width: 1360px;
+    max-width: var(--ancho-contenido);
     margin: 0 auto;
     padding: 28px;
 }
