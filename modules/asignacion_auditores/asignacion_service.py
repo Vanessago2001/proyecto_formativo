@@ -192,7 +192,15 @@ class AsignacionAuditorService:
                     n.codigo AS norma_codigo,
                     n.nombre AS norma_nombre,
                     n.version AS norma_version,
-                    s.fecha
+                    s.fecha,
+                    EXISTS (
+                        SELECT 1
+                        FROM programacion_visita pv
+                        WHERE pv.id_solicitud = s.id_solicitud
+                          AND UPPER(TRIM(COALESCE(pv.estado, ''))) NOT IN
+                              ('CANCELADA', 'CANCELADO', 'EJECUTADA', 'EJECUTADO',
+                               'FINALIZADA', 'FINALIZADO')
+                    ) AS tiene_programacion
                 FROM solicitud s
                 LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
                 LEFT JOIN norma n ON n.id_norma = s.id_norma
@@ -400,7 +408,12 @@ class AsignacionAuditorService:
             "total_pages": total_pages,
         }
 
-    async def validar_auditor(self, id_solicitud: UUID, id_auditor: UUID) -> dict:
+    async def validar_auditor(
+        self,
+        id_solicitud: UUID,
+        id_auditor: UUID,
+        ignorar_ya_asignado: bool = False,
+    ) -> dict:
         solicitud = await self.obtener_solicitud(id_solicitud)
         result = await self.db.execute(
             text(CTE_AUDITORES + " SELECT * FROM candidatos WHERE id_usuario = :id_auditor LIMIT 1"),
@@ -422,12 +435,15 @@ class AsignacionAuditorService:
         competencia_norma = bool(fila["competencia_norma"])
         conflicto = bool(fila["conflicto_interes"])
         ya_asignado = bool(fila["ya_asignado"])
+        elegible = competencia_norma and not conflicto
+        if not ignorar_ya_asignado:
+            elegible = elegible and not ya_asignado
         auditor = {
             "id_usuario": fila["id_usuario"],
             "competencia_norma": competencia_norma,
             "conflicto_interes": conflicto,
             "ya_asignado": ya_asignado,
-            "elegible": competencia_norma and not conflicto and not ya_asignado,
+            "elegible": elegible,
         }
         if not auditor["elegible"]:
             motivos = []
@@ -448,6 +464,30 @@ class AsignacionAuditorService:
     # ------------------------------------------------------------------
     async def asignar(self, data: AsignacionAuditorCrear, usuario: dict) -> dict:
         del usuario  # El usuario autenticado se mantiene en la firma de la ruta.
+
+        programacion_result = await self.db.execute(
+            text(
+                """
+                SELECT 1
+                FROM programacion_visita
+                WHERE id_solicitud = :id_solicitud
+                  AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN
+                      ('CANCELADA', 'CANCELADO', 'EJECUTADA', 'EJECUTADO',
+                       'FINALIZADA', 'FINALIZADO')
+                LIMIT 1
+                """
+            ),
+            {"id_solicitud": str(data.id_solicitud)},
+        )
+        if programacion_result.first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "La solicitud ya tiene una programacion activa. "
+                    "No se pueden asignar mas auditores desde esta pantalla."
+                ),
+            )
+
         await self.validar_auditor(data.id_solicitud, data.id_auditor)
 
         if data.rol_auditor.value == "Auditor líder":

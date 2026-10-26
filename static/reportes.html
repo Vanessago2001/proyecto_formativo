@@ -24,7 +24,7 @@
       </div>
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
-        <a class="profile-link" href="/profile">Mi perfil</a>
+        <a class="profile-link" href="#" id="profileLink">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
     </div>
@@ -94,6 +94,21 @@
 
       const payload = leerToken(token);
       if (!payload) return;
+
+      const normalizarRol = (valor) => String(valor || "")
+        .normalize("NFD")
+        .replace(/[\\u0300-\\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[\\s_-]+/g, "");
+
+      const profileLink = document.getElementById("profileLink");
+      if (profileLink) {
+        profileLink.addEventListener("click", (event) => {
+          event.preventDefault();
+          const rol = normalizarRol(payload.role_name || payload.rol || payload.role);
+          window.location.href = rol === "auditor" ? "/perfil-auditor" : "/profile";
+        });
+      }
 
       const $ = (selector) => document.querySelector(selector);
 

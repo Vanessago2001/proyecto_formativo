@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, require_role
 
 from .cerrar_sesiones import cerrar_todas_las_sesiones
 from .bloquear_usuario import bloquear_usuario_temporalmente
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/alejandra/seguridad", tags=["Seguridad - Alejandra"]
 async def endpoint_cerrar_sesiones(
     user_id: str, 
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_role(["Administrador", "Super Administrador"]))
 ):
     exito = await cerrar_todas_las_sesiones(user_id, db)
     if not exito:
@@ -25,7 +25,7 @@ async def endpoint_bloquear_usuario(
     user_id: str, 
     minutos: int = 15, 
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_role(["Administrador", "Super Administrador"]))
 ):
     exito = await bloquear_usuario_temporalmente(user_id, db, minutos)
     if not exito:
@@ -36,7 +36,7 @@ async def endpoint_bloquear_usuario(
 async def endpoint_desbloquear_usuario(
     user_id: str, 
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_role(["Administrador", "Super Administrador"]))
 ):
     exito = await desbloquear_usuario(user_id, db)
     if not exito:

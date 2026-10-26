@@ -19,17 +19,14 @@ from modules.auditores.auditor_schema import (
     ExperienciaAuditoriaCrear,
 )
 
-from reportlab.lib import colors
 from io import BytesIO
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
+
+from reportlab.lib.units import mm
+
+from core.pdf_institucional import (
+    construir_pdf_institucional,
+    tabla_institucional,
+    texto_institucional,
 )
 
 class AuditorService:
@@ -630,7 +627,10 @@ class AuditorService:
                     descripcion,
                     fecha_inicio,
                     fecha_fin,
-                    es_vigente
+                    es_vigente,
+                    id_postulacion,
+                    estado_validacion,
+                    observacion_validacion
                 FROM competencia_auditor
                 WHERE id_usuario = :id_usuario
                 ORDER BY fecha_inicio DESC
@@ -868,17 +868,45 @@ class AuditorService:
                 detail="Ya existe una versión aprobada de este documento.",
             )
 
-        # Si el auditor vuelve a adjuntar el mismo tipo, se reemplazan solo
-        # los archivos pendientes/rechazados mas antiguos del mismo intento.
-        await self.db.execute(
-            text("""
-                DELETE FROM documento_auditor
-                WHERE id_postulacion = :id_postulacion
-                  AND tipo_documento = :tipo_documento
-                  AND estado_revision = 'Pendiente'
-            """),
-            {"id_postulacion": id_postulacion, "tipo_documento": tipo_documento},
-        )
+        # La foto profesional es un documento unico por postulacion. Cuando el
+        # administrador la rechaza, la que sube el auditor debe sustituirla en
+        # su propia fila; si aqui se hiciera un INSERT naciaria una segunda
+        # foto y la rechazada seguiria apareciendo en "ver solicitud".
+        # La foto nueva se escribe sobre la fila mas reciente y las demas (las
+        # que dejo este error en el pasado) se retiran.
+        foto_anterior = None
+        sobrantes = []
+
+        if tipo_documento == "Foto Profesional":
+            result = await self.db.execute(
+                text("""
+                    SELECT
+                        id_documento,
+                        url_archivo,
+                        estado_revision
+                    FROM documento_auditor
+                    WHERE id_postulacion = :id_postulacion
+                      AND tipo_documento = :tipo_documento
+                    ORDER BY fecha_subida DESC
+                """),
+                {"id_postulacion": id_postulacion, "tipo_documento": tipo_documento},
+            )
+            filas = [dict(fila) for fila in result.mappings().all()]
+            if filas:
+                foto_anterior = filas[0]
+                sobrantes = filas[1:]
+        else:
+            # Los demas tipos conservan el comportamiento de siempre: la nueva
+            # version deja sin efecto los archivos pendientes del mismo tipo.
+            await self.db.execute(
+                text("""
+                    DELETE FROM documento_auditor
+                    WHERE id_postulacion = :id_postulacion
+                      AND tipo_documento = :tipo_documento
+                      AND estado_revision = 'Pendiente'
+                """),
+                {"id_postulacion": id_postulacion, "tipo_documento": tipo_documento},
+            )
 
         self.DIRECTORIO_DOCUMENTOS.mkdir(
             parents=True,
@@ -908,6 +936,17 @@ class AuditorService:
         url_archivo = (
             f"/uploads/auditores/{nombre_fisico}"
         )
+
+        if foto_anterior is not None:
+            return await self._reemplazar_foto_profesional(
+                id_usuario=id_usuario,
+                id_postulacion=id_postulacion,
+                fila_anterior=foto_anterior,
+                sobrantes=sobrantes,
+                nombre_archivo=archivo.filename,
+                url_archivo=url_archivo,
+                ruta_archivo=ruta_archivo,
+            )
 
         try:
             result = await self.db.execute(
@@ -980,6 +1019,114 @@ class AuditorService:
 
         return {
             "mensaje": "Documento adjuntado correctamente.",
+            "id_postulacion": id_postulacion,
+            "documento": dict(documento),
+        }
+
+    async def _reemplazar_foto_profesional(
+        self,
+        id_usuario: UUID,
+        id_postulacion: UUID,
+        fila_anterior: dict,
+        sobrantes: list[dict],
+        nombre_archivo: str,
+        url_archivo: str,
+        ruta_archivo: Path,
+    ):
+        """Escribe la foto nueva sobre la fila que ya existia y la devuelve a
+        'Pendiente' para que el administrador la vuelva a calificar.
+        """
+
+        try:
+            result = await self.db.execute(
+                text("""
+                    UPDATE documento_auditor
+                    SET
+                        nombre_archivo = :nombre_archivo,
+                        url_archivo = :url_archivo,
+                        fecha_subida = CURRENT_TIMESTAMP,
+                        estado_revision = 'Pendiente',
+                        observacion_revision = '',
+                        revisado_por = NULL,
+                        fecha_revision = NULL
+                    WHERE id_documento = :id_documento
+                      AND id_usuario = :id_usuario
+                    RETURNING
+                        id_documento,
+                        id_postulacion,
+                        nombre_archivo,
+                        tipo_documento,
+                        url_archivo,
+                        fecha_subida,
+                        estado_revision
+                """),
+                {
+                    "id_documento": fila_anterior["id_documento"],
+                    "id_usuario": id_usuario,
+                    "nombre_archivo": nombre_archivo,
+                    "url_archivo": url_archivo,
+                },
+            )
+
+            documento = result.mappings().first()
+
+            if documento is None:
+                raise RuntimeError(
+                    "La foto profesional que se iba a reemplazar ya no existe."
+                )
+
+            for fila in sobrantes:
+                await self.db.execute(
+                    text("""
+                        DELETE FROM documento_auditor
+                        WHERE id_documento = :id_documento
+                          AND id_usuario = :id_usuario
+                    """),
+                    {
+                        "id_documento": fila["id_documento"],
+                        "id_usuario": id_usuario,
+                    },
+                )
+
+            await self.db.commit()
+
+        except HTTPException:
+            await self.db.rollback()
+            if ruta_archivo.exists():
+                try:
+                    ruta_archivo.unlink()
+                except OSError:
+                    pass
+            raise
+
+        except Exception as error:
+            await self.db.rollback()
+            if ruta_archivo.exists():
+                try:
+                    ruta_archivo.unlink()
+                except OSError:
+                    pass
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No fue posible reemplazar la foto profesional.",
+            ) from error
+
+        # El archivo viejo deja de estar referenciado por cualquier fila.
+        urls_viejas = [fila_anterior.get("url_archivo")] + [
+            fila.get("url_archivo") for fila in sobrantes
+        ]
+        for url_vieja in urls_viejas:
+            if not url_vieja or not url_vieja.startswith("/uploads/auditores/"):
+                continue
+            ruta_vieja = Path(url_vieja.lstrip("/"))
+            if ruta_vieja.exists():
+                try:
+                    ruta_vieja.unlink()
+                except OSError:
+                    pass
+
+        return {
+            "mensaje": "Foto profesional reemplazada correctamente.",
             "id_postulacion": id_postulacion,
             "documento": dict(documento),
         }
@@ -1827,6 +1974,49 @@ class AuditorService:
             )
             id_postulacion = postulacion["id_postulacion"]
 
+        # La competencia devuelta por el administrador es la que el auditor
+        # esta corrigiendo en la seccion. Si aqui se hiciera un INSERT naceria
+        # una segunda competencia y la rechazada seguiria apareciendo en "ver
+        # solicitud" y marcando la seccion en el formulario.
+        # Se reutiliza la fila rechazada (primero la del mismo tipo) y se
+        # retiran las duplicadas del mismo tipo que dejo ese error antes.
+        result = await self.db.execute(
+            text("""
+                SELECT
+                    id_competencia,
+                    tipo_competencia
+                FROM competencia_auditor
+                WHERE id_postulacion = :id_postulacion
+                  AND estado_validacion = 'Rechazado'
+                ORDER BY
+                    (tipo_competencia = :tipo_competencia) DESC,
+                    id_competencia
+            """),
+            {
+                "id_postulacion": id_postulacion,
+                "tipo_competencia": data.tipo_competencia,
+            },
+        )
+
+        rechazadas = [
+            dict(fila)
+            for fila in result.mappings().all()
+        ]
+
+        if rechazadas:
+            competentes = [
+                fila
+                for fila in rechazadas[1:]
+                if fila.get("tipo_competencia") == data.tipo_competencia
+            ]
+
+            return await self._reemplazar_competencia_devuelta(
+                id_usuario=id_usuario,
+                fila_anterior=rechazadas[0],
+                sobrantes=competentes,
+                data=data,
+            )
+
         result = await self.db.execute(
             text("""
                 INSERT INTO competencia_auditor (
@@ -1886,6 +2076,84 @@ class AuditorService:
             "mensaje": "Competencia registrada correctamente.",
         }
 
+    async def _reemplazar_competencia_devuelta(
+        self,
+        id_usuario: UUID,
+        fila_anterior: dict,
+        sobrantes: list[dict],
+        data: CompetenciaAuditorCrear,
+    ):
+        """Escribe la edicion nueva sobre la fila que el administrador devolvio
+        y la regresa a 'Pendiente' para que vuelva a calificarse.
+        """
+
+        try:
+            result = await self.db.execute(
+                text("""
+                    UPDATE competencia_auditor
+                    SET
+                        id_norma = :id_norma,
+                        tipo_competencia = :tipo_competencia,
+                        codigo_sector_iaf = :codigo_sector_iaf,
+                        titulo_institucion = :titulo_institucion,
+                        descripcion = :descripcion,
+                        fecha_inicio = :fecha_inicio,
+                        fecha_fin = :fecha_fin,
+                        es_vigente = :es_vigente,
+                        estado_validacion = 'Pendiente',
+                        observacion_validacion = NULL
+                    WHERE id_competencia = :id_competencia
+                      AND id_usuario = :id_usuario
+                    RETURNING id_competencia
+                """),
+                {
+                    "id_competencia": fila_anterior["id_competencia"],
+                    "id_usuario": id_usuario,
+                    "id_norma": data.id_norma,
+                    "tipo_competencia": data.tipo_competencia,
+                    "codigo_sector_iaf": data.codigo_sector_iaf,
+                    "titulo_institucion": data.titulo_institucion,
+                    "descripcion": data.descripcion,
+                    "fecha_inicio": data.fecha_inicio,
+                    "fecha_fin": data.fecha_fin,
+                    "es_vigente": data.es_vigente,
+                },
+            )
+
+            competencia = result.mappings().first()
+
+            if competencia is None:
+                raise RuntimeError(
+                    "La competencia que se iba a reemplazar ya no existe."
+                )
+
+            for fila in sobrantes:
+                await self.db.execute(
+                    text("""
+                        DELETE FROM competencia_auditor
+                        WHERE id_competencia = :id_competencia
+                          AND id_usuario = :id_usuario
+                    """),
+                    {
+                        "id_competencia": fila["id_competencia"],
+                        "id_usuario": id_usuario,
+                    },
+                )
+
+            await self.db.commit()
+
+        except Exception as error:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No fue posible reemplazar la competencia.",
+            ) from error
+
+        return {
+            "id_competencia": competencia["id_competencia"],
+            "mensaje": "Competencia reemplazada correctamente.",
+        }
+
     # ========================================================
 
     async def eliminar_competencia(self, id_usuario: UUID, id_competencia: UUID):
@@ -1896,7 +2164,8 @@ class AuditorService:
                 DELETE FROM competencia_auditor
                 WHERE id_competencia = :id_competencia
                   AND id_usuario = :id_usuario
-                  AND COALESCE(estado_validacion, 'Pendiente') <> 'Aprobado'
+                  AND COALESCE(estado_validacion, 'Pendiente')
+                      NOT IN ('Aprobado', 'Validado')
                 RETURNING id_competencia
             """),
             {
@@ -2447,9 +2716,8 @@ class AuditorService:
         id_conflicto: UUID,
         data: ConflictoInteresCrear,
     ):
-
-        await self._verificar_usuario_borrador(id_usuario)
-
+        # Un auditor aprobado tambien puede mantener actualizado su conflicto
+        # de interes. La propiedad se valida con id_usuario en la consulta.
         result = await self.db.execute(
             text("""
                 UPDATE conflicto_interes
@@ -2521,7 +2789,8 @@ class AuditorService:
         return [dict(row) for row in result.mappings().all()]
 
     async def eliminar_conflicto(self, id_usuario: UUID, id_conflicto: UUID):
-        await self._verificar_usuario_borrador(id_usuario)
+        # Un auditor aprobado tambien puede eliminar su conflicto de interes.
+        # La propiedad se valida con id_usuario en la consulta.
         result = await self.db.execute(
             text("""
                 DELETE FROM conflicto_interes
@@ -3170,370 +3439,117 @@ class AuditorService:
         documentos = result.mappings().all()
 
         # ====================================================
-        # CREAR PDF EN MEMORIA
+        # COMPROBANTE CON IDENTIDAD INSTITUCIONAL
         # ====================================================
 
-        buffer = BytesIO()
-
-        documento = SimpleDocTemplate(
-            buffer,
-            pagesize=letter,
-            rightMargin=45,
-            leftMargin=45,
-            topMargin=45,
-            bottomMargin=45,
-        )
-
-        estilos = getSampleStyleSheet()
-
-        titulo = ParagraphStyle(
-            "TituloCertiSENA",
-            parent=estilos["Title"],
-            alignment=TA_CENTER,
-            fontSize=18,
-            spaceAfter=8,
-        )
-
-        subtitulo = ParagraphStyle(
-            "SubtituloCertiSENA",
-            parent=estilos["Normal"],
-            alignment=TA_CENTER,
-            fontSize=11,
-            spaceAfter=20,
-        )
-
-        encabezado = ParagraphStyle(
-            "Encabezado",
-            parent=estilos["Heading2"],
-            fontSize=12,
-            spaceBefore=12,
-            spaceAfter=8,
-        )
-
-        contenido = []
-
-        # ====================================================
-        # ENCABEZADO
-        # ====================================================
-
-        contenido.append(
-            Paragraph(
-                "CertiSENA",
-                titulo,
+        filas_documentos = []
+        for documento_registro in documentos:
+            fecha_subida = documento_registro["fecha_subida"]
+            filas_documentos.append(
+                [
+                    documento_registro["nombre_archivo"] or "-",
+                    documento_registro["tipo_documento"] or "-",
+                    documento_registro["estado_revision"] or "-",
+                    (
+                        fecha_subida.strftime("%d/%m/%Y %H:%M")
+                        if fecha_subida
+                        else "-"
+                    ),
+                ]
             )
-        )
 
-        contenido.append(
-            Paragraph(
-                "Comprobante de registro de auditor",
-                subtitulo,
-            )
-        )
-
-        contenido.append(
-            Paragraph(
-                "Información de la postulación",
-                encabezado,
-            )
-        )
-
-        # ====================================================
-        # INFORMACIÓN DEL REGISTRO
-        # ====================================================
-
-        datos_registro = [
-            ["Campo", "Información"],
-
-            [
-                "Nombre completo",
-                str(registro["nombre"] or "-"),
-            ],
-
-            [
-                "Correo electrónico",
-                str(registro["correo"] or "-"),
-            ],
-
-            [
-                "Tipo de documento",
-                str(registro["tipo_doc"] or "-"),
-            ],
-
-            [
-                "Número de documento",
-                str(registro["num_doc"] or "-"),
-            ],
-
-            [
-                "ID usuario",
-                str(registro["id_usuario"]),
-            ],
-
-            [
-                "ID postulación",
-                str(registro["id_postulacion"]),
-            ],
-
-            [
-                "Rol",
-                str(registro["rol"] or "Auditor"),
-            ],
-
-            [
-                "Estado de la cuenta",
-                str(registro["estado_usuario"] or "-"),
-            ],
-
-            [
-                "Estado del auditor",
-                str(registro["estado_auditor"] or "-"),
-            ],
-
-            [
-                "Estado de la postulación",
-                str(registro["estado_postulacion"] or "-"),
-            ],
-
-            [
-                "Fecha de postulación",
+        elementos_extra = [
+            (
+                "Documentos asociados",
                 (
-                    registro["fecha_postulacion"].strftime(
-                        "%d/%m/%Y %H:%M:%S"
+                    tabla_institucional(
+                        ["Archivo", "Tipo", "Estado", "Fecha"],
+                        filas_documentos,
+                        anchos=[76 * mm, 42 * mm, 28 * mm, 34 * mm],
                     )
-                    if registro["fecha_postulacion"]
-                    else "-"
+                    if filas_documentos
+                    else texto_institucional(
+                        "No existen documentos asociados a esta postulación."
+                    )
                 ),
-            ],
+            )
         ]
 
-        tabla_registro = Table(
-            datos_registro,
-            colWidths=[170, 320],
-        )
-
-        tabla_registro.setStyle(
-            TableStyle(
+        secciones = [
+            (
+                "Información del auditor",
                 [
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, 0),
-                        colors.HexColor("#256d00"),
-                    ),
-
-                    (
-                        "TEXTCOLOR",
-                        (0, 0),
-                        (-1, 0),
-                        colors.white,
-                    ),
-
-                    (
-                        "FONTNAME",
-                        (0, 0),
-                        (-1, 0),
-                        "Helvetica-Bold",
-                    ),
-
-                    (
-                        "FONTNAME",
-                        (0, 1),
-                        (0, -1),
-                        "Helvetica-Bold",
-                    ),
-
-                    (
-                        "GRID",
-                        (0, 0),
-                        (-1, -1),
-                        0.5,
-                        colors.grey,
-                    ),
-
-                    (
-                        "VALIGN",
-                        (0, 0),
-                        (-1, -1),
-                        "MIDDLE",
-                    ),
-
-                    (
-                        "PADDING",
-                        (0, 0),
-                        (-1, -1),
-                        7,
-                    ),
-                ]
-            )
-        )
-
-        contenido.append(tabla_registro)
-
-        # ====================================================
-        # DOCUMENTOS
-        # ====================================================
-
-        contenido.append(
-            Paragraph(
-                "Documentos asociados",
-                encabezado,
-            )
-        )
-
-        if documentos:
-
-            datos_documentos = [
-                [
-                    "Archivo",
-                    "Tipo",
-                    "Estado",
-                    "Fecha",
-                ]
-            ]
-
-            for documento_registro in documentos:
-
-                fecha = documento_registro["fecha_subida"]
-
-                datos_documentos.append(
-                    [
-                        str(
-                            documento_registro[
-                                "nombre_archivo"
-                            ]
-                            or "-"
-                        ),
-
-                        str(
-                            documento_registro[
-                                "tipo_documento"
-                            ]
-                            or "-"
-                        ),
-
-                        str(
-                            documento_registro[
-                                "estado_revision"
-                            ]
-                            or "-"
-                        ),
-
-                        (
-                            fecha.strftime(
-                                "%d/%m/%Y %H:%M:%S"
-                            )
-                            if fecha
-                            else "-"
-                        ),
-                    ]
-                )
-
-            tabla_documentos = Table(
-                datos_documentos,
-                colWidths=[
-                    180,
-                    100,
-                    100,
-                    110,
+                    ("Nombre completo", registro["nombre"]),
+                    ("Correo electrónico", registro["correo"]),
+                    ("Tipo de documento", registro["tipo_doc"]),
+                    ("Número de documento", registro["num_doc"]),
+                    ("Rol", registro["rol"] or "Auditor"),
+                    ("Estado de la cuenta", registro["estado_usuario"]),
+                    ("Estado del auditor", registro["estado_auditor"]),
                 ],
-                repeatRows=1,
-            )
-
-            tabla_documentos.setStyle(
-                TableStyle(
-                    [
+            ),
+            (
+                "Información de la postulación",
+                [
+                    ("ID de usuario", registro["id_usuario"]),
+                    ("ID de postulación", registro["id_postulacion"]),
+                    ("Estado de la postulación", registro["estado_postulacion"]),
+                    (
+                        "Fecha de postulación",
                         (
-                            "BACKGROUND",
-                            (0, 0),
-                            (-1, 0),
-                            colors.HexColor("#256d00"),
+                            registro["fecha_postulacion"].strftime(
+                                "%d/%m/%Y %H:%M"
+                            )
+                            if registro["fecha_postulacion"]
+                            else None
                         ),
-
+                    ),
+                    (
+                        "Fecha de revisión",
                         (
-                            "TEXTCOLOR",
-                            (0, 0),
-                            (-1, 0),
-                            colors.white,
+                            registro["fecha_revision"].strftime(
+                                "%d/%m/%Y %H:%M"
+                            )
+                            if registro["fecha_revision"]
+                            else None
                         ),
-
-                        (
-                            "FONTNAME",
-                            (0, 0),
-                            (-1, 0),
-                            "Helvetica-Bold",
-                        ),
-
-                        (
-                            "GRID",
-                            (0, 0),
-                            (-1, -1),
-                            0.5,
-                            colors.grey,
-                        ),
-
-                        (
-                            "VALIGN",
-                            (0, 0),
-                            (-1, -1),
-                            "MIDDLE",
-                        ),
-
-                        (
-                            "FONTSIZE",
-                            (0, 0),
-                            (-1, -1),
-                            8,
-                        ),
-
-                        (
-                            "PADDING",
-                            (0, 0),
-                            (-1, -1),
-                            6,
-                        ),
-                    ]
-                )
-            )
-
-            contenido.append(tabla_documentos)
-
-        else:
-
-            contenido.append(
-                Paragraph(
-                    "No existen documentos asociados a esta postulación.",
-                    estilos["Normal"],
-                )
-            )
-
-        # ====================================================
-        # PIE
-        # ====================================================
-
-        contenido.append(
-            Spacer(1, 25)
-        )
-
-        contenido.append(
-            Paragraph(
-                "Este documento es un comprobante generado "
-                "por el sistema CertiSENA.",
-                estilos["Normal"],
-            )
-        )
-
-        documento.build(contenido)
-
-        buffer.seek(0)
-
-        # ====================================================
-        # RESPUESTA
-        # ====================================================
+                    ),
+                ],
+            ),
+        ]
 
         nombre_pdf = (
             f"comprobante_registro_"
             f"{str(registro['id_postulacion'])}.pdf"
         )
+
+        contenido_pdf = construir_pdf_institucional(
+            titulo="Comprobante de registro de auditor",
+            subtitulo=(
+                f"{registro['nombre'] or 'Auditor'} · "
+                f"{registro['tipo_doc'] or 'Documento'} "
+                f"{registro['num_doc'] or 'sin número'}"
+            ),
+            chip=(
+                "Estado de la postulación",
+                registro["estado_postulacion"] or "Sin estado",
+            ),
+            secciones=secciones,
+            elementos_extra=elementos_extra,
+            nota=(
+                "Este comprobante refleja la información registrada en "
+                "CertiSENA en la fecha de descarga. Conserve el documento "
+                "como soporte de su postulación."
+            ),
+            nombre_archivo=nombre_pdf,
+        )
+
+        buffer = BytesIO(contenido_pdf)
+        buffer.seek(0)
+
+        # ====================================================
+        # RESPUESTA
+        # ====================================================
 
         return StreamingResponse(
             buffer,

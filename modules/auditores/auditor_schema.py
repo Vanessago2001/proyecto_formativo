@@ -142,6 +142,7 @@ class CompetenciaAuditorActualizar(CompetenciaAuditorCrear):
 
 class CompetenciaAuditorRespuesta(BaseModel):
     id_competencia: UUID
+    id_postulacion: UUID | None = None
     id_norma: UUID
     tipo_competencia: str
     codigo_sector_iaf: str
@@ -150,6 +151,8 @@ class CompetenciaAuditorRespuesta(BaseModel):
     fecha_inicio: date
     fecha_fin: date
     es_vigente: bool
+    estado_validacion: str | None = None
+    observacion_validacion: str | None = None
 
 
 # ============================================================

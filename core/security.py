@@ -141,6 +141,58 @@ async def get_current_user(
         
     return dict(user_row)
 
+async def get_session_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Valida el JWT y devuelve el estado de la cuenta, incluso si está inactiva.
+
+    Se usa únicamente para que el frontend pueda mostrar la pantalla de cuenta
+    inactiva. Los endpoints de datos siguen usando ``get_current_user``, que
+    exige ``usuario.estado = 'Activo'``.
+    """
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudo validar el token de acceso o ha expirado.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: Any = payload.get("user_id")
+        if user_id is None:
+            raise credentials_exception
+    except jwt.PyJWTError:
+        raise credentials_exception
+
+    query = text("""
+        SELECT
+            u.id_usuario,
+            u.nombre,
+            u.correo,
+            u.estado,
+            u.estado_auditor,
+            u.rol_id,
+            r.nombre AS role_name
+        FROM usuario u
+        LEFT JOIN rol r
+            ON r.id_rol = u.rol_id
+        WHERE u.id_usuario = :user_id
+        LIMIT 1;
+    """)
+
+    result = await db.execute(query, {"user_id": user_id})
+    user_row = result.mappings().first()
+
+    if not user_row:
+        raise credentials_exception
+
+    usuario = dict(user_row)
+    usuario["activo"] = (usuario.get("estado") or "").strip().lower() == "activo"
+    return usuario
+
+
 def _normalize_role_name(role_name: str) -> str:
     if role_name is None:
         return ""

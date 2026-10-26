@@ -1,9 +1,14 @@
+from uuid import UUID
+
 from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.logger import logger
 from core.security import hash_password, validar_password_segura
+from modules.auditores_registrados.auditores_registrados_service import (
+    AuditoresRegistradosService,
+)
 from modules.users.user_schema import UserCreate, UserUpdate
 
 class UserService:
@@ -163,6 +168,45 @@ class UserService:
           detail='El usuario a modificar no existe.',
       )
 
+    rol_result = await self.db.execute(
+        text(
+            """
+            SELECT r.nombre AS rol
+            FROM usuario u
+            LEFT JOIN rol r ON r.id_rol = u.rol_id
+            WHERE u.id_usuario = :id_usuario
+            LIMIT 1
+            """
+        ),
+        {"id_usuario": target_user_id},
+    )
+    rol_fila = rol_result.mappings().first()
+    es_auditor = (
+        rol_fila is not None
+        and str(rol_fila.get("rol") or "").strip().lower() == "auditor"
+    )
+
+    estado_gestionado_por_auditor = False
+    if es_auditor and user_update.estado in ("Activo", "Inactivo"):
+        actor = (
+            current_user.get("id_usuario")
+            or current_user.get("id")
+            or current_user.get("user_id")
+        )
+        actor_uuid = None
+        if actor is not None:
+            try:
+                actor_uuid = UUID(str(actor))
+            except (TypeError, ValueError):
+                actor_uuid = None
+        await AuditoresRegistradosService(self.db).cambiar_estado(
+            UUID(str(target_user_id)),
+            user_update.estado,
+            id_usuario_actor=actor_uuid,
+        )
+        estado_gestionado_por_auditor = True
+        user_update = user_update.model_copy(update={"estado": None})
+
     update_fields: list[str] = []
     params: dict[str, object] = {'id_usuario': target_user_id}
 
@@ -208,7 +252,7 @@ class UserService:
       update_fields.append('rol_id = :rol')
       params['rol'] = user_update.rol
 
-    if user_update.estado is not None:
+    if user_update.estado is not None and not estado_gestionado_por_auditor:
       update_fields.append('estado = :estado')
       params['estado'] = user_update.estado
 
@@ -221,6 +265,19 @@ class UserService:
       params['num_doc'] = user_update.num_doc
 
     if not update_fields:
+      if estado_gestionado_por_auditor:
+        result = await self.db.execute(
+            text(
+                """
+                SELECT id_usuario, nombre, correo, estado, rol_id, tipo_doc, num_doc
+                FROM usuario
+                WHERE id_usuario = :id_usuario
+                """
+            ),
+            {'id_usuario': target_user_id},
+        )
+        row = result.mappings().first()
+        return {k: v for k, v in row.items()} if row else {}
       raise HTTPException(
           status_code=status.HTTP_400_BAD_REQUEST,
           detail='No se enviaron datos para actualizar.',

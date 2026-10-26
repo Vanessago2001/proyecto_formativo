@@ -82,7 +82,7 @@ async def pasar_revision_alias(
 ):
     return await _ejecutar_alias_estado(
         id_postulacion=id_postulacion,
-        nuevo_estado="En Revisi??n",
+        nuevo_estado="En Revisión",
         data=data,
         usuario=usuario,
         db=db,

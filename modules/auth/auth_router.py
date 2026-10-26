@@ -11,10 +11,32 @@ from modules.auth.auth_schema import (
     ResetPasswordRequest,
     ForgotPasswordRequest,
 )
-from core.security import get_current_user
+from core.security import get_current_user, get_session_user
 from modules.auth.dependencies import require_admin_access
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
+
+
+@router.get("/session")
+async def estado_sesion(
+    current_user=Depends(get_session_user),
+):
+    """Estado actual de la cuenta asociada al token.
+
+    A diferencia de los endpoints protegidos, este responde también cuando la
+    cuenta está inactiva. Así el frontend puede mostrar la pantalla de cuenta
+    inactiva en lugar de un error genérico.
+    """
+
+    return {
+        "id_usuario": current_user.get("id_usuario"),
+        "nombre": current_user.get("nombre"),
+        "correo": current_user.get("correo"),
+        "estado": current_user.get("estado"),
+        "estado_auditor": current_user.get("estado_auditor"),
+        "role_name": current_user.get("role_name"),
+        "activo": current_user.get("activo", False),
+    }
 
 @router.post("/login", status_code=status.HTTP_200_OK)
 async def sign_in(

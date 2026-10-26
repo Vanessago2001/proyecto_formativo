@@ -1,0 +1,2932 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CertiSENA | Auditores registrados</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <style>
+    /* ==========================================================
+       MÓDULO DE AUDITORES REGISTRADOS
+       ========================================================== */
+    .auditores-page .comite-sidebar {
+      position: sticky;
+      top: 18px;
+    }
+
+    .auditores-page .comite-sidebar nav {
+      gap: 2px;
+    }
+
+    .auditores-page .comite-nav-link {
+      border-radius: 5px;
+      text-decoration: none;
+      font-size: 12px;
+    }
+
+    .auditores-page .comite-nav-link.active {
+      font-weight: 700;
+    }
+
+    .auditores-page .comite-nav-link.salir {
+      margin-top: 8px;
+      color: #a5261e;
+      border-left-color: transparent;
+    }
+
+    .auditores-page .comite-nav-link.salir:hover {
+      border-left-color: #b42318;
+      background: #fff1f0;
+      color: #a5261e;
+    }
+
+    /* ---------- Estadísticas ---------- */
+    .audit-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .audit-stat {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      background: #fff;
+    }
+
+    .audit-stat-icon {
+      display: grid;
+      width: 44px;
+      height: 44px;
+      place-items: center;
+      border-radius: 10px;
+      background: #f1f8ed;
+      color: #256d00;
+      flex: 0 0 auto;
+    }
+
+    .audit-stat-icon.rojo {
+      background: #fff1f0;
+      color: #b42318;
+    }
+
+    .audit-stat-icon.azul {
+      background: #eef4ff;
+      color: #1d4ed8;
+    }
+
+    .audit-stat strong {
+      display: block;
+      color: #1f2937;
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .audit-stat span {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    /* ---------- Barra de búsqueda ---------- */
+    .audit-toolbar {
+      align-items: end;
+    }
+
+    .audit-toolbar .audit-search {
+      flex: 1 1 420px;
+    }
+
+    .audit-toolbar .audit-filter {
+      display: grid;
+      grid-template-columns: minmax(150px, 190px);
+      gap: 7px;
+      flex: 0 1 190px;
+    }
+
+    .audit-search-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .audit-search-row input {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .audit-search-row .comite-button {
+      flex: 0 0 auto;
+    }
+
+    /* ---------- Tabla ---------- */
+    .audit-table {
+      min-width: 900px;
+    }
+
+    .audit-table th:last-child,
+    .audit-table td:last-child {
+      min-width: 190px;
+    }
+
+    .audit-name {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .audit-avatar {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 50%;
+      background: #e7f6df;
+      color: #256d00;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+
+    .audit-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .audit-name-text {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .audit-name-text strong {
+      overflow: hidden;
+      color: #1f2937;
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .audit-name-text small {
+      overflow: hidden;
+      color: #64748b;
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .audit-doc {
+      display: grid;
+      gap: 2px;
+    }
+
+    .audit-doc strong {
+      color: #334155;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .audit-doc span {
+      color: #64748b;
+      font-size: 10px;
+    }
+
+    .audit-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .audit-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .audit-badge.activo {
+      background: #e7f6df;
+      color: #2d750b;
+    }
+
+    .audit-badge.inactivo {
+      background: #fff1f0;
+      color: #a5261e;
+    }
+
+    .audit-badge.neutral {
+      background: #eef2f7;
+      color: #475569;
+    }
+
+    .audit-badge.pendiente {
+      background: #fff5d8;
+      color: #896500;
+    }
+
+    .audit-badge.rechazado {
+      background: #fff1f0;
+      color: #a5261e;
+    }
+
+    .audit-badge.aprobado {
+      background: #e7f6df;
+      color: #2d750b;
+    }
+
+    .audit-actions {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .audit-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      padding: 6px 10px;
+      border: 1px solid #3baa01;
+      border-radius: 5px;
+      background: #fff;
+      color: #256d00;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      transition: background .18s ease, border-color .18s ease, color .18s ease;
+    }
+
+    .audit-action:hover {
+      background: #f1f8ed;
+    }
+
+    .audit-action.danger {
+      border-color: #efb5b1;
+      color: #b42318;
+    }
+
+    .audit-action.danger:hover {
+      background: #fff1f0;
+      border-color: #b42318;
+    }
+
+    .audit-action.success {
+      border-color: #b8dfaa;
+      color: #2d750b;
+    }
+
+    .audit-action.success:hover {
+      background: #edf8e9;
+      border-color: #2d750b;
+    }
+
+    .audit-action:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
+
+    .audit-action:focus-visible,
+    .audit-pagination button:focus-visible,
+    .audit-tab:focus-visible,
+    .audit-icon-button:focus-visible {
+      outline: 3px solid rgba(59, 170, 1, .25);
+      outline-offset: 2px;
+    }
+
+    .audit-table-empty {
+      padding: 34px 16px !important;
+      color: #64748b;
+      text-align: center;
+    }
+
+    .audit-empty-box {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+    }
+
+    .audit-empty-box .icono {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      margin-bottom: 2px;
+      place-items: center;
+      border-radius: 50%;
+      background: #f1f8ed;
+      color: #3baa01;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .audit-empty-box strong {
+      color: #1f2937;
+      font-size: 13px;
+    }
+
+    .audit-empty-box p {
+      max-width: 430px;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .audit-empty-box .comite-button {
+      margin-top: 6px;
+    }
+
+    /* ---------- Paginación ---------- */
+    .audit-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .audit-pagination-info {
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .audit-pagination-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .audit-pagination button {
+      min-width: 32px;
+      min-height: 32px;
+      padding: 5px 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      background: #fff;
+      color: #334155;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .audit-pagination button:hover:not(:disabled) {
+      border-color: #3baa01;
+      background: #f1f8ed;
+      color: #256d00;
+    }
+
+    .audit-pagination button.active {
+      border-color: #3baa01;
+      background: #3baa01;
+      color: #fff;
+    }
+
+    .audit-pagination button:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    /* ---------- Carga ---------- */
+    .audit-skeleton {
+      display: block;
+      height: 12px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 37%, #eef2f7 63%);
+      background-size: 400% 100%;
+      animation: audit-shimmer 1.25s ease infinite;
+    }
+
+    @keyframes audit-shimmer {
+      0% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0 50%;
+      }
+    }
+
+    .audit-skeleton-row td {
+      padding-top: 15px;
+      padding-bottom: 15px;
+    }
+
+    /* ---------- Modales ---------- */
+    body.audit-modal-open {
+      overflow: hidden;
+    }
+
+    .audit-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 12000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      background: rgba(15, 23, 42, .55);
+      backdrop-filter: blur(3px);
+    }
+
+    .audit-modal.open {
+      display: flex;
+      animation: audit-fade .18s ease;
+    }
+
+    @keyframes audit-fade {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .audit-modal-card {
+      display: flex;
+      width: min(1080px, 100%);
+      max-height: calc(100vh - 44px);
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 26px 70px rgba(15, 23, 42, .35);
+      animation: audit-pop .2s ease;
+    }
+
+    .audit-modal-card.confirmar {
+      width: min(520px, 100%);
+    }
+
+    @keyframes audit-pop {
+      from {
+        transform: translateY(10px) scale(.985);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    .audit-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #fbfdf9;
+    }
+
+    .audit-detail-identity {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .audit-avatar.large {
+      width: 76px;
+      height: 76px;
+      font-size: 24px;
+      background: #e7f6df;
+    }
+
+    .audit-detail-identity h3 {
+      margin: 2px 0 5px;
+      color: #1f2937;
+      font-size: 21px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .audit-detail-identity .meta {
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .audit-detail-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .audit-icon-button {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      background: #fff;
+      color: #475569;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .audit-icon-button:hover {
+      border-color: #b42318;
+      background: #fff1f0;
+      color: #b42318;
+    }
+
+    .audit-modal-body {
+      overflow-y: auto;
+      padding: 22px 24px 26px;
+    }
+
+    .audit-modal-card.confirmar .audit-modal-body {
+      padding-top: 28px;
+      text-align: center;
+    }
+
+    .audit-modal-foot {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 9px;
+      padding: 15px 24px;
+      border-top: 1px solid #e2e8f0;
+      background: #fbfdf9;
+    }
+
+    .audit-modal-card.confirmar .audit-modal-foot {
+      justify-content: center;
+    }
+
+    /* ---------- Pestañas ---------- */
+    .audit-tabs {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      margin-bottom: 18px;
+      padding-bottom: 2px;
+      border-bottom: 1px solid #e2e8f0;
+      scrollbar-width: thin;
+    }
+
+    .audit-tab {
+      flex: 0 0 auto;
+      padding: 10px 12px;
+      border: 0;
+      border-bottom: 3px solid transparent;
+      background: transparent;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .audit-tab:hover {
+      color: #256d00;
+    }
+
+    .audit-tab.active {
+      border-bottom-color: #3baa01;
+      color: #256d00;
+    }
+
+    .audit-tab .count {
+      display: inline-grid;
+      min-width: 19px;
+      height: 19px;
+      margin-left: 5px;
+      padding: 0 5px;
+      place-items: center;
+      border-radius: 20px;
+      background: #eef2f7;
+      color: #475569;
+      font-size: 10px;
+    }
+
+    .audit-tab.active .count {
+      background: #e7f6df;
+      color: #256d00;
+    }
+
+    .audit-panel[hidden] {
+      display: none !important;
+    }
+
+    /* ---------- Secciones internas ---------- */
+    .audit-section {
+      margin-bottom: 20px;
+      padding: 18px;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      background: #fff;
+    }
+
+    .audit-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .audit-section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 13px;
+    }
+
+    .audit-section-head h4 {
+      margin: 0;
+      color: #1f2937;
+      font-size: 15px;
+    }
+
+    .audit-section-head p {
+      margin-top: 3px;
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .audit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 13px 18px;
+    }
+
+    .audit-field {
+      min-width: 0;
+      padding-bottom: 9px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .audit-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .audit-field dt {
+      margin-bottom: 3px;
+      color: #7b847e;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .audit-field dd {
+      color: #263238;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .audit-field dd.suave {
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .audit-muted {
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .audit-note {
+      margin-top: 13px;
+      padding: 10px 12px;
+      border: 1px solid #dbe7d4;
+      border-radius: 7px;
+      background: #fbfdf9;
+      color: #475569;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .audit-empty {
+      display: grid;
+      justify-items: center;
+      gap: 5px;
+      padding: 24px 18px;
+      border: 1px dashed #dbe3ec;
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .audit-empty .icono {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      margin-bottom: 2px;
+      place-items: center;
+      border-radius: 50%;
+      background: #eef2f7;
+      color: #64748b;
+      font-size: 18px;
+    }
+
+    .audit-empty strong {
+      color: #334155;
+      font-size: 12px;
+    }
+
+    .audit-group {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .audit-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .audit-group-title {
+      color: #475569;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .audit-doc-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .audit-file-icon {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 8px;
+      background: #fff1f0;
+      color: #b42318;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .03em;
+    }
+
+    .audit-file-icon.img {
+      background: #eef4ff;
+      color: #1d4ed8;
+    }
+
+    .audit-file-icon.doc {
+      background: #eef2f7;
+      color: #475569;
+    }
+
+    .audit-doc-info {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .audit-doc-info strong {
+      display: block;
+      overflow: hidden;
+      color: #1f2937;
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .audit-doc-info .meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px 8px;
+      margin-top: 3px;
+      color: #64748b;
+      font-size: 10px;
+    }
+
+    .audit-doc-actions {
+      display: flex;
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
+      gap: 5px;
+    }
+
+    .audit-doc-actions .audit-action {
+      min-height: 28px;
+      padding: 5px 8px;
+      font-size: 10px;
+    }
+
+    .audit-unavailable {
+      color: #a5261e;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .audit-card-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .audit-info-card {
+      padding: 13px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .audit-info-card h5 {
+      margin: 0 0 4px;
+      color: #1f2937;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .audit-info-card .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px 8px;
+      margin-bottom: 6px;
+      color: #64748b;
+      font-size: 10px;
+    }
+
+    .audit-info-card p {
+      color: #475569;
+      font-size: 11px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .audit-info-card .pie {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 9px;
+      padding-top: 9px;
+      border-top: 1px solid #f1f5f9;
+      color: #64748b;
+      font-size: 10px;
+    }
+
+    /* ---------- Confirmación ---------- */
+    .audit-confirm-icon {
+      display: grid;
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 16px;
+      place-items: center;
+      border-radius: 50%;
+      background: #fff1f0;
+      color: #b42318;
+    }
+
+    .audit-confirm-icon.success {
+      background: #e7f6df;
+      color: #2d750b;
+    }
+
+    .audit-modal-card.confirmar h3 {
+      margin: 0 0 8px;
+      color: #1f2937;
+      font-size: 21px;
+    }
+
+    .audit-confirm-nombre {
+      margin-bottom: 12px;
+      color: #256d00;
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .audit-confirm-texto {
+      color: #475569;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .audit-confirm-aviso {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid #f3d6d3;
+      border-radius: 7px;
+      background: #fff8f7;
+      color: #7f1d1d;
+      font-size: 11px;
+      line-height: 1.55;
+      text-align: left;
+    }
+
+    .audit-confirm-impacto {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid #f3d6d3;
+      border-radius: 7px;
+      background: #fff8f7;
+      color: #7f1d1d;
+      font-size: 11px;
+      line-height: 1.55;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .audit-confirm-error {
+      margin-top: 12px;
+      color: #a5261e;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .audit-modal-loading {
+      display: grid;
+      min-height: 300px;
+      place-content: center;
+      justify-items: center;
+      gap: 12px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .audit-spinner {
+      width: 34px;
+      height: 34px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #3baa01;
+      border-radius: 50%;
+      animation: audit-spin .7s linear infinite;
+    }
+
+    @keyframes audit-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ---------- Notificaciones ---------- */
+    .audit-toast-wrap {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 13000;
+      display: grid;
+      gap: 9px;
+      width: min(360px, calc(100vw - 36px));
+      pointer-events: none;
+    }
+
+    .audit-toast {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid #dbe7d4;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, .16);
+      pointer-events: auto;
+      animation: audit-toast-in .22s ease;
+    }
+
+    .audit-toast.error {
+      border-color: #efb5b1;
+    }
+
+    .audit-toast .simbolo {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: #e7f6df;
+      color: #256d00;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .audit-toast.error .simbolo {
+      background: #fff1f0;
+      color: #b42318;
+    }
+
+    .audit-toast .contenido {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .audit-toast .contenido strong {
+      display: block;
+      margin-bottom: 2px;
+      color: #1f2937;
+      font-size: 12px;
+    }
+
+    .audit-toast .contenido p {
+      color: #475569;
+      font-size: 11px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .audit-toast .cerrar {
+      border: 0;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    @keyframes audit-toast-in {
+      from {
+        transform: translateY(8px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    /* ---------- Adaptación a pantallas ---------- */
+    @media (max-width: 980px) {
+      .auditores-page .comite-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .auditores-page .comite-sidebar {
+        position: static;
+        min-height: auto;
+      }
+
+      .auditores-page .comite-sidebar nav {
+        display: flex;
+        overflow-x: auto;
+        padding: 10px 0 4px;
+      }
+
+      .auditores-page .comite-nav-link {
+        flex: 0 0 auto;
+        border-left: 0;
+        border-bottom: 3px solid transparent;
+        white-space: nowrap;
+      }
+
+      .auditores-page .comite-nav-link:hover,
+      .auditores-page .comite-nav-link.active {
+        border-left-color: transparent;
+        border-bottom-color: #3baa01;
+      }
+
+      .auditores-page .comite-nav-link.salir {
+        margin-top: 0;
+      }
+
+      .auditores-page .comite-access-note {
+        margin-top: 12px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .audit-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .audit-toolbar {
+        align-items: stretch;
+      }
+
+      .audit-toolbar .audit-filter {
+        flex: 1 1 auto;
+        grid-template-columns: 1fr;
+      }
+
+      .audit-search-row {
+        flex-wrap: wrap;
+      }
+
+      .audit-search-row input {
+        flex: 1 1 100%;
+      }
+
+      .audit-search-row .comite-button {
+        flex: 1 1 auto;
+      }
+
+      .audit-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .audit-doc-card {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .audit-doc-actions {
+        width: 100%;
+      }
+
+      .audit-doc-actions .audit-action {
+        flex: 1 1 auto;
+      }
+
+      .audit-modal {
+        padding: 0;
+      }
+
+      .audit-modal-card {
+        width: 100%;
+        max-height: 100vh;
+        height: 100%;
+        border-radius: 0;
+      }
+
+      .audit-modal-card.confirmar {
+        width: 100%;
+        height: auto;
+        max-height: 100vh;
+        margin: auto;
+        border-radius: 12px;
+      }
+
+      .audit-modal-head,
+      .audit-modal-body,
+      .audit-modal-foot {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .audit-detail-identity {
+        align-items: flex-start;
+      }
+
+      .audit-avatar.large {
+        width: 58px;
+        height: 58px;
+        font-size: 18px;
+      }
+
+      .audit-detail-identity h3 {
+        font-size: 17px;
+      }
+
+      .audit-modal-card.confirmar {
+        margin: 14px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .audit-stat {
+        padding: 13px 14px;
+      }
+
+      .audit-pagination {
+        justify-content: center;
+      }
+
+      .audit-pagination-info {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+
+<body class="comite-page auditores-page">
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Gestión de auditores</p>
+        </div>
+      </div>
+      <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button class="comite-logout js-logout" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="comite-shell">
+    <div class="comite-layout">
+      <aside class="comite-sidebar" aria-label="Navegación del módulo de auditores">
+        <div class="comite-sidebar-heading">
+          <span class="comite-kicker">Módulo administrativo</span>
+          <strong>Auditores registrados</strong>
+        </div>
+        <nav aria-label="Menú principal">
+          <a class="comite-nav-link" href="/dashboard">Resumen</a>
+          <a class="comite-nav-link active" href="/auditores-registrados" aria-current="page">Auditores registrados</a>
+          <a class="comite-nav-link" href="/empresas">Empresas registradas</a>
+          <a class="comite-nav-link" href="/asignacion-auditores">Asignación de auditores</a>
+          <a class="comite-nav-link" href="/consultar-auditorias-programadas-admin">Auditorías programadas</a>
+          <a class="comite-nav-link" href="/consultar-agenda-auditor">Agenda de auditor</a>
+          <a class="comite-nav-link" href="/revision-solicitudes">Revisión de solicitudes</a>
+          <a class="comite-nav-link" href="/banco-auditores">Banco de auditores</a>
+          <a class="comite-nav-link" href="/comite">Comité de certificación</a>
+          <a class="comite-nav-link" href="/reportes">Reportes</a>
+          <a class="comite-nav-link" href="/profile">Mi perfil</a>
+          <button class="comite-nav-link salir js-logout" type="button">Cerrar sesión</button>
+        </nav>
+        <div class="comite-access-note">
+          <span id="roleLabel">Validando permisos...</span>
+          <small>Las acciones de inactivar y reactivar solo están disponibles para perfiles administrativos autorizados.</small>
+        </div>
+      </aside>
+
+      <section class="comite-content">
+        <div class="comite-page-heading">
+          <div>
+            <span class="comite-kicker">Gestión de auditores</span>
+            <h2>Auditores registrados</h2>
+            <p>Consulta la hoja de vida, los documentos, los conflictos de interés y las certificaciones de cada auditor.</p>
+          </div>
+          <button id="btnRecargar" class="comite-button secondary" type="button">Actualizar</button>
+        </div>
+
+        <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
+
+        <section class="audit-stats" aria-label="Resumen de auditores">
+          <article class="audit-stat">
+            <span class="audit-stat-icon azul" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </span>
+            <div>
+              <strong id="statTotal">-</strong>
+              <span>Auditores registrados</span>
+            </div>
+          </article>
+          <article class="audit-stat">
+            <span class="audit-stat-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </span>
+            <div>
+              <strong id="statActivos">-</strong>
+              <span>Cuentas activas</span>
+            </div>
+          </article>
+          <article class="audit-stat">
+            <span class="audit-stat-icon rojo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+              </svg>
+            </span>
+            <div>
+              <strong id="statInactivos">-</strong>
+              <span>Cuentas inactivas</span>
+            </div>
+          </article>
+        </section>
+
+        <section class="comite-toolbar audit-toolbar" aria-label="Filtros de búsqueda">
+          <div class="audit-search">
+            <label for="busquedaAuditor">Buscar auditor</label>
+            <div class="audit-search-row">
+              <input id="busquedaAuditor" type="search" autocomplete="off" placeholder="Nombre, tipo o número de documento">
+              <button id="btnLimpiar" class="comite-button secondary" type="button">Limpiar</button>
+            </div>
+          </div>
+          <div class="audit-filter">
+            <label for="filtroEstado">Estado</label>
+            <select id="filtroEstado">
+              <option value="">Todos los estados</option>
+              <option value="Activo">Activos</option>
+              <option value="Inactivo">Inactivos</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="comite-panel" aria-labelledby="tituloListado">
+          <div class="comite-panel-heading">
+            <div>
+              <h3 id="tituloListado">Listado de auditores</h3>
+              <p id="resumenListado">Cargando auditores...</p>
+            </div>
+          </div>
+
+          <div class="comite-table-wrap">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Documento</th>
+                  <th scope="col">Número de documento</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="auditoresBody">
+                <tr>
+                  <td colspan="5" class="audit-table-empty">Cargando auditores...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="paginacion" class="audit-pagination" hidden></div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer" style="padding:18px; text-align:center; color:#64748b; font-size:12px;">
+    © 2026 CertiSENA - SENA. Todos los derechos reservados.
+  </footer>
+
+  <!-- ==========================================================
+       MODAL: HOJA DE VIDA
+       ========================================================== -->
+  <div class="audit-modal" id="modalDetalle" role="dialog" aria-modal="true" aria-labelledby="tituloDetalle">
+    <div class="audit-modal-card" role="document">
+      <div class="audit-modal-head">
+        <div class="audit-detail-identity" id="detalleIdentidad">
+          <div class="audit-avatar large" id="detalleAvatar">A</div>
+          <div>
+            <span class="comite-kicker">Hoja de vida digital</span>
+            <h3 id="tituloDetalle">Cargando auditor...</h3>
+            <p class="meta" id="detalleMeta"></p>
+            <div class="audit-detail-badges" id="detalleBadges"></div>
+          </div>
+        </div>
+        <button class="audit-icon-button" type="button" id="btnCerrarDetalle" aria-label="Cerrar hoja de vida">×</button>
+      </div>
+
+      <div class="audit-modal-body" id="detalleCuerpo">
+        <div class="audit-modal-loading">
+          <span class="audit-spinner" aria-hidden="true"></span>
+          <span>Cargando hoja de vida...</span>
+        </div>
+      </div>
+
+      <div class="audit-modal-foot">
+        <button class="comite-button secondary" type="button" id="btnVolverListado">Volver al listado</button>
+        <button class="comite-button primary" type="button" id="btnDetalleEstado" hidden></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================
+       MODAL: CONFIRMAR INACTIVACIÓN / REACTIVACIÓN
+       ========================================================== -->
+  <div class="audit-modal" id="modalConfirmar" role="alertdialog" aria-modal="true"
+    aria-labelledby="tituloConfirmar" aria-describedby="textoConfirmar">
+    <div class="audit-modal-card confirmar" role="document">
+      <div class="audit-modal-body">
+        <div class="audit-confirm-icon" id="confirmarIcono" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <h3 id="tituloConfirmar">Confirmar acción</h3>
+        <div class="audit-confirm-nombre" id="confirmarNombre"></div>
+        <p class="audit-confirm-texto" id="textoConfirmar"></p>
+        <div class="audit-confirm-aviso" id="confirmarAviso"></div>
+        <div class="audit-confirm-impacto" id="confirmarImpacto" hidden></div>
+        <div class="audit-confirm-error" id="confirmarError" role="alert"></div>
+      </div>
+      <div class="audit-modal-foot">
+        <button class="comite-button secondary" type="button" id="btnCancelarConfirmar">Cancelar</button>
+        <button class="comite-button danger" type="button" id="btnEjecutarConfirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="audit-toast-wrap" id="toastWrap" aria-live="polite" aria-atomic="false"></div>
+
+  <script src="/static/session-guard.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      // ------------------------------------------------------------
+      // Sesión y permisos
+      // ------------------------------------------------------------
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.replace("/login");
+        return;
+      }
+
+      function normalizarRol(valor) {
+        const base = String(valor || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .replace(/[\s_-]+/g, "");
+        if (base === "administrador") return "admin";
+        if (base === "superadministrador") return "superadmin";
+        return base;
+      }
+
+      function leerToken(valor) {
+        try {
+          const parte = valor.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+          return JSON.parse(atob(parte));
+        } catch (_) {
+          return null;
+        }
+      }
+
+      const payload = leerToken(token);
+      if (!payload) {
+        localStorage.removeItem("access_token");
+        window.location.replace("/login");
+        return;
+      }
+
+      const ROLES_LECTURA = ["admin", "superadmin", "auxiliar"];
+      const ROLES_ESCRITURA = ["admin", "superadmin"];
+      let rolActual = normalizarRol(payload.role_name);
+      let puedeGestionar = ROLES_ESCRITURA.includes(rolActual);
+
+      if (!ROLES_LECTURA.includes(rolActual)) {
+        window.location.replace("/dashboard");
+        return;
+      }
+
+      // ------------------------------------------------------------
+      // Estado de la interfaz
+      // ------------------------------------------------------------
+      const ESTADO_INICIAL = {
+        auditores: [],
+        filtrados: [],
+        pagina: 1,
+        porPagina: 8,
+        texto: "",
+        estado: "",
+        cargando: false,
+        detalle: null,
+        detalleId: null,
+        detalleFotoUrl: null,
+        tabActiva: "datos",
+        confirmacion: null,
+        ejecutando: false,
+      };
+
+      const app = { ...ESTADO_INICIAL };
+
+      const $ = (selector) => document.querySelector(selector);
+      const tbody = $("#auditoresBody");
+      const feedback = $("#feedback");
+      const paginacion = $("#paginacion");
+      const resumenListado = $("#resumenListado");
+      const busqueda = $("#busquedaAuditor");
+      const filtroEstado = $("#filtroEstado");
+      const modalDetalle = $("#modalDetalle");
+      const detalleCuerpo = $("#detalleCuerpo");
+      const detalleIdentidad = $("#detalleIdentidad");
+      const detalleAvatar = $("#detalleAvatar");
+      const detalleMeta = $("#detalleMeta");
+      const detalleBadges = $("#detalleBadges");
+      const tituloDetalle = $("#tituloDetalle");
+      const btnDetalleEstado = $("#btnDetalleEstado");
+      const modalConfirmar = $("#modalConfirmar");
+      const confirmarIcono = $("#confirmarIcono");
+      const tituloConfirmar = $("#tituloConfirmar");
+      const confirmarNombre = $("#confirmarNombre");
+      const textoConfirmar = $("#textoConfirmar");
+      const confirmarAviso = $("#confirmarAviso");
+      const confirmarImpacto = $("#confirmarImpacto");
+      const confirmarError = $("#confirmarError");
+      const btnEjecutarConfirmar = $("#btnEjecutarConfirmar");
+      const toastWrap = $("#toastWrap");
+
+      $("#roleLabel").textContent = "Rol: " + (payload.role_name || "Usuario");
+
+      // ------------------------------------------------------------
+      // Utilidades
+      // ------------------------------------------------------------
+      function escapar(valor) {
+        return String(valor ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function mostrar(valor, defecto = "No disponible") {
+        const texto = String(valor ?? "").trim();
+        return texto ? escapar(texto) : `<span class="audit-muted">${escapar(defecto)}</span>`;
+      }
+
+      function normalizarTexto(valor) {
+        return String(valor || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
+      }
+
+      function iniciales(nombre) {
+        const partes = String(nombre || "Auditor")
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+        if (!partes.length) return "A";
+        if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+        return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+      }
+
+      function formatearFecha(valor) {
+        if (!valor) return "";
+        const texto = String(valor);
+        let fecha;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+          const [anio, mes, dia] = texto.split("-").map(Number);
+          fecha = new Date(anio, mes - 1, dia);
+        } else {
+          fecha = new Date(valor);
+        }
+        if (Number.isNaN(fecha.getTime())) return texto;
+        return new Intl.DateTimeFormat("es-CO", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }).format(fecha);
+      }
+
+      function formatearFechaHora(valor) {
+        if (!valor) return "";
+        const fecha = new Date(valor);
+        if (Number.isNaN(fecha.getTime())) return String(valor);
+        return new Intl.DateTimeFormat("es-CO", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(fecha);
+      }
+
+      function formatearTamano(bytes) {
+        const numero = Number(bytes || 0);
+        if (!numero) return "";
+        if (numero < 1024) return numero + " B";
+        if (numero < 1024 * 1024) return (numero / 1024).toFixed(1) + " KB";
+        return (numero / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      function badgeEstado(estado) {
+        const activo = normalizarTexto(estado) === "activo";
+        return `<span class="audit-badge ${activo ? "activo" : "inactivo"}"><span class="dot"></span>${activo ? "Activo" : "Inactivo"}</span>`;
+      }
+
+      function badgeValidacion(estado) {
+        const valor = normalizarTexto(estado);
+        let clase = "neutral";
+        if (["aprobado", "aprobada", "validado", "validada", "vigente"].includes(valor)) clase = "aprobado";
+        else if (["pendiente", "en revision", "en revisión", "correcciones"].includes(valor)) clase = "pendiente";
+        else if (["rechazado", "rechazada", "vencido", "vencida"].includes(valor)) clase = "rechazado";
+        return `<span class="audit-badge ${clase}">${escapar(estado || "Sin estado")}</span>`;
+      }
+
+      function iconoArchivo(formato) {
+        const valor = String(formato || "").toUpperCase();
+        if (valor === "PDF") return { texto: "PDF", clase: "" };
+        if (["JPG", "JPEG", "PNG", "WEBP", "GIF"].includes(valor)) return { texto: "IMG", clase: "img" };
+        if (["DOC", "DOCX", "XLS", "XLSX", "PPT", "PPTX", "TXT"].includes(valor)) {
+          return { texto: valor.slice(0, 3), clase: "doc" };
+        }
+        return { texto: valor ? valor.slice(0, 3) : "ARC", clase: "doc" };
+      }
+
+      function mostrarFeedback(tipo, mensaje) {
+        feedback.className = "comite-feedback " + tipo;
+        feedback.textContent = mensaje;
+        if (tipo === "success") {
+          window.clearTimeout(mostrarFeedback._timer);
+          mostrarFeedback._timer = window.setTimeout(() => {
+            feedback.className = "comite-feedback";
+            feedback.textContent = "";
+          }, 5000);
+        }
+      }
+
+      function limpiarFeedback() {
+        feedback.className = "comite-feedback";
+        feedback.textContent = "";
+      }
+
+      function toast(tipo, titulo, mensaje) {
+        const contenedor = document.createElement("div");
+        contenedor.className = "audit-toast " + tipo;
+        contenedor.innerHTML = `
+          <span class="simbolo">${tipo === "error" ? "!" : "✓"}</span>
+          <div class="contenido">
+            <strong>${escapar(titulo)}</strong>
+            <p>${escapar(mensaje)}</p>
+          </div>
+          <button class="cerrar" type="button" aria-label="Cerrar notificación">×</button>`;
+        contenedor.querySelector(".cerrar").addEventListener("click", () => contenedor.remove());
+        toastWrap.appendChild(contenedor);
+        window.setTimeout(() => contenedor.remove(), 5200);
+      }
+
+      function cerrarSesion() {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("token_type");
+        window.location.href = "/login";
+      }
+
+      document.querySelectorAll(".js-logout").forEach((boton) => {
+        boton.addEventListener("click", cerrarSesion);
+      });
+
+      // ------------------------------------------------------------
+      // Llamadas al servidor
+      // ------------------------------------------------------------
+      async function api(ruta, opciones = {}) {
+        const headers = { ...(opciones.headers || {}) };
+        headers.Authorization = "Bearer " + token;
+        if (opciones.body && !headers["Content-Type"]) {
+          headers["Content-Type"] = "application/json";
+        }
+
+        const respuesta = await fetch(ruta, {
+          ...opciones,
+          headers,
+          cache: "no-store",
+        });
+
+        if (respuesta.status === 401) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("token_type");
+          window.location.replace("/login");
+          throw new Error("La sesión ha expirado.");
+        }
+
+        const data = await respuesta.json().catch(() => ({}));
+        if (!respuesta.ok) {
+          let detalle = data.detail;
+          if (Array.isArray(detalle)) {
+            detalle = detalle.map((item) => item.msg || item.mensaje || "").join(" ");
+          } else if (detalle && typeof detalle === "object") {
+            detalle = detalle.mensaje || JSON.stringify(detalle);
+          }
+          throw new Error(detalle || "No fue posible completar la operación.");
+        }
+        return data;
+      }
+
+      // ------------------------------------------------------------
+      // Validación de la cuenta con el servidor
+      // ------------------------------------------------------------
+      async function validarSesion() {
+        try {
+          const respuesta = await fetch("/auth/session", {
+            headers: { Authorization: "Bearer " + token },
+            cache: "no-store",
+          });
+          if (!respuesta.ok) {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("token_type");
+            window.location.replace("/login");
+            return false;
+          }
+          const sesion = await respuesta.json();
+          if (sesion.activo === false) {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("token_type");
+            window.location.replace(
+              normalizarRol(sesion.role_name) === "auditor" ? "/cuenta-inactiva" : "/login"
+            );
+            return false;
+          }
+
+          rolActual = normalizarRol(sesion.role_name);
+          puedeGestionar = ROLES_ESCRITURA.includes(rolActual);
+          $("#roleLabel").textContent = "Rol: " + (sesion.role_name || "Usuario");
+
+          if (!ROLES_LECTURA.includes(rolActual)) {
+            window.location.replace("/dashboard");
+            return false;
+          }
+          return true;
+        } catch (_) {
+          return true;
+        }
+      }
+
+      // ------------------------------------------------------------
+      // Listado y filtros
+      // ------------------------------------------------------------
+      function cargarSiluetas() {
+        tbody.innerHTML = Array.from({ length: 5 })
+          .map(
+            () => `
+            <tr class="audit-skeleton-row">
+              <td><span class="audit-skeleton" style="width:78%;"></span><span class="audit-skeleton" style="width:48%; margin-top:7px;"></span></td>
+              <td><span class="audit-skeleton" style="width:62%;"></span></td>
+              <td><span class="audit-skeleton" style="width:55%;"></span></td>
+              <td><span class="audit-skeleton" style="width:64px; height:24px; border-radius:20px;"></span></td>
+              <td><span class="audit-skeleton" style="width:150px; height:30px;"></span></td>
+            </tr>`
+          )
+          .join("");
+        resumenListado.textContent = "Cargando auditores...";
+        paginacion.hidden = true;
+      }
+
+      function actualizarEstadisticas() {
+        const total = app.auditores.length;
+        const activos = app.auditores.filter((item) => normalizarTexto(item.estado) === "activo").length;
+        $("#statTotal").textContent = total;
+        $("#statActivos").textContent = activos;
+        $("#statInactivos").textContent = total - activos;
+      }
+
+      async function cargarAuditores({ silencioso = false } = {}) {
+        app.cargando = true;
+        if (!silencioso) {
+          limpiarFeedback();
+          cargarSiluetas();
+        }
+
+        try {
+          const data = await api("/admin/auditores-registrados");
+          app.auditores = Array.isArray(data.auditores) ? data.auditores : [];
+          actualizarEstadisticas();
+          aplicarFiltros(false);
+        } catch (error) {
+          app.auditores = [];
+          actualizarEstadisticas();
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" class="audit-table-empty">
+                <div class="audit-empty-box">
+                  <span class="icono">!</span>
+                  <strong>No se pudo cargar el listado</strong>
+                  <p>${escapar(error.message || "Ocurrió un error al consultar los auditores.")}</p>
+                  <button class="comite-button secondary" type="button" data-reintentar>Reintentar</button>
+                </div>
+              </td>
+            </tr>`;
+          resumenListado.textContent = "No fue posible cargar los auditores.";
+          paginacion.hidden = true;
+          mostrarFeedback("error", error.message || "No fue posible cargar los auditores.");
+        } finally {
+          app.cargando = false;
+        }
+      }
+
+      function filtrarAuditores() {
+        const texto = normalizarTexto(app.texto);
+        const estado = normalizarTexto(app.estado);
+
+        app.filtrados = app.auditores.filter((auditor) => {
+          const coincideEstado = !estado || normalizarTexto(auditor.estado) === estado;
+          if (!coincideEstado) return false;
+          if (!texto) return true;
+
+          const campos = [
+            auditor.nombre,
+            auditor.tipo_doc,
+            auditor.num_doc,
+            auditor.correo,
+          ];
+          return campos.some((campo) => normalizarTexto(campo).includes(texto));
+        });
+      }
+
+      function aplicarFiltros(resetearPagina = true) {
+        filtrarAuditores();
+
+        if (resetearPagina) app.pagina = 1;
+
+        const totalPaginas = Math.max(1, Math.ceil(app.filtrados.length / app.porPagina));
+        if (app.pagina > totalPaginas) app.pagina = totalPaginas;
+
+        renderTabla();
+        renderPaginacion();
+      }
+
+      function renderTabla() {
+        if (!app.auditores.length) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" class="audit-table-empty">
+                <div class="audit-empty-box">
+                  <span class="icono">○</span>
+                  <strong>No hay auditores registrados</strong>
+                  <p>En el sistema todavía no existen cuentas con el rol Auditor.</p>
+                  <button class="comite-button secondary" type="button" data-reintentar>Actualizar</button>
+                </div>
+              </td>
+            </tr>`;
+          resumenListado.textContent = "0 auditores registrados.";
+          paginacion.hidden = true;
+          return;
+        }
+
+        if (!app.filtrados.length) {
+          const hayFiltros = app.texto.trim() || app.estado;
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" class="audit-table-empty">
+                <div class="audit-empty-box">
+                  <span class="icono">⌕</span>
+                  <strong>No se encontraron coincidencias</strong>
+                  <p>${hayFiltros
+                    ? "Ningún auditor coincide con el texto o el estado seleccionado. Prueba con otros criterios."
+                    : "No hay auditores para mostrar."}</p>
+                  ${hayFiltros
+                    ? '<button class="comite-button secondary" type="button" data-limpiar-filtros>Limpiar filtros</button>'
+                    : ""}
+                </div>
+              </td>
+            </tr>`;
+          resumenListado.textContent = "0 resultados para los filtros aplicados.";
+          paginacion.hidden = true;
+          return;
+        }
+
+        const inicio = (app.pagina - 1) * app.porPagina;
+        const fin = Math.min(inicio + app.porPagina, app.filtrados.length);
+        const visibles = app.filtrados.slice(inicio, fin);
+
+        tbody.innerHTML = visibles
+          .map((auditor) => {
+            const id = escapar(auditor.id_usuario);
+            const estado = normalizarTexto(auditor.estado) === "activo";
+            const totalDocs = Number(auditor.total_documentos || 0);
+            const totalCerts = Number(auditor.total_certificaciones || 0);
+            const metaPartes = [];
+            if (totalDocs) metaPartes.push(`${totalDocs} documento${totalDocs === 1 ? "" : "s"}`);
+            if (totalCerts) metaPartes.push(`${totalCerts} certificación${totalCerts === 1 ? "" : "es"}`);
+            const meta = metaPartes.length ? metaPartes.join(" · ") : escapar(auditor.correo || "Sin correo registrado");
+
+            return `
+              <tr>
+                <td>
+                  <div class="audit-name">
+                    <div class="audit-avatar" aria-hidden="true">${escapar(iniciales(auditor.nombre))}</div>
+                    <div class="audit-name-text">
+                      <strong title="${escapar(auditor.nombre || "")}">${escapar(auditor.nombre || "Sin nombre")}</strong>
+                      <small title="${escapar(meta)}">${meta}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="audit-doc">
+                    <strong>${mostrar(auditor.tipo_doc, "No registrado")}</strong>
+                    <span>${escapar(auditor.estado_auditor || "")}</span>
+                  </div>
+                </td>
+                <td><div class="audit-doc"><strong>${mostrar(auditor.num_doc, "No registrado")}</strong></div></td>
+                <td>${badgeEstado(auditor.estado)}</td>
+                <td>
+                  <div class="audit-actions">
+                    <button class="audit-action" type="button" data-accion="detalle" data-id="${id}">Detalles</button>
+                    ${puedeGestionar
+                      ? `<button class="audit-action ${estado ? "danger" : "success"}" type="button"
+                           data-accion="estado" data-id="${id}" data-nombre="${escapar(auditor.nombre || "")}"
+                           data-estado="${estado ? "Inactivo" : "Activo"}">
+                           ${estado ? "Inactivar" : "Reactivar"}
+                         </button>`
+                      : ""}
+                  </div>
+                </td>
+              </tr>`;
+          })
+          .join("");
+
+        resumenListado.textContent =
+          `Mostrando ${inicio + 1}–${fin} de ${app.filtrados.length} auditor${app.filtrados.length === 1 ? "" : "es"}` +
+          (app.filtrados.length !== app.auditores.length
+            ? ` (filtrados de ${app.auditores.length})`
+            : "") + ".";
+      }
+
+      function renderPaginacion() {
+        const totalPaginas = Math.max(1, Math.ceil(app.filtrados.length / app.porPagina));
+        if (!app.filtrados.length || totalPaginas <= 1) {
+          paginacion.hidden = true;
+          return;
+        }
+
+        const botones = [];
+        botones.push(
+          `<button type="button" data-pagina="${app.pagina - 1}" ${app.pagina === 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>`
+        );
+
+        const inicio = Math.max(1, Math.min(app.pagina - 2, totalPaginas - 4));
+        const fin = Math.min(totalPaginas, inicio + 4);
+        for (let pagina = inicio; pagina <= fin; pagina += 1) {
+          botones.push(
+            `<button type="button" data-pagina="${pagina}" class="${pagina === app.pagina ? "active" : ""}"
+              ${pagina === app.pagina ? 'aria-current="page"' : ""}>${pagina}</button>`
+          );
+        }
+
+        botones.push(
+          `<button type="button" data-pagina="${app.pagina + 1}" ${app.pagina === totalPaginas ? "disabled" : ""} aria-label="Página siguiente">›</button>`
+        );
+
+        paginacion.hidden = false;
+        paginacion.innerHTML = `
+          <span class="audit-pagination-info">Página ${app.pagina} de ${totalPaginas}</span>
+          <div class="audit-pagination-controls">${botones.join("")}</div>`;
+      }
+
+      // ------------------------------------------------------------
+      // Hoja de vida
+      // ------------------------------------------------------------
+      function abrirModal(elemento) {
+        elemento.classList.add("open");
+        document.body.classList.add("audit-modal-open");
+      }
+
+      function cerrarModal(elemento) {
+        elemento.classList.remove("open");
+        if (!document.querySelector(".audit-modal.open")) {
+          document.body.classList.remove("audit-modal-open");
+        }
+      }
+
+      function cerrarDetalle() {
+        cerrarModal(modalDetalle);
+        if (app.detalleFotoUrl) {
+          URL.revokeObjectURL(app.detalleFotoUrl);
+          app.detalleFotoUrl = null;
+        }
+        app.detalle = null;
+        app.detalleId = null;
+        detalleCuerpo.innerHTML = "";
+      }
+
+      async function cargarFoto(id) {
+        try {
+          const respuesta = await fetch(
+            `/admin/auditores-registrados/${encodeURIComponent(id)}/foto`,
+            {
+              headers: { Authorization: "Bearer " + token },
+              cache: "no-store",
+            }
+          );
+          if (!respuesta.ok) return null;
+          return URL.createObjectURL(await respuesta.blob());
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function estadoDetalle() {
+        return app.detalle ? normalizarTexto(app.detalle.estado) : "";
+      }
+
+      async function abrirDetalle(id) {
+        limpiarFeedback();
+        app.detalleId = String(id);
+        app.tabActiva = "datos";
+        tituloDetalle.textContent = "Cargando auditor...";
+        detalleMeta.textContent = "";
+        detalleBadges.innerHTML = "";
+        detalleAvatar.innerHTML = "A";
+        detalleCuerpo.innerHTML = `
+          <div class="audit-modal-loading">
+            <span class="audit-spinner" aria-hidden="true"></span>
+            <span>Cargando hoja de vida...</span>
+          </div>`;
+        btnDetalleEstado.hidden = true;
+        abrirModal(modalDetalle);
+        $("#btnCerrarDetalle").focus();
+
+        try {
+          const [detalle, foto] = await Promise.all([
+            api(`/admin/auditores-registrados/${encodeURIComponent(id)}`),
+            cargarFoto(id),
+          ]);
+
+          app.detalle = detalle;
+          if (app.detalleFotoUrl) URL.revokeObjectURL(app.detalleFotoUrl);
+          app.detalleFotoUrl = foto;
+          renderDetalle();
+        } catch (error) {
+          detalleCuerpo.innerHTML = `
+            <div class="audit-empty" style="min-height:260px;">
+              <span class="icono">!</span>
+              <strong>No se pudo cargar la hoja de vida</strong>
+              <p>${escapar(error.message || "Ocurrió un error al consultar el auditor.")}</p>
+              <button class="comite-button secondary" type="button" data-reintentar-detalle>Reintentar</button>
+            </div>`;
+        }
+      }
+
+      function renderDetalle() {
+        const auditor = app.detalle;
+        if (!auditor) return;
+
+        tituloDetalle.textContent = auditor.nombre || "Auditor sin nombre";
+        detalleMeta.innerHTML =
+          `${mostrar(auditor.tipo_doc, "Documento no registrado")} · ${mostrar(auditor.num_doc, "Número no registrado")}` +
+          `<br>${mostrar(auditor.correo, "Correo no registrado")}` +
+          (auditor.ciudad_residencia || auditor.departamento_residencia
+            ? ` · ${escapar([auditor.ciudad_residencia, auditor.departamento_residencia].filter(Boolean).join(", "))}`
+            : "");
+
+        detalleBadges.innerHTML =
+          badgeEstado(auditor.estado) +
+          (auditor.estado_auditor
+            ? `<span class="audit-badge neutral">${escapar(auditor.estado_auditor)}</span>`
+            : "");
+
+        if (app.detalleFotoUrl) {
+          detalleAvatar.innerHTML = `<img src="${app.detalleFotoUrl}" alt="Fotografía de ${escapar(auditor.nombre || "auditor")}">`;
+        } else {
+          detalleAvatar.textContent = iniciales(auditor.nombre);
+        }
+
+        const resumen = auditor.resumen || {};
+        const totalDocumentos = Number(resumen.documentos || 0);
+        const totalConflictos = Number(resumen.conflictos || 0);
+        const totalCertificaciones = Number(resumen.certificaciones || 0) + Number(resumen.competencias || 0);
+        const totalTrayectoria =
+          Number(resumen.titulos || 0) +
+          Number(resumen.experiencia_laboral || 0) +
+          Number(resumen.experiencia_auditoria || 0);
+
+        const tabs = [
+          ["datos", "Datos personales", null],
+          ["documentos", "Documentos", totalDocumentos],
+          ["conflictos", "Conflictos de interés", totalConflictos],
+          ["certificaciones", "Certificaciones", totalCertificaciones],
+          ["trayectoria", "Trayectoria", totalTrayectoria],
+        ];
+
+        const tabsHtml = tabs
+          .map(
+            ([clave, etiqueta, cantidad]) => `
+              <button class="audit-tab ${app.tabActiva === clave ? "active" : ""}" type="button"
+                data-tab="${clave}" role="tab" aria-selected="${app.tabActiva === clave}">
+                ${etiqueta}${cantidad !== null ? `<span class="count">${cantidad}</span>` : ""}
+              </button>`
+          )
+          .join("");
+
+        detalleCuerpo.innerHTML = `
+          <div class="audit-tabs" role="tablist" aria-label="Secciones de la hoja de vida">
+            ${tabsHtml}
+          </div>
+          <section class="audit-panel" data-panel="datos" role="tabpanel" ${app.tabActiva !== "datos" ? "hidden" : ""}>
+            ${panelDatos(auditor)}
+          </section>
+          <section class="audit-panel" data-panel="documentos" role="tabpanel" ${app.tabActiva !== "documentos" ? "hidden" : ""}>
+            ${panelDocumentos(auditor)}
+          </section>
+          <section class="audit-panel" data-panel="conflictos" role="tabpanel" ${app.tabActiva !== "conflictos" ? "hidden" : ""}>
+            ${panelConflictos(auditor)}
+          </section>
+          <section class="audit-panel" data-panel="certificaciones" role="tabpanel" ${app.tabActiva !== "certificaciones" ? "hidden" : ""}>
+            ${panelCertificaciones(auditor)}
+          </section>
+          <section class="audit-panel" data-panel="trayectoria" role="tabpanel" ${app.tabActiva !== "trayectoria" ? "hidden" : ""}>
+            ${panelTrayectoria(auditor)}
+          </section>`;
+
+        configurarBotonEstadoDetalle();
+        cargarHistorialAsignaciones(auditor.id_usuario);
+      }
+
+      async function cargarHistorialAsignaciones(idUsuario) {
+        const contenedor = $("#historialAsignaciones");
+        if (!contenedor) return;
+        contenedor.textContent = "Cargando historial...";
+        try {
+          const data = await api(`/admin/auditores-registrados/${encodeURIComponent(idUsuario)}/historial-asignaciones`);
+          const historial = Array.isArray(data.historial) ? data.historial : [];
+          if (!historial.length) {
+            contenedor.textContent = "No hay retiros ni cambios de asignacion registrados.";
+            return;
+          }
+          contenedor.innerHTML = historial.map((item) => `
+            <div style="padding:8px 0;border-bottom:1px solid #f3d6d3;">
+              <strong>${escapar(item.accion || "Evento")}</strong><br>
+              ${escapar(item.motivo || "Sin motivo")}<br>
+              <small>Solicitud: ${escapar(item.numero_radicado || item.id_solicitud || "-")} |
+              Visita: ${escapar(item.id_programacion || "-")} |
+              Fecha: ${escapar(formatearFechaHora(item.fecha))}</small>
+            </div>
+          `).join("");
+        } catch (error) {
+          contenedor.textContent = error.message || "No fue posible cargar el historial.";
+        }
+      }
+
+      function campo(etiqueta, valor, { full = false, suave = false, defecto = "No disponible" } = {}) {
+        return `
+          <div class="audit-field ${full ? "full" : ""}">
+            <dt>${escapar(etiqueta)}</dt>
+            <dd class="${suave ? "suave" : ""}">${mostrar(valor, defecto)}</dd>
+          </div>`;
+      }
+
+      function panelDatos(auditor) {
+        const calificacion = Number(auditor.calificacion_promedio);
+        const textoCalificacion = Number.isFinite(calificacion) && calificacion > 0
+          ? calificacion.toFixed(2)
+          : "Sin calificación registrada";
+
+        return `
+          <section class="audit-section">
+            <div class="audit-section-head">
+              <div>
+                <h4>Información personal y de contacto</h4>
+                <p>Datos registrados actualmente en el sistema.</p>
+              </div>
+            </div>
+            <dl class="audit-grid">
+              ${campo("Nombre completo", auditor.nombre)}
+              ${campo("Tipo de documento", auditor.tipo_doc)}
+              ${campo("Número de documento", auditor.num_doc)}
+              ${campo("Correo electrónico", auditor.correo)}
+              ${campo("Ciudad de residencia", auditor.ciudad_residencia, { full: false })}
+              ${campo("Departamento de residencia", auditor.departamento_residencia)}
+              ${campo("Modalidad preferida", auditor.modalidad_preferida)}
+              ${campo("Calificación promedio", textoCalificacion, { suave: true })}
+              ${campo("Estado de la cuenta", auditor.estado)}
+              ${campo("Etapa del auditor", auditor.estado_auditor)}
+              ${campo("Primera postulación", formatearFecha(auditor.fecha_primera_postulacion), { suave: true })}
+              ${campo("Última postulación", auditor.fecha_postulacion
+                ? `${formatearFecha(auditor.fecha_postulacion)}${auditor.estado_postulacion ? " · " + auditor.estado_postulacion : ""}`
+                : "", { suave: true })}
+              ${campo("Último inicio de sesión", formatearFechaHora(auditor.ultimo_inicio_sesion), { suave: true })}
+              ${campo("Resumen profesional", auditor.resumen_profesional, { full: true, suave: true })}
+            </dl>
+            <div class="audit-note">
+              La hoja de vida muestra únicamente la información registrada en la base de datos.
+              La fecha de nacimiento, el teléfono y la dirección no están disponibles en el esquema actual,
+              por lo que no se presentan como datos confirmados.
+            </div>
+          </section>
+
+          <section class="audit-section">
+            <div class="audit-section-head">
+              <div>
+                <h4>Historial de asignaciones y retiros</h4>
+                <p>Registro de retiros, cancelaciones y cambios de asignacion de este auditor.</p>
+              </div>
+            </div>
+            <div id="historialAsignaciones" class="audit-note">Cargando historial...</div>
+          </section>
+
+          <section class="audit-section">
+            <div class="audit-section-head">
+              <div>
+                <h4>Historial de postulaciones</h4>
+                <p>Registro de las postulaciones asociadas a este auditor.</p>
+              </div>
+            </div>
+            ${auditor.postulaciones && auditor.postulaciones.length
+              ? `<div class="audit-card-list">
+                  ${auditor.postulaciones.map((item) => `
+                    <article class="audit-info-card">
+                      <h5>${escapar(item.estado || "Postulación sin estado")}</h5>
+                      <div class="meta">
+                        <span>Postulación: ${formatearFecha(item.fecha_postulacion) || "Sin fecha"}</span>
+                        ${item.fecha_revision ? `<span>Revisión: ${formatearFecha(item.fecha_revision)}</span>` : ""}
+                      </div>
+                      ${item.motivo_rechazo ? `<p><strong>Motivo:</strong> ${escapar(item.motivo_rechazo)}</p>` : ""}
+                    </article>`).join("")}
+                </div>`
+              : `<div class="audit-empty"><span class="icono">○</span><strong>Sin postulaciones registradas</strong><p>No se encontraron postulaciones para este auditor.</p></div>`}
+          </section>`;
+      }
+
+      function panelDocumentos(auditor) {
+        const documentos = Array.isArray(auditor.documentos) ? auditor.documentos : [];
+        const titulo = `
+          <section class="audit-section">
+            <div class="audit-section-head">
+              <div>
+                <h4>Documentos del auditor</h4>
+                <p>Soportes cargados en el sistema y agrupados por categoría.</p>
+              </div>
+              <span class="audit-badge neutral">${documentos.length} documento${documentos.length === 1 ? "" : "s"}</span>
+            </div>`;
+
+        if (!documentos.length) {
+          return titulo + `
+            <div class="audit-empty">
+              <span class="icono">▤</span>
+              <strong>Sin documentos registrados</strong>
+              <p>Este auditor no tiene documentos cargados en el sistema.</p>
+            </div>
+          </section>`;
+        }
+
+        const grupos = documentos.reduce((acumulado, documento) => {
+          const clave = documento.categoria_documento || documento.tipo_documento || "Otros documentos";
+          if (!acumulado[clave]) acumulado[clave] = [];
+          acumulado[clave].push(documento);
+          return acumulado;
+        }, {});
+
+        const htmlGrupos = Object.entries(grupos)
+          .map(([categoria, lista]) => `
+            <div class="audit-group">
+              <div class="audit-group-title">${escapar(categoria)}</div>
+              ${lista.map((documento) => tarjetaDocumento(auditor.id_usuario, documento)).join("")}
+            </div>`)
+          .join("");
+
+        return titulo + htmlGrupos + "</section>";
+      }
+
+      function tarjetaDocumento(idUsuario, documento) {
+        const formato = documento.formato || "";
+        const icono = iconoArchivo(formato);
+        const detalle = [
+          documento.tipo_documento,
+          formato,
+          documento.fecha_subida ? formatearFecha(documento.fecha_subida) : "",
+          formatearTamano(documento.tamano),
+        ].filter(Boolean);
+
+        return `
+          <article class="audit-doc-card">
+            <div class="audit-file-icon ${icono.clase}" aria-hidden="true">${escapar(icono.texto)}</div>
+            <div class="audit-doc-info">
+              <strong title="${escapar(documento.nombre_archivo || "Documento")}">${escapar(documento.nombre_archivo || "Documento sin nombre")}</strong>
+              <div class="meta">
+                ${detalle.map((parte) => `<span>${escapar(parte)}</span>`).join("<span>·</span>")}
+                ${documento.estado_revision ? badgeValidacion(documento.estado_revision) : ""}
+              </div>
+            </div>
+            <div class="audit-doc-actions">
+              ${documento.archivo_disponible
+                ? `<button class="audit-action" type="button" data-doc-ver="${escapar(documento.id_documento)}"
+                     data-id-usuario="${escapar(idUsuario)}">Ver</button>
+                   <button class="audit-action" type="button" data-doc-descargar="${escapar(documento.id_documento)}"
+                     data-id-usuario="${escapar(idUsuario)}">Descargar</button>`
+                : `<span class="audit-unavailable">Archivo no disponible</span>`}
+            </div>
+          </article>`;
+      }
+
+      function panelConflictos(auditor) {
+        const conflictos = Array.isArray(auditor.conflictos) ? auditor.conflictos : [];
+        const encabezado = `
+          <section class="audit-section">
+            <div class="audit-section-head">
+              <div>
+                <h4>Conflictos de interés</h4>
+                <p>Declaraciones registradas para este auditor.</p>
+              </div>
+              <span class="audit-badge neutral">${conflictos.length} registro${conflictos.length === 1 ? "" : "s"}</span>
+            </div>`;
+
+        if (!conflictos.length) {
+          return encabezado + `
+            <div class="audit-empty">
+              <span class="icono">○</span>
+              <strong>No se registran conflictos de interés para este auditor</strong>
+              <p>La consulta se realizó sobre la tabla de conflictos de interés del sistema.</p>
+            </div>
+          </section>`;
+        }
+
+        return encabezado + `
+          <div class="audit-card-list">
+            ${conflictos.map((conflicto) => `
+              <article class="audit-info-card">
+                <h5>${escapar(conflicto.empresa || "Empresa no registrada")}</h5>
+                <div class="meta">
+                  <span>${escapar(conflicto.tipo_conflicto || "Tipo no registrado")}</span>
+                  ${conflicto.empresa_nit ? `<span>NIT: ${escapar(conflicto.empresa_nit)}</span>` : ""}
+                  <span>Declarado: ${formatearFecha(conflicto.fecha_declaracion) || "Sin fecha"}</span>
+                  ${badgeValidacion(conflicto.estado || "Sin estado")}
+                </div>
+                ${conflicto.descripcion ? `<p>${escapar(conflicto.descripcion)}</p>` : ""}
+                <div class="pie">
+                  <span>${conflicto.bloquea_asignacion ? "Bloquea asignaciones: Sí" : "Bloquea asignaciones: No"}</span>
+                </div>
+              </article>`).join("")}
+          </div>
+        </section>`;
+      }
+
+      function panelCertificaciones(auditor) {
+        const certificaciones = Array.isArray(auditor.certificaciones) ? auditor.certificaciones : [];
+        const competencias = Array.isArray(auditor.competencias) ? auditor.competencias : [];
+
+        const encabezado = `
+          <section class="audit-section">
+            <div class="audit-section-head">
+              <div>
+                <h4>Certificaciones y acreditaciones</h4>
+                <p>Certificaciones vigentes y competencias registradas en el sistema.</p>
+              </div>
+              <span class="audit-badge neutral">${certificaciones.length + competencias.length} registro${certificaciones.length + competencias.length === 1 ? "" : "s"}</span>
+            </div>`;
+
+        if (!certificaciones.length && !competencias.length) {
+          return encabezado + `
+            <div class="audit-empty">
+              <span class="icono">◇</span>
+              <strong>No hay certificaciones disponibles en el sistema</strong>
+              <p>Este auditor no tiene certificaciones ni competencias registradas.</p>
+            </div>
+          </section>`;
+        }
+
+        const bloqueCertificaciones = certificaciones.length
+          ? `<div class="audit-group">
+              <div class="audit-group-title">Certificaciones registradas</div>
+              ${certificaciones.map((certificacion) => {
+                const detalles = [
+                  certificacion.norma_codigo || certificacion.norma_nombre,
+                  certificacion.norma_version ? "Versión " + certificacion.norma_version : "",
+                  formatearFecha(certificacion.fecha_registro),
+                  certificacion.formato,
+                  formatearTamano(certificacion.tamano),
+                ].filter(Boolean);
+
+                return `
+                  <article class="audit-info-card">
+                    <h5>${escapar(certificacion.tipo_certificacion || certificacion.norma_nombre || "Certificación")}</h5>
+                    <div class="meta">
+                      ${detalles.map((parte) => `<span>${escapar(parte)}</span>`).join("<span>·</span>")}
+                      ${certificacion.estado ? badgeValidacion(certificacion.estado) : ""}
+                    </div>
+                    ${certificacion.descripcion ? `<p>${escapar(certificacion.descripcion)}</p>` : ""}
+                    <div class="pie">
+                      <span>${escapar(certificacion.nombre_archivo || "Soporte documental")}</span>
+                      ${certificacion.archivo_disponible
+                        ? `<div class="audit-doc-actions">
+                             <button class="audit-action" type="button" data-cert-ver="${escapar(certificacion.id_certificacion)}"
+                               data-id-usuario="${escapar(auditor.id_usuario)}">Ver soporte</button>
+                             <button class="audit-action" type="button" data-cert-descargar="${escapar(certificacion.id_certificacion)}"
+                               data-id-usuario="${escapar(auditor.id_usuario)}">Descargar</button>
+                           </div>`
+                        : `<span class="audit-unavailable">Archivo no disponible</span>`}
+                    </div>
+                  </article>`;
+              }).join("")}
+            </div>`
+          : "";
+
+        const bloqueCompetencias = competencias.length
+          ? `<div class="audit-group">
+              <div class="audit-group-title">Competencias y acreditaciones</div>
+              ${competencias.map((competencia) => {
+                const detalles = [
+                  competencia.norma_codigo || competencia.norma_nombre,
+                  competencia.codigo_sector_iaf,
+                  competencia.titulo_institucion,
+                  competencia.fecha_inicio ? `Desde ${formatearFecha(competencia.fecha_inicio)}` : "",
+                  competencia.fecha_fin ? `Hasta ${formatearFecha(competencia.fecha_fin)}` : "",
+                ].filter(Boolean);
+
+                return `
+                  <article class="audit-info-card">
+                    <h5>${escapar(competencia.tipo_competencia || "Competencia")} · ${escapar(competencia.norma_codigo || competencia.norma_nombre || "Norma no registrada")}</h5>
+                    <div class="meta">
+                      ${detalles.map((parte) => `<span>${escapar(parte)}</span>`).join("<span>·</span>")}
+                      ${badgeValidacion(competencia.estado_validacion || "Sin estado")}
+                      ${competencia.es_vigente
+                        ? '<span class="audit-badge aprobado">Vigente</span>'
+                        : '<span class="audit-badge neutral">No vigente</span>'}
+                    </div>
+                    ${competencia.descripcion ? `<p>${escapar(competencia.descripcion)}</p>` : ""}
+                  </article>`;
+              }).join("")}
+            </div>`
+          : "";
+
+        return encabezado + bloqueCertificaciones + bloqueCompetencias + "</section>";
+      }
+
+      function panelTrayectoria(auditor) {
+        const titulos = Array.isArray(auditor.titulos) ? auditor.titulos : [];
+        const laboral = Array.isArray(auditor.experiencia_laboral) ? auditor.experiencia_laboral : [];
+        const auditoria = Array.isArray(auditor.experiencia_auditoria) ? auditor.experiencia_auditoria : [];
+        const total = titulos.length + laboral.length + auditoria.length;
+
+        const encabezado = `
+          <section class="audit-section">
+            <div class="audit-section-head">
+              <div>
+                <h4>Trayectoria académica y profesional</h4>
+                <p>Formación y experiencia registradas por el auditor.</p>
+              </div>
+              <span class="audit-badge neutral">${total} registro${total === 1 ? "" : "s"}</span>
+            </div>`;
+
+        if (!total) {
+          return encabezado + `
+            <div class="audit-empty">
+              <span class="icono">○</span>
+              <strong>Sin trayectoria registrada</strong>
+              <p>No se encontraron títulos, experiencia laboral ni experiencia en auditoría.</p>
+            </div>
+          </section>`;
+        }
+
+        const bloqueTitulos = titulos.length
+          ? `<div class="audit-group">
+              <div class="audit-group-title">Formación académica</div>
+              ${titulos.map((titulo) => `
+                <article class="audit-info-card">
+                  <h5>${escapar(titulo.titulo || "Título sin nombre")}</h5>
+                  <div class="meta">
+                    <span>${escapar(titulo.nivel || "Nivel no registrado")}</span>
+                    <span>${escapar(titulo.institucion || "Institución no registrada")}</span>
+                    ${titulo.fecha_grado ? `<span>Grado: ${formatearFecha(titulo.fecha_grado)}</span>` : ""}
+                    ${badgeValidacion(titulo.estado_validacion || "Sin estado")}
+                  </div>
+                </article>`).join("")}
+            </div>`
+          : "";
+
+        const bloqueLaboral = laboral.length
+          ? `<div class="audit-group">
+              <div class="audit-group-title">Experiencia laboral</div>
+              ${laboral.map((item) => `
+                <article class="audit-info-card">
+                  <h5>${escapar(item.cargo || "Cargo no registrado")} · ${escapar(item.empresa || "Empresa no registrada")}</h5>
+                  <div class="meta">
+                    <span>${formatearFecha(item.fecha_inicio) || "Sin fecha de inicio"} — ${item.fecha_fin ? formatearFecha(item.fecha_fin) : "Actualidad"}</span>
+                    ${badgeValidacion(item.estado_validacion || "Sin estado")}
+                  </div>
+                  ${item.descripcion ? `<p>${escapar(item.descripcion)}</p>` : ""}
+                </article>`).join("")}
+            </div>`
+          : "";
+
+        const bloqueAuditoria = auditoria.length
+          ? `<div class="audit-group">
+              <div class="audit-group-title">Experiencia en auditoría</div>
+              ${auditoria.map((item) => `
+                <article class="audit-info-card">
+                  <h5>${escapar(item.rol_auditoria || "Rol no registrado")} · ${escapar(item.organizacion || "Organización no registrada")}</h5>
+                  <div class="meta">
+                    <span>${escapar(item.tipo_auditoria || "Tipo no registrado")}</span>
+                    <span>${formatearFecha(item.fecha_inicio) || "Sin fecha de inicio"} — ${item.fecha_fin ? formatearFecha(item.fecha_fin) : "Actualidad"}</span>
+                    ${badgeValidacion(item.estado_validacion || "Sin estado")}
+                  </div>
+                  ${item.descripcion ? `<p>${escapar(item.descripcion)}</p>` : ""}
+                </article>`).join("")}
+            </div>`
+          : "";
+
+        return encabezado + bloqueTitulos + bloqueLaboral + bloqueAuditoria + "</section>";
+      }
+
+      function configurarBotonEstadoDetalle() {
+        if (!app.detalle || !puedeGestionar) {
+          btnDetalleEstado.hidden = true;
+          return;
+        }
+
+        btnDetalleEstado.hidden = false;
+        const activo = estadoDetalle() === "activo";
+        btnDetalleEstado.textContent = activo ? "Inactivar auditor" : "Reactivar auditor";
+        btnDetalleEstado.className = "comite-button " + (activo ? "danger" : "primary");
+      }
+
+      // ------------------------------------------------------------
+      // Archivos
+      // ------------------------------------------------------------
+      async function obtenerBlob(ruta) {
+        const respuesta = await fetch(ruta, {
+          headers: { Authorization: "Bearer " + token },
+          cache: "no-store",
+        });
+
+        if (respuesta.status === 401) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("token_type");
+          window.location.replace("/login");
+          throw new Error("La sesión ha expirado.");
+        }
+
+        if (!respuesta.ok) {
+          const data = await respuesta.json().catch(() => ({}));
+          throw new Error(data.detail || "El archivo no está disponible.");
+        }
+        return respuesta.blob();
+      }
+
+      async function verArchivo(ruta, nombre) {
+        const ventana = window.open("", "_blank");
+        if (ventana) {
+          try {
+            ventana.document.write(
+              "<p style=\"font-family:Montserrat,Arial,sans-serif;padding:24px;color:#475569\">Cargando documento...</p>"
+            );
+          } catch (_) {}
+        }
+
+        try {
+          const blob = await obtenerBlob(ruta);
+          const url = URL.createObjectURL(blob);
+          if (ventana) {
+            ventana.location.href = url;
+          } else {
+            const enlace = document.createElement("a");
+            enlace.href = url;
+            enlace.target = "_blank";
+            enlace.rel = "noopener";
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+          }
+          window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (error) {
+          if (ventana) ventana.close();
+          toast("error", "No se pudo abrir el archivo", error.message || "El archivo no está disponible.");
+        }
+      }
+
+      async function descargarArchivo(ruta, nombre) {
+        try {
+          const blob = await obtenerBlob(ruta);
+          const url = URL.createObjectURL(blob);
+          const enlace = document.createElement("a");
+          enlace.href = url;
+          enlace.download = nombre || "documento";
+          document.body.appendChild(enlace);
+          enlace.click();
+          enlace.remove();
+          window.setTimeout(() => URL.revokeObjectURL(url), 3000);
+        } catch (error) {
+          toast("error", "No se pudo descargar el archivo", error.message || "El archivo no está disponible.");
+        }
+      }
+
+      function rutaDocumento(idUsuario, idDocumento, descargar) {
+        return `/admin/auditores-registrados/${encodeURIComponent(idUsuario)}/documentos/${encodeURIComponent(idDocumento)}/archivo?descargar=${descargar ? "1" : "0"}`;
+      }
+
+      function rutaCertificacion(idUsuario, idCertificacion, descargar) {
+        return `/admin/auditores-registrados/${encodeURIComponent(idUsuario)}/certificaciones/${encodeURIComponent(idCertificacion)}/archivo?descargar=${descargar ? "1" : "0"}`;
+      }
+
+      function buscarDocumento(idUsuario, idDocumento) {
+        const auditor = app.detalle && String(app.detalle.id_usuario) === String(idUsuario)
+          ? app.detalle
+          : app.auditores.find((item) => String(item.id_usuario) === String(idUsuario));
+        if (!auditor || !Array.isArray(auditor.documentos)) return null;
+        return auditor.documentos.find((item) => String(item.id_documento) === String(idDocumento)) || null;
+      }
+
+      function buscarCertificacion(idUsuario, idCertificacion) {
+        const auditor = app.detalle && String(app.detalle.id_usuario) === String(idUsuario)
+          ? app.detalle
+          : app.auditores.find((item) => String(item.id_usuario) === String(idUsuario));
+        if (!auditor || !Array.isArray(auditor.certificaciones)) return null;
+        return auditor.certificaciones.find((item) => String(item.id_certificacion) === String(idCertificacion)) || null;
+      }
+
+      // ------------------------------------------------------------
+      // Confirmación de estado
+      // ------------------------------------------------------------
+      async function abrirConfirmacion(id, nombre, nuevoEstado) {
+        app.confirmacion = { id: String(id), nombre: nombre || "este auditor", nuevoEstado };
+        const inactivar = nuevoEstado === "Inactivo";
+
+        confirmarError.textContent = "";
+        confirmarImpacto.hidden = true;
+        confirmarImpacto.innerHTML = "";
+        tituloConfirmar.textContent = inactivar ? "¿Deseas inactivar a este auditor?" : "¿Deseas reactivar a este auditor?";
+        confirmarNombre.textContent = nombre || "Auditor seleccionado";
+        textoConfirmar.textContent = inactivar
+          ? "Al confirmar esta acción, el auditor perderá el acceso normal al sistema. Además, será retirado de las auditorías futuras que tenga asignadas. Su información, documentos, certificaciones e historial se conservarán."
+          : "Al confirmar esta acción, el auditor recuperará el acceso normal al sistema conforme a las reglas de autenticación. La reactivación no restaurará asignaciones anteriores.";
+        confirmarAviso.textContent = inactivar
+          ? "Las auditorías en curso no se modificarán automáticamente. Las auditorías ejecutadas, finalizadas o canceladas se conservarán. Esta acción podrá revertirse posteriormente, pero las asignaciones retiradas deberán reasignarse manualmente."
+          : "La reactivación no crea una cuenta nueva ni modifica su historial. El auditor podrá iniciar sesión nuevamente si cumple las reglas normales de autenticación.";
+
+        confirmarIcono.className = "audit-confirm-icon" + (inactivar ? "" : " success");
+        confirmarIcono.innerHTML = inactivar
+          ? `<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+               <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+               <line x1="12" y1="9" x2="12" y2="13"></line>
+               <line x1="12" y1="17" x2="12.01" y2="17"></line>
+             </svg>`
+          : `<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+               <polyline points="22 4 12 14.01 9 11.01"></polyline>
+             </svg>`;
+
+        btnEjecutarConfirmar.textContent = inactivar ? "Sí, inactivar" : "Sí, reactivar";
+        btnEjecutarConfirmar.className = "comite-button " + (inactivar ? "danger" : "primary");
+        btnEjecutarConfirmar.disabled = false;
+        $("#btnCancelarConfirmar").disabled = false;
+        abrirModal(modalConfirmar);
+        $("#btnCancelarConfirmar").focus();
+
+        if (inactivar) {
+          try {
+            const data = await api(`/admin/auditores-registrados/${encodeURIComponent(id)}/asignaciones-afectadas`);
+            const totales = data.totales || {};
+            const futuras = totales.futuras || 0;
+            const enCurso = totales.en_curso || 0;
+            const terminales = totales.terminales || 0;
+            const sinProgramacion = totales.sin_programacion || 0;
+            confirmarImpacto.hidden = false;
+            confirmarImpacto.innerHTML = `
+              <strong>Impacto de la inactivación</strong><br>
+              Auditorías futuras que se retirarán: ${futuras}.<br>
+              Auditorías en curso (no se modificarán): ${enCurso}.<br>
+              Auditorías ejecutadas/finalizadas/canceladas (se conservarán): ${terminales}.<br>
+              Asignaciones sin programación que se cancelarán: ${sinProgramacion}.
+            `;
+          } catch (error) {
+            confirmarImpacto.hidden = false;
+            confirmarImpacto.textContent = "No fue posible calcular el impacto exacto. La inactivación igual registrará el retiro de las auditorías futuras.";
+          }
+        }
+      }
+
+      function cerrarConfirmacion() {
+        if (app.ejecutando) return;
+        cerrarModal(modalConfirmar);
+        app.confirmacion = null;
+        confirmarError.textContent = "";
+      }
+
+      async function ejecutarCambioEstado() {
+        if (!app.confirmacion || app.ejecutando) return;
+
+        const { id, nombre, nuevoEstado } = app.confirmacion;
+        app.ejecutando = true;
+        confirmarError.textContent = "";
+        btnEjecutarConfirmar.disabled = true;
+        $("#btnCancelarConfirmar").disabled = true;
+        btnEjecutarConfirmar.textContent = "Procesando...";
+
+        try {
+          const data = await api(
+            `/admin/auditores-registrados/${encodeURIComponent(id)}/estado`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({ estado: nuevoEstado }),
+            }
+          );
+
+          app.ejecutando = false;
+          cerrarModal(modalConfirmar);
+          app.confirmacion = null;
+          let detalleToast = `${nombre}: ${nuevoEstado.toLowerCase()}.`;
+          if (inactivar && Number(retiros.retiros_realizados || 0) > 0) {
+            detalleToast += ` Retiros: ${retiros.retiros_realizados}.`;
+          }
+          if (inactivar && Array.isArray(retiros.en_curso) && retiros.en_curso.length) {
+            detalleToast += ` En curso para revision: ${retiros.en_curso.length}.`;
+          }
+          toast("success", data.mensaje || "Estado actualizado", detalleToast);
+          mostrarFeedback("success", data.mensaje || "Estado actualizado correctamente.");
+
+          const inactivar = nuevoEstado === "Inactivo";
+          const retiros = data.retiros || {};
+          const auditor = app.auditores.find((item) => String(item.id_usuario) === String(id));
+          if (auditor) auditor.estado = data.estado || nuevoEstado;
+
+          if (app.detalle && String(app.detalle.id_usuario) === String(id)) {
+            app.detalle.estado = data.estado || nuevoEstado;
+            renderDetalle();
+          }
+
+          actualizarEstadisticas();
+          aplicarFiltros(false);
+        } catch (error) {
+          app.ejecutando = false;
+          confirmarError.textContent = error.message || "No fue posible actualizar el estado.";
+          btnEjecutarConfirmar.disabled = false;
+          $("#btnCancelarConfirmar").disabled = false;
+          btnEjecutarConfirmar.textContent = nuevoEstado === "Inactivo" ? "Sí, inactivar" : "Sí, reactivar";
+          toast("error", "No se pudo actualizar el estado", error.message || "Inténtalo nuevamente.");
+        }
+      }
+
+      // ------------------------------------------------------------
+      // Eventos
+      // ------------------------------------------------------------
+      busqueda.addEventListener("input", () => {
+        app.texto = busqueda.value;
+        aplicarFiltros(true);
+      });
+
+      filtroEstado.addEventListener("change", () => {
+        app.estado = filtroEstado.value;
+        aplicarFiltros(true);
+      });
+
+      $("#btnLimpiar").addEventListener("click", () => {
+        busqueda.value = "";
+        filtroEstado.value = "";
+        app.texto = "";
+        app.estado = "";
+        aplicarFiltros(true);
+        busqueda.focus();
+      });
+
+      $("#btnRecargar").addEventListener("click", () => cargarAuditores());
+
+      tbody.addEventListener("click", (evento) => {
+        const botonReintentar = evento.target.closest("[data-reintentar]");
+        if (botonReintentar) {
+          cargarAuditores();
+          return;
+        }
+
+        const botonLimpiar = evento.target.closest("[data-limpiar-filtros]");
+        if (botonLimpiar) {
+          busqueda.value = "";
+          filtroEstado.value = "";
+          app.texto = "";
+          app.estado = "";
+          aplicarFiltros(true);
+          busqueda.focus();
+          return;
+        }
+
+        const boton = evento.target.closest("[data-accion]");
+        if (!boton) return;
+
+        const accion = boton.dataset.accion;
+        const id = boton.dataset.id;
+
+        if (accion === "detalle") {
+          abrirDetalle(id);
+        } else if (accion === "estado") {
+          abrirConfirmacion(id, boton.dataset.nombre || "", boton.dataset.estado);
+        }
+      });
+
+      paginacion.addEventListener("click", (evento) => {
+        const boton = evento.target.closest("[data-pagina]");
+        if (!boton || boton.disabled) return;
+        const pagina = Number(boton.dataset.pagina);
+        if (!Number.isFinite(pagina)) return;
+        app.pagina = pagina;
+        renderTabla();
+        renderPaginacion();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      detalleCuerpo.addEventListener("click", (evento) => {
+        const reintentar = evento.target.closest("[data-reintentar-detalle]");
+        if (reintentar && app.detalleId) {
+          abrirDetalle(app.detalleId);
+          return;
+        }
+
+        const tab = evento.target.closest("[data-tab]");
+        if (tab) {
+          app.tabActiva = tab.dataset.tab;
+          detalleCuerpo.querySelectorAll(".audit-tab").forEach((boton) => {
+            const activo = boton.dataset.tab === app.tabActiva;
+            boton.classList.toggle("active", activo);
+            boton.setAttribute("aria-selected", String(activo));
+          });
+          detalleCuerpo.querySelectorAll(".audit-panel").forEach((panel) => {
+            panel.hidden = panel.dataset.panel !== app.tabActiva;
+          });
+          return;
+        }
+
+        const docVer = evento.target.closest("[data-doc-ver]");
+        if (docVer) {
+          const documento = buscarDocumento(docVer.dataset.idUsuario, docVer.dataset.docVer);
+          verArchivo(
+            rutaDocumento(docVer.dataset.idUsuario, docVer.dataset.docVer, false),
+            documento ? documento.nombre_archivo : "documento"
+          );
+          return;
+        }
+
+        const docDescargar = evento.target.closest("[data-doc-descargar]");
+        if (docDescargar) {
+          const documento = buscarDocumento(docDescargar.dataset.idUsuario, docDescargar.dataset.docDescargar);
+          descargarArchivo(
+            rutaDocumento(docDescargar.dataset.idUsuario, docDescargar.dataset.docDescargar, true),
+            documento ? documento.nombre_archivo : "documento"
+          );
+          return;
+        }
+
+        const certVer = evento.target.closest("[data-cert-ver]");
+        if (certVer) {
+          const certificacion = buscarCertificacion(certVer.dataset.idUsuario, certVer.dataset.certVer);
+          verArchivo(
+            rutaCertificacion(certVer.dataset.idUsuario, certVer.dataset.certVer, false),
+            certificacion ? certificacion.nombre_archivo : "certificacion"
+          );
+          return;
+        }
+
+        const certDescargar = evento.target.closest("[data-cert-descargar]");
+        if (certDescargar) {
+          const certificacion = buscarCertificacion(certDescargar.dataset.idUsuario, certDescargar.dataset.certDescargar);
+          descargarArchivo(
+            rutaCertificacion(certDescargar.dataset.idUsuario, certDescargar.dataset.certDescargar, true),
+            certificacion ? certificacion.nombre_archivo : "certificacion"
+          );
+        }
+      });
+
+      $("#btnCerrarDetalle").addEventListener("click", cerrarDetalle);
+      $("#btnVolverListado").addEventListener("click", cerrarDetalle);
+
+      modalDetalle.addEventListener("click", (evento) => {
+        if (evento.target === modalDetalle) cerrarDetalle();
+      });
+
+      btnDetalleEstado.addEventListener("click", () => {
+        if (!app.detalle) return;
+        abrirConfirmacion(
+          app.detalle.id_usuario,
+          app.detalle.nombre,
+          estadoDetalle() === "activo" ? "Inactivo" : "Activo"
+        );
+      });
+
+      $("#btnCancelarConfirmar").addEventListener("click", cerrarConfirmacion);
+      btnEjecutarConfirmar.addEventListener("click", ejecutarCambioEstado);
+
+      modalConfirmar.addEventListener("click", (evento) => {
+        if (evento.target === modalConfirmar) cerrarConfirmacion();
+      });
+
+      document.addEventListener("keydown", (evento) => {
+        if (evento.key !== "Escape") return;
+        if (modalConfirmar.classList.contains("open")) {
+          evento.stopPropagation();
+          cerrarConfirmacion();
+        } else if (modalDetalle.classList.contains("open")) {
+          evento.stopPropagation();
+          cerrarDetalle();
+        }
+      });
+
+      // ------------------------------------------------------------
+      // Arranque
+      // ------------------------------------------------------------
+      (async function iniciar() {
+        const sesionValida = await validarSesion();
+        if (!sesionValida) return;
+        await cargarAuditores();
+      })();
+    })();
+  </script>
+</body>
+
+</html>

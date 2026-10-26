@@ -1273,6 +1273,23 @@
         </div>
     </div>
 
+    <div class="modal" id="finalizarModal">
+        <div class="modal-card" style="max-width:460px;">
+            <div class="modal-head">
+                <h3>Finalizar auditoría</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalFinalizar()" aria-label="Cerrar">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Observaciones del proceso (opcional):</p>
+                <textarea id="finalizarObservaciones" rows="4" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;" placeholder="Escriba las observaciones del proceso..."></textarea>
+            </div>
+            <div class="modal-actions" style="justify-content:center;">
+                <button type="button" class="btn-small btn-ver" onclick="enviarFinalizacion()">Finalizar auditoría</button>
+                <button type="button" class="btn-small btn-cancelar" onclick="cerrarModalFinalizar()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="modalDetalle">
         <div class="modal-card">
             <div class="modal-head">
@@ -1371,6 +1388,11 @@
 
                 if (!esAdmin) {
                     items = items.filter(a => String(a.id_usuario) === String(uid));
+                    // Por defecto no mostrar auditorías canceladas; solo si el auditor
+                    // las filtra explícitamente por estado.
+                    if (!estado) {
+                        items = items.filter(a => !String(a.estado || '').toLowerCase().includes('cancel'));
+                    }
                 }
 
                 // Agrupar por id_programacion para reunir todos los auditores
@@ -1425,6 +1447,7 @@
             const end = new Date(r.fecha_fin || r.fecha_inicio);
             const set = new Set();
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                if (d.getDay() === 0) continue; // Los domingos no se programan auditorías
                 set.add(dias[d.getDay()]);
             }
             const estado = String(r.estado || '').toLowerCase();
@@ -1469,8 +1492,7 @@
                         <td>${escapeHtml(r.observacion_auditor || r.motivo_cancelacion || '-')}</td>
                         <td class="row-actions">
                             <button class="mini-btn view" type="button" onclick="verDetalle(${inicio + idx})">Ver</button>
-                            ${estadoAcciones(r).yaConfirmo ? `<span class="badge confirmada">Confirmado</span>` : (estadoAcciones(r).puedeConfirmar ? `<button class="mini-btn confirm" type="button" onclick="confirmarProgramacion(${inicio + idx})">Confirmar programación</button>` : "")}
-                            ${estadoAcciones(r).puedeSolicitar ? `<button class="mini-btn reprogramar" type="button" onclick="abrirModalReprogramacion(${inicio + idx})">Solicitar reprogramación</button>` : ""}
+                            ${estadoAcciones(r).yaConfirmo ? `<span class="badge confirmada">Confirmado</span>` : ""}
                         </td>
                     </tr>
                 `).join('');
@@ -1627,7 +1649,15 @@
                         headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
                     });
                     const data = await res.json().catch(() => ({}));
-                    const dias = Array.isArray(data.dias) ? data.dias : [];
+                    const dias = (Array.isArray(data.dias) ? data.dias : []).filter(d => {
+                        // Los domingos no se programan auditorías.
+                        if (String(d.dia_semana || '').toLowerCase() === 'domingo') return false;
+                        if (d.fecha) {
+                            const fecha = new Date(d.fecha);
+                            if (!Number.isNaN(fecha.getTime()) && fecha.getDay() === 0) return false;
+                        }
+                        return true;
+                    });
                     const aud = data.auditor || {};
                     if (aud.nombre || aud.correo) {
                         auditorHtml = `
@@ -1726,6 +1756,9 @@
                     <button type="button" class="btn-small btn-ver" onclick="imprimirProgramacion(${idx})">Imprimir programación de visitas</button>
                     <button type="button" class="btn-small btn-editar" onclick="exportarAgendaIndividual(${idx})">Exportar agenda individual</button>
                     <button type="button" class="btn-small btn-cancelar" onclick="exportarProgramacionAgenda(${idx})">Exportar programación de agenda</button>
+                    ${estadoAcciones(r).puedeConfirmar ? `<button type="button" class="btn-small btn-ver" onclick="confirmarProgramacion(${idx})">Confirmar programación</button>` : ''}
+                    ${estadoAcciones(r).puedeSolicitar ? `<button type="button" class="btn-small btn-editar" onclick="abrirModalReprogramacion(${idx})">Solicitar reprogramación</button>` : ''}
+                    ${esLiderProgramacion(r) && !esProgramacionFinalizada(r) ? `<button type="button" class="btn-small btn-ver" onclick="abrirModalFinalizar(${idx})">Finalizar auditoría</button>` : ''}
                 </div>
             `;
             modal.classList.add('show');
@@ -1738,34 +1771,196 @@
     <meta charset="UTF-8">
     <title>${titulo}</title>
     <style>
-        body { font-family: var(--tipografia); margin: 0; padding: 20px; color: #1f2937; }
-        .header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #3baa01; padding-bottom: 12px; margin-bottom: 20px; }
-        .header img { height: 50px; }
-        .header h1 { margin: 0; color: #256d00; font-size: 22px; }
-        .header p { margin: 0; color: #5f6f69; font-size: 12px; }
-        .section { margin-bottom: 16px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; }
-        .section h3 { margin: 0 0 8px 0; color: #256d00; font-size: 14px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
-        .field { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e2e8f0; }
-        .field label { font-weight: bold; color: #334155; font-size: 0.9rem; }
-        .field span { color: #555; font-size: 0.9rem; text-align: right; max-width: 60%; }
-        .auditor-card { padding: 8px; margin-bottom: 6px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; }
-        .auditor-card strong { color: #256d00; }
-        .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #cbd5e1; padding-top: 8px; }
-        @media print { body { margin: 0; } }
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            color: #1f2937;
+            background: #fff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .brand-band {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #39A900;
+            color: #fff;
+            padding: 18px 30px;
+        }
+        .brand-band img {
+            width: 58px;
+            height: 58px;
+            object-fit: contain;
+        }
+        .brand-name {
+            font-size: 25px;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: .2px;
+        }
+        .brand-line {
+            margin-top: 4px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, .94);
+        }
+        .page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 26px 30px 36px;
+        }
+        h1 {
+            margin: 0 0 4px;
+            color: #256D00;
+            font-size: 21px;
+            line-height: 1.2;
+        }
+        .subtitle {
+            margin: 0 0 20px;
+            color: #4B5563;
+            font-size: 12px;
+        }
+        .section {
+            margin: 0 0 16px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            page-break-inside: avoid;
+        }
+        .section h3 {
+            margin: 0 0 5px;
+            padding-bottom: 5px;
+            color: #256D00;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            border-bottom: 2px solid #39A900;
+        }
+        .field {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 6px 0;
+            border-bottom: 1px solid #DCE3D9;
+        }
+        .field label {
+            min-width: 165px;
+            color: #256D00;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .field span {
+            max-width: 68%;
+            color: #1f2937;
+            font-size: 11px;
+            text-align: right;
+            word-break: break-word;
+        }
+        .auditor-card {
+            margin-bottom: 8px;
+            padding: 10px 12px;
+            border-left: 4px solid #39A900;
+            border-radius: 4px;
+            background: #F1F9EE;
+            page-break-inside: avoid;
+        }
+        .auditor-card strong { color: #256D00; }
+        .auditor-card span { color: #4B5563; font-size: 11px; }
+        pre {
+            white-space: pre-wrap;
+            margin: 0;
+            font-family: inherit;
+            font-size: 11px;
+            line-height: 1.6;
+            color: #1f2937;
+        }
+        .footer {
+            margin-top: 26px;
+            padding-top: 9px;
+            border-top: 1px solid #DCE3D9;
+            color: #6B7280;
+            font-size: 9px;
+            text-align: center;
+        }
+        @page { size: letter; margin: 0; }
+        @media print {
+            body { margin: 0; }
+            .brand-band { padding: 18px 30px; }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img src="/static/sena_blanco.png" alt="SENA" onerror="this.style.display='none'">
+    <header class="brand-band">
+        <img src="${window.location.origin}/static/sena_blanco.png" alt="SENA" onerror="this.style.display='none'">
         <div>
-            <h1>CertiSENA</h1>
-            <p>Sistema de Auditoría - Programación de Visitas</p>
+            <div class="brand-name">CertiSENA</div>
+            <div class="brand-line">Servicio Nacional de Aprendizaje</div>
+            <div class="brand-line">Plataforma de gestión y consulta de certificados</div>
         </div>
-    </div>
-    ${contenido}
-    <div class="footer">Documento generado el ${new Date().toLocaleString()} - CertiSENA © 2026</div>
+    </header>
+    <main class="page">
+        <h1>${titulo}</h1>
+        <p class="subtitle">Sistema de Auditoría · Programación de visitas</p>
+        ${contenido}
+        <div class="footer">
+            Documento generado automáticamente por CertiSENA - SENA.
+            Emitido el ${new Date().toLocaleString('es-CO')}.
+        </div>
+    </main>
 </body>
 </html>`;
+        }
+
+        function esLiderProgramacion(r) {
+            if (!r || !usuarioId) return false;
+            if (String(r.id_usuario || '') !== String(usuarioId)) return false;
+            return /l\u00edder|lider/i.test(String(r.rol_auditor || ''));
+        }
+
+        function esProgramacionFinalizada(r) {
+            return String(r.estado || '').trim().toLowerCase() === 'finalizada';
+        }
+
+        let indiceFinalizacion = null;
+
+        function abrirModalFinalizar(idx) {
+            const r = todosLosDatos[idx];
+            if (!r) return;
+            indiceFinalizacion = idx;
+            const textarea = document.getElementById('finalizarObservaciones');
+            if (textarea) textarea.value = '';
+            cerrarModal();
+            const modal = document.getElementById('finalizarModal');
+            if (modal) modal.classList.add('show');
+        }
+
+        function cerrarModalFinalizar() {
+            const modal = document.getElementById('finalizarModal');
+            if (modal) modal.classList.remove('show');
+            indiceFinalizacion = null;
+        }
+
+        async function enviarFinalizacion() {
+            if (indiceFinalizacion === null) return;
+            const r = todosLosDatos[indiceFinalizacion];
+            if (!r) { cerrarModalFinalizar(); return; }
+            const textarea = document.getElementById('finalizarObservaciones');
+            const observaciones = textarea ? textarea.value : '';
+            try {
+                const res = await fetch(`/agenda-auditor/programacion/${encodeURIComponent(r.id_programacion)}/finalizar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                    body: JSON.stringify({ observaciones: observaciones })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || 'No se pudo finalizar la auditoría.');
+                mostrarMensaje(data.mensaje || 'Auditoría finalizada correctamente.', 'ok');
+                cerrarModalFinalizar();
+                cerrarModal();
+                await cargarDatos();
+            } catch (e) {
+                mostrarMensaje('No se pudo finalizar la auditoría: ' + e.message, 'error');
+            }
         }
 
         function imprimirProgramacion(idx) {

@@ -335,6 +335,18 @@ async def listar_notificaciones_auditor(
         text("""
             SELECT
                 id_notificacion,
+                NULL::uuid AS id_programacion,
+                asunto AS titulo,
+                mensaje,
+                leida,
+                fecha_envio::timestamp AS fecha_creacion
+            FROM notificacion
+            WHERE id_usuario = :id_usuario
+
+            UNION ALL
+
+            SELECT
+                id_notificacion,
                 id_programacion,
                 titulo,
                 mensaje,
@@ -342,6 +354,7 @@ async def listar_notificaciones_auditor(
                 fecha_creacion
             FROM notificacion_agenda_auditor
             WHERE id_usuario = :id_usuario
+
             ORDER BY fecha_creacion DESC
         """),
         {"id_usuario": id_usuario},
@@ -363,8 +376,9 @@ async def marcar_notificacion_leida(
 ):
     result = await db.execute(
         text("""
-            UPDATE notificacion_agenda_auditor
-            SET leida = TRUE
+            UPDATE notificacion
+            SET leida = TRUE,
+                fecha_lectura = CURRENT_TIMESTAMP
             WHERE id_notificacion = :id_notificacion
               AND id_usuario = :id_usuario
             RETURNING id_notificacion
@@ -376,9 +390,213 @@ async def marcar_notificacion_leida(
     )
     row = result.mappings().first()
     if not row:
-        raise HTTPException(status_code=404, detail="Notificación no encontrada.")
+        result = await db.execute(
+            text("""
+                UPDATE notificacion_agenda_auditor
+                SET leida = TRUE
+                WHERE id_notificacion = :id_notificacion
+                  AND id_usuario = :id_usuario
+                RETURNING id_notificacion
+            """),
+            {
+                "id_notificacion": id_notificacion,
+                "id_usuario": id_usuario,
+            },
+        )
+        row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Notificacion no encontrada.")
     await db.commit()
-    return {"mensaje": "Notificación marcada como leída."}
+    return {"mensaje": "Notificacion marcada como leida."}
+
+
+@router.patch(
+    "/{id_usuario}/notificaciones/{id_notificacion}/no-leida",
+)
+async def marcar_notificacion_no_leida(
+    id_usuario: UUID,
+    id_notificacion: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        text("""
+            UPDATE notificacion
+            SET leida = FALSE,
+                fecha_lectura = NULL
+            WHERE id_notificacion = :id_notificacion
+              AND id_usuario = :id_usuario
+            RETURNING id_notificacion
+        """),
+        {
+            "id_notificacion": id_notificacion,
+            "id_usuario": id_usuario,
+        },
+    )
+    row = result.mappings().first()
+    if not row:
+        result = await db.execute(
+            text("""
+                UPDATE notificacion_agenda_auditor
+                SET leida = FALSE
+                WHERE id_notificacion = :id_notificacion
+                  AND id_usuario = :id_usuario
+                RETURNING id_notificacion
+            """),
+            {
+                "id_notificacion": id_notificacion,
+                "id_usuario": id_usuario,
+            },
+        )
+        row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Notificacion no encontrada.")
+    await db.commit()
+    return {"mensaje": "Notificacion marcada como no leida."}
+
+
+@router.delete(
+    "/{id_usuario}/notificaciones/{id_notificacion}",
+)
+async def eliminar_notificacion_auditor(
+    id_usuario: UUID,
+    id_notificacion: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        text("""
+            DELETE FROM notificacion
+            WHERE id_notificacion = :id_notificacion
+              AND id_usuario = :id_usuario
+            RETURNING id_notificacion
+        """),
+        {
+            "id_notificacion": id_notificacion,
+            "id_usuario": id_usuario,
+        },
+    )
+    row = result.mappings().first()
+    if not row:
+        result = await db.execute(
+            text("""
+                DELETE FROM notificacion_agenda_auditor
+                WHERE id_notificacion = :id_notificacion
+                  AND id_usuario = :id_usuario
+                RETURNING id_notificacion
+            """),
+            {
+                "id_notificacion": id_notificacion,
+                "id_usuario": id_usuario,
+            },
+        )
+        row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Notificacion no encontrada.")
+    await db.commit()
+    return {"mensaje": "Notificacion eliminada.", "eliminadas": 1}
+
+
+@router.post(
+    "/{id_usuario}/notificaciones/eliminar",
+)
+async def eliminar_notificaciones_seleccionadas(
+    id_usuario: UUID,
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    ids = payload.get("ids") if isinstance(payload, dict) else None
+    if not isinstance(ids, list) or not ids:
+        raise HTTPException(status_code=400, detail="Debe indicar las notificaciones a eliminar.")
+
+    result1 = await db.execute(
+        text("""
+            DELETE FROM notificacion
+            WHERE id_usuario = :id_usuario
+              AND id_notificacion = ANY(:ids)
+            RETURNING id_notificacion
+        """),
+        {"id_usuario": id_usuario, "ids": ids},
+    )
+    eliminadas1 = len(result1.mappings().all())
+
+    result2 = await db.execute(
+        text("""
+            DELETE FROM notificacion_agenda_auditor
+            WHERE id_usuario = :id_usuario
+              AND id_notificacion = ANY(:ids)
+            RETURNING id_notificacion
+        """),
+        {"id_usuario": id_usuario, "ids": ids},
+    )
+    eliminadas2 = len(result2.mappings().all())
+
+    await db.commit()
+    return {"mensaje": "Notificaciones eliminadas.", "eliminadas": eliminadas1 + eliminadas2}
+
+
+@router.delete(
+    "/{id_usuario}/notificaciones",
+)
+async def eliminar_notificaciones_leidas(
+    id_usuario: UUID,
+    solo_leidas: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+):
+    condicion = "AND leida = TRUE" if solo_leidas else ""
+
+    result1 = await db.execute(
+        text(f"""
+            DELETE FROM notificacion
+            WHERE id_usuario = :id_usuario
+              {condicion}
+            RETURNING id_notificacion
+        """),
+        {"id_usuario": id_usuario},
+    )
+    eliminadas1 = len(result1.mappings().all())
+
+    result2 = await db.execute(
+        text(f"""
+            DELETE FROM notificacion_agenda_auditor
+            WHERE id_usuario = :id_usuario
+              {condicion}
+            RETURNING id_notificacion
+        """),
+        {"id_usuario": id_usuario},
+    )
+    eliminadas2 = len(result2.mappings().all())
+
+    await db.commit()
+    return {"mensaje": "Notificaciones eliminadas.", "eliminadas": eliminadas1 + eliminadas2}
+
+
+@router.patch(
+    "/{id_usuario}/notificaciones/marcar-todas-leidas",
+)
+async def marcar_todas_notificaciones_leidas(
+    id_usuario: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    await db.execute(
+        text("""
+            UPDATE notificacion
+            SET leida = TRUE,
+                fecha_lectura = CURRENT_TIMESTAMP
+            WHERE id_usuario = :id_usuario
+              AND leida = FALSE
+        """),
+        {"id_usuario": id_usuario},
+    )
+    await db.execute(
+        text("""
+            UPDATE notificacion_agenda_auditor
+            SET leida = TRUE
+            WHERE id_usuario = :id_usuario
+              AND leida = FALSE
+        """),
+        {"id_usuario": id_usuario},
+    )
+    await db.commit()
+    return {"mensaje": "Todas las notificaciones fueron marcadas como leidas."}
 
 
 @router.get(
@@ -599,8 +817,18 @@ async def actualizar_conflicto(
     id_usuario: UUID,
     id_conflicto: UUID,
     data: ConflictoInteresCrear,
+    usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if (
+        not es_rol_administrativo(usuario)
+        and str(id_usuario) != str(usuario["id_usuario"])
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para actualizar conflictos de otro usuario.",
+        )
+
     return await AuditorService(db).actualizar_conflicto(
         id_usuario,
         id_conflicto,
@@ -858,11 +1086,18 @@ async def listar_normas(
     result = await db.execute(
         text("""
             SELECT
-                id_norma,
-                nombre,
-                version
-            FROM norma
-            ORDER BY nombre, version
+                n.id_norma,
+                n.nombre,
+                n.version,
+                (
+                    SELECT STRING_AGG(DISTINCT c.codigo_sector_iaf, ', ' ORDER BY c.codigo_sector_iaf)
+                    FROM competencia_auditor c
+                    WHERE c.id_norma = n.id_norma
+                      AND c.codigo_sector_iaf IS NOT NULL
+                      AND TRIM(c.codigo_sector_iaf) <> ''
+                ) AS codigo_sector_iaf
+            FROM norma n
+            ORDER BY n.nombre, n.version
         """)
     )
 
@@ -871,6 +1106,7 @@ async def listar_normas(
             "id_norma": row["id_norma"],
             "nombre": row["nombre"],
             "version": row["version"],
+            "codigo_sector_iaf": row["codigo_sector_iaf"],
         }
         for row in result.mappings().all()
     ]
