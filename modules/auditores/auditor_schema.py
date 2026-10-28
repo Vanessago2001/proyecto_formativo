@@ -142,6 +142,7 @@ class CompetenciaAuditorActualizar(CompetenciaAuditorCrear):
 
 class CompetenciaAuditorRespuesta(BaseModel):
     id_competencia: UUID
+    id_postulacion: UUID | None = None
     id_norma: UUID
     tipo_competencia: str
     codigo_sector_iaf: str
@@ -150,6 +151,8 @@ class CompetenciaAuditorRespuesta(BaseModel):
     fecha_inicio: date
     fecha_fin: date
     es_vigente: bool
+    estado_validacion: str | None = None
+    observacion_validacion: str | None = None
 
 
 # ============================================================
@@ -365,26 +368,6 @@ class ExperienciaAuditoriaRespuesta(BaseModel):
     fecha_inicio: date
     fecha_fin: date | None = None
     descripcion: str = ""
-
-
-# ============================================================
-# REVISIÓN INDIVIDUAL DE DOCUMENTOS
-# ============================================================
-
-class RevisarDocumentoRequest(BaseModel):
-    estado_revision: str = Field(
-        ...,
-        pattern=r"^(Aprobado|Rechazado)$",
-    )
-
-    observacion: str = ""
-
-    id_usuario_actor: UUID
-
-    @field_validator("observacion")
-    @classmethod
-    def limpiar_observacion(cls, value):
-        return value.strip()
 
 
 # ============================================================

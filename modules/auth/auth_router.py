@@ -1,34 +1,42 @@
 from fastapi import APIRouter, Depends, Request, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
-from modules.auth.auth_schema import LoginMFARequest
 from modules.auth.auth_service import AuthService
-from modules.auth.mail_service import MailService
 from modules.auth.auth_schema import (
     LoginRequest,
     CodigoRequest,
     CambiarPasswordRequest,
     CambiarPasswordExpiradaRequest,
-)
-from modules.auth.auth_schema import (
-    LoginRequest,
-    CodigoRequest,
     LoginMFARequest,
-)
-from core.security import get_current_user
-from modules.auth.auth_schema import LoginRequest, CodigoRequest
-from modules.auth.auth_schema import (
-    LoginRequest,
-    CodigoRequest,
-    CambiarPasswordRequest,
-    CambiarPasswordExpiradaRequest,
     ResetPasswordRequest,
     ForgotPasswordRequest,
 )
-from core.security import get_current_user
+from core.security import get_current_user, get_session_user
 from modules.auth.dependencies import require_admin_access
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
+
+
+@router.get("/session")
+async def estado_sesion(
+    current_user=Depends(get_session_user),
+):
+    """Estado actual de la cuenta asociada al token.
+
+    A diferencia de los endpoints protegidos, este responde también cuando la
+    cuenta está inactiva. Así el frontend puede mostrar la pantalla de cuenta
+    inactiva en lugar de un error genérico.
+    """
+
+    return {
+        "id_usuario": current_user.get("id_usuario"),
+        "nombre": current_user.get("nombre"),
+        "correo": current_user.get("correo"),
+        "estado": current_user.get("estado"),
+        "estado_auditor": current_user.get("estado_auditor"),
+        "role_name": current_user.get("role_name"),
+        "activo": current_user.get("activo", False),
+    }
 
 @router.post("/login", status_code=status.HTTP_200_OK)
 async def sign_in(
@@ -100,18 +108,6 @@ async def cambiar_password_expirada(
         data.password_nueva,
     )
 
-@router.get("/test-mail")
-async def test_mail():
-
-    await MailService.enviar_codigo_activar_mfa(
-        destinatario="marlontaborda12@gmail.com",
-        codigo="123456"
-    )
-
-    return {
-        "mensaje": "Correo enviado correctamente"
-    }
-
 @router.post("/verificar-codigo")
 async def verificar_codigo(
     datos: CodigoRequest,
@@ -175,14 +171,3 @@ async def historial_accesos(
         "total": len(logs),
         "registros": logs,
     }
-@router.post("/login-mfa")
-async def login_mfa(
-    datos: LoginMFARequest,
-    db: AsyncSession = Depends(get_db)
-):
-    service = AuthService(db)
-
-    return await service.login_mfa(
-        datos.correo,
-        datos.codigo
-    )

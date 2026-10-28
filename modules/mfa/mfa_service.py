@@ -1,6 +1,6 @@
 
 from datetime import datetime, timedelta, timezone
-from random import randint
+import secrets
 
 from fastapi import HTTPException, status
 from sqlalchemy import text
@@ -13,6 +13,16 @@ class MFAService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    @staticmethod
+    def _a_naive_utc(valor: datetime) -> datetime:
+        if valor.tzinfo is not None:
+            return valor.astimezone(timezone.utc).replace(tzinfo=None)
+        return valor
+
+    @staticmethod
+    def _generar_codigo() -> str:
+        return str(100000 + secrets.randbelow(900000))
 
         # ============================================================
         # ACTIVAR MFA
@@ -52,8 +62,8 @@ class MFAService:
         # Generar código MFA de 6 dígitos
         # --------------------------------------------------------
     
-        codigo = str(randint(100000, 999999))
-    
+        codigo = self._generar_codigo()
+
         # Código válido durante 10 minutos
         # --------------------------------------------------------
     
@@ -140,7 +150,7 @@ class MFAService:
         # Generar código
         # --------------------------------------------------------
 
-        codigo = str(randint(100000, 999999))
+        codigo = self._generar_codigo()
 
         expira = (
             datetime.now(timezone.utc)
@@ -166,9 +176,7 @@ class MFAService:
                 "id_usuario": usuario["id_usuario"]
             },
         )
-        print("UPDATE ejecutado")
         await self.db.commit()
-        print("COMMIT realizado")
 
         # --------------------------------------------------------
         # Enviar correo
@@ -246,7 +254,7 @@ class MFAService:
         # Verificar que el código coincida
         # --------------------------------------------------------
 
-        if usuario["mfa_codigo"] != codigo:
+        if not secrets.compare_digest(str(usuario["mfa_codigo"]), codigo or ""):
             raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Código incorrecto."
@@ -266,7 +274,7 @@ class MFAService:
         # Verificar que el código no haya expirado
         # --------------------------------------------------------
 
-        if usuario["mfa_expira"] < datetime.now(timezone.utc):
+        if self._a_naive_utc(usuario["mfa_expira"]) < self._a_naive_utc(datetime.now(timezone.utc)):
             raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="El código MFA expiró."
@@ -343,8 +351,6 @@ class MFAService:
     # ============================================================
 
     async def disable(self, current_user: dict):
-        print("===== ENTRÓ A DISABLE =====")
-        print(current_user)
 
         # --------------------------------------------------------
         # Obtener correo del usuario autenticado
@@ -391,7 +397,7 @@ class MFAService:
         # Generar código de 6 dígitos
         # --------------------------------------------------------
 
-        codigo = str(randint(100000, 999999))
+        codigo = self._generar_codigo()
 
         # --------------------------------------------------------
         # Código válido durante 10 minutos
@@ -427,12 +433,10 @@ class MFAService:
         # --------------------------------------------------------
         # Enviar código al correo del usuario
         # --------------------------------------------------------
-        print("Generando correo para:", correo)
         await MailService.enviar_codigo_desactivar_mfa(
             destinatario=correo,
             codigo=codigo,
         )
-        print("Correo enviado")
 
         return {
         "message": "Código para desactivar MFA enviado correctamente al correo."
@@ -506,7 +510,7 @@ class MFAService:
         # Verificar código
         # --------------------------------------------------------
 
-        if usuario["mfa_codigo"] != codigo:
+        if not secrets.compare_digest(str(usuario["mfa_codigo"]), codigo or ""):
             raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Código incorrecto."
@@ -526,7 +530,7 @@ class MFAService:
         # Comprobar que el código no haya expirado
         # --------------------------------------------------------
 
-        if usuario["mfa_expira"] < datetime.now(timezone.utc):
+        if self._a_naive_utc(usuario["mfa_expira"]) < self._a_naive_utc(datetime.now(timezone.utc)):
             raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="El código MFA expiró."

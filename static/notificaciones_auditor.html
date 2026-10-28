@@ -1,126 +1,1694 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CertiSENA | Notificaciones</title>
-    <link rel="stylesheet" href="/static/tema.css">
-    <link rel="stylesheet" href="/static/styles.css">
-    <style>
-        .portal-shell { max-width: var(--ancho-contenido); margin:0 auto; padding:28px; }
-        .header-logo { display:flex; align-items:center; gap:16px; }
-        .header-logo img { width:76px; height:auto; }
-        .header-logo h1 { font-size:30px; margin:0; }
-        .header-logo p { font-size:13px; opacity:.92; margin-top:6px; }
-        .section-card { background:#f8fafc; border-radius:10px; padding:22px; margin-bottom:28px; border:1px solid #e2e8f0; }
-        .section-title { color:#256d00; font-size:20px; margin-bottom:14px; }
-        .help-text { color:#5f6f69; font-size:13px; margin-bottom:12px; }
-        .notif-card { background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:16px; margin-bottom:12px; }
-        .notif-card.unread { border-left:4px solid #3baa01; background:#f8fafc; }
-        .notif-card h4 { margin:0 0 8px; color:#256d00; font-size:16px; }
-        .notif-card p { margin:0 0 8px; color:#334155; font-size:14px; white-space:pre-wrap; }
-        .notif-card .fecha { color:#64748b; font-size:12px; }
-        .notif-card .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
-        .badge.unread { background:#3baa01; color:#fff; }
-        .badge.read { background:#94a3b8; color:#fff; }
-        .mini-button { padding:8px 12px; border-radius:6px; background:#3baa01; color:#fff; border:none; cursor:pointer; font-weight:600; font-size:12px; }
-        .mini-button.secondary { background:#94a3b8; }
-        .back-button { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:6px; background:#e2e8f0; color:#334155; text-decoration:none; font-weight:600; font-size:13px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CertiSENA | Buzón de notificaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <style>
+    [hidden] {
+      display: none !important;
+    }
+
+    .portal-shell {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-logo img {
+      width: 76px;
+      height: auto;
+    }
+
+    .header-logo h1 {
+      font-size: 30px;
+      margin: 0;
+    }
+
+    .header-logo p {
+      font-size: 13px;
+      opacity: .92;
+      margin-top: 6px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #dbe4d4;
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 2px 8px rgba(37, 109, 0, .06);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .card-title {
+      color: #256d00;
+      font-size: 20px;
+      margin: 0;
+    }
+
+    .help-text {
+      color: #5f6f69;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .module-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .module-content {
+      min-width: 0;
+    }
+
+    .module-menu {
+      background: #fff;
+      border: 1px solid #dbe4d4;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 2px 8px rgba(37, 109, 0, .06);
+      position: sticky;
+      top: 18px;
+    }
+
+    .module-menu h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: #64748b;
+      margin: 4px 8px 10px;
+    }
+
+    .menu-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #3f4942;
+      padding: 11px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 6px;
+      transition: .18s ease;
+      text-decoration: none;
+    }
+
+    .menu-item:hover {
+      background: #f1f8ed;
+      color: #256d00;
+    }
+
+    .menu-item.active {
+      background: #e7f6df;
+      border-color: #cbe8bb;
+      color: #256d00;
+    }
+
+    /* ---------- Estadísticas ---------- */
+    .notif-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .notif-stat {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      background: #fff;
+    }
+
+    .notif-stat-icon {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border-radius: 10px;
+      background: #f1f8ed;
+      color: #256d00;
+      flex: 0 0 auto;
+    }
+
+    .notif-stat-icon.ambar {
+      background: #fff5d8;
+      color: #896500;
+    }
+
+    .notif-stat-icon.gris {
+      background: #eef2f7;
+      color: #475569;
+    }
+
+    .notif-stat strong {
+      display: block;
+      color: #1f2937;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .notif-stat span {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    /* ---------- Barra de herramientas ---------- */
+    .notif-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+
+    .notif-toolbar .campo {
+      display: grid;
+      gap: 6px;
+      flex: 1 1 260px;
+      min-width: 0;
+    }
+
+    .notif-toolbar .campo.filtro {
+      flex: 0 1 190px;
+    }
+
+    .notif-toolbar label {
+      color: #475569;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .notif-toolbar input,
+    .notif-toolbar select {
+      min-height: 38px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: #fff;
+    }
+
+    .notif-toolbar input:focus,
+    .notif-toolbar select:focus {
+      border-color: #3baa01;
+      outline: 3px solid rgba(59, 170, 1, .12);
+    }
+
+    .notif-toolbar .acciones {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .notif-btn {
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid #3baa01;
+      border-radius: 6px;
+      background: #fff;
+      color: #256d00;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .notif-btn:hover {
+      background: #f1f8ed;
+    }
+
+    .notif-btn.peligro {
+      border-color: #efb5b1;
+      color: #b42318;
+    }
+
+    .notif-btn.peligro:hover {
+      background: #fff1f0;
+      border-color: #b42318;
+    }
+
+    .notif-btn:disabled {
+      cursor: not-allowed;
+      opacity: .5;
+    }
+
+    /* ---------- Lista ---------- */
+    .notif-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .notif-item {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      padding: 14px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+
+    .notif-item:hover {
+      border-color: #b8dfaa;
+      box-shadow: 0 4px 14px rgba(37, 109, 0, .08);
+    }
+
+    .notif-item.unread {
+      border-left: 4px solid #3baa01;
+      background: #f7fcf4;
+    }
+
+    .notif-item.selected {
+      border-color: #3baa01;
+      background: #f1f8ed;
+    }
+
+    .notif-check {
+      margin-top: 3px;
+      width: 16px;
+      height: 16px;
+      accent-color: #3baa01;
+    }
+
+    .notif-body {
+      min-width: 0;
+    }
+
+    .notif-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .notif-subject {
+      color: #1f2937;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .notif-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .notif-badge.unread {
+      background: #3baa01;
+      color: #fff;
+    }
+
+    .notif-badge.read {
+      background: #cbd5e1;
+      color: #334155;
+    }
+
+    .notif-badge.tipo {
+      background: #eef2f7;
+      color: #475569;
+    }
+
+    .notif-badge.tipo.auditoria {
+      background: #e7f6df;
+      color: #2d750b;
+    }
+
+    .notif-badge.tipo.cancelacion {
+      background: #fff1f0;
+      color: #a5261e;
+    }
+
+    .notif-badge.tipo.reprogramacion {
+      background: #fff5d8;
+      color: #896500;
+    }
+
+    .notif-badge.tipo.bloqueo {
+      background: #eef4ff;
+      color: #1d4ed8;
+    }
+
+    .notif-summary {
+      color: #475569;
+      font-size: 12px;
+      line-height: 1.55;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .notif-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .notif-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+    }
+
+    .notif-action {
+      min-height: 28px;
+      padding: 5px 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      background: #fff;
+      color: #475569;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .notif-action:hover {
+      border-color: #3baa01;
+      background: #f1f8ed;
+      color: #256d00;
+    }
+
+    .notif-action.danger:hover {
+      border-color: #b42318;
+      background: #fff1f0;
+      color: #b42318;
+    }
+
+    .notif-empty {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      padding: 34px 18px;
+      border: 1px dashed #dbe3ec;
+      border-radius: 10px;
+      background: #fbfcfe;
+      color: #64748b;
+      text-align: center;
+    }
+
+    .notif-empty .icono {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 50%;
+      background: #f1f8ed;
+      color: #3baa01;
+      font-size: 20px;
+    }
+
+    .notif-empty strong {
+      color: #334155;
+      font-size: 13px;
+    }
+
+    .notif-empty p {
+      max-width: 460px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .notif-skeleton {
+      display: block;
+      height: 12px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 37%, #eef2f7 63%);
+      background-size: 400% 100%;
+      animation: notif-shimmer 1.25s ease infinite;
+    }
+
+    @keyframes notif-shimmer {
+      0% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0 50%;
+      }
+    }
+
+    /* ---------- Modales ---------- */
+    body.notif-modal-open {
+      overflow: hidden;
+    }
+
+    .notif-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 12000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      background: rgba(15, 23, 42, .55);
+      backdrop-filter: blur(3px);
+    }
+
+    .notif-modal.open {
+      display: flex;
+      animation: notif-fade .18s ease;
+    }
+
+    @keyframes notif-fade {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .notif-modal-card {
+      width: min(760px, 100%);
+      max-height: calc(100vh - 44px);
+      overflow: hidden;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 26px 70px rgba(15, 23, 42, .35);
+      display: flex;
+      flex-direction: column;
+      animation: notif-pop .2s ease;
+    }
+
+    .notif-modal-card.confirmar {
+      width: min(500px, 100%);
+    }
+
+    @keyframes notif-pop {
+      from {
+        transform: translateY(10px) scale(.985);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    .notif-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 20px 22px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #fbfdf9;
+    }
+
+    .notif-modal-head h3 {
+      margin: 2px 0 6px;
+      color: #1f2937;
+      font-size: 19px;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+
+    .notif-modal-head .meta {
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .notif-modal-body {
+      overflow-y: auto;
+      padding: 20px 22px 24px;
+    }
+
+    .notif-modal-foot {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 9px;
+      padding: 14px 22px;
+      border-top: 1px solid #e2e8f0;
+      background: #fbfdf9;
+    }
+
+    .notif-modal-card.confirmar .notif-modal-body {
+      text-align: center;
+      padding-top: 26px;
+    }
+
+    .notif-modal-card.confirmar .notif-modal-foot {
+      justify-content: center;
+    }
+
+    .notif-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 18px;
+    }
+
+    .notif-field {
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .notif-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .notif-field dt {
+      margin-bottom: 3px;
+      color: #7b847e;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .notif-field dd {
+      color: #263238;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .notif-field dd.suave {
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .notif-message {
+      padding: 14px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      background: #fbfcfe;
+      color: #334155;
+      font-size: 13px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .notif-confirm-icon {
+      display: grid;
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 14px;
+      place-items: center;
+      border-radius: 50%;
+      background: #fff1f0;
+      color: #b42318;
+    }
+
+    .notif-modal-card.confirmar h3 {
+      margin: 0 0 8px;
+      color: #1f2937;
+      font-size: 20px;
+    }
+
+    .notif-confirm-texto {
+      color: #475569;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .notif-confirm-aviso {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid #f3d6d3;
+      border-radius: 7px;
+      background: #fff8f7;
+      color: #7f1d1d;
+      font-size: 11px;
+      line-height: 1.55;
+      text-align: left;
+    }
+
+    .notif-confirm-error {
+      margin-top: 10px;
+      color: #a5261e;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .notif-modal-loading {
+      display: grid;
+      min-height: 220px;
+      place-content: center;
+      justify-items: center;
+      gap: 12px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .notif-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #3baa01;
+      border-radius: 50%;
+      animation: notif-spin .7s linear infinite;
+    }
+
+    @keyframes notif-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ---------- Toast ---------- */
+    .notif-toast-wrap {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 13000;
+      display: grid;
+      gap: 9px;
+      width: min(360px, calc(100vw - 36px));
+      pointer-events: none;
+    }
+
+    .notif-toast {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid #dbe7d4;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, .16);
+      pointer-events: auto;
+      animation: notif-toast-in .22s ease;
+    }
+
+    .notif-toast.error {
+      border-color: #efb5b1;
+    }
+
+    .notif-toast .icono {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: #e7f6df;
+      color: #256d00;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .notif-toast.error .icono {
+      background: #fff1f0;
+      color: #b42318;
+    }
+
+    .notif-toast .contenido {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .notif-toast .contenido strong {
+      display: block;
+      margin-bottom: 2px;
+      color: #1f2937;
+      font-size: 12px;
+    }
+
+    .notif-toast .contenido p {
+      color: #475569;
+      font-size: 11px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .notif-toast .cerrar {
+      border: 0;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    @keyframes notif-toast-in {
+      from {
+        transform: translateY(8px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 900px) {
+      .module-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .module-menu {
+        position: static;
+      }
+
+      .module-menu .menu-items {
+        display: flex;
+        overflow-x: auto;
+        gap: 6px;
+        padding-bottom: 4px;
+      }
+
+      .menu-item {
+        flex: 0 0 auto;
+        margin-bottom: 0;
+        white-space: nowrap;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .notif-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .notif-toolbar {
+        align-items: stretch;
+      }
+
+      .notif-toolbar .campo.filtro {
+        flex: 1 1 100%;
+      }
+
+      .notif-item {
+        grid-template-columns: 28px minmax(0, 1fr);
+      }
+
+      .notif-actions {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        justify-content: flex-end;
+        align-items: center;
+      }
+
+      .notif-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .notif-modal {
+        padding: 0;
+      }
+
+      .notif-modal-card {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+      }
+
+      .notif-modal-card.confirmar {
+        width: 100%;
+        height: auto;
+        max-height: 100vh;
+        margin: auto;
+        border-radius: 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .portal-shell {
+        padding: 18px;
+      }
+
+      .notif-toolbar .acciones {
+        width: 100%;
+      }
+
+      .notif-btn {
+        flex: 1 1 auto;
+      }
+    }
+  </style>
 </head>
+
 <body>
-    <header class="login-header">
-        <div class="header-content header-logo">
-            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+  <header class="login-header">
+    <div class="header-content header-logo">
+      <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+      <div>
+        <h1>CertiSENA</h1>
+        <p class="subtitle">Buzón de notificaciones</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="portal-shell">
+    <div class="module-layout">
+      
+
+      <section class="module-content">
+        <div class="card">
+          <div class="card-header">
             <div>
-                <h1>CertiSENA</h1>
-                <p class="subtitle">Notificaciones del auditor</p>
+              <h2 class="card-title">Buzón de notificaciones</h2>
+              <p class="help-text">Eventos del sistema relacionados con auditorías, reprogramaciones, cancelaciones, bloqueos de fechas y otros cambios operativos.</p>
             </div>
+            <a class="notif-btn" href="/auditor">Regresar</a>
+            <button class="notif-btn" type="button" id="btnRecargar">Actualizar</button>
+          </div>
+
+          <div class="notif-stats" aria-label="Resumen de notificaciones">
+            <article class="notif-stat">
+              <span class="notif-stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+              </span>
+              <div>
+                <strong id="statTotal">0</strong>
+                <span>Total</span>
+              </div>
+            </article>
+            <article class="notif-stat">
+              <span class="notif-stat-icon ambar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </span>
+              <div>
+                <strong id="statNoLeidas">0</strong>
+                <span>No leídas</span>
+              </div>
+            </article>
+            <article class="notif-stat">
+              <span class="notif-stat-icon gris" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </span>
+              <div>
+                <strong id="statLeidas">0</strong>
+                <span>Leídas</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="notif-toolbar">
+            <div class="campo">
+              <label for="busquedaNotif">Buscar</label>
+              <input id="busquedaNotif" type="search" autocomplete="off" placeholder="Asunto o contenido">
+            </div>
+            <div class="campo filtro">
+              <label for="filtroLectura">Estado</label>
+              <select id="filtroLectura">
+                <option value="todas">Todas</option>
+                <option value="no_leidas">No leídas</option>
+                <option value="leidas">Leídas</option>
+              </select>
+            </div>
+            <div class="acciones">
+              <button class="notif-btn" type="button" id="btnMarcarTodas">Marcar todas como leídas</button>
+              <button class="notif-btn" type="button" id="btnEliminarLeidas">Eliminar leídas</button>
+              <button class="notif-btn peligro" type="button" id="btnEliminarSeleccionadas" disabled>Eliminar seleccionadas</button>
+            </div>
+          </div>
+
+          <div class="help-text" id="resumenNotif">Cargando notificaciones...</div>
+
+          <div id="listaNotificaciones" class="notif-list"></div>
         </div>
-    </header>
+      </section>
+    </div>
+  </main>
 
-    <main class="portal-shell">
-        <div style="margin-bottom:18px;">
-            <a class="back-button" href="/auditor">Regresar al portal</a>
+  <!-- Modal detalle -->
+  <div class="notif-modal" id="modalDetalle" role="dialog" aria-modal="true" aria-labelledby="tituloDetalleNotif">
+    <div class="notif-modal-card" role="document">
+      <div class="notif-modal-head">
+        <div>
+          <span class="notif-badge tipo" id="tipoDetalle"></span>
+          <h3 id="tituloDetalleNotif">Notificación</h3>
+          <p class="meta" id="metaDetalle"></p>
         </div>
+        <button class="notif-btn" type="button" id="btnCerrarDetalleNotif" aria-label="Cerrar detalle">Cerrar</button>
+      </div>
+      <div class="notif-modal-body" id="cuerpoDetalleNotif">
+        <div class="notif-modal-loading">
+          <span class="notif-spinner" aria-hidden="true"></span>
+          <span>Cargando detalle...</span>
+        </div>
+      </div>
+      <div class="notif-modal-foot">
+        <button class="notif-btn" type="button" id="btnAlternarLectura">Marcar como leída</button>
+        <button class="notif-btn peligro" type="button" id="btnEliminarDetalle">Eliminar</button>
+      </div>
+    </div>
+  </div>
 
-        <section class="section-card">
-            <h2 class="section-title">Mis notificaciones</h2>
-            <p class="help-text">Aquí verás las auditorías programadas y reprogramaciones que el administrador te ha asignado.</p>
-            <div id="notificaciones"></div>
-            <p id="resumen" class="help-text"></p>
-        </section>
-    </main>
+  <!-- Modal confirmación -->
+  <div class="notif-modal" id="modalConfirmarNotif" role="alertdialog" aria-modal="true"
+    aria-labelledby="tituloConfirmarNotif" aria-describedby="textoConfirmarNotif">
+    <div class="notif-modal-card confirmar" role="document">
+      <div class="notif-modal-body">
+        <div class="notif-confirm-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <h3 id="tituloConfirmarNotif">Confirmar acción</h3>
+        <p class="notif-confirm-texto" id="textoConfirmarNotif"></p>
+        <div class="notif-confirm-aviso" id="avisoConfirmarNotif"></div>
+        <div class="notif-confirm-error" id="errorConfirmarNotif" role="alert"></div>
+      </div>
+      <div class="notif-modal-foot">
+        <button class="notif-btn" type="button" id="btnCancelarConfirmarNotif">Cancelar</button>
+        <button class="notif-btn peligro" type="button" id="btnEjecutarConfirmarNotif">Confirmar</button>
+      </div>
+    </div>
+  </div>
 
-    <script>
-        const token = localStorage.getItem('access_token');
-        let usuarioId = null;
+  <div class="notif-toast-wrap" id="toastWrapNotif" aria-live="polite" aria-atomic="false"></div>
 
-        async function resolverUsuario() {
-            if (usuarioId) return usuarioId;
-            if (!token) return null;
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-                usuarioId = payload.user_id || payload.id_usuario || payload.sub;
-                return usuarioId;
-            } catch { return null; }
+  <script src="/static/session-guard.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        window.location.replace("/login");
+        return;
+      }
+
+      function leerToken(valor) {
+        try {
+          const parte = valor.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+          return JSON.parse(atob(parte));
+        } catch (_) {
+          return null;
+        }
+      }
+
+      const payload = leerToken(token);
+      if (!payload) {
+        localStorage.removeItem("access_token");
+        window.location.replace("/login");
+        return;
+      }
+
+      const usuarioId = payload.user_id || payload.id_usuario || payload.sub;
+      if (!usuarioId) {
+        window.location.replace("/login");
+        return;
+      }
+
+      const $ = (selector) => document.querySelector(selector);
+      const lista = $("#listaNotificaciones");
+      const resumen = $("#resumenNotif");
+      const busqueda = $("#busquedaNotif");
+      const filtroLectura = $("#filtroLectura");
+      const modalDetalle = $("#modalDetalle");
+      const cuerpoDetalle = $("#cuerpoDetalleNotif");
+      const tituloDetalle = $("#tituloDetalleNotif");
+      const metaDetalle = $("#metaDetalle");
+      const tipoDetalle = $("#tipoDetalle");
+      const modalConfirmar = $("#modalConfirmarNotif");
+      const textoConfirmar = $("#textoConfirmarNotif");
+      const avisoConfirmar = $("#avisoConfirmarNotif");
+      const errorConfirmar = $("#errorConfirmarNotif");
+      const btnEjecutarConfirmar = $("#btnEjecutarConfirmarNotif");
+      const toastWrap = $("#toastWrapNotif");
+
+      const app = {
+        notificaciones: [],
+        filtradas: [],
+        texto: "",
+        filtro: "todas",
+        seleccionadas: new Set(),
+        detalleId: null,
+        detalle: null,
+        detalleRelacionado: null,
+        ejecutando: false,
+        confirmacion: null,
+      };
+
+      function escapar(valor) {
+        return String(valor ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function mostrar(valor, defecto = "No disponible") {
+        const texto = String(valor ?? "").trim();
+        return texto ? escapar(texto) : `<span class="suave">${escapar(defecto)}</span>`;
+      }
+
+      function normalizarTexto(valor) {
+        return String(valor || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
+      }
+
+      function formatearFechaHora(valor) {
+        if (!valor) return "";
+        const texto = String(valor);
+        let fecha;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+          const [anio, mes, dia] = texto.split("-").map(Number);
+          fecha = new Date(anio, mes - 1, dia);
+        } else {
+          fecha = new Date(valor);
+        }
+        if (Number.isNaN(fecha.getTime())) return texto;
+        return new Intl.DateTimeFormat("es-CO", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(fecha);
+      }
+
+      function formatearFecha(valor) {
+        if (!valor) return "";
+        const texto = String(valor);
+        let fecha;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+          const [anio, mes, dia] = texto.split("-").map(Number);
+          fecha = new Date(anio, mes - 1, dia);
+        } else {
+          fecha = new Date(valor);
+        }
+        if (Number.isNaN(fecha.getTime())) return texto;
+        return new Intl.DateTimeFormat("es-CO", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }).format(fecha);
+      }
+
+      function inferirTipo(notificacion) {
+        const texto = normalizarTexto((notificacion.titulo || "") + " " + (notificacion.mensaje || ""));
+        if (/cancel/.test(texto)) return { etiqueta: "Cancelación", clase: "cancelacion" };
+        if (/bloque/.test(texto)) return { etiqueta: "Bloqueo", clase: "bloqueo" };
+        if (/reprogram|nueva fecha|actualiz/.test(texto)) return { etiqueta: "Reprogramación", clase: "reprogramacion" };
+        if (/program|asign|auditoria|auditoría/.test(texto)) return { etiqueta: "Auditoría", clase: "auditoria" };
+        return { etiqueta: "Notificación", clase: "" };
+      }
+
+      function toast(tipo, titulo, mensaje) {
+        const contenedor = document.createElement("div");
+        contenedor.className = "notif-toast " + tipo;
+        contenedor.innerHTML = `
+          <span class="icono">${tipo === "error" ? "!" : "✓"}</span>
+          <div class="contenido">
+            <strong>${escapar(titulo)}</strong>
+            <p>${escapar(mensaje)}</p>
+          </div>
+          <button class="cerrar" type="button" aria-label="Cerrar notificación">×</button>`;
+        contenedor.querySelector(".cerrar").addEventListener("click", () => contenedor.remove());
+        toastWrap.appendChild(contenedor);
+        window.setTimeout(() => contenedor.remove(), 5200);
+      }
+
+      function mostrarFeedback(tipo, mensaje) {
+        resumen.textContent = mensaje;
+        resumen.style.color = tipo === "error" ? "#a5261e" : "#5f6f69";
+      }
+
+      async function api(ruta, opciones = {}) {
+        const headers = { ...(opciones.headers || {}) };
+        headers.Authorization = "Bearer " + token;
+        if (opciones.body && !headers["Content-Type"]) {
+          headers["Content-Type"] = "application/json";
+        }
+        const respuesta = await fetch(ruta, {
+          ...opciones,
+          headers,
+          cache: "no-store",
+        });
+
+        if (respuesta.status === 401) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("token_type");
+          window.location.replace("/login");
+          throw new Error("La sesión ha expirado.");
         }
 
-        function escapeHtml(v) { return (v===null||v===undefined)?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+        const data = await respuesta.json().catch(() => ({}));
+        if (!respuesta.ok) {
+          let detalle = data.detail;
+          if (Array.isArray(detalle)) {
+            detalle = detalle.map((item) => item.msg || item.mensaje || "").join(" ");
+          } else if (detalle && typeof detalle === "object") {
+            detalle = detalle.mensaje || JSON.stringify(detalle);
+          }
+          throw new Error(detalle || "No fue posible completar la operación.");
+        }
+        return data;
+      }
 
-        async function cargarNotificaciones() {
-            const uid = await resolverUsuario();
-            if (!uid) {
-                document.getElementById('notificaciones').innerHTML = '<p class="help-text">No se pudo identificar al auditor.</p>';
-                return;
-            }
-            try {
-                const res = await fetch('/auditores/' + encodeURIComponent(uid) + '/notificaciones', {
-                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
-                });
-                const data = await res.json().catch(() => ({}));
-                const items = Array.isArray(data.notificaciones) ? data.notificaciones : [];
-                const container = document.getElementById('notificaciones');
-                if (!items.length) {
-                    container.innerHTML = '<p class="help-text">No tienes notificaciones pendientes.</p>';
-                    document.getElementById('resumen').textContent = '';
-                    return;
-                }
-                const noLeidas = items.filter(n => !n.leida).length;
-                document.getElementById('resumen').textContent = `Total: ${items.length} · No leídas: ${noLeidas}`;
-                container.innerHTML = items.map(n => `
-                    <div class="notif-card ${n.leida ? '' : 'unread'}">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <h4>${escapeHtml(n.titulo || 'Notificación')}</h4>
-                            <span class="badge ${n.leida ? 'read' : 'unread'}">${n.leida ? 'Leída' : 'Nueva'}</span>
-                        </div>
-                        <p>${escapeHtml(n.mensaje || '')}</p>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span class="fecha">${escapeHtml(n.fecha_creacion || '')}</span>
-                            ${!n.leida ? `<button class="mini-button secondary" onclick="marcarLeida('${escapeHtml(n.id_notificacion)}')">Marcar como leída</button>` : ''}
-                        </div>
-                    </div>
-                `).join('');
-            } catch {
-                document.getElementById('notificaciones').innerHTML = '<p class="help-text">No se pudieron cargar las notificaciones.</p>';
-            }
+      function actualizarEstadisticas() {
+        const total = app.notificaciones.length;
+        const noLeidas = app.notificaciones.filter((item) => !item.leida).length;
+        $("#statTotal").textContent = total;
+        $("#statNoLeidas").textContent = noLeidas;
+        $("#statLeidas").textContent = total - noLeidas;
+      }
+
+      function filtrarNotificaciones() {
+        const texto = normalizarTexto(app.texto);
+        app.filtradas = app.notificaciones.filter((notificacion) => {
+          const coincideLectura =
+            app.filtro === "todas" ||
+            (app.filtro === "no_leidas" && !notificacion.leida) ||
+            (app.filtro === "leidas" && notificacion.leida);
+          if (!coincideLectura) return false;
+          if (!texto) return true;
+          return (
+            normalizarTexto(notificacion.titulo).includes(texto) ||
+            normalizarTexto(notificacion.mensaje).includes(texto)
+          );
+        });
+      }
+
+      function renderLista() {
+        actualizarEstadisticas();
+        filtrarNotificaciones();
+
+        if (!app.notificaciones.length) {
+          lista.innerHTML = `
+            <div class="notif-empty">
+              <span class="icono">○</span>
+              <strong>Sin notificaciones</strong>
+              <p>No tienes notificaciones registradas en el sistema.</p>
+            </div>`;
+          resumen.textContent = "0 notificaciones.";
+          $("#btnEliminarSeleccionadas").disabled = true;
+          return;
         }
 
-        async function marcarLeida(idNotif) {
-            const uid = await resolverUsuario();
-            if (!uid) return;
-            try {
-                await fetch('/auditores/' + encodeURIComponent(uid) + '/notificaciones/' + encodeURIComponent(idNotif) + '/leer', {
-                    method: 'PATCH',
-                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
-                });
-                await cargarNotificaciones();
-            } catch {
-                alert('No se pudo marcar como leída.');
-            }
+        if (!app.filtradas.length) {
+          lista.innerHTML = `
+            <div class="notif-empty">
+              <span class="icono">⌕</span>
+              <strong>Sin coincidencias</strong>
+              <p>No se encontraron notificaciones con los criterios de búsqueda.</p>
+            </div>`;
+          resumen.textContent = "0 resultados para los filtros aplicados.";
+          $("#btnEliminarSeleccionadas").disabled = app.seleccionadas.size === 0;
+          return;
         }
 
-        cargarNotificaciones();
-    </script>
+        lista.innerHTML = app.filtradas
+          .map((notificacion) => {
+            const tipo = inferirTipo(notificacion);
+            const seleccionada = app.seleccionadas.has(String(notificacion.id_notificacion));
+            return `
+              <article class="notif-item ${notificacion.leida ? "" : "unread"} ${seleccionada ? "selected" : ""}" data-id="${escapar(notificacion.id_notificacion)}">
+                <input class="notif-check" type="checkbox" data-check="${escapar(notificacion.id_notificacion)}" ${seleccionada ? "checked" : ""} aria-label="Seleccionar notificación">
+                <div class="notif-body">
+                  <div class="notif-top">
+                    <h4 class="notif-subject">${escapar(notificacion.titulo || "Notificación")}</h4>
+                    <span class="notif-badge ${notificacion.leida ? "read" : "unread"}">${notificacion.leida ? "Leída" : "Nueva"}</span>
+                    <span class="notif-badge tipo ${tipo.clase}">${escapar(tipo.etiqueta)}</span>
+                  </div>
+                  <p class="notif-summary">${escapar(notificacion.mensaje || "")}</p>
+                  <div class="notif-meta">
+                    <span>${formatearFechaHora(notificacion.fecha_creacion)}</span>
+                    ${notificacion.id_programacion ? `<span>Proceso: ${escapar(String(notificacion.id_programacion).slice(0, 8))}…</span>` : ""}
+                  </div>
+                </div>
+                <div class="notif-actions">
+                  <button class="notif-action" type="button" data-ver="${escapar(notificacion.id_notificacion)}">Ver</button>
+                  <button class="notif-action" type="button" data-toggle="${escapar(notificacion.id_notificacion)}">
+                    ${notificacion.leida ? "Marcar no leída" : "Marcar leída"}
+                  </button>
+                  <button class="notif-action danger" type="button" data-eliminar="${escapar(notificacion.id_notificacion)}">Eliminar</button>
+                </div>
+              </article>`;
+          })
+          .join("");
+
+        const noLeidas = app.notificaciones.filter((item) => !item.leida).length;
+        resumen.textContent = `Total: ${app.notificaciones.length} · No leídas: ${noLeidas} · Mostrando ${app.filtradas.length}.`;
+        $("#btnEliminarSeleccionadas").disabled = app.seleccionadas.size === 0;
+      }
+
+      async function cargarNotificaciones() {
+        lista.innerHTML = `
+          <div class="notif-item">
+            <span></span>
+            <div>
+              <span class="notif-skeleton" style="width:45%;"></span>
+              <span class="notif-skeleton" style="width:80%; margin-top:8px;"></span>
+              <span class="notif-skeleton" style="width:30%; margin-top:8px;"></span>
+            </div>
+            <span></span>
+          </div>`;
+        resumen.textContent = "Cargando notificaciones...";
+
+        try {
+          const data = await api(`/auditores/${encodeURIComponent(usuarioId)}/notificaciones`);
+          app.notificaciones = Array.isArray(data.notificaciones) ? data.notificaciones : [];
+          app.seleccionadas.clear();
+          renderLista();
+        } catch (error) {
+          lista.innerHTML = `
+            <div class="notif-empty">
+              <span class="icono">!</span>
+              <strong>No se pudieron cargar las notificaciones</strong>
+              <p>${escapar(error.message || "Ocurrió un error al consultar el buzón.")}</p>
+            </div>`;
+          resumen.textContent = "No fue posible cargar las notificaciones.";
+          toast("error", "Error al cargar", error.message || "No fue posible consultar las notificaciones.");
+        }
+      }
+
+      function obtenerNotificacion(id) {
+        return app.notificaciones.find((item) => String(item.id_notificacion) === String(id)) || null;
+      }
+
+      async function cargarDetalleRelacionado(notificacion) {
+        if (!notificacion || !notificacion.id_programacion) return null;
+        try {
+          const data = await api(`/agenda-auditor/programacion/${encodeURIComponent(notificacion.id_programacion)}/detalle`);
+          return data;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      async function abrirDetalle(id) {
+        const notificacion = obtenerNotificacion(id);
+        if (!notificacion) return;
+
+        app.detalleId = String(id);
+        app.detalle = notificacion;
+        app.detalleRelacionado = null;
+
+        const tipo = inferirTipo(notificacion);
+        tipoDetalle.textContent = tipo.etiqueta;
+        tipoDetalle.className = "notif-badge tipo " + tipo.clase;
+        tituloDetalle.textContent = notificacion.titulo || "Notificación";
+        metaDetalle.textContent = `${notificacion.leida ? "Leída" : "No leída"} · ${formatearFechaHora(notificacion.fecha_creacion)}`;
+        cuerpoDetalle.innerHTML = `
+          <div class="notif-modal-loading">
+            <span class="notif-spinner" aria-hidden="true"></span>
+            <span>Cargando detalle...</span>
+          </div>`;
+        $("#btnAlternarLectura").textContent = notificacion.leida ? "Marcar como no leída" : "Marcar como leída";
+        abrirModal(modalDetalle);
+
+        const relacionado = await cargarDetalleRelacionado(notificacion);
+        app.detalleRelacionado = relacionado;
+        renderDetalle(notificacion, relacionado);
+      }
+
+      function renderDetalle(notificacion, relacionado) {
+        const mensaje = notificacion.mensaje || "Sin mensaje registrado.";
+        let relacionadoHtml = "";
+        if (notificacion.id_programacion) {
+          if (relacionado) {
+            const p = (relacionado && relacionado.programacion) ? relacionado.programacion : (relacionado || {});
+            relacionadoHtml = `
+              <section style="margin-top:16px;">
+                <h4 style="color:#256d00;font-size:15px;margin:0 0 8px;">Proceso relacionado</h4>
+                <div class="notif-grid">
+                  ${campoDetalle("Programacion", p.id_programacion || notificacion.id_programacion)}
+                  ${campoDetalle("Empresa", p.empresa_nombre)}
+                  ${campoDetalle("NIT", p.empresa_nit)}
+                  ${campoDetalle("Sede", p.nombre_sede)}
+                  ${campoDetalle("Ciudad del servicio", p.ciudad_servicio)}
+                  ${campoDetalle("Modalidad", p.modalidad)}
+                  ${campoDetalle("Fecha inicio", formatearFechaHora(p.fecha_inicio))}
+                  ${campoDetalle("Fecha fin", formatearFechaHora(p.fecha_fin))}
+                  ${campoDetalle("Estado", p.estado)}
+                  ${campoDetalle("Radicado", p.numero_radicado)}
+                  ${campoDetalle("Norma", p.norma_codigo ? p.norma_codigo + " - " + (p.norma_nombre || "") : "")}
+                  ${campoDetalle("Motivo de reprogramacion", p.motivo_reprogramacion)}
+                  ${campoDetalle("Motivo de cancelacion", p.motivo_cancelacion)}
+                  ${campoDetalle("Observaciones", p.observaciones_solicitud)}
+                </div>
+              </section>`;
+          } else {
+            relacionadoHtml = `
+              <section style="margin-top:16px;">
+                <h4 style="color:#256d00;font-size:15px;margin:0 0 8px;">Proceso relacionado</h4>
+                <p class="help-text">Identificador de programación: ${escapar(String(notificacion.id_programacion))}</p>
+                <p class="help-text">No fue posible consultar el detalle del proceso o no está disponible para este auditor.</p>
+              </section>`;
+          }
+        }
+
+        cuerpoDetalle.innerHTML = `
+          <div class="notif-grid">
+            ${campoDetalle("Asunto", notificacion.titulo || "Notificación")}
+            ${campoDetalle("Estado de lectura", notificacion.leida ? "Leída" : "No leída")}
+            ${campoDetalle("Fecha de creación", formatearFechaHora(notificacion.fecha_creacion))}
+            ${campoDetalle("Identificador", notificacion.id_notificacion)}
+          </div>
+          <section style="margin-top:16px;">
+            <h4 style="color:#256d00;font-size:15px;margin:0 0 10px;">Mensaje</h4>
+            <div class="notif-message">${escapar(mensaje)}</div>
+          </section>
+          ${relacionadoHtml}`;
+      }
+
+      function campoDetalle(etiqueta, valor) {
+        return `
+          <div class="notif-field">
+            <dt>${escapar(etiqueta)}</dt>
+            <dd>${mostrar(valor)}</dd>
+          </div>`;
+      }
+
+      function abrirModal(elemento) {
+        elemento.classList.add("open");
+        document.body.classList.add("notif-modal-open");
+      }
+
+      function cerrarModal(elemento) {
+        elemento.classList.remove("open");
+        if (!document.querySelector(".notif-modal.open")) {
+          document.body.classList.remove("notif-modal-open");
+        }
+      }
+
+      function cerrarDetalle() {
+        cerrarModal(modalDetalle);
+        app.detalleId = null;
+        app.detalle = null;
+        app.detalleRelacionado = null;
+      }
+
+      function abrirConfirmacion(configuracion) {
+        app.confirmacion = configuracion;
+        errorConfirmar.textContent = "";
+        textoConfirmar.textContent = configuracion.texto;
+        avisoConfirmar.textContent = configuracion.aviso;
+        $("#tituloConfirmarNotif").textContent = configuracion.titulo;
+        btnEjecutarConfirmar.textContent = configuracion.boton;
+        btnEjecutarConfirmar.className = "notif-btn " + (configuracion.peligro ? "peligro" : "");
+        btnEjecutarConfirmar.disabled = false;
+        $("#btnCancelarConfirmarNotif").disabled = false;
+        abrirModal(modalConfirmar);
+        $("#btnCancelarConfirmarNotif").focus();
+      }
+
+      function cerrarConfirmacion() {
+        if (app.ejecutando) return;
+        cerrarModal(modalConfirmar);
+        app.confirmacion = null;
+        errorConfirmar.textContent = "";
+      }
+
+      async function ejecutarConfirmacion() {
+        if (!app.confirmacion || app.ejecutando) return;
+        const configuracion = app.confirmacion;
+        app.ejecutando = true;
+        errorConfirmar.textContent = "";
+        btnEjecutarConfirmar.disabled = true;
+        $("#btnCancelarConfirmarNotif").disabled = true;
+        btnEjecutarConfirmar.textContent = "Procesando...";
+
+        try {
+          await configuracion.accion();
+          app.ejecutando = false;
+          cerrarModal(modalConfirmar);
+          app.confirmacion = null;
+        } catch (error) {
+          app.ejecutando = false;
+          errorConfirmar.textContent = error.message || "No fue posible completar la acción.";
+          btnEjecutarConfirmar.disabled = false;
+          $("#btnCancelarConfirmarNotif").disabled = false;
+          btnEjecutarConfirmar.textContent = configuracion.boton;
+          toast("error", "Acción no completada", error.message || "Inténtalo nuevamente.");
+        }
+      }
+
+      async function alternarLectura(id, forzar) {
+        const notificacion = obtenerNotificacion(id);
+        if (!notificacion) return { paso: "sin-notificacion" };
+        const marcarLeida = forzar === undefined ? !notificacion.leida : forzar;
+        const ruta = marcarLeida
+          ? `/auditores/${encodeURIComponent(usuarioId)}/notificaciones/${encodeURIComponent(id)}/leer`
+          : `/auditores/${encodeURIComponent(usuarioId)}/notificaciones/${encodeURIComponent(id)}/no-leida`;
+        await api(ruta, { method: "PATCH" });
+        notificacion.leida = marcarLeida;
+        renderLista();
+        if (app.detalleId === String(id)) {
+          app.detalle = notificacion;
+          metaDetalle.textContent = `${notificacion.leida ? "Leida" : "No leida"} · ${formatearFechaHora(notificacion.fecha_creacion)}`;
+          $("#btnAlternarLectura").textContent = notificacion.leida ? "Marcar como no leida" : "Marcar como leida";
+        }
+        toast("success", "Estado actualizado", marcarLeida ? "Notificacion marcada como leida." : "Notificacion marcada como no leida.");
+        return { paso: "ok", marcarLeida, id };
+      }
+
+      async function eliminarNotificacion(id) {
+        await api(`/auditores/${encodeURIComponent(usuarioId)}/notificaciones/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+        app.notificaciones = app.notificaciones.filter((item) => String(item.id_notificacion) !== String(id));
+        app.seleccionadas.delete(String(id));
+        if (app.detalleId === String(id)) cerrarDetalle();
+        renderLista();
+        toast("success", "Notificación eliminada", "La notificación se eliminó del buzón.");
+      }
+
+      async function eliminarSeleccionadas() {
+        const ids = [...app.seleccionadas];
+        if (!ids.length) return;
+        const data = await api(`/auditores/${encodeURIComponent(usuarioId)}/notificaciones/eliminar`, {
+          method: "POST",
+          body: JSON.stringify({ ids }),
+        });
+        app.notificaciones = app.notificaciones.filter((item) => !app.seleccionadas.has(String(item.id_notificacion)));
+        app.seleccionadas.clear();
+        renderLista();
+        toast("success", "Notificaciones eliminadas", `${data.eliminadas || ids.length} notificación(es) eliminada(s).`);
+      }
+
+      async function eliminarLeidas() {
+        const data = await api(`/auditores/${encodeURIComponent(usuarioId)}/notificaciones?solo_leidas=true`, {
+          method: "DELETE",
+        });
+        app.notificaciones = app.notificaciones.filter((item) => !item.leida);
+        app.seleccionadas.clear();
+        renderLista();
+        toast("success", "Notificaciones eliminadas", `${data.eliminadas || 0} notificación(es) leída(s) eliminada(s).`);
+      }
+
+      async function marcarTodasLeidas() {
+        await api(`/auditores/${encodeURIComponent(usuarioId)}/notificaciones/marcar-todas-leidas`, {
+          method: "PATCH",
+        });
+        app.notificaciones.forEach((item) => {
+          item.leida = true;
+        });
+        renderLista();
+        toast("success", "Buzón actualizado", "Todas las notificaciones fueron marcadas como leídas.");
+      }
+
+      // Eventos
+      busqueda.addEventListener("input", () => {
+        app.texto = busqueda.value;
+        renderLista();
+      });
+
+      filtroLectura.addEventListener("change", () => {
+        app.filtro = filtroLectura.value;
+        renderLista();
+      });
+
+      $("#btnRecargar").addEventListener("click", () => cargarNotificaciones());
+
+      lista.addEventListener("click", (evento) => {
+        const check = evento.target.closest("[data-check]");
+        if (check) {
+          const id = check.dataset.check;
+          if (check.checked) app.seleccionadas.add(String(id));
+          else app.seleccionadas.delete(String(id));
+          const item = check.closest(".notif-item");
+          if (item) item.classList.toggle("selected", check.checked);
+          $("#btnEliminarSeleccionadas").disabled = app.seleccionadas.size === 0;
+          return;
+        }
+
+        const ver = evento.target.closest("[data-ver]");
+        if (ver) {
+          abrirDetalle(ver.dataset.ver);
+          return;
+        }
+
+        const toggle = evento.target.closest("[data-toggle]");
+        if (toggle) {
+          alternarLectura(toggle.dataset.toggle).catch((error) => {
+            toast("error", "No se pudo actualizar", error.message || "Inténtalo nuevamente.");
+          });
+          return;
+        }
+
+        const eliminar = evento.target.closest("[data-eliminar]");
+        if (eliminar) {
+          const notificacion = obtenerNotificacion(eliminar.dataset.eliminar);
+          abrirConfirmacion({
+            titulo: "¿Eliminar esta notificación?",
+            texto: "La notificación se eliminará del buzón. Esta acción no afecta la auditoría ni los registros del sistema.",
+            aviso: "Verifica que deseas continuar antes de eliminar.",
+            boton: "Sí, eliminar",
+            peligro: true,
+            accion: () => eliminarNotificacion(eliminar.dataset.eliminar),
+          });
+          return;
+        }
+
+        const item = evento.target.closest(".notif-item");
+        if (item && !evento.target.closest(".notif-actions")) {
+          abrirDetalle(item.dataset.id);
+        }
+      });
+
+      $("#btnMarcarTodas").addEventListener("click", () => {
+        marcarTodasLeidas().catch((error) => {
+          toast("error", "No se pudo actualizar", error.message || "Inténtalo nuevamente.");
+        });
+      });
+
+      $("#btnEliminarLeidas").addEventListener("click", () => {
+        const cantidad = app.notificaciones.filter((item) => item.leida).length;
+        if (!cantidad) {
+          toast("info", "Sin notificaciones leídas", "No hay notificaciones leídas para eliminar.");
+          return;
+        }
+        abrirConfirmacion({
+          titulo: "¿Eliminar las notificaciones leídas?",
+          texto: `Se eliminarán ${cantidad} notificación(es) leída(s) del buzón.`,
+          aviso: "Esta acción no afecta las auditorías ni los registros del sistema.",
+          boton: "Sí, eliminar",
+          peligro: true,
+          accion: eliminarLeidas,
+        });
+      });
+
+      $("#btnEliminarSeleccionadas").addEventListener("click", () => {
+        if (!app.seleccionadas.size) return;
+        abrirConfirmacion({
+          titulo: "¿Eliminar las notificaciones seleccionadas?",
+          texto: `Se eliminarán ${app.seleccionadas.size} notificación(es) seleccionada(s).`,
+          aviso: "Esta acción no afecta las auditorías ni los registros del sistema.",
+          boton: "Sí, eliminar",
+          peligro: true,
+          accion: eliminarSeleccionadas,
+        });
+      });
+
+      $("#btnCerrarDetalleNotif").addEventListener("click", cerrarDetalle);
+      $("#btnAlternarLectura").addEventListener("click", () => {
+        if (!app.detalleId) return;
+        alternarLectura(app.detalleId).catch((error) => {
+          toast("error", "No se pudo actualizar", error.message || "Inténtalo nuevamente.");
+        });
+      });
+      $("#btnEliminarDetalle").addEventListener("click", () => {
+        if (!app.detalleId) return;
+        const notificacion = obtenerNotificacion(app.detalleId);
+        abrirConfirmacion({
+          titulo: "¿Eliminar esta notificación?",
+          texto: "La notificación se eliminará del buzón. Esta acción no afecta la auditoría ni los registros del sistema.",
+          aviso: "Verifica que deseas continuar antes de eliminar.",
+          boton: "Sí, eliminar",
+          peligro: true,
+          accion: () => eliminarNotificacion(app.detalleId),
+        });
+      });
+
+      modalDetalle.addEventListener("click", (evento) => {
+        if (evento.target === modalDetalle) cerrarDetalle();
+      });
+
+      $("#btnCancelarConfirmarNotif").addEventListener("click", cerrarConfirmacion);
+      btnEjecutarConfirmar.addEventListener("click", ejecutarConfirmacion);
+
+      modalConfirmar.addEventListener("click", (evento) => {
+        if (evento.target === modalConfirmar) cerrarConfirmacion();
+      });
+
+      document.addEventListener("keydown", (evento) => {
+        if (evento.key !== "Escape") return;
+        if (modalConfirmar.classList.contains("open")) {
+          evento.stopPropagation();
+          cerrarConfirmacion();
+        } else if (modalDetalle.classList.contains("open")) {
+          evento.stopPropagation();
+          cerrarDetalle();
+        }
+      });
+
+      // Arranque
+      cargarNotificaciones();
+    })();
+  </script>
 </body>
+
 </html>

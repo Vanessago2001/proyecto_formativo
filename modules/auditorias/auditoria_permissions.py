@@ -29,7 +29,6 @@ la prueba de contraste lo confirma. Mientras tanto, `ROLES_EJECUTAN_CAMPO`
 deja ver de un vistazo quién puede ejecutar la auditoría según la matriz.
 """
 
-from enum import Enum
 
 from fastapi import Depends, HTTPException, status
 

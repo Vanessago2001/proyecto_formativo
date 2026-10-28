@@ -612,6 +612,143 @@
             }
         }
 
+        /* DESCRIPCION TRUNCADA */
+
+        .descripcion-conflicto {
+            display: inline-block;
+            max-width: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            vertical-align: top;
+        }
+
+        .descripcion-conflicto.expandido {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            max-width: none;
+        }
+
+        /* MODAL DE EDICION DE CONFLICTO */
+
+        .modal-overlay-conflicto {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, .55);
+            z-index: 10000;
+            padding: 20px;
+        }
+
+        .modal-overlay-conflicto.active {
+            display: flex;
+        }
+
+        .modal-conflicto {
+            width: min(620px, 100%);
+            max-height: calc(100vh - 40px);
+            overflow: auto;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, .25);
+            padding: 24px;
+        }
+
+        .modal-conflicto h3 {
+            margin: 0 0 6px;
+            color: #256d00;
+        }
+
+        .modal-conflicto .modal-subtitle {
+            color: #5f6f69;
+            font-size: 13px;
+            margin-bottom: 18px;
+        }
+
+        .modal-grid {
+            display: grid;
+            gap: 14px;
+        }
+
+        .modal-field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .modal-field label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .modal-field input,
+        .modal-field select,
+        .modal-field textarea {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .modal-field textarea {
+            min-height: 96px;
+            resize: vertical;
+        }
+
+        .modal-readonly {
+            padding: 9px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #334155;
+            font-size: 14px;
+        }
+
+        .modal-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #334155;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            padding: 9px 14px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #334155;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .modal-btn.primary {
+            background: #3baa01;
+            border-color: #3baa01;
+            color: #fff;
+        }
+
+        .modal-btn.danger {
+            background: #b42318;
+            border-color: #b42318;
+            color: #fff;
+        }
+
         /* MOVIMIENTO REDUCIDO */
 
         @media (prefers-reduced-motion: reduce) {
@@ -805,7 +942,7 @@
                         <td>${item.tipo_conflicto || '-'}</td>
                         <td>${item.bloquea_asignacion ? 'Sí' : 'No'}</td>
                         <td>${item.estado || '-'}</td>
-                        <td>${item.descripcion || '-'}</td>
+                        <td><span class="descripcion-conflicto" title="Clic para ver la descripci\u00f3n completa" onclick="this.classList.toggle('expandido')">${escapeHtml(item.descripcion || '-')}</span></td>
                         <td class="action-group">
                             <button type="button" class="btn-review btn-approve" onclick="actualizarConflicto('${item.id_conflicto}')">Actualizar conflicto de interés</button>
                             <button type="button" class="btn-review btn-reject" onclick="eliminarConflicto('${item.id_conflicto}')">Eliminar conflicto antes de asignación</button>
@@ -847,36 +984,63 @@
             return false;
         }
 
-        async function actualizarConflicto(idConflicto) {
+        let conflictoEnEdicion = null;
+
+        function abrirModalConflicto(idConflicto) {
             const item = (window._conflictosActivos || {})[idConflicto] || {};
-            const nuevoTipo = prompt('Tipo de conflicto (Exempleado, Asesoría Previa, Parentesco):', item.tipo_conflicto || '');
-            if (!nuevoTipo) return;
-            if (!["Exempleado", "Asesoría Previa", "Parentesco"].includes(nuevoTipo.trim())) {
-                alert("Tipo de conflicto no permitido. Use: Exempleado, Asesoría Previa o Parentesco.");
-                return;
-            }
-            const nuevaDescripcion = prompt('Descripción:', item.descripcion || '');
-            if (!nuevaDescripcion) return;
+            conflictoEnEdicion = item;
+
+            document.getElementById('modalEmpresaConflicto').textContent = item.empresa || item.id_empresa || '-';
+            document.getElementById('modalNitConflicto').textContent = item.nit || '-';
+            document.getElementById('modalTipoConflicto').value = item.tipo_conflicto || 'Exempleado';
+            document.getElementById('modalDescripcionConflicto').value = item.descripcion || '';
+            document.getElementById('modalEstadoConflicto').textContent = item.estado || '-';
+
+            document.getElementById('modalConflicto').classList.add('active');
+        }
+
+        function cerrarModalConflicto() {
+            document.getElementById('modalConflicto').classList.remove('active');
+            conflictoEnEdicion = null;
+        }
+
+        async function guardarModalConflicto() {
+            if (!conflictoEnEdicion) return;
             const uid = await resolverUsuario();
             if (!uid) return;
+
+            const tipo = document.getElementById('modalTipoConflicto').value.trim();
+            const descripcion = document.getElementById('modalDescripcionConflicto').value.trim();
+            const bloquea = Boolean(conflictoEnEdicion.bloquea_asignacion);
+
+            if (!tipo || !descripcion) {
+                alert('Debe completar el tipo y la descripci\u00f3n del conflicto.');
+                return;
+            }
+
             try {
-                const res = await fetch('/auditores/registro/' + uid + '/conflictos/' + idConflicto, {
+                const res = await fetch('/auditores/registro/' + uid + '/conflictos/' + conflictoEnEdicion.id_conflicto, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                     body: JSON.stringify({
-                        id_empresa: item.id_empresa,
-                        tipo_conflicto: nuevoTipo,
-                        descripcion: nuevaDescripcion,
-                        bloquea_asignacion: item.bloquea_asignacion
+                        id_empresa: conflictoEnEdicion.id_empresa,
+                        tipo_conflicto: tipo,
+                        descripcion: descripcion,
+                        bloquea_asignacion: bloquea
                     })
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.detail || 'No fue posible actualizar el conflicto.');
                 alert(data.mensaje || 'Conflicto actualizado correctamente.');
+                cerrarModalConflicto();
                 await cargarConflictos();
             } catch (error) {
                 alert(error.message || 'No fue posible actualizar el conflicto.');
             }
+        }
+
+        async function actualizarConflicto(idConflicto) {
+            abrirModalConflicto(idConflicto);
         }
 
         async function eliminarConflicto(idConflicto) {
@@ -884,7 +1048,7 @@
             if (!uid) return;
             if (!confirm('¿Está seguro de eliminar este conflicto? Esto debe hacerse antes de la asignación.')) return;
             try {
-                const res = await fetch('/conflictos-auditor/' + idConflicto + '?id_usuario=' + encodeURIComponent(uid), {
+                const res = await fetch('/auditores/registro/conflictos/' + idConflicto + '?id_usuario=' + encodeURIComponent(uid), {
                     method: 'DELETE',
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
@@ -944,9 +1108,66 @@
             }
         }
 
+        const modalConflicto = document.getElementById('modalConflicto');
+        if (modalConflicto) {
+            modalConflicto.addEventListener('click', (event) => {
+                if (event.target === modalConflicto) cerrarModalConflicto();
+            });
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && document.getElementById('modalConflicto')?.classList.contains('active')) {
+                cerrarModalConflicto();
+            }
+        });
+
         cargarEmpresas();
         cargarConflictos();
     </script>
+    <div class="modal-overlay-conflicto" id="modalConflicto">
+        <div class="modal-conflicto" role="dialog" aria-modal="true" aria-labelledby="tituloModalConflicto">
+            <h3 id="tituloModalConflicto">Actualizar conflicto de interés</h3>
+            <p class="modal-subtitle">Modifica el detalle del conflicto seleccionado. Los cambios se guardarán para el auditor.</p>
+
+            <div class="modal-grid">
+                <div class="modal-field">
+                    <label>Empresa</label>
+                    <div class="modal-readonly" id="modalEmpresaConflicto">-</div>
+                </div>
+
+                <div class="modal-field">
+                    <label>NIT</label>
+                    <div class="modal-readonly" id="modalNitConflicto">-</div>
+                </div>
+
+                <div class="modal-field">
+                    <label for="modalTipoConflicto">Tipo de conflicto</label>
+                    <select id="modalTipoConflicto">
+                        <option value="Exempleado">Exempleado</option>
+                        <option value="Asesoría Previa">Asesoría Previa</option>
+                        <option value="Parentesco">Parentesco</option>
+                    </select>
+                </div>
+
+                <div class="modal-field">
+                    <label for="modalDescripcionConflicto">Descripción</label>
+                    <textarea id="modalDescripcionConflicto" placeholder="Describe el conflicto de interés"></textarea>
+                </div>
+
+                <div class="modal-field">
+                    <label>Estado actual</label>
+                    <div class="modal-readonly" id="modalEstadoConflicto">-</div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="modal-btn" onclick="cerrarModalConflicto()">Cancelar</button>
+                <button type="button" class="modal-btn primary" onclick="guardarModalConflicto()">Guardar cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/session-guard.js"></script>
 </body>
 
 </html>

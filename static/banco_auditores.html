@@ -711,6 +711,8 @@
 
                         </table>
 
+                        <div id="paginacionBanco" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;"></div>
+
                     </div>
 
                 </section>
@@ -1479,6 +1481,88 @@
            CARGAR SOLICITUDES
         ==================================================== */
 
+        let solicitudesBanco = [];
+        let paginaBanco = 1;
+        const POR_PAGINA_BANCO = 4;
+
+        function renderPaginaBanco() {
+            const body = document.getElementById("solicitudesBody");
+            const buscar = document.getElementById("buscar").value.trim().toLowerCase();
+            const estadoFiltro = document.getElementById("estado").value.trim();
+
+            const estadosOcultos = new Set(["Aprobado", "Rechazado", "Cancelado"]);
+            const filtradas = solicitudesBanco.filter((solicitud) => {
+                const estado = (solicitud.estado_postulacion || solicitud.estado || "").trim();
+                if (!estadoFiltro && estadosOcultos.has(estado)) return false;
+                if (estadoFiltro && estado !== estadoFiltro) return false;
+                if (!buscar) return true;
+                const texto = [
+                    solicitud.nombre,
+                    solicitud.tipo_doc,
+                    solicitud.num_doc,
+                    solicitud.correo,
+                    solicitud.estado_postulacion,
+                    solicitud.estado
+                ].join(" ").toLowerCase();
+                return texto.includes(buscar);
+            });
+
+            const totalPaginas = Math.max(1, Math.ceil(filtradas.length / POR_PAGINA_BANCO));
+            if (paginaBanco > totalPaginas) paginaBanco = totalPaginas;
+            if (paginaBanco < 1) paginaBanco = 1;
+
+            const inicio = (paginaBanco - 1) * POR_PAGINA_BANCO;
+            const pagina = filtradas.slice(inicio, inicio + POR_PAGINA_BANCO);
+
+            body.textContent = "";
+            if (!filtradas.length) {
+                body.innerHTML = `<tr><td colspan="7" class="empty-state">No se encontraron solicitudes de auditores.</td></tr>`;
+                renderPaginacionBanco(0, 0);
+                return;
+            }
+
+            pagina.forEach((solicitud) => {
+                const tr = document.createElement("tr");
+                const estado = solicitud.estado_postulacion || solicitud.estado || "";
+                const nombre = solicitud.nombre || "Sin nombre";
+                const documento = [solicitud.tipo_doc, solicitud.num_doc].filter(Boolean).join(" ") || "-";
+                tr.innerHTML = `
+            <td><strong>${escapeHtml(nombre)}</strong></td>
+            <td>${escapeHtml(documento)}</td>
+            <td>${escapeHtml(solicitud.correo || "-")}</td>
+            <td><span class="status-badge ${statusClass(estado)}">${escapeHtml(estado || "-")}</span></td>
+            <td>${escapeHtml(formatDate(solicitud.fecha_postulacion))}</td>
+            <td>${escapeHtml(formatDate(solicitud.fecha_revision))}</td>
+            <td>${renderActionButtons(solicitud)}</td>
+        `;
+                body.appendChild(tr);
+            });
+
+            renderPaginacionBanco(filtradas.length, totalPaginas);
+        }
+
+        function renderPaginacionBanco(total, totalPaginas) {
+            const contenedor = document.getElementById("paginacionBanco");
+            if (!contenedor) return;
+            if (total === 0) {
+                contenedor.innerHTML = "";
+                return;
+            }
+            const inicio = (paginaBanco - 1) * POR_PAGINA_BANCO + 1;
+            const fin = Math.min(paginaBanco * POR_PAGINA_BANCO, total);
+            contenedor.innerHTML = `
+                <span>Mostrando ${inicio}-${fin} de ${total}</span>
+                <button type="button" class="secondary-action" ${paginaBanco <= 1 ? "disabled" : ""} onclick="cambiarPaginaBanco(-1)">Anterior</button>
+                <span>Página ${paginaBanco} de ${totalPaginas}</span>
+                <button type="button" class="secondary-action" ${paginaBanco >= totalPaginas ? "disabled" : ""} onclick="cambiarPaginaBanco(1)">Siguiente</button>
+            `;
+        }
+
+        function cambiarPaginaBanco(delta) {
+            paginaBanco += delta;
+            renderPaginaBanco();
+        }
+
         async function loadSolicitudes() {
 
             const body =
@@ -1610,17 +1694,9 @@
                         );
 
 
-                renderSolicitudes(
-                    solicitudes
-                );
-
-
-                /*
-                 * Aplicamos también
-                 * el filtro de texto local.
-                 */
-
-                aplicarFiltros();
+                solicitudesBanco = solicitudes;
+                paginaBanco = 1;
+                renderPaginaBanco();
 
             } catch (error) {
 
@@ -1660,94 +1736,25 @@
            FILTROS
         ==================================================== */
 
+        document.getElementById("buscar")?.addEventListener("input", () => {
+            paginaBanco = 1;
+            renderPaginaBanco();
+        });
+
+        document.getElementById("estado")?.addEventListener("change", () => {
+            paginaBanco = 1;
+            renderPaginaBanco();
+        });
+
+        document.getElementById("limpiarBtn")?.addEventListener("click", () => {
+            document.getElementById("buscar").value = "";
+            document.getElementById("estado").value = "";
+            loadSolicitudes();
+        });
+
         function aplicarFiltros() {
-
-            const buscar =
-                document
-                    .getElementById(
-                        "buscar"
-                    )
-                    .value
-                    .trim()
-                    .toLowerCase();
-
-
-            const estado =
-                document
-                    .getElementById(
-                        "estado"
-                    )
-                    .value;
-
-
-            const filas =
-                document.querySelectorAll(
-                    "#solicitudesBody tr"
-                );
-
-
-            filas.forEach(
-                (fila) => {
-
-                    if (
-
-                        fila.querySelector(
-                            ".empty-state"
-                        ) ||
-
-                        fila.querySelector(
-                            ".loading"
-                        )
-
-                    ) {
-
-                        return;
-
-                    }
-
-
-                    const texto =
-                        fila.textContent
-                            .toLowerCase();
-
-
-                    const coincideTexto =
-                        !buscar ||
-                        texto.includes(
-                            buscar
-                        );
-
-
-                    const estadoElemento =
-                        fila.querySelector(
-                            ".status-badge"
-                        );
-
-
-                    const estadoFila =
-                        estadoElemento
-                            ?.textContent
-                            .trim() ||
-                        "";
-
-
-                    const coincideEstado =
-                        !estado ||
-                        estadoFila ===
-                        estado;
-
-
-                    fila.style.display =
-                        coincideTexto &&
-                            coincideEstado
-
-                            ? ""
-
-                            : "none";
-
-                }
-            );
-
+            paginaBanco = 1;
+            renderPaginaBanco();
         }
 
 

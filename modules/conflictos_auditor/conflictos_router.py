@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
+from core.security import get_current_user
+from modules.auth.dependencies import require_self_or_admin
 from modules.conflictos_auditor.conflictos_service import ConflictoAuditorService
 from modules.auditores.auditor_schema import ConflictoInteresCrear
 from modules.auditores.auditor_service import AuditorService
@@ -13,7 +15,11 @@ router = APIRouter(prefix="/conflictos-auditor", tags=["Conflictos de interés d
 
 
 @router.get("/usuario/{id_usuario}")
-async def listar(id_usuario: UUID, db: AsyncSession = Depends(get_db)):
+async def listar(
+    id_usuario: UUID,
+    usuario: dict = Depends(require_self_or_admin),
+    db: AsyncSession = Depends(get_db),
+):
     return {"conflictos": await ConflictoAuditorService(db).listar_por_usuario(id_usuario)}
 
 
@@ -28,7 +34,10 @@ async def eliminar_conflicto_administrador(
 
 
 @router.get("/empresas-restringidas")
-async def empresas_restringidas(db: AsyncSession = Depends(get_db)):
+async def empresas_restringidas(
+    usuario: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     return {"empresas": await ConflictoAuditorService(db).empresas_restringidas()}
 
 
@@ -43,7 +52,11 @@ async def crear_conflicto_administrador(
 
 
 @router.post("/validar-asignacion")
-async def validar_asignacion(data: dict, db: AsyncSession = Depends(get_db)):
+async def validar_asignacion(
+    data: dict,
+    usuario: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     try:
         id_usuario = UUID(str(data.get("id_usuario")))
         id_empresa = UUID(str(data.get("id_empresa")))
@@ -59,7 +72,11 @@ async def validar_asignacion(data: dict, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/validar-asignacion-nit")
-async def validar_asignacion_por_nit(data: dict, db: AsyncSession = Depends(get_db)):
+async def validar_asignacion_por_nit(
+    data: dict,
+    usuario: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     try:
         id_usuario = UUID(str(data.get("id_usuario")))
     except (ValueError, TypeError, AttributeError):

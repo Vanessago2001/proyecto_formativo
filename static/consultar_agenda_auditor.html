@@ -3393,7 +3393,7 @@
                 const body = rows.map(row => `<tr>
                     <td>${esc(row.fecha_validacion ? formatDateTime(row.fecha_validacion) : "-")}</td>
                     <td>${esc(row.tipo_validacion || "-")}</td>
-                    <td>${row.resultado_validacion ? "✅" : "❌"}</td>
+                    <td>${row.resultado_validacion ? "\u2713" : "\u2717"}</td>
                     <td>${esc(row.detalle_resultado || "-")}</td>
                     <td>${esc(row.id_programacion || "-")}</td>
                 </tr>`).join("");

@@ -292,6 +292,18 @@
         }
 
 
+        /* Etiqueta "Devuelto" de la columna de acciones: texto rojo
+           sobre fondo rojo claro, sin tocar el color del estado. */
+
+        .status-devuelto {
+
+            background: #fef2f2;
+
+            color: #b42318;
+
+        }
+
+
         .data-grid {
 
             display: grid;
@@ -491,6 +503,245 @@
 
             display: none;
 
+        }
+
+        /* Modal propio: evita depender de prompt(), que el navegador
+           puede bloquear silenciosamente. */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, .55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .modal-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 22px;
+            width: min(460px, 100%);
+            box-shadow: 0 20px 50px rgba(15, 23, 42, .25);
+        }
+
+        .modal-card h3 {
+            margin: 0 0 8px;
+            color: #1f2937;
+            font-size: 18px;
+        }
+
+        .modal-card p {
+            margin: 0 0 12px;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .modal-card textarea {
+            width: 100%;
+            box-sizing: border-box;
+            resize: vertical;
+            min-height: 96px;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font: inherit;
+        }
+
+        .modal-error {
+            color: #b42318;
+            font-size: 13px;
+            margin: 8px 0 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .modal-actions button {
+            border-radius: 6px;
+            border: 1px solid transparent;
+            padding: 9px 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .modal-cancel {
+            background: #f1f5f9;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+
+        .modal-confirm {
+            background: #b42318;
+            color: #fff;
+        }
+
+        .modal-confirm:hover {
+            background: #991b1b;
+        }
+
+        /* Confirmacion antes de aprobar. El "Aprobar" no pide aviso y la
+           revision queda registrada al instante, asi que se muestra un modal
+           propio en lugar de confirm(), que el navegador puede truncar. */
+        .confirm-card {
+            width: min(480px, 100%);
+            border-radius: 16px;
+            padding: 26px 24px 20px;
+            text-align: center;
+            animation: confirmEntrada .18s ease-out;
+        }
+
+        @keyframes confirmEntrada {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .confirm-icono {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: linear-gradient(180deg, #47bd00, #3BAA01);
+            box-shadow: 0 8px 20px rgba(59, 170, 1, .32);
+        }
+
+        .confirm-icono svg {
+            width: 28px;
+            height: 28px;
+            stroke: #fff;
+            stroke-width: 2.6;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .confirm-card h3 {
+            font-size: 19px;
+            margin-bottom: 6px;
+        }
+
+        .confirm-descripcion {
+            margin-bottom: 14px;
+            line-height: 1.5;
+        }
+
+        .confirm-etiqueta {
+            display: inline-block;
+            max-width: 100%;
+            margin: 0 0 14px;
+            padding: 7px 12px;
+            border: 1px solid #d7ecd0;
+            border-radius: 999px;
+            background: #f4fbef;
+            color: #1f5c0a;
+            font-size: 13px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .confirm-aviso {
+            margin: 0;
+            color: #64748b;
+            font-size: 12.5px;
+            line-height: 1.45;
+        }
+
+        /* La etiqueta se oculta con el atributo `hidden`: sin esta regla el
+           `display: inline-block` de arriba lo volveria a mostrar vacio. */
+        .confirm-etiqueta[hidden] {
+            display: none;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .confirm-actions button {
+            flex: 1 1 0;
+            min-width: 120px;
+            padding: 11px 14px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+        }
+
+        .confirm-cancelar {
+            background: #f1f5f9;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+
+        .confirm-cancelar:hover {
+            background: #e2e8f0;
+        }
+
+        .confirm-aceptar {
+            background: linear-gradient(180deg, #45b800, #3BAA01);
+            color: #fff;
+            box-shadow: 0 6px 16px rgba(59, 170, 1, .28);
+        }
+
+        .confirm-aceptar:hover {
+            background: linear-gradient(180deg, #3fae05, #348f04);
+            transform: translateY(-1px);
+            box-shadow: 0 9px 20px rgba(59, 170, 1, .34);
+        }
+
+        .confirm-actions button:focus-visible {
+            outline: 2px solid #1f5c0a;
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .confirm-card {
+                animation: none;
+            }
+
+            .confirm-actions button {
+                transition: none;
+            }
+
+            .confirm-aceptar:hover {
+                transform: none;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            max-width: 360px;
+            background: #1f2937;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1100;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+        }
+
+        .toast.error {
+            background: #b42318;
         }
 
 
@@ -977,6 +1228,69 @@
 
 </main>
 
+<div
+    id="revisionModal"
+    class="modal-overlay hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="revisionModalTitle"
+>
+    <div class="modal-card">
+        <h3 id="revisionModalTitle">Rechazar</h3>
+        <p id="revisionModalDesc"></p>
+        <textarea
+            id="revisionObservacion"
+            maxlength="500"
+            placeholder="Escriba la observación..."
+        ></textarea>
+        <p id="revisionModalError" class="modal-error hidden"></p>
+        <div class="modal-actions">
+            <button type="button" class="modal-cancel" id="revisionCancelar">
+                Cancelar
+            </button>
+            <button type="button" class="modal-confirm" id="revisionConfirmar">
+                Rechazar
+            </button>
+        </div>
+    </div>
+</div>
+
+<div
+    id="confirmModal"
+    class="modal-overlay hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="confirmTitulo"
+    aria-describedby="confirmDescripcion"
+>
+    <div class="modal-card confirm-card">
+        <div class="confirm-icono" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+                <path d="M20 6L9 17l-5-5"></path>
+            </svg>
+        </div>
+
+        <h3 id="confirmTitulo">¿Está seguro?</h3>
+        <p class="confirm-descripcion" id="confirmDescripcion"></p>
+        <span class="confirm-etiqueta" id="confirmEtiqueta" hidden></span>
+        <p class="confirm-aviso" id="confirmAviso">
+            Al aprobar se registra la revisión y el elemento deja de estar
+            pendiente de su aprobación.
+        </p>
+
+        <div class="confirm-actions">
+            <button type="button" class="confirm-cancelar" id="confirmCancelar">
+                Cancelar
+            </button>
+            <button type="button" class="confirm-aceptar" id="confirmAceptar">
+                Sí, aprobar
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast hidden" role="status"></div>
+
 
 <script>
 
@@ -1228,6 +1542,35 @@
 
 
     /* =====================================================
+       ETIQUETA DE LA ACCION YA TOMADA
+       La columna de acciones no dice "Revisado": el revisor
+       necesita distinguir devoluciones de aprobaciones sin
+       leer la columna de estado. Las competencias guardan la
+       aprobacion como "Validado", los documentos como "Aprobado".
+    ====================================================== */
+
+    function etiquetaAccionRevisada(
+        estado
+    ) {
+
+        if (estado === "Rechazado") {
+
+            return "<span class='status-badge status-devuelto'>Devuelto</span>";
+
+        }
+
+        if (estado === "Aprobado" || estado === "Validado") {
+
+            return "<span class='status-badge status-aprobado'>Aprobado</span>";
+
+        }
+
+        return "<span class='status-badge status-default'>Revisado</span>";
+
+    }
+
+
+    /* =====================================================
        TEXTO SEGURO
     ====================================================== */
 
@@ -1399,6 +1742,13 @@
     }
 
 
+    /* Los botones de revision llevan solo el id, asi que al pintar las tablas
+       se guarda aqui el nombre legible que muestra el modal de confirmacion. */
+    const etiquetasRevision = {
+        competencia: new Map(),
+        documento: new Map()
+    };
+
     /* =====================================================
        RENDER COMPETENCIAS
     ====================================================== */
@@ -1438,6 +1788,16 @@
 
         competencias.forEach(
             (item) => {
+
+                etiquetasRevision.competencia.set(
+                    String(item.id_competencia),
+                    [
+                        item.tipo_competencia,
+                        item.titulo_institucion
+                    ]
+                        .filter(Boolean)
+                        .join(" · ")
+                );
 
                 rows += `
 
@@ -1489,9 +1849,9 @@
                             ${item.estado_validacion === "Pendiente" ? `
                                 <div class="action-group">
                                     <button type="button" class="btn-review btn-approve" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
-                                    <button type="button" class="btn-review btn-reject" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Rechazado')">Rechazar</button>
+                                    <button type="button" class="btn-review btn-reject" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
                                 </div>
-                            ` : "<span class='status-badge status-default'>Revisado</span>"}
+                            ` : etiquetaAccionRevisada(item.estado_validacion)}
                         </td>
 
                     </tr>
@@ -1751,6 +2111,16 @@
         documentosVisibles.forEach(
             (item) => {
 
+                etiquetasRevision.documento.set(
+                    String(item.id_documento),
+                    [
+                        item.tipo_documento,
+                        item.nombre_archivo
+                    ]
+                        .filter(Boolean)
+                        .join(" · ")
+                );
+
                 const archivo =
                     item.url_archivo;
 
@@ -1831,8 +2201,8 @@
                             <div class="action-group">
                             ${item.estado_revision === "Pendiente" ? `
                                 <button type="button" class="btn-review btn-approve" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
-                                <button type="button" class="btn-review btn-reject" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Rechazado')">Rechazar</button>
-                            ` : "<span class='status-badge status-default'>Revisado</span>"}
+                                <button type="button" class="btn-review btn-reject" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
+                            ` : etiquetaAccionRevisada(item.estado_revision)}
                             </div>
                         </td>
 
@@ -2287,21 +2657,141 @@
 
     }
 
+    function mostrarToast(mensaje, esError = false) {
+        const toast = document.getElementById("toast");
+        if (!toast) { return; }
+
+        toast.textContent = mensaje;
+        toast.classList.toggle("error", esError);
+        toast.classList.remove("hidden");
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => toast.classList.add("hidden"), 4000);
+    }
+
+    function pedirObservacion(titulo, descripcion) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById("revisionModal");
+            const tituloEl = document.getElementById("revisionModalTitle");
+            const descEl = document.getElementById("revisionModalDesc");
+            const input = document.getElementById("revisionObservacion");
+            const errorEl = document.getElementById("revisionModalError");
+            const btnCancelar = document.getElementById("revisionCancelar");
+            const btnConfirmar = document.getElementById("revisionConfirmar");
+
+            tituloEl.textContent = titulo;
+            descEl.textContent = descripcion;
+            input.value = "";
+            errorEl.textContent = "";
+            errorEl.classList.add("hidden");
+            overlay.classList.remove("hidden");
+            input.focus();
+
+            const cerrar = (valor) => {
+                overlay.classList.add("hidden");
+                btnCancelar.removeEventListener("click", onCancelar);
+                btnConfirmar.removeEventListener("click", onConfirmar);
+                overlay.removeEventListener("click", onFondo);
+                document.removeEventListener("keydown", onTecla);
+                resolve(valor);
+            };
+
+            const onCancelar = () => cerrar(null);
+
+            const onConfirmar = () => {
+                const valor = input.value.trim();
+                if (!valor) {
+                    errorEl.textContent = "La observación es obligatoria para rechazar.";
+                    errorEl.classList.remove("hidden");
+                    input.focus();
+                    return;
+                }
+                cerrar(valor);
+            };
+
+            const onFondo = (event) => {
+                if (event.target === overlay) { cerrar(null); }
+            };
+
+            const onTecla = (event) => {
+                if (event.key === "Escape") { cerrar(null); }
+            };
+
+            btnCancelar.addEventListener("click", onCancelar);
+            btnConfirmar.addEventListener("click", onConfirmar);
+            overlay.addEventListener("click", onFondo);
+            document.addEventListener("keydown", onTecla);
+        });
+    }
+
+    function confirmarAprobacion(titulo, descripcion, etiqueta) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById("confirmModal");
+            const tituloEl = document.getElementById("confirmTitulo");
+            const descEl = document.getElementById("confirmDescripcion");
+            const etiquetaEl = document.getElementById("confirmEtiqueta");
+            const btnCancelar = document.getElementById("confirmCancelar");
+            const btnAceptar = document.getElementById("confirmAceptar");
+            const origen = document.activeElement;
+
+            tituloEl.textContent = titulo;
+            descEl.textContent = descripcion;
+            etiquetaEl.textContent = etiqueta || "";
+            etiquetaEl.hidden = !etiqueta;
+            overlay.classList.remove("hidden");
+            btnAceptar.focus();
+
+            const cerrar = (valor) => {
+                overlay.classList.add("hidden");
+                btnCancelar.removeEventListener("click", onCancelar);
+                btnAceptar.removeEventListener("click", onAceptar);
+                overlay.removeEventListener("click", onFondo);
+                document.removeEventListener("keydown", onTecla);
+
+                if (origen && typeof origen.focus === "function") {
+                    origen.focus();
+                }
+
+                resolve(valor);
+            };
+
+            const onCancelar = () => cerrar(false);
+            const onAceptar = () => cerrar(true);
+
+            const onFondo = (event) => {
+                if (event.target === overlay) { cerrar(false); }
+            };
+
+            const onTecla = (event) => {
+                if (event.key === "Escape") { cerrar(false); }
+            };
+
+            btnCancelar.addEventListener("click", onCancelar);
+            btnAceptar.addEventListener("click", onAceptar);
+            overlay.addEventListener("click", onFondo);
+            document.addEventListener("keydown", onTecla);
+        });
+    }
+
     async function revisarCompetencia(idCompetencia, nuevoEstado) {
         let observacion = "";
 
-        if (nuevoEstado === "Rechazado") {
-            observacion =
-                window.prompt(
-                    "Indique la observaci��n para rechazar esta competencia:"
-                );
+        if (nuevoEstado === "Aprobado") {
+            const seguro = await confirmarAprobacion(
+                "¿Está seguro?",
+                "Va a aprobar esta competencia. Quedará registrada como aprobada y no podrá volver a revisarse desde esta pantalla.",
+                etiquetasRevision.competencia.get(String(idCompetencia)) || ""
+            );
 
-            if (!observacion) {
-                alert(
-                    "La observaci��n es obligatoria para rechazar la competencia."
-                );
-                return;
-            }
+            if (!seguro) { return; }
+        }
+
+        if (nuevoEstado === "Rechazado") {
+            observacion = await pedirObservacion(
+                "Rechazar competencia",
+                "Indique la observación para rechazar esta competencia."
+            );
+
+            if (observacion === null) { return; }
         }
 
         try {
@@ -2335,10 +2825,16 @@
             }
 
             await cargarSolicitud();
+            mostrarToast(
+                nuevoEstado === "Rechazado"
+                    ? "Competencia rechazada correctamente."
+                    : "Competencia aprobada correctamente."
+            );
         } catch (error) {
-            alert(
+            mostrarToast(
                 error.message ||
-                "No fue posible revisar la competencia."
+                "No fue posible revisar la competencia.",
+                true
             );
         }
     }
@@ -2346,16 +2842,23 @@
     async function revisarDocumentoSoporte(idDocumento, nuevoEstado) {
         let observacion = "";
 
-        if (nuevoEstado === "Rechazado") {
-            observacion =
-                window.prompt(
-                    "Indique la observación para rechazar este documento:"
-                );
+        if (nuevoEstado === "Aprobado") {
+            const seguro = await confirmarAprobacion(
+                "¿Está seguro?",
+                "Va a aprobar este documento adjunto. Quedará registrada su aprobación y no podrá volver a revisarse desde esta pantalla.",
+                etiquetasRevision.documento.get(String(idDocumento)) || ""
+            );
 
-            if (!observacion) {
-                alert("La observación es obligatoria para rechazar el documento.");
-                return;
-            }
+            if (!seguro) { return; }
+        }
+
+        if (nuevoEstado === "Rechazado") {
+            observacion = await pedirObservacion(
+                "Rechazar documento",
+                "Indique la observación para rechazar este documento."
+            );
+
+            if (observacion === null) { return; }
         }
 
         try {
@@ -2389,10 +2892,16 @@
             }
 
             await cargarSolicitud();
+            mostrarToast(
+                nuevoEstado === "Rechazado"
+                    ? "Documento rechazado correctamente."
+                    : "Documento aprobado correctamente."
+            );
         } catch (error) {
-            alert(
+            mostrarToast(
                 error.message ||
-                "No fue posible revisar el documento."
+                "No fue posible revisar el documento.",
+                true
             );
         }
     }

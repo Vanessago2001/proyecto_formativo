@@ -212,6 +212,28 @@ async def crear_programacion(
     return await AgendaAuditorService(db).crear_programacion(data)
 
 
+@router.post("/programacion/{id_programacion}/auditores", status_code=status.HTTP_201_CREATED)
+async def agregar_auditor_a_programacion(
+    id_programacion: UUID,
+    data: dict,
+    usuario: dict = Depends(_validar_administrador),
+    db: AsyncSession = Depends(get_db),
+):
+    id_usuario = data.get("id_usuario")
+    if not id_usuario:
+        raise HTTPException(status_code=422, detail="Debe indicar el auditor.")
+    try:
+        id_usuario_uuid = UUID(str(id_usuario))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="El auditor indicado no es valido.") from exc
+    rol_auditor = str(data.get("rol_auditor") or "").strip() or None
+    return await AgendaAuditorService(db).agregar_auditor_a_programacion(
+        id_programacion,
+        id_usuario_uuid,
+        rol_auditor,
+    )
+
+
 @router.get(
     "/programacion/auditores-disponibles",
     summary="Auditores disponibles para asignar a una sede concreta",
@@ -466,6 +488,25 @@ async def confirmar_programacion(
     )
 
 
+@router.post("/programacion/{id_programacion}/finalizar")
+async def finalizar_programacion(
+    id_programacion: UUID,
+    data: dict,
+    usuario: dict = Depends(requiere_permiso("SOL-006")),
+    db: AsyncSession = Depends(get_db),
+):
+    es_admin = _es_administrador(usuario)
+    id_usuario = usuario.get("id_usuario")
+    try:
+        id_usuario_uuid = UUID(str(id_usuario)) if id_usuario else None
+    except (ValueError, TypeError):
+        id_usuario_uuid = None
+    observaciones = (data or {}).get("observaciones")
+    return await AgendaAuditorService(db).finalizar_programacion(
+        id_programacion, id_usuario_uuid, observaciones, es_admin
+    )
+
+
 @router.post("/programacion/{id_programacion}/solicitar-reprogramacion")
 async def solicitar_reprogramacion(
     id_programacion: UUID,
@@ -521,7 +562,7 @@ async def editar_programacion(
         fecha_fin = datetime.fromisoformat(data["fecha_fin"]) if data.get("fecha_fin") else None
     except (ValueError, TypeError) as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Formato de fecha/hora inválido: {exc}",
         )
     return await AgendaAuditorService(db).editar_programacion(

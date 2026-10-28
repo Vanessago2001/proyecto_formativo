@@ -78,7 +78,7 @@ async def test_crear_apelacion_requiere_uuid_para_id_solicitud(mock_db_session, 
             json={"id_solicitud": 21, "motivo": "La decisión fue incorrecta"},
         )
 
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     app.dependency_overrides.clear()
 
 

@@ -2773,7 +2773,9 @@
           <td>${escapeHTML(normaCodigo)}<br><span class="help-text">${escapeHTML(normaNombre)}</span></td>
           <td>${escapeHTML(fecha)}</td>
           <td class="row-actions">
-            <button class="mini-btn" type="button" onclick="seleccionarSolicitud('${escapeHTML(solicitud.id_solicitud)}')">Seleccionar</button>
+            ${solicitud.tiene_programacion
+              ? '<span class="status assigned">Programada</span>'
+              : `<button class="mini-btn" type="button" onclick="seleccionarSolicitud('${escapeHTML(solicitud.id_solicitud)}')">Seleccionar</button>`}
           </td>
         </tr>`;
       }).join('');
@@ -2851,9 +2853,6 @@
     initialize();
 
   </script>
-
-
-  <script src="/static/session.js"></script>
 
 
   <div id="auditorModal" class="auditor-modal">

@@ -1,8 +1,14 @@
+from uuid import UUID
+
 from fastapi import HTTPException, status
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.logger import logger
 from core.security import hash_password, validar_password_segura
+from modules.auditores_registrados.auditores_registrados_service import (
+    AuditoresRegistradosService,
+)
 from modules.users.user_schema import UserCreate, UserUpdate
 
 class UserService:
@@ -28,7 +34,8 @@ class UserService:
 
     dup = await self.db.execute(
         text(
-            'SELECT id_usuario FROM usuario WHERE nombre = :nombre OR correo = :correo;'
+            'SELECT id_usuario FROM usuario '
+            'WHERE nombre = :nombre OR LOWER(correo) = LOWER(:correo);'
         ),
         {'nombre': user_data.nombre, 'correo': user_data.correo},
     )
@@ -36,6 +43,18 @@ class UserService:
       raise HTTPException(
           status_code=status.HTTP_400_BAD_REQUEST,
           detail='El usuario o correo ya existen.',
+      )
+
+    # num_doc tiene restricción UNIQUE; sin esta verificación el INSERT fallaba
+    # con un 500 genérico al repetir una cédula o un NIT.
+    dup_doc = await self.db.execute(
+        text('SELECT id_usuario FROM usuario WHERE num_doc = :num_doc;'),
+        {'num_doc': user_data.num_doc},
+    )
+    if dup_doc.first():
+      raise HTTPException(
+          status_code=status.HTTP_400_BAD_REQUEST,
+          detail='El número de documento ya está registrado.',
       )
 
     role_check = await self.db.execute(
@@ -79,9 +98,27 @@ class UserService:
       await self.db.commit()
       row = result.mappings().first()
       return {k: v for k, v in row.items()} if row else {}
+    except IntegrityError as e:
+      await self.db.rollback()
+      detalle = str(getattr(e, 'orig', e))
+      logger.warning('Registro rechazado por restricción única: %s', detalle)
+      if 'uq_usuario_num_doc' in detalle:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='El número de documento ya está registrado.',
+        )
+      if 'usuario_correo_key' in detalle:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='El correo ya está registrado.',
+        )
+      raise HTTPException(
+          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          detail='Error al crear el usuario.',
+      )
     except Exception as e:
       await self.db.rollback()
-      logger.error(f'Error al guardar usuario: {str(e)}')
+      logger.exception(f'Error al guardar usuario: {str(e)}')
       raise HTTPException(
           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
           detail='Error al crear el usuario.',
@@ -131,6 +168,45 @@ class UserService:
           detail='El usuario a modificar no existe.',
       )
 
+    rol_result = await self.db.execute(
+        text(
+            """
+            SELECT r.nombre AS rol
+            FROM usuario u
+            LEFT JOIN rol r ON r.id_rol = u.rol_id
+            WHERE u.id_usuario = :id_usuario
+            LIMIT 1
+            """
+        ),
+        {"id_usuario": target_user_id},
+    )
+    rol_fila = rol_result.mappings().first()
+    es_auditor = (
+        rol_fila is not None
+        and str(rol_fila.get("rol") or "").strip().lower() == "auditor"
+    )
+
+    estado_gestionado_por_auditor = False
+    if es_auditor and user_update.estado in ("Activo", "Inactivo"):
+        actor = (
+            current_user.get("id_usuario")
+            or current_user.get("id")
+            or current_user.get("user_id")
+        )
+        actor_uuid = None
+        if actor is not None:
+            try:
+                actor_uuid = UUID(str(actor))
+            except (TypeError, ValueError):
+                actor_uuid = None
+        await AuditoresRegistradosService(self.db).cambiar_estado(
+            UUID(str(target_user_id)),
+            user_update.estado,
+            id_usuario_actor=actor_uuid,
+        )
+        estado_gestionado_por_auditor = True
+        user_update = user_update.model_copy(update={"estado": None})
+
     update_fields: list[str] = []
     params: dict[str, object] = {'id_usuario': target_user_id}
 
@@ -176,7 +252,7 @@ class UserService:
       update_fields.append('rol_id = :rol')
       params['rol'] = user_update.rol
 
-    if user_update.estado is not None:
+    if user_update.estado is not None and not estado_gestionado_por_auditor:
       update_fields.append('estado = :estado')
       params['estado'] = user_update.estado
 
@@ -189,6 +265,19 @@ class UserService:
       params['num_doc'] = user_update.num_doc
 
     if not update_fields:
+      if estado_gestionado_por_auditor:
+        result = await self.db.execute(
+            text(
+                """
+                SELECT id_usuario, nombre, correo, estado, rol_id, tipo_doc, num_doc
+                FROM usuario
+                WHERE id_usuario = :id_usuario
+                """
+            ),
+            {'id_usuario': target_user_id},
+        )
+        row = result.mappings().first()
+        return {k: v for k, v in row.items()} if row else {}
       raise HTTPException(
           status_code=status.HTTP_400_BAD_REQUEST,
           detail='No se enviaron datos para actualizar.',

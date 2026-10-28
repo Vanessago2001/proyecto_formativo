@@ -1173,6 +1173,7 @@
         .foto-profesional-guardada {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 12px;
             margin-top: 10px;
             padding: 10px;
@@ -1183,6 +1184,26 @@
 
         .foto-profesional-guardada[hidden] {
             display: none !important;
+        }
+
+        .foto-profesional-guardada.rechazada {
+            border-color: #ef4444;
+            background: #fff1f0;
+        }
+
+        .foto-profesional-observacion {
+            flex-basis: 100%;
+            width: 100%;
+            margin-top: 2px;
+            padding: 9px 10px;
+            border: 1px solid #fecaca;
+            border-left: 4px solid #dc2626;
+            border-radius: 8px;
+            background: #fff;
+            color: #991b1b;
+            font-size: 12px;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
         }
 
         .foto-profesional-guardada img {
@@ -1582,6 +1603,13 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: .03em;
+        }
+
+        /* El aviso de la sección es el mismo que el de los documentos, pero
+           vive oculto en el HTML hasta que llega una devolución: .documento-
+           observacion-global fija display:block y ganaría al atributo hidden. */
+        .seccion-observacion[hidden] {
+            display: none;
         }
 
         .estado-documento {
@@ -2062,7 +2090,8 @@
             gap: 8px;
         }
 
-        .side a .correction-dot {
+        .side a .correction-dot,
+        .panel-formulario h3 .correction-dot {
             display: inline-block;
             width: 10px;
             height: 10px;
@@ -2070,6 +2099,11 @@
             background-color: #dc2626;
             box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
             flex: 0 0 10px;
+        }
+
+        .panel-formulario h3 .correction-dot {
+            margin-left: 8px;
+            vertical-align: middle;
         }
 
 
@@ -2300,7 +2334,7 @@
 
             <div class="dropdown-registro">
                 <a class="active menu-toggle" href="#inicioRegistro" data-seccion="inicioRegistro">
-                    Mi registro
+                    Formulario de registro
                     <span class="dropdown-arrow" aria-hidden="true">▾</span>
                 </a>
 
@@ -2346,6 +2380,8 @@
             <a href="/consultar-estado">Consultar estado del registro</a>
 
             <a href="/conflictos-auditor">Consultar conflictos registrados</a>
+
+            <a href="/empresas-restringidas">Consultar empresas restringidas</a>
 
             <a href="/consultar-auditorias-programadas">Consultar auditorías programadas</a>
 
@@ -2619,6 +2655,8 @@
                     3. Agregar Competencia Técnica
                 </h3>
 
+                <div class="documento-observacion-global seccion-observacion" id="competenciaObservacion" hidden></div>
+
                 <div class="form-grid">
 
 
@@ -2738,7 +2776,7 @@
                     <div class="form-group">
 
                         <label for="fecha_fin_comp">
-                            Fecha Fin <span>*</span>
+                            Vigencia hasta <span>*</span>
                         </label>
 
                         <input type="date" id="fecha_fin_comp" name="fecha_fin" class="form-control" required>
@@ -3183,8 +3221,10 @@
         let userId = null;
         let documentosSoporte = [];
         let fotoProfesionalUrl = '';
+        let fotoProfesionalDocumento = null;
         // Estado de la postulación actual
         let registroCanceladoORechazado = false;
+        let idPostulacionCargada = '';
         // Estado de la postulación que se está editando y permisos derivados.
         let estadoPostulacionCargada = '';
         let estadoAuditorCargado = '';
@@ -4429,6 +4469,8 @@
                         option.value =
                             norma.id_norma;
 
+                        option.dataset.codigoIaf =
+                            norma.codigo_sector_iaf || '';
 
                         option.textContent =
                             `${norma.nombre} - Versión ${norma.version}`;
@@ -4441,6 +4483,13 @@
                     }
                 );
 
+
+                select.onchange = () => {
+                    const selected = select.options[select.selectedIndex];
+                    const codigoIaf = selected && selected.dataset ? (selected.dataset.codigoIaf || '') : '';
+                    const campoIaf = document.getElementById('codigo_sector_iaf');
+                    if (campoIaf) campoIaf.value = codigoIaf;
+                };
 
                 console.log(
                     `🟢 Se cargaron ${normas.length} normas.`
@@ -4544,8 +4593,159 @@
                 tipo_documento: item.tipo_documento ?? item.tipo ?? item.categoria_documento ?? 'Soporte',
                 nombre_archivo: item.nombre_archivo ?? item.original_filename ?? item.filename ?? item.nombre ?? 'Documento',
                 url_archivo: urlDeDocumento(item),
-                estado_revision: item.estado_revision ?? item.estado_documento ?? item.estado ?? 'Pendiente'
+                estado_revision: item.estado_revision ?? item.estado_documento ?? item.estado ?? 'Pendiente',
+                observacion_revision: item.observacion_revision ?? item.observaciones_revision ?? item.observacion_rechazo ?? item.observaciones_rechazo ?? item.motivo_rechazo ?? ''
             };
+        }
+
+        /* La foto profesional es un documento unico. Cuando la base todavia
+           conserva varias filas del tipo, la vigente es la mas reciente: se
+           compara por fecha en lugar de fiarse del orden del listado. */
+        function esFotoProfesional(documento) {
+            return String(documento?.tipo_documento || '').trim().toLowerCase() === 'foto profesional';
+        }
+
+        function actualizarPuntoFormularioRegistro() {
+            const itemMenu = document.querySelector('.side a[data-seccion="inicioRegistro"]');
+            if (!itemMenu) return;
+
+            const tieneRechazo = tieneRechazoDocumentos || tieneRechazoCompetencia;
+
+            if (tieneRechazo) {
+                itemMenu.classList.add('correction-warning');
+                if (!itemMenu.querySelector('.correction-dot')) {
+                    const punto = document.createElement('span');
+                    punto.className = 'correction-dot';
+                    itemMenu.appendChild(punto);
+                }
+                return;
+            }
+
+            itemMenu.classList.remove('correction-warning');
+            itemMenu.querySelector('.correction-dot')?.remove();
+        }
+
+        function actualizarPuntoCorreccion(seccion, tieneRechazo) {
+            const enlace = document.querySelector(`.side a[data-seccion="${seccion}"]`);
+            if (!enlace) return;
+
+            if (tieneRechazo) {
+                enlace.classList.add('correction-warning');
+                if (!enlace.querySelector('.correction-dot')) {
+                    const punto = document.createElement('span');
+                    punto.className = 'correction-dot';
+                    enlace.appendChild(punto);
+                }
+                return;
+            }
+
+            enlace.classList.remove('correction-warning');
+            enlace.querySelector('.correction-dot')?.remove();
+        }
+
+        function fotoProfesionalVigente(documentos) {
+            const candidatas = (Array.isArray(documentos) ? documentos : [])
+                .filter((documento) => esFotoProfesional(documento) && urlDeDocumento(documento));
+            if (!candidatas.length) return null;
+            return candidatas.reduce((mejor, actual) => (
+                (Date.parse(actual.fecha_subida || '') || 0) > (Date.parse(mejor.fecha_subida || '') || 0)
+                    ? actual
+                    : mejor
+            ), candidatas[0]);
+        }
+
+        /* La seccion de competencias muestra una sola fila. La devuelta por el
+           administrador es la que hay que corregir, asi que manda sobre
+           cualquier otra de la postulacion: si se eligiera la no rechazada, el
+           rechazo pendiente quedaria sin marcar mientras el auditor edita otra
+           competencia. */
+        function estadoCompetencia(competencia) {
+            return String(competencia?.estado_validacion || '').trim().toLowerCase();
+        }
+
+        function esDeLaPostulacion(competencia, idPostulacion) {
+            const idPropio = String(competencia?.id_postulacion || '');
+            const idActual = String(idPostulacion || '');
+            return idPropio
+                ? idPropio === idActual
+                : !idActual;
+        }
+
+        /* El rechazo de una postulacion anterior no puede marcar la vigente. */
+        function competenciaDevuelta(competencias, idPostulacion) {
+            return (Array.isArray(competencias) ? competencias : [])
+                .find((competencia) =>
+                    estadoCompetencia(competencia) === 'rechazado'
+                    && esDeLaPostulacion(competencia, idPostulacion)
+                ) || null;
+        }
+
+        function competenciaVigente(competencias, idPostulacion) {
+            const devuelta = competenciaDevuelta(competencias, idPostulacion);
+            if (devuelta) return devuelta;
+
+            const lista = Array.isArray(competencias) ? competencias : [];
+            if (!lista.length) return null;
+
+            const deLaPostulacion = idPostulacion
+                ? lista.filter((item) => String(item.id_postulacion || '') === String(idPostulacion))
+                : [];
+
+            const candidatas = deLaPostulacion.length ? deLaPostulacion : lista;
+
+            return candidatas.find((item) => estadoCompetencia(item) !== 'rechazado')
+                || candidatas[0];
+        }
+
+        /* El rechazo se marca en el menu lateral y en la propia seccion, con la
+           observacion del administrador. Al guardar la correccion el estado
+           vuelve a 'Pendiente' y el aviso se retira solo, porque esto se
+           recalcula en cada carga del borrador. Recibe la fila ya filtrada por
+           postulacion, que es la que decide competenciaDevuelta(). */
+        function marcarPuntoDevuelto(elemento, devuelta) {
+            if (!elemento) return;
+
+            if (devuelta) {
+                elemento.classList.add('correction-warning');
+                if (!elemento.querySelector('.correction-dot')) {
+                    const punto = document.createElement('span');
+                    punto.className = 'correction-dot';
+                    elemento.appendChild(punto);
+                }
+                return;
+            }
+
+            elemento.classList.remove('correction-warning');
+            elemento.querySelector('.correction-dot')?.remove();
+        }
+
+        function marcarCompetenciaDevuelta(competencia) {
+            const enlace = document.querySelector('.side a[data-seccion="competencias"]');
+            const titulo = document.getElementById('competencias');
+            const aviso = document.getElementById('competenciaObservacion');
+            const devuelta = estadoCompetencia(competencia) === 'rechazado';
+
+            marcarPuntoDevuelto(enlace, devuelta);
+            marcarPuntoDevuelto(titulo, devuelta);
+
+            tieneRechazoCompetencia = devuelta;
+            actualizarPuntoFormularioRegistro();
+
+            if (!aviso) return;
+
+            if (!devuelta) {
+                aviso.hidden = true;
+                aviso.textContent = '';
+                return;
+            }
+
+            const detalle = String(competencia?.observacion_validacion || '').trim();
+
+            aviso.textContent = detalle
+                ? `Observación de rechazo: ${detalle}`
+                : 'La competencia fue devuelta, pero no se registró una observación de revisión.';
+
+            aviso.hidden = false;
         }
 
         function combinarDocumentoRecienSubido(lista, recienSubido) {
@@ -4610,8 +4810,15 @@
                     throw new Error(respuesta?.detail || `HTTP ${response.status} al recuperar documentos.`);
                 }
 
+                if (!idPostulacionCargada) {
+                    throw new Error('No se pudo identificar la postulación para recuperar sus documentos.');
+                }
+
                 let documentosRecuperados = extraerListaDocumentos(respuesta)
-                    .map(normalizarDocumentoSoporte);
+                    .map(normalizarDocumentoSoporte)
+                    .filter((documento) =>
+                        String(documento.id_postulacion || '') === String(idPostulacionCargada)
+                    );
 
                 // El archivo recién cargado se mantiene visible aunque el endpoint
                 // de consulta responda con una envoltura distinta o tarde en reflejarlo.
@@ -4622,17 +4829,24 @@
 
                 // La foto profesional se recupera aquí, pero se muestra únicamente
                 // en la sección Perfil para no duplicarla como soporte general.
-                const fotoGuardada = [...documentosRecuperados].reverse().find((documento) =>
-                    String(documento.tipo_documento || '').trim().toLowerCase() === 'foto profesional' &&
-                    urlDeDocumento(documento)
-                );
-                if (!fotoProfesionalUrl && fotoGuardada) {
-                    fotoProfesionalUrl = urlDeDocumento(fotoGuardada);
-                    mostrarFotoProfesionalGuardada(fotoProfesionalUrl);
+                const fotoGuardada = fotoProfesionalVigente(documentosRecuperados);
+                if (fotoGuardada) {
+                    fotoProfesionalDocumento = fotoGuardada;
+                    const urlFotoGuardada = urlDeDocumento(fotoGuardada);
+                    if (urlFotoGuardada) {
+                        fotoProfesionalUrl = urlFotoGuardada;
+                    }
+                    mostrarFotoProfesionalGuardada(
+                        fotoProfesionalUrl,
+                        fotoProfesionalDocumento
+                    );
+                } else {
+                    fotoProfesionalDocumento = null;
+                    mostrarFotoProfesionalGuardada(fotoProfesionalUrl, null);
                 }
 
                 documentosSoporte = documentosRecuperados.filter((documento) =>
-                    String(documento.tipo_documento || '').trim().toLowerCase() !== 'foto profesional'
+                    !esFotoProfesional(documento)
                 );
 
                 renderizarDocumentosSoporte();
@@ -4644,28 +4858,18 @@
                     estadoAuditorCargado
                 );
 
-                (function () {
-                    const rechazados = documentosSoporte.filter((documento) =>
-                        String(documento.estado_revision || documento.estado_documento || documento.estado || '').trim().toLowerCase() === 'rechazado'
-                    );
+                const documentosRechazados = documentosSoporte.some((documento) =>
+                    String(documento.estado_revision || documento.estado_documento || documento.estado || '').trim().toLowerCase() === 'rechazado'
+                );
+                actualizarPuntoCorreccion('documentos-soporte', documentosRechazados);
 
-                    const opcionMenu = document.querySelector('.side a[data-seccion="documentos-soporte"]');
+                const fotoRechazada = Boolean(fotoGuardada) && String(
+                    fotoGuardada.estado_revision || fotoGuardada.estado_documento || fotoGuardada.estado || ''
+                ).trim().toLowerCase().includes('rechaz');
+                actualizarPuntoCorreccion('perfil', fotoRechazada);
 
-                    if (opcionMenu) {
-                        if (rechazados.length) {
-                            opcionMenu.classList.add('correction-warning');
-                            if (!opcionMenu.querySelector('.correction-dot')) {
-                                const punto = document.createElement('span');
-                                punto.className = 'correction-dot';
-                                opcionMenu.appendChild(punto);
-                            }
-                        } else {
-                            opcionMenu.classList.remove('correction-warning');
-                            const punto = opcionMenu.querySelector('.correction-dot');
-                            if (punto) punto.remove();
-                        }
-                    }
-                })();
+                tieneRechazoDocumentos = Boolean(documentosRechazados || fotoRechazada);
+                actualizarPuntoFormularioRegistro();
 
             } catch (error) {
                 console.error('❌ Error recuperando documentos de soporte:', error);
@@ -5302,6 +5506,7 @@
                 const data = await res.json();
 
                 console.log('🔵 Borrador recibido:', data);
+                idPostulacionCargada = String(data.id_postulacion || '');
 
                 // =====================================================
                 // DATOS PERSONALES — SIEMPRE SE CONSERVAN
@@ -5341,39 +5546,10 @@
                     estadoAuditorCargado
                 );
 
-                if (estadoPostulacion === 'correcciones') {
-
-                    const itemMenu =
-                        document.querySelector(
-                            '.side a[data-seccion="inicioRegistro"]'
-                        );
-
-                    if (itemMenu) {
-
-                        itemMenu.classList.add(
-                            'correction-warning'
-                        );
-
-                        if (
-                            !itemMenu.querySelector(
-                                '.correction-dot'
-                            )
-                        ) {
-                            const punto =
-                                document.createElement(
-                                    'span'
-                                );
-
-                            punto.className =
-                                'correction-dot';
-
-                            itemMenu.appendChild(
-                                punto
-                            );
-                        }
-                    }
-
-                }
+                /* El punto rojo del "Formulario de registro" depende de
+                   correcciones reales pendientes (documentos o competencia),
+                   no solo del estado de la postulacion. Se recalcula al cargar
+                   documentos y competencias. */
 
 
                 // =====================================================
@@ -5517,8 +5693,11 @@
                         data.perfil.modalidad_preferida
                     );
 
-                    fotoProfesionalUrl = data.perfil.foto_url || '';
-                    mostrarFotoProfesionalGuardada(fotoProfesionalUrl);
+                    fotoProfesionalUrl = data.perfil.foto_url || fotoProfesionalUrl;
+                    mostrarFotoProfesionalGuardada(
+                        fotoProfesionalUrl,
+                        fotoProfesionalDocumento
+                    );
 
                     setValue(
                         'resumen_profesional',
@@ -5549,7 +5728,10 @@
                 ) {
 
                     const competencia =
-                        data.competencias[0];
+                        competenciaVigente(
+                            data.competencias,
+                            data.id_postulacion
+                        );
 
 
                     console.log(
@@ -5613,10 +5795,22 @@
                         'formCompetencias'
                     );
 
+
+                    marcarCompetenciaDevuelta(
+                        competenciaDevuelta(
+                            data.competencias,
+                            data.id_postulacion
+                        )
+                    );
+
                 } else {
 
                     habilitarSeccion(
                         'formCompetencias'
+                    );
+
+                    marcarCompetenciaDevuelta(
+                        null
                     );
 
                 }
@@ -5845,17 +6039,39 @@
            FOTO PROFESIONAL: VISTA PREVIA Y CARGA
            Usa el endpoint de documentos ya presente en el portal.
         ====================================================== */
-        function mostrarFotoProfesionalGuardada(url) {
+        function mostrarFotoProfesionalGuardada(url, documento = null) {
             const contenedor = document.getElementById('fotoProfesionalGuardada');
             const imagen = document.getElementById('fotoProfesionalGuardadaImg');
             if (!contenedor || !imagen) return;
             if (!url) {
                 contenedor.hidden = true;
                 imagen.removeAttribute('src');
+                contenedor.classList.remove('rechazada');
+                const obsAnterior = contenedor.querySelector('.foto-profesional-observacion');
+                if (obsAnterior) obsAnterior.remove();
                 return;
             }
             imagen.src = url;
             contenedor.hidden = false;
+
+            const documentoFoto = documento || fotoProfesionalDocumento || null;
+            const estado = String(documentoFoto?.estado_revision || documentoFoto?.estado_documento || documentoFoto?.estado || '').trim().toLowerCase();
+            const observacion = String(documentoFoto?.observacion_revision || documentoFoto?.observaciones_revision || documentoFoto?.observacion_rechazo || documentoFoto?.observaciones_rechazo || documentoFoto?.motivo_rechazo || '').trim();
+            const esRechazada = estado.includes('rechaz');
+
+            contenedor.classList.toggle('rechazada', esRechazada);
+
+            const obsAnterior = contenedor.querySelector('.foto-profesional-observacion');
+            if (obsAnterior) obsAnterior.remove();
+
+            if (esRechazada) {
+                const aviso = document.createElement('div');
+                aviso.className = 'foto-profesional-observacion';
+                aviso.textContent = observacion
+                    ? `Observaci\u00f3n de rechazo: ${observacion}`
+                    : 'La foto profesional fue rechazada, pero no se registr\u00f3 una observaci\u00f3n de revisi\u00f3n.';
+                contenedor.appendChild(aviso);
+            }
         }
 
         async function subirFotoProfesional(archivo) {
@@ -5882,18 +6098,23 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const docsList = docsResponse.ok ? await docsResponse.json().catch(() => []) : [];
-                const candidatas = (Array.isArray(docsList) ? docsList : []).filter((doc) => {
-                    const tipo = String(doc.tipo_documento || '').trim().toLowerCase();
-                    const nombre = String(doc.nombre_archivo || '').trim();
-                    return tipo === 'foto profesional' && (!nombre || nombre === archivo.name);
-                });
-                const ultima = candidatas[candidatas.length - 1];
-                url = ultima?.url_archivo || ultima?.url || null;
+                const vigente = fotoProfesionalVigente(
+                    (Array.isArray(docsList) ? docsList : []).map(normalizarDocumentoSoporte)
+                );
+                url = urlDeDocumento(vigente) || null;
             }
 
             if (!url) {
                 throw new Error('La foto se cargó, pero el servicio de documentos no devolvió la URL de la imagen. Para asociarla al perfil, el backend debe devolver url_archivo.');
             }
+
+            // La respuesta ya trae la foto en estado 'Pendiente': se registra asi
+            // para que el aviso de rechazo desaparezca sin esperar otra recarga.
+            fotoProfesionalUrl = url;
+            fotoProfesionalDocumento = data.documento
+                ? normalizarDocumentoSoporte(data.documento)
+                : null;
+            mostrarFotoProfesionalGuardada(fotoProfesionalUrl, fotoProfesionalDocumento);
             return url;
         }
 
@@ -5973,7 +6194,10 @@
                             inputFoto.value = '';
                             actualizarVistaArchivo(inputFoto);
                         }
-                        mostrarFotoProfesionalGuardada(fotoProfesionalUrl);
+                        mostrarFotoProfesionalGuardada(
+                            fotoProfesionalUrl,
+                            fotoProfesionalDocumento
+                        );
 
                         alert(
                             data.mensaje ||
@@ -7050,7 +7274,7 @@
                             );
 
 
-                            window.location.reload();
+                            window.location.href = "/consultar-estado";
 
 
                         } else {
@@ -7520,6 +7744,10 @@
                 if (!res.ok) throw new Error(data.detail || 'No fue posible eliminar la competencia.');
                 alert(data.mensaje || 'Competencia eliminada correctamente.');
                 await cargarCompetenciasRegistradas();
+                // El borrador vuelve a consultarse para que el punto rojo de la
+                // seccion se recalculen: si la eliminada era la devuelta, la
+                // seccion queda sin marcar sin esperar a recargar la pagina.
+                await cargarBorrador();
             } catch (error) {
                 alert(error.message || 'No fue posible eliminar la competencia.');
             }
@@ -7550,6 +7778,7 @@
         })();
     </script>
     <script src="/static/session.js"></script>
+    <script src="/static/session-guard.js"></script>
 
 
 </body>

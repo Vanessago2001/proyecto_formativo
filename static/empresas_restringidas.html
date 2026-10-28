@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CertiSENA | Empresas restringidas</title>
+  <link rel="stylesheet" href="/static/tema.css">
+  <link rel="stylesheet" href="/static/styles.css">
+  <style>
+    .portal-shell { max-width: var(--ancho-contenido, 1180px); margin: 0 auto; padding: 28px 24px 40px; }
+    .surface { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 22px; box-shadow: 0 5px 20px rgba(32,74,25,.07); }
+    .surface h2 { color: #256d00; margin: 0 0 8px; }
+    .help-text { color: #5f6f69; font-size: 13px; margin-bottom: 16px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: 13px; }
+    th { background: #f8fafc; color: #256d00; }
+    .btn-ver { padding: 6px 12px; border: 1px solid #3baa01; border-radius: 6px; background: #fff; color: #256d00; cursor: pointer; font-weight: 600; font-size: 12px; }
+    .btn-ver:hover { background: #f1f5f9; }
+    .modal-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(15,23,42,.55); z-index: 1000; padding: 20px; }
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: #fff; border-radius: 12px; padding: 24px; max-width: 620px; width: 100%; box-shadow: 0 20px 50px rgba(15,23,42,.25); }
+    .modal-box h3 { margin-top: 0; color: #256d00; }
+    .modal-field { margin-bottom: 10px; }
+    .modal-field strong { display: block; color: #5f6f69; font-size: 11px; text-transform: uppercase; margin-bottom: 2px; }
+    .modal-close { margin-top: 16px; padding: 8px 16px; border: none; border-radius: 6px; background: #3baa01; color: #fff; cursor: pointer; font-weight: 600; }
+    .empty { text-align: center; color: #64748b; padding: 24px; }
+  </style>
+</head>
+<body>
+  <header class="login-header">
+    <div class="header-content header-logo">
+      <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+      <div>
+        <h1>CertiSENA</h1>
+        <p class="subtitle">Consultar empresas restringidas</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="portal-shell">
+    <div class="surface">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+        <div>
+          <h2>Empresas restringidas</h2>
+          <p class="help-text">Listado real de empresas con conflictos de interés activos que bloquean asignación.</p>
+        </div>
+        <a href="/auditor" class="btn-ver" style="text-decoration:none;">Regresar</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Empresa</th>
+              <th>NIT</th>
+              <th>Tipo de conflicto</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaEmpresas"></tbody>
+        </table>
+      </div>
+      <div id="mensajeEmpresas" class="empty">Cargando empresas restringidas...</div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="modalEmpresa">
+    <div class="modal-box">
+      <h3>Detalle de la empresa restringida</h3>
+      <div id="detalleEmpresa"></div>
+      <button class="modal-close" onclick="cerrarModal()">Cerrar</button>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("access_token");
+    if (!token) window.location.replace("/login");
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    async function cargarEmpresas() {
+      const tbody = document.getElementById("tablaEmpresas");
+      const mensaje = document.getElementById("mensajeEmpresas");
+      try {
+        const response = await fetch("/conflictos-auditor/empresas-restringidas", {
+          headers: { Authorization: "Bearer " + token }
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || "No se pudieron consultar las empresas restringidas.");
+        const empresas = Array.isArray(data.empresas) ? data.empresas : [];
+        if (!empresas.length) {
+          tbody.innerHTML = "";
+          mensaje.textContent = "No hay empresas restringidas registradas.";
+          mensaje.style.display = "block";
+          return;
+        }
+        mensaje.style.display = "none";
+        tbody.innerHTML = empresas.map((empresa) => `
+          <tr>
+            <td>${escapeHtml(empresa.nombre || "-")}</td>
+            <td>${escapeHtml(empresa.nit || "-")}</td>
+            <td>${escapeHtml(empresa.tipo_conflicto || "-")}</td>
+            <td>${escapeHtml(empresa.estado || "-")}</td>
+            <td><button class="btn-ver" type="button" onclick="verEmpresa(${JSON.stringify(empresa).replace(/</g, "&lt;")})">Ver</button></td>
+          </tr>
+        `).join("");
+      } catch (error) {
+        tbody.innerHTML = "";
+        mensaje.textContent = error.message || "No fue posible consultar las empresas restringidas.";
+        mensaje.style.display = "block";
+      }
+    }
+
+    function verEmpresa(empresa) {
+      const detalle = document.getElementById("detalleEmpresa");
+      detalle.innerHTML = `
+        <div class="modal-field"><strong>Empresa</strong><span>${escapeHtml(empresa.nombre || "-")}</span></div>
+        <div class="modal-field"><strong>NIT</strong><span>${escapeHtml(empresa.nit || "-")}</span></div>
+        <div class="modal-field"><strong>Tipo de conflicto</strong><span>${escapeHtml(empresa.tipo_conflicto || "-")}</span></div>
+        <div class="modal-field"><strong>Descripción</strong><span>${escapeHtml(empresa.descripcion || "-")}</span></div>
+        <div class="modal-field"><strong>Estado</strong><span>${escapeHtml(empresa.estado || "-")}</span></div>
+        <div class="modal-field"><strong>Identificador</strong><span>${escapeHtml(empresa.id_empresa || "-")}</span></div>
+      `;
+      document.getElementById("modalEmpresa").classList.add("active");
+    }
+
+    function cerrarModal() {
+      document.getElementById("modalEmpresa").classList.remove("active");
+    }
+
+    document.getElementById("modalEmpresa").addEventListener("click", (event) => {
+      if (event.target.id === "modalEmpresa") cerrarModal();
+    });
+
+    cargarEmpresas();
+  </script>
+</body>
+</html>

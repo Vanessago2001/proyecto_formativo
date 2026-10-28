@@ -36,8 +36,17 @@ from modules.system.system_router import router as system_router
 from modules.asignacion_auditores.asignacion_router import router as asignacion_auditores_router
 
 from modules.administrar_auditores.administrar_auditores_router import router as administrar_auditores_router
-from modules.auditores.auditor_router import router as auditor_router
+from modules.auditores.auditor_router import (
+    public_router as auditor_public_router,
+    router as auditor_router,
+)
 from modules.auditores.auditor_bootstrap import preparar_modulo_auditores
+from modules.auditores_registrados.auditores_registrados_router import (
+    router as auditores_registrados_router,
+)
+from modules.auditores_registrados.auditores_registrados_bootstrap import (
+    preparar_modulo_auditores_registrados,
+)
 from modules.competencias_auditor.competencias_router import router as competencias_auditor_router
 from modules.conflictos_auditor.conflictos_router import router as conflictos_auditor_router
 from modules.agenda_auditor.agenda_router import router as agenda_auditor_router
@@ -291,6 +300,7 @@ async def lifespan(app: FastAPI):
         await seed_initial_data()
         # Cada modulo prepara su parte de la base con su propia sesion.
         await preparar_modulo_auditores()
+        await preparar_modulo_auditores_registrados()
         await preparar_modulo_agenda()
         await preparar_modulo_solicitudes()
         await preparar_modulo_auditorias()
@@ -343,7 +353,9 @@ app.include_router(alejandra_router)
 app.include_router(mfa_router)
 app.include_router(system_router)
 app.include_router(asignacion_auditores_router)
+app.include_router(auditor_public_router)
 app.include_router(auditor_router)
+app.include_router(auditores_registrados_router)
 app.include_router(competencias_auditor_router)
 app.include_router(conflictos_auditor_router)
 app.include_router(agenda_auditor_router)
@@ -507,6 +519,16 @@ async def empresas_page(request: Request):
     return FileResponse("static/empresas.html")
 
 
+@app.get("/auditores-registrados", response_class=HTMLResponse)
+async def auditores_registrados_page(request: Request):
+    return FileResponse("static/auditores_registrados.html")
+
+
+@app.get("/cuenta-inactiva", response_class=HTMLResponse)
+async def cuenta_inactiva_page(request: Request):
+    return FileResponse("static/cuenta_inactiva.html")
+
+
 @app.get("/perfil-auditor", response_class=HTMLResponse)
 async def perfil_auditor_page():
     return FileResponse("static/perfil_auditor.html")
@@ -572,6 +594,10 @@ async def consultar_agenda_auditor():
 async def conflictos_administrador():
     return FileResponse("static/conflictos_administrador.html")
 
+@app.get("/empresas-restringidas", response_class=HTMLResponse)
+async def empresas_restringidas_page():
+    return FileResponse("static/empresas_restringidas.html")
+
 @app.get("/banco-auditores/solicitud/{id_postulacion}")
 async def banco_auditores_solicitud(
     id_postulacion: UUID,
@@ -608,7 +634,3 @@ async def reportes_page(request: Request):
 # /buscar_empresa lo sirve modules/consultas_p/paginas_router.py: la página del
 # portal público vive junto a los endpoints que la alimentan.
 
-
-@app.on_event("shutdown")
-async def shutdown_redis_pool():
-    await redis_pool.disconnect()

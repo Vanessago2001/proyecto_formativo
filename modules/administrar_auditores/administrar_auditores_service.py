@@ -1591,6 +1591,68 @@ class AdministrarAuditoresService:
 
             """), {"id_usuario": documento["id_usuario"]})
 
+        asunto_notificacion = (
+            "Documento aprobado"
+            if estado_revision == "Aprobado"
+            else "Documento rechazado"
+        )
+        mensaje_notificacion = (
+            f"Su documento '{documento['tipo_documento']}' fue aprobado."
+            if estado_revision == "Aprobado"
+            else (
+                f"Su documento '{documento['tipo_documento']}' fue rechazado. "
+                f"Observacion del administrador: {observacion_final}"
+            )
+        )
+
+        await self.db.execute(text("""
+
+            INSERT INTO notificacion (
+
+                id_notificacion,
+
+                id_usuario,
+
+                asunto,
+
+                mensaje,
+
+                estado,
+
+                fecha_envio,
+
+                leida
+
+            )
+
+            VALUES (
+
+                gen_random_uuid(),
+
+                :id_usuario,
+
+                :asunto,
+
+                :mensaje,
+
+                'Pendiente',
+
+                CURRENT_DATE,
+
+                FALSE
+
+            )
+
+        """), {
+
+            "id_usuario": documento["id_usuario"],
+
+            "asunto": asunto_notificacion,
+
+            "mensaje": mensaje_notificacion,
+
+        })
+
         await self.db.commit()
 
         return {
@@ -1610,150 +1672,167 @@ class AdministrarAuditoresService:
         }
 
     async def revisar_validacion_competencia(
-
         self,
-
         id_competencia: UUID,
-
         estado_validacion: str,
-
         observacion: str | None,
-
         id_usuario_actor: UUID,
-
     ):
+        """Revisa una competencia con las mismas reglas que un documento.
+
+        El panel envia "Aprobado" y aqui se guarda "Validado", que es el valor
+        con el que la tabla de competencias registra la aprobacion.
+        """
 
         if estado_validacion == "Aprobado":
             estado_validacion = "Validado"
 
         if estado_validacion not in {"Validado", "Rechazado", "Pendiente"}:
-
             raise HTTPException(400, "Estado de validacion no valido.")
 
         observacion_final = (observacion or "").strip()
 
         if estado_validacion == "Rechazado" and not observacion_final:
-
             raise HTTPException(
-
                 400,
-
                 "La observacion es obligatoria para rechazar la competencia.",
-
             )
 
-        await self.db.execute(
+        result = await self.db.execute(text("""
+            SELECT
+                id_competencia,
+                id_postulacion,
+                id_usuario,
+                tipo_competencia,
+                estado_validacion
+            FROM competencia_auditor
+            WHERE id_competencia = :id_competencia
+            LIMIT 1
+        """), {"id_competencia": id_competencia})
 
-            text("""
+        competencia = result.mappings().first()
 
-                UPDATE competencia_auditor
+        if not competencia:
+            raise HTTPException(404, "No se encontro la competencia.")
 
-                SET
+        if competencia["estado_validacion"] == "Validado":
+            raise HTTPException(
+                409,
+                "La competencia ya fue aprobada y no puede volver a modificarse.",
+            )
 
-                    estado_validacion = :estado_validacion,
+        result = await self.db.execute(text("""
+            UPDATE competencia_auditor
+            SET
+                estado_validacion = :estado_validacion,
+                observacion_validacion = :observacion
+            WHERE id_competencia = :id_competencia
+            RETURNING
+                id_competencia,
+                id_postulacion,
+                id_usuario,
+                tipo_competencia,
+                estado_validacion,
+                observacion_validacion
+        """), {
+            "id_competencia": id_competencia,
+            "estado_validacion": estado_validacion,
+            "observacion": observacion_final,
+        })
 
-                    observacion_validacion = :observacion
+        actualizada = result.mappings().first()
 
-                WHERE id_competencia = :id_competencia
+        # La devolucion afecta a la postulacion propia de la competencia, igual
+        # que hace el rechazo de un documento. Solo las filas antiguas, que no
+        # la tienen, recurren a la postulacion activa del auditor.
+        id_postulacion = competencia["id_postulacion"]
 
-            """),
-
-            {
-
-                "id_competencia": id_competencia,
-
-                "estado_validacion": estado_validacion,
-
-                "observacion": observacion_final,
-
-            },
-
-        )
-
-        result = await self.db.execute(
-
-            text("""
-
-                SELECT
-
-                    c.id_usuario,
-
-                    COALESCE(
-
-                        c.id_postulacion,
-
-                        pa.id_postulacion
-
-                    ) AS id_postulacion
-
-                FROM competencia_auditor c
-
-                LEFT JOIN postulacion_auditor pa
-
-                    ON pa.id_usuario = c.id_usuario
-
-                   AND pa.estado IN (
-
-                       'Borrador', 'Correcciones', 'Enviado', 'En Revisión'
-
-                   )
-
-                WHERE c.id_competencia = :id_competencia
-
-                ORDER BY pa.fecha_postulacion DESC
-
+        if id_postulacion is None:
+            result = await self.db.execute(text("""
+                SELECT id_postulacion
+                FROM postulacion_auditor
+                WHERE id_usuario = :id_usuario
+                  AND estado IN ('Borrador', 'Correcciones', 'Enviado', 'En Revisión')
+                ORDER BY fecha_postulacion DESC
                 LIMIT 1
+            """), {"id_usuario": competencia["id_usuario"]})
 
-            """),
+            activa = result.mappings().first()
+            id_postulacion = activa["id_postulacion"] if activa else None
 
-            {"id_competencia": id_competencia},
+        if estado_validacion == "Rechazado":
+            await self.db.execute(text("""
+                UPDATE postulacion_auditor
+                SET estado = 'Correcciones',
+                    fecha_revision = CURRENT_TIMESTAMP
+                WHERE id_postulacion = :id_postulacion
+                  AND estado NOT IN ('Aprobado', 'Rechazado', 'Cancelado')
+            """), {"id_postulacion": id_postulacion})
 
-        )
+            await self.db.execute(text("""
+                UPDATE usuario
+                SET estado_auditor = 'Postulante'
+                WHERE id_usuario = :id_usuario
+            """), {"id_usuario": competencia["id_usuario"]})
 
-        fila = result.mappings().first()
+        # El aviso llega al buzon del auditor para que sepa que tiene una
+        # correccion pendiente, con la misma forma que usan los documentos.
+        if estado_validacion in ("Validado", "Rechazado"):
+            tipo_competencia = competencia["tipo_competencia"] or "Competencia"
+            aprobada = estado_validacion == "Validado"
 
-        if estado_validacion == "Rechazado" and fila:
-
-            await self.db.execute(
-
-                text("""
-
-                    UPDATE postulacion_auditor
-
-                    SET estado = 'Correcciones',
-
-                        fecha_revision = CURRENT_TIMESTAMP
-
-                    WHERE id_postulacion = :id_postulacion
-
-                      AND estado NOT IN ('Aprobado', 'Rechazado', 'Cancelado')
-
-                """),
-
-                {"id_postulacion": fila["id_postulacion"]},
-
+            asunto_notificacion = (
+                "Competencia aprobada"
+                if aprobada
+                else "Competencia rechazada"
             )
 
-            await self.db.execute(
-
-                text("""
-
-                    UPDATE usuario
-
-                    SET estado_auditor = 'Postulante'
-
-                    WHERE id_usuario = :id_usuario
-
-                """),
-
-                {"id_usuario": fila["id_usuario"]},
-
+            mensaje_notificacion = (
+                f"Su competencia '{tipo_competencia}' fue aprobada."
+                if aprobada
+                else (
+                    f"Su competencia '{tipo_competencia}' fue rechazada. "
+                    f"Observacion del administrador: {observacion_final}"
+                )
             )
+
+            await self.db.execute(text("""
+                INSERT INTO notificacion (
+                    id_notificacion,
+                    id_usuario,
+                    asunto,
+                    mensaje,
+                    estado,
+                    fecha_envio,
+                    leida
+                )
+                VALUES (
+                    gen_random_uuid(),
+                    :id_usuario,
+                    :asunto,
+                    :mensaje,
+                    'Pendiente',
+                    CURRENT_DATE,
+                    FALSE
+                )
+            """), {
+                "id_usuario": competencia["id_usuario"],
+                "asunto": asunto_notificacion,
+                "mensaje": mensaje_notificacion,
+            })
 
         await self.db.commit()
 
         return {
-
-            "mensaje": "Competencia revisada correctamente.",
-
+            "mensaje": (
+                "Competencia aprobada correctamente."
+                if estado_validacion == "Validado"
+                else (
+                    "Competencia rechazada. "
+                    "El auditor podra corregirla en Correcciones."
+                    if estado_validacion == "Rechazado"
+                    else "Competencia revisada correctamente."
+                )
+            ),
+            "competencia": dict(actualizada),
         }

@@ -27,7 +27,6 @@ from modules.certificados.certificados_schema import (
 )
 from modules.certificados.certificados_service import (
     CertificadosService,
-    certificado_esta_vigente,
     es_usuario_publico,
     ESTADO_VIGENTE,
 )

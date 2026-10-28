@@ -9,9 +9,12 @@ async def bloquear_usuario_temporalmente(user_id: str, db: AsyncSession, minutos
     tiempo_bloqueo = datetime.now(timezone.utc) + timedelta(minutes=minutos)
     
     query = text("""
-        UPDATE usuario 
-        SET bloqueado_hasta = :bloqueado_hasta, 
-            estado = 'Inactivo' 
+        UPDATE usuario
+        SET bloqueado_hasta = :bloqueado_hasta,
+            estado = CASE
+                WHEN estado = 'Activo' THEN 'Bloqueado'
+                ELSE estado
+            END
         WHERE id_usuario = :user_id
     """)
     result = await db.execute(query, {

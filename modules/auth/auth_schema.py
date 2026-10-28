@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field, EmailStr
 
 class LoginRequest(BaseModel):
     """Esquema para recibir credenciales de login vía JSON."""

@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
-import random
 import secrets
 
 from fastapi import HTTPException, status
+from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from modules.mfa.mfa_service import MFAService
@@ -30,6 +30,8 @@ INTENTOS_ANTES_DE_RESET = 5
 TIEMPO_BLOQUEO_MINUTOS = 15
 # Vigencia del enlace de restablecimiento de contraseña.
 RESET_TOKEN_MINUTOS = 30
+# Tiempo mínimo entre envíos de enlaces de restablecimiento para un mismo correo.
+COOLDOWN_RESET_SEGUNDOS = 300
 # Días de vigencia de la contraseña antes de exigir cambio (0 = sin expiración).
 # Roles Auditor y Empresa: 60 días. Los demás: 90 días.
 DIAS_EXPIRACION_POR_ROL = {
@@ -37,6 +39,8 @@ DIAS_EXPIRACION_POR_ROL = {
     "Empresa": 60,
 }
 DIAS_EXPIRACION_DEFAULT = 120
+# Intentos permitidos para el código MFA antes de invalidarlo.
+MAX_INTENTOS_MFA = 5
 
 
 class AuthService:
@@ -77,7 +81,7 @@ class AuthService:
         """
         Genera un código aleatorio de seis dígitos.
         """
-        return str(random.randint(100000, 999999))
+        return str(100000 + secrets.randbelow(900000))
 
     async def _log_access(
         self,
@@ -310,6 +314,7 @@ class AuthService:
                 u.mfa_codigo,
                 u.mfa_expira,
                 u.mfa_verificado,
+                u.ultimo_inicio_sesion,
                 r.nombre AS rol_nombre
             FROM usuario u
             LEFT JOIN rol r ON u.rol_id = r.id_rol
@@ -674,118 +679,105 @@ class AuthService:
     # nuevo Sneider
     # nuevo Sneider login MFA
     
-    async def login_mfa(self,correo: str,codigo: str,):
-             # --------------------------------------------------------
-        # Buscar usuario
-        # --------------------------------------------------------
-            result = await self.db.execute(
-                text("""
-                SELECT
-                    u.id_usuario,
-                    u.nombre,
-                    u.correo,
-                    u.rol_id,
-                    u.mfa_codigo,
-                    u.mfa_expira,
-                    r.nombre AS rol_nombre
-                FROM usuario u
-                LEFT JOIN rol r
-                    ON r.id_rol = u.rol_id
-                WHERE LOWER(u.correo)=LOWER(:correo)
-                LIMIT 1
-                """),
-                {
-                    "correo": correo
-                }
-            )
-    
-            user = result.mappings().first()
-    
-            if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Usuario no encontrado."
+    async def login_mfa(self, correo: str, codigo: str):
+        result = await self.db.execute(
+            text("""
+            SELECT
+                u.id_usuario,
+                u.nombre,
+                u.correo,
+                u.rol_id,
+                u.mfa_codigo,
+                u.mfa_expira,
+                COALESCE(u.intentos_codigo, 0) AS intentos_codigo,
+                r.nombre AS rol_nombre
+            FROM usuario u
+            LEFT JOIN rol r
+                ON r.id_rol = u.rol_id
+            WHERE LOWER(u.correo)=LOWER(:correo)
+            LIMIT 1
+            """),
+            {"correo": correo},
+        )
+
+        user = result.mappings().first()
+
+        # Mismo mensaje para usuario inexistente y código inválido: evita
+        # revelar qué correos están registrados.
+        codigo_invalido = HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Código MFA incorrecto o expirado.",
+        )
+
+        if not user or user["mfa_codigo"] is None or user["mfa_expira"] is None:
+            raise codigo_invalido
+
+        if self._a_naive_utc(user["mfa_expira"]) < self._ahora():
+            raise codigo_invalido
+
+        if not secrets.compare_digest(str(user["mfa_codigo"]), codigo or ""):
+            intentos = int(user["intentos_codigo"] or 0) + 1
+
+            if intentos >= MAX_INTENTOS_MFA:
+                await self.db.execute(
+                    text("""
+                        UPDATE usuario
+                        SET mfa_codigo = NULL, mfa_expira = NULL, intentos_codigo = 0
+                        WHERE id_usuario = :id_usuario
+                    """),
+                    {"id_usuario": user["id_usuario"]},
                 )
-    
-            # --------------------------------------------------------
-            # Verificar que exista un código MFA pendiente
-    
-            print("=== LOGIN MFA ===")
-            print("Correo recibido:", correo)
-            print("Usuario:", user)
-            print("mfa_codigo:", user["mfa_codigo"])
-            print("mfa_expira:", user["mfa_expira"])
-            if user["mfa_codigo"] is None:
+                await self.db.commit()
+
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="No existe un código MFA pendiente."
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=(
+                        "Ha superado el número máximo de intentos. "
+                        "Inicie sesión nuevamente para recibir un código nuevo."
+                    ),
                 )
-    
-            # --------------------------------------------------------
-            # Verificar expiración
-            # --------------------------------------------------------
-    
-            if user["mfa_expira"] is None:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="El código MFA expiró."
-                )
-    
-            if self._a_naive_utc(user["mfa_expira"]) < self._a_naive_utc(self._ahora()):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="El código MFA expiró."
-                )
-    
-            # --------------------------------------------------------
-            # Verificar código
-            # --------------------------------------------------------
-    
-            if user["mfa_codigo"] != codigo:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Código MFA incorrecto."
-                )
-    
-            # --------------------------------------------------------
-            # Limpiar el código MFA para que no pueda reutilizarse
-            # --------------------------------------------------------
-    
+
             await self.db.execute(
                 text("""
                     UPDATE usuario
-                    SET
-                        mfa_codigo = NULL,
-                        mfa_expira = NULL,
-                        mfa_verificado = TRUE
+                    SET intentos_codigo = :intentos
                     WHERE id_usuario = :id_usuario
                 """),
-                {
-                    "id_usuario": user["id_usuario"]
-                }
+                {"intentos": intentos, "id_usuario": user["id_usuario"]},
             )
-    
             await self.db.commit()
-    
-            # --------------------------------------------------------
-            # Generar JWT
-            # --------------------------------------------------------
-    
-            token = create_access_token(
-                data={
-                    "sub": user.get("nombre"),
-                    "user_id": str(user["id_usuario"]),
-                    "role_id": user["rol_id"],
-                    "role_name": user["rol_nombre"],
-                }
-            )
-            print("LOGIN NORMAL - Generando token")
-            print(token)
-    
-            return {
-                "access_token": token,
-                "token_type": "bearer",
+
+            raise codigo_invalido
+
+        # El código es de un solo uso.
+        await self.db.execute(
+            text("""
+                UPDATE usuario
+                SET
+                    mfa_codigo = NULL,
+                    mfa_expira = NULL,
+                    mfa_verificado = TRUE,
+                    intentos_codigo = 0
+                WHERE id_usuario = :id_usuario
+            """),
+            {"id_usuario": user["id_usuario"]},
+        )
+
+        await self.db.commit()
+
+        token = create_access_token(
+            data={
+                "sub": user.get("nombre"),
+                "user_id": str(user["id_usuario"]),
+                "role_id": user["rol_id"],
+                "role_name": user["rol_nombre"],
             }
+        )
+
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+        }
 
     # historial de accesos
     async def obtener_historial_accesos(
@@ -873,11 +865,14 @@ class AuthService:
             },
         )
 
-        # Escribir también en Redis, con TTL igual a la vigencia del token
-        from core.redis_client import get_redis_client
-        redis_client = get_redis_client()
-        ttl_segundos = RESET_TOKEN_MINUTOS * 60
-        await redis_client.set(f"password_reset_token:{token}", str(user_id), ex=ttl_segundos)
+        # Redis es un espejo opcional: el token ya quedó guardado en la BD
+        try:
+            from core.redis_client import get_redis_client
+            redis_client = get_redis_client()
+            ttl_segundos = RESET_TOKEN_MINUTOS * 60
+            await redis_client.set(f"password_reset_token:{token}", str(user_id), ex=ttl_segundos)
+        except (RedisError, OSError) as exc:
+            logger.warning("Redis no disponible al guardar el token de reset: %s", exc)
 
         base_url = settings.APP_BASE_URL.rstrip("/")
         return f"{base_url}/reset-password?token={token}"
@@ -998,10 +993,13 @@ class AuthService:
 
         await self.db.commit()
 
-        # Invalidar también en Redis (evita reutilización mientras dure el TTL)
-        from core.redis_client import get_redis_client
-        redis_client = get_redis_client()
-        await redis_client.delete(f"password_reset_token:{token}")
+        # La BD ya marcó el token como utilizado; Redis solo es limpieza opcional
+        try:
+            from core.redis_client import get_redis_client
+            redis_client = get_redis_client()
+            await redis_client.delete(f"password_reset_token:{token}")
+        except (RedisError, OSError) as exc:
+            logger.warning("Redis no disponible al invalidar el token de reset: %s", exc)
 
         return {
             "mensaje": (
@@ -1044,6 +1042,32 @@ class AuthService:
 
         # Si no existe, no revelamos nada: respondemos igual.
         if not usuario:
+            return mensaje_generico
+
+        await self._ensure_reset_table()
+
+        # Evita el envío masivo de correos: si ya se generó un enlace para este
+        # usuario hace menos de COOLDOWN_RESET_SEGUNDOS, no se crea otro.
+        # La fecha de creación se deduce de la expiración (creación + vigencia).
+        umbral_creacion = self._ahora_utc() + timedelta(
+            seconds=RESET_TOKEN_MINUTOS * 60 - COOLDOWN_RESET_SEGUNDOS
+        )
+        reciente = await self.db.execute(
+            text("""
+                SELECT 1
+                FROM password_reset_tokens
+                WHERE usuario_id = :usuario_id
+                  AND utilizado = FALSE
+                  AND fecha_expiracion > :umbral_creacion
+                LIMIT 1
+            """),
+            {
+                "usuario_id": str(usuario["id_usuario"]),
+                "umbral_creacion": umbral_creacion,
+            },
+        )
+
+        if reciente.first() is not None:
             return mensaje_generico
 
         enlace = await self._crear_enlace_reset(usuario["id_usuario"])
