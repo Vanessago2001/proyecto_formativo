@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Consultar auditorías programadas</title>
-    <link rel="stylesheet" href="/static/tema.css">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/tema.css?v=20261028">
+    <link rel="stylesheet" href="/static/styles.css?v=20261028">
     <style>
         :root {
             color-scheme: light;
@@ -119,88 +119,47 @@
            SIDEBAR
         ========================================================= */
         .side {
-            position: sticky;
-            top: 20px;
-            align-self: start;
-            padding: 13px;
+            padding: 12px;
             background: var(--white);
             border: 1px solid var(--line);
-            border-radius: var(--radius-card);
-            box-shadow: var(--shadow-card);
+            height: max-content;
         }
 
-        .side h3 {
-            margin: 5px 12px 12px;
-            color: var(--muted);
+        .admin-nav-heading {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            padding: 10px 12px 14px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1f2937;
+            font-weight: 700;
+        }
+
+        .admin-nav-heading span {
+            color: #64748b;
             font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
             text-transform: uppercase;
-            letter-spacing: .12em;
-            font-weight: 800;
         }
 
         .side a {
-            display: flex;
-            align-items: center;
-            gap: 11px;
+            display: block;
             padding: 11px 12px;
-            margin: 2px 0;
             color: #334155;
             text-decoration: none;
-            font-size: 13.5px;
-            font-weight: 600;
+            font-size: 13px;
             line-height: 1.35;
             border-left: 3px solid transparent;
-            border-radius: 0 9px 9px 0;
-            transition: background .18s ease, color .18s ease, border-color .18s ease;
         }
 
-        .side a:hover {
-            background: #f8fafc;
-            color: var(--sena-green-dark);
-        }
-
+        .side a:hover,
         .side a.active {
-            background: var(--sena-green-light);
+            background: #f1f5f9;
             color: var(--sena-green-dark);
             border-left-color: var(--sena-green-bright);
-            font-weight: 750;
-        }
-
-        .side a .side-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 7px;
-            background: #e2e8f0;
-            color: var(--sena-green-dark);
-            font-size: 11px;
-            font-weight: 800;
-            flex-shrink: 0;
-            transition: .18s ease;
-        }
-
-        .side a.active .side-icon {
-            background: var(--sena-green-bright);
-            color: #fff;
-        }
-
-        .side .logout-link {
-            margin-top: 10px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 14px;
-            color: #b42318;
-        }
-
-        .side .logout-link:hover {
-            background: #f1f5f9;
-            color: #b42318;
-        }
-
-        .side .logout-link .side-icon {
-            background: #fffbeb;
-            color: #b42318;
+            font-weight: 700;
         }
 
         /* =========================================================
@@ -1048,33 +1007,6 @@
         ========================================================= */
         @media (max-width: 1000px) {
             .portal-grid { grid-template-columns: 1fr; }
-
-            .side {
-                position: static;
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 5px;
-            }
-
-            .side h3 { grid-column: 1 / -1; }
-
-            .side a {
-                margin: 0;
-                border-left: 0;
-                border-bottom: 2px solid transparent;
-                border-radius: 8px;
-            }
-
-            .side a.active {
-                border-left-color: transparent;
-                border-bottom-color: var(--sena-green-bright);
-            }
-
-            .side .logout-link {
-                border-top: 0;
-                margin-top: 0;
-                padding-top: 11px;
-            }
         }
 
         @media (max-width: 720px) {
@@ -1082,7 +1014,6 @@
             .filters { grid-template-columns: 1fr; }
             .panel-body { padding: 16px; }
             .panel-head { padding: 14px 16px; }
-            .side { grid-template-columns: 1fr; }
             .login-header .sena-blanco { width: 58px; }
             .login-header h1 { font-size: 21px; }
             .login-header .subtitle { font-size: 12px; }
@@ -1119,20 +1050,15 @@
     <main class="portal-shell">
         <div class="portal-grid">
 
-            <nav class="side" aria-label="Navegación de auditorías">
-                <h3>Consulta de agenda</h3>
-
-                <a href="/consultar-auditorias-programadas" class="active">
-                    <span class="side-icon">1</span>
-                    <span>Consultar auditorías</span>
-                </a>
+            <nav class="side admin-nav" aria-label="Navegación de auditorías">
+                <a href="/consultar-auditorias-programadas">Consultar auditorías</a>
             </nav>
 
             <section class="content">
 
                 <div class="page-head">
                     <div class="page-head-top">
-                        <a href="/auditor" class="back-link" id="btnRegresar">
+                        <a href="/dashboard" class="back-link" id="btnRegresar">
                             <span aria-hidden="true">←</span> Volver al Dashboard
                         </a>
                     </div>
@@ -1348,17 +1274,12 @@
 
             const titulo = document.getElementById('tituloLista');
             const subtitulo = document.getElementById('subtitulo');
-            const btnRegresar = document.getElementById('btnRegresar');
             if (esAdmin) {
                 titulo.textContent = 'Auditorías programadas (vista administrador)';
                 subtitulo.textContent = 'Consulta todas las auditorías programadas en el sistema.';
-                btnRegresar.href = '/dashboard';
-                btnRegresar.innerHTML = '<span aria-hidden="true">←</span> Volver al Dashboard';
             } else {
                 titulo.textContent = 'Mis auditorías programadas';
                 subtitulo.textContent = 'Consulta las auditorías que te han asignado.';
-                btnRegresar.href = '/auditor';
-                btnRegresar.innerHTML = '<span aria-hidden="true">←</span> Volver al portal';
             }
 
             const params = new URLSearchParams();

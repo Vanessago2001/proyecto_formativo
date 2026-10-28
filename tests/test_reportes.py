@@ -180,6 +180,23 @@ async def test_un_auditor_consulta_con_su_id_usuario(db, cliente):
     assert params["yo"] == ID_USUARIO
 
 
+async def test_el_reporte_operativo_solo_cuenta_asignaciones_vigentes(db, cliente):
+    """Canceladas y reasignadas ya no son carga del auditor."""
+    _sesion("admin")
+    db.execute.return_value = _filas([])
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/operativo-auditores")
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    sql, _ = _sql_y_params(db)[0]
+    normalizado = " ".join(sql.split())
+    assert (
+        "COUNT(DISTINCT a_s.id) FILTER ( WHERE a_s.estado_asignacion "
+        "NOT IN ('Cancelada', 'Reasignado') ) AS asignaciones"
+    ) in normalizado
+
+
 async def test_un_rol_de_direccion_no_lleva_filtro_de_filas(db, cliente):
     _sesion("admin")
     db.execute.return_value = _filas([])

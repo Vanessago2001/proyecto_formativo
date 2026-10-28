@@ -165,3 +165,72 @@ AYUDAS COMPARTIDAS
 .chip-alerta { background: var(--ambar-100); color: var(--ambar-700); }
 .chip-error { background: var(--rojo-100); color: var(--rojo-700); }
 .chip-info { background: var(--azul-100); color: var(--azul-700); }
+
+/*=========================
+ACCIONES DE CABECERA
+==========================
+El mismo grupo de acciones (Panel, Reportes, perfil y salir) en todas las
+pantallas del sistema. Se declara aqui, en la base compartida, para que las
+vistas que no cargan styles.css tambien lo muestren igual.
+*/
+
+.header-content .comite-header-user {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-left: auto;
+  color: #fff;
+  font-size: 13px;
+}
+
+.header-content .comite-header-user .profile-link {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.header-content .comite-header-user .profile-link:hover {
+  background: none;
+  color: #fff;
+  text-decoration: underline;
+}
+
+.header-content .comite-header-user .comite-back-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, .85);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--verde-800, #256d00);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.header-content .comite-header-user .comite-back-button:hover {
+  background: var(--verde-50);
+}
+
+.header-content .comite-header-user .comite-logout {
+  min-height: 36px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, .75);
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.header-content .comite-header-user .comite-logout:hover {
+  background: rgba(255, 255, 255, .16);
+}

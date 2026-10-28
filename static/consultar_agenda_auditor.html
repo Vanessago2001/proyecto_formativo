@@ -126,71 +126,87 @@
            SIDEBAR
         ========================================================= */
         .side {
-            position: sticky;
-            top: 20px;
-            align-self: start;
-            padding: 13px;
             background: var(--white);
             border: 1px solid var(--line);
-            border-radius: var(--radius-card);
-            box-shadow: var(--shadow-card);
+            padding: 12px;
+            height: max-content;
         }
 
-        .side h3 {
-            margin: 5px 12px 12px;
-            color: var(--muted);
+        .admin-nav-heading {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            padding: 10px 12px 14px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1f2937;
+            font-weight: 700;
+        }
+
+        .admin-nav-heading span {
+            color: #64748b;
             font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
             text-transform: uppercase;
-            letter-spacing: .12em;
-            font-weight: 800;
         }
 
         .side a {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            padding: 11px 12px;
-            margin: 2px 0;
+            display: block;
             color: #334155;
             text-decoration: none;
-            font-size: 13.5px;
-            font-weight: 600;
+            padding: 11px 12px;
+            font-size: 13px;
             line-height: 1.35;
             border-left: 3px solid transparent;
-            border-radius: 0 9px 9px 0;
-            transition: background .18s ease, color .18s ease, border-color .18s ease;
         }
 
-        .side a:hover {
-            background: #f8fafc;
-            color: var(--sena-green-dark);
-        }
-
+        .side a:hover,
         .side a.active {
-            background: var(--sena-green-light);
+            background: #f1f5f9;
             color: var(--sena-green-dark);
             border-left-color: var(--sena-green-bright);
-            font-weight: 750;
+            font-weight: 700;
         }
 
-        .side a .side-icon {
+        /* Navegación entre las secciones de esta pantalla. El menú lateral
+           queda reservado para la navegación del rol. */
+        .page-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .page-tabs a {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 7px;
-            background: #e2e8f0;
-            color: var(--sena-green-dark);
-            font-size: 11px;
-            font-weight: 800;
-            flex-shrink: 0;
+            padding: 9px 15px;
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            color: #334155;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.3;
             transition: .18s ease;
         }
 
-        .side a.active .side-icon {
-            background: var(--sena-green-bright);
-            color: #fff;
+        .page-tabs a:hover {
+            border-color: var(--sena-green-bright);
+            color: var(--sena-green-dark);
+        }
+
+        .page-tabs a.active {
+            background: var(--sena-green-light);
+            border-color: var(--sena-green-bright);
+            color: var(--sena-green-dark);
+        }
+
+        @media (max-width: 720px) {
+            .page-tabs { flex-direction: column; }
+            .page-tabs a { justify-content: center; }
         }
 
         /* =========================================================
@@ -1427,29 +1443,6 @@
             .portal-grid {
                 grid-template-columns: 1fr;
             }
-
-            .side {
-                position: static;
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 5px;
-            }
-
-            .side h3 {
-                grid-column: 1 / -1;
-            }
-
-            .side a {
-                margin: 0;
-                border-left: 0;
-                border-bottom: 2px solid transparent;
-                border-radius: 8px;
-            }
-
-            .side a.active {
-                border-left-color: transparent;
-                border-bottom-color: var(--sena-green-bright);
-            }
         }
 
         @media (max-width: 900px) {
@@ -1683,7 +1676,7 @@
 .modal-box.error h3 { color:#dc2626; }
 .modal-box.success h3 { color:#256d00; }
 </style>
-  <link rel="stylesheet" href="/static/tema.css">
+  <link rel="stylesheet" href="/static/tema.css?v=20261028">
 </head>
 
 <body>
@@ -1696,7 +1689,12 @@
                     <p class="subtitle">Agenda y disponibilidad del auditor</p>
                 </div>
             </div>
-            <a class="profile-link" href="/profile">Mi perfil</a>
+            <div class="comite-header-user">
+                <a class="comite-back-button" href="/dashboard">Panel</a>
+                <a class="profile-link" href="/reportes">Reportes</a>
+                <a class="profile-link" href="/profile">Mi perfil</a>
+                <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
+            </div>
         </div>
     </header>
 
@@ -1705,43 +1703,8 @@
             <!-- =========================================================
                  MENÚ LATERAL
             ========================================================= -->
-            <nav class="side" aria-label="Navegación de la agenda">
-                <h3>Gestión de agenda</h3>
-
-                <a href="#schedule" data-seccion="schedule" class="active">
-                    <span class="side-icon">1</span>
-                    <span>Programar una auditoría</span>
-                </a>
-
-                <a href="#assignments" data-seccion="assignments">
-                    <span class="side-icon">2</span>
-                    <span>Solicitudes con auditores asignados</span>
-                </a>
-
-                <a href="#weekly" data-seccion="weekly">
-                    <span class="side-icon">3</span>
-                    <span>Disponibilidad semanal</span>
-                </a>
-
-                <a href="#blocked" data-seccion="blocked">
-                    <span class="side-icon">4</span>
-                    <span>Registrar fecha no disponible</span>
-                </a>
-
-                <a href="#month" data-seccion="month">
-                    <span class="side-icon">5</span>
-                    <span>Disponibilidad mensual y auditorías</span>
-                </a>
-
-                <a href="#history" data-seccion="history">
-                    <span class="side-icon">6</span>
-                    <span>Historial de disponibilidad</span>
-                </a>
-
-                <a href="#bitacora" data-seccion="bitacora">
-                    <span class="side-icon">7</span>
-                    <span>Bitácora de validación</span>
-                </a>
+            <nav class="side admin-nav" aria-label="Navegación de la agenda">
+                <a href="/consultar-agenda-auditor">Consultar agenda de auditor</a>
             </nav>
 
             <!-- =========================================================
@@ -1750,16 +1713,23 @@
             <section class="content">
                 <div class="page-head">
                     <div class="page-head-top">
-                        <a href="/asignacion-auditores" class="back-link">
-                            <span aria-hidden="true">←</span> Regresar
-                        </a>
                         <a href="/dashboard" class="back-link">
-                            <span aria-hidden="true">←</span> Panel principal
+                            <span aria-hidden="true">←</span> Volver al panel
                         </a>
                     </div>
                     <h1 id="pageTitle">Programar una auditoría</h1>
                     <p id="pageSubtitle">Programa una solicitud aprobada y registra el mismo horario para todos los
                         auditores que ya fueron asignados a esa empresa.</p>
+                </div>
+
+                <div class="page-tabs" role="tablist" aria-label="Secciones de la agenda">
+                    <a href="#schedule" data-seccion="schedule" class="active">Programar una auditoría</a>
+                    <a href="#assignments" data-seccion="assignments">Solicitudes con auditores asignados</a>
+                    <a href="#weekly" data-seccion="weekly">Disponibilidad semanal</a>
+                    <a href="#blocked" data-seccion="blocked">Registrar fecha no disponible</a>
+                    <a href="#month" data-seccion="month">Disponibilidad mensual y auditorías</a>
+                    <a href="#history" data-seccion="history">Historial de disponibilidad</a>
+                    <a href="#bitacora" data-seccion="bitacora">Bitácora de validación</a>
                 </div>
 
                 <div id="globalNotice" class="notice" role="status" aria-live="polite"></div>
@@ -4563,7 +4533,7 @@
             document.querySelectorAll(".panel-section").forEach((seccion) => {
                 seccion.classList.toggle("seccion-visible", seccion.dataset.seccion === clave);
             });
-            document.querySelectorAll(".side a[data-seccion]").forEach((enlace) => {
+            document.querySelectorAll(".page-tabs a[data-seccion]").forEach((enlace) => {
                 enlace.classList.toggle("active", enlace.dataset.seccion === clave);
             });
             actualizarAuditorSeleccionadoEnFiltros();
@@ -4575,7 +4545,7 @@
             if (clave === "blocked") { cargarProgramacionesBloqueo(); cargarBloqueosVigentes(); }
         }
 
-        document.querySelectorAll(".side a[data-seccion]").forEach((enlace) => {
+        document.querySelectorAll(".page-tabs a[data-seccion]").forEach((enlace) => {
             enlace.addEventListener("click", (event) => {
                 event.preventDefault();
                 mostrarSeccionAgenda(enlace.dataset.seccion);

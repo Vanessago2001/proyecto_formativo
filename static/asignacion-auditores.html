@@ -7,8 +7,8 @@
 
   <title>CertiSENA | Asignación de Auditores</title>
 
-  <link rel="stylesheet" href="/static/tema.css">
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
 
   <style>
     /* =========================================================
@@ -88,64 +88,57 @@
 
     .admin-grid {
       display: grid;
-      grid-template-columns: 232px minmax(0, 1fr);
-      gap: 18px;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 22px;
       align-items: start;
     }
 
     /* =========================================================
-       SIDEBAR
+       SIDEBAR (mismo diseño que el resto de pantallas del rol)
     ========================================================= */
 
-    .admin-nav {
+    .side {
       background: #fff;
       border: 1px solid #e2e8f0;
-      border-radius: 12px;
       padding: 12px;
       height: max-content;
-      box-shadow: 0 4px 14px rgba(15, 35, 22, .04);
     }
 
-    .admin-nav h3 {
-      margin: 7px 10px 13px;
+    .admin-nav-heading {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 10px 12px 14px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #1f2937;
+      font-weight: 700;
+    }
+
+    .admin-nav-heading span {
       color: #64748b;
-      font-size: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
       text-transform: uppercase;
-      letter-spacing: .5px;
     }
 
-    .admin-nav a {
+    .side a {
       display: block;
       color: #334155;
       text-decoration: none;
       padding: 11px 12px;
-      border-radius: 8px;
-      margin-bottom: 4px;
-      font-size: 14px;
-      transition: .2s ease;
+      font-size: 13px;
+      line-height: 1.35;
+      border-left: 3px solid transparent;
     }
 
-    .admin-nav a:hover {
+    .side a:hover,
+    .side a.active {
       background: #f1f5f9;
       color: #256d00;
-    }
-
-    .admin-nav a.active {
-      background: #3baa01;
-      color: #fff;
+      border-left-color: #3baa01;
       font-weight: 700;
-    }
-
-    .logout-link {
-      margin-top: 12px;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 15px !important;
-      color: #b42318 !important;
-    }
-
-    .logout-link:hover {
-      background: #f1f5f9 !important;
-      color: #b42318 !important;
     }
 
     /* =========================================================
@@ -1296,22 +1289,6 @@
       .admin-grid {
         grid-template-columns: 1fr;
       }
-
-      .admin-nav {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 5px;
-      }
-
-      .admin-nav h3 {
-        grid-column: 1 / -1;
-      }
-
-      .logout-link {
-        border-top: 0;
-        margin-top: 0;
-        padding-top: 11px !important;
-      }
     }
 
     @media (max-width: 900px) {
@@ -1365,7 +1342,7 @@
         display: none;
       }
 
-      .admin-nav {
+      .side {
         grid-template-columns: 1fr;
       }
 
@@ -1439,16 +1416,15 @@
 
       </div>
 
-      <div style="display:flex; gap:12px; align-items:center;">
+      <div class="comite-header-user">
 
-        <a class="profile-button" href="/profile" title="Ir a mi perfil">
-          <span class="profile-label">Mi perfil</span>
+        <a class="comite-back-button" href="/dashboard">Panel</a>
 
-          <span class="avatar" id="headerAvatar">
-            U
-          </span>
+        <a class="profile-link" href="/reportes">Reportes</a>
 
-        </a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+
+        <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
 
       </div>
 
@@ -1475,16 +1451,8 @@
     <div id="adminView" class="admin-grid" style="display:none;">
 
       <!-- SIDEBAR -->
-      <nav class="admin-nav">
-        <h3>Administración</h3>
+      <nav class="side admin-nav">
         <a href="/dashboard">Resumen</a>
-        <a href="/empresas">Empresas registradas</a>
-        <a href="/dashboard#usuarios">Gestionar usuarios</a>
-        <a href="/asignacion-auditores" class="active">Asignación de auditores</a>
-        <a href="/auditor">Gestión de auditorías</a>
-        <a href="/reportes">Reportes</a>
-        <a href="/profile">Mi perfil</a>
-        <a href="#" id="mfaLink">Activar autenticación en dos pasos</a>
         <a href="/login" id="logoutLink" class="logout-link">Cerrar sesión</a>
       </nav>
 
@@ -1930,7 +1898,9 @@
     roleDescription.textContent = isAdmin
       ? "Asignación y control de auditores"
       : "Acceso restringido";
-    headerAvatar.textContent = currentName.charAt(0).toUpperCase();
+    if (headerAvatar) {
+      headerAvatar.textContent = currentName.charAt(0).toUpperCase();
+    }
 
 
     /* =========================================================

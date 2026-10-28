@@ -102,7 +102,11 @@ class ReportesService:
         resultado = await self.db.execute(text(f"""
             SELECT
                 u.nombre AS auditor,
-                COUNT(DISTINCT a_s.id) AS asignaciones,
+                -- Una asignacion cancelada o reasignada ya no es carga del
+                -- auditor. Mismo criterio que usa el inicio de auditoria.
+                COUNT(DISTINCT a_s.id) FILTER (
+                    WHERE a_s.estado_asignacion NOT IN ('Cancelada', 'Reasignado')
+                ) AS asignaciones,
                 COUNT(DISTINCT a.id_auditoria) AS auditorias,
                 COUNT(DISTINCT a.id_auditoria)
                     FILTER (WHERE a.fecha_fin IS NOT NULL) AS ejecutadas

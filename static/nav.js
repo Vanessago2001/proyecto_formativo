@@ -22,6 +22,16 @@
     '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>' +
     '<circle cx="12" cy="7" r="4"></circle></svg>';
 
+  // El botón "Cerrar sesión" de la cabecera común funciona en todas las
+  // pantallas, sin depender de que cada vista tenga su propio manejador.
+  document.addEventListener("click", function (evento) {
+    var boton = evento.target.closest(".js-salir");
+    if (!boton) return;
+    evento.preventDefault();
+    localStorage.clear();
+    window.location.href = "/login";
+  });
+
   function rolDelUsuario() {
     try {
       var token = localStorage.getItem("access_token");
@@ -112,20 +122,22 @@
          formulario de registro del auditor.
      ---------------------------------------------------------- */
 
+  // Mismo menú y en el mismo orden que el del panel principal.
   var MENU_ADMINISTRACION = [
     ["/dashboard", "Resumen"],
-    ["/dashboard#usuarios", "Gestionar usuarios"],
     ["/empresas", "Empresas registradas"],
-    ["/revision-solicitudes", "Revisión de solicitudes"],
+    ["/dashboard#usuarios", "Gestionar usuarios"],
     ["/asignacion-auditores", "Asignación de auditores"],
-    ["/banco-auditores", "Banco de auditores"],
     ["/consultar-auditorias-programadas-admin", "Consultar auditorías programadas"],
     ["/consultar-auditorias-programadas-admin#futuras", "Consultar programaciones futuras"],
     ["/consultar-agenda-auditor", "Consultar agenda de auditor"],
+    ["/revision-solicitudes", "Revisión de solicitudes"],
+    ["/banco-auditores", "Banco de auditores"],
     ["/conflictos-administrador", "Conflictos de interés"],
+    ["/empresas-restringidas", "Consultar empresas restringidas"],
     ["/gestion-certificados", "Gestión de certificados"],
-    ["/comite", "Comité de certificación"],
     ["/apelacion", "Apelaciones"],
+    ["/comite", "Ir al Comité de certificación"],
     ["/reportes", "Reportes"],
     ["/profile", "Mi perfil"]
   ];
@@ -164,9 +176,51 @@
     });
   }
 
-  function marcarActivo(enlace, destino) {
-    var ruta = destino.split("#")[0];
-    if (ruta && enLaMismaPagina(ruta)) enlace.classList.add("active");
+  // El panel principal encabeza su menú con el módulo abierto; las demás
+  // pantallas repiten ese mismo encabezado para que el menú no cambie.
+  function tituloDelModulo() {
+    var partes = (document.title || "").split("|");
+    return (partes[1] || "").trim() || "Panel principal";
+  }
+
+  function crearEncabezado() {
+    var caja = document.createElement("div");
+    caja.className = "admin-nav-heading";
+    var kicker = document.createElement("span");
+    kicker.textContent = "Administración";
+    caja.appendChild(kicker);
+    caja.appendChild(document.createTextNode(tituloDelModulo()));
+    return caja;
+  }
+
+  // El panel original cierra su menú con "Cerrar sesión"; las pantallas que
+  // no lo traían reciben el mismo enlace para que el menú no cambie.
+  function crearSalir() {
+    var enlace = document.createElement("a");
+    enlace.setAttribute("href", "/login");
+    enlace.className = "logout-link";
+    enlace.textContent = "Cerrar sesión";
+    enlace.addEventListener("click", function (evento) {
+      evento.preventDefault();
+      localStorage.clear();
+      window.location.href = "/login";
+    });
+    return enlace;
+  }
+
+  function marcarActivo(enlace, destino, seccionAbierta) {
+    var partes = destino.split("#");
+    var ruta = partes[0];
+    var seccion = partes[1] || "";
+    if (!ruta || !enLaMismaPagina(ruta)) return;
+    // Dos entradas pueden apuntar a la misma pantalla: la de la sección
+    // solo se marca cuando esa sección está abierta, y la de la pantalla
+    // completa solo cuando no hay una sección del menú abierta.
+    if (seccion) {
+      if (window.location.hash === "#" + seccion) enlace.classList.add("active");
+      return;
+    }
+    if (!seccionAbierta) enlace.classList.add("active");
   }
 
   // Lo que identifica al elemento de salir, venga como enlace o como botón.
@@ -200,18 +254,36 @@
       // Se conserva el elemento de salir, enlace o botón: su comportamiento
       // está atado a ese elemento, así que se mueve en vez de volver a crearlo.
       var salir = nav.querySelector(SELECTOR_SALIR);
-      var clase = enlaces[0].className;
+      // La clase de la página se copia a cada opción, salvo "active":
+      // si la primera opción venía marcada, se marcaban todas.
+      var clase = (enlaces[0].className || "").replace(/\bactive\b/g, "").trim();
 
       nav.innerHTML = "";
+      // El encabezado solo va en la barra plana del panel; las pantallas con
+      // su propio encabezado de módulo ya lo muestran fuera del menú.
+      if (menu === MENU_ADMINISTRACION && nav.classList.contains("admin-nav")) {
+        nav.appendChild(crearEncabezado());
+      }
+      // Si la pantalla está abierta en una vista con sección (#futuras),
+      // solo esa entrada queda marcada, no también la de la pantalla completa.
+      var hash = window.location.hash;
+      var seccionAbierta = hash && menu.some(function (opcion) {
+        var partes = opcion[0].split("#");
+        return partes[1] && "#" + partes[1] === hash && enLaMismaPagina(partes[0]);
+      });
       menu.forEach(function (opcion) {
         var enlace = document.createElement("a");
         enlace.setAttribute("href", opcion[0]);
         enlace.textContent = opcion[1];
         if (clase) enlace.className = clase;
-        marcarActivo(enlace, opcion[0]);
+        marcarActivo(enlace, opcion[0], seccionAbierta);
         nav.appendChild(enlace);
       });
-      if (salir) nav.appendChild(salir);
+      if (salir) {
+        nav.appendChild(salir);
+      } else if (menu === MENU_ADMINISTRACION) {
+        nav.appendChild(crearSalir());
+      }
     });
   }
 

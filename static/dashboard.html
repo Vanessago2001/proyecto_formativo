@@ -5,8 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CertiSENA | Administracion</title>
-  <link rel="stylesheet" href="/static/tema.css">
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
   <style>
     .app-shell {
       max-width: var(--ancho-contenido);
@@ -282,15 +282,14 @@
         <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco" />
         <div>
           <h1>CertiSENA</h1>
-          <p class="subtitle">Gestion de certificados</p>
+          <p class="subtitle">Panel principal</p>
         </div>
       </div>
-      <div style="display:flex; gap:12px; align-items:center;">
-        <a id="companyHeaderLink" class="profile-button" href="/empresa" title="Ir a mi empresa"
-          style="display:none;"><span class="profile-label">Mi empresa</span><span class="avatar"
-            id="companyAvatar">E</span></a>
-        <a class="profile-button" href="/profile" title="Ir a mi perfil"><span class="profile-label">Mi
-            perfil</span><span class="avatar" id="headerAvatar">U</span></a>
+      <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/reportes">Reportes</a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
       </div>
     </div>
   </header>
@@ -525,9 +524,10 @@
       : isCompany
         ? "Gestion de la empresa asociada a tu cuenta"
         : "Perfil de " + (user.role_name || "usuario");
-    document.getElementById("headerAvatar").textContent = (user.sub || "U")
-      .charAt(0)
-      .toUpperCase();
+    const headerAvatar = document.getElementById("headerAvatar");
+    if (headerAvatar) {
+      headerAvatar.textContent = (user.sub || "U").charAt(0).toUpperCase();
+    }
     const companyHeaderLink = document.getElementById("companyHeaderLink");
     if (companyHeaderLink) {
       companyHeaderLink.style.display = isCompany ? "flex" : "none";

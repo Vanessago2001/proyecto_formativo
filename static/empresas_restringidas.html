@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CertiSENA | Empresas restringidas</title>
-  <link rel="stylesheet" href="/static/tema.css">
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <link rel="stylesheet" href="/static/styles.css?v=20261028">
   <style>
     .portal-shell { max-width: var(--ancho-contenido, 1180px); margin: 0 auto; padding: 28px 24px 40px; }
     .surface { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 22px; box-shadow: 0 5px 20px rgba(32,74,25,.07); }
@@ -34,6 +34,12 @@
       <div>
         <h1>CertiSENA</h1>
         <p class="subtitle">Consultar empresas restringidas</p>
+      </div>
+      <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/reportes">Reportes</a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
       </div>
     </div>
   </header>
@@ -142,5 +148,6 @@
 
     cargarEmpresas();
   </script>
+  <script src="/static/nav.js"></script>
 </body>
 </html>

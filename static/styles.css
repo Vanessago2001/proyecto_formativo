@@ -606,7 +606,7 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     border: 1px solid rgba(255, 255, 255, .85);
     border-radius: 6px;
     background: #fff;
-    color: var(--comite-green-dark);
+    color: var(--comite-green-dark, #256d00);
     text-decoration: none;
     font-size: 12px;
     font-weight: 700;
@@ -614,7 +614,8 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
 }
 
 .comite-back-button:hover {
-    background: var(--comite-green-soft);
+    background: var(--comite-green-soft, #f1f5f9);
+    color: var(--comite-green-dark, #256d00);
 }
 
 .comite-logout {

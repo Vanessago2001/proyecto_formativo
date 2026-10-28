@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CertiSENA | Apelaciones</title>
-  <link rel="stylesheet" href="/static/tema.css">
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
   <style>
     :root {
       --verde-900: #1b4b12;
@@ -40,11 +40,11 @@
 
     .page-shell {
       max-width: var(--ancho-contenido);
-      margin: 32px auto;
-      padding: 0 20px 48px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
     }
 
-    .topbar {
+    .admin-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -52,45 +52,40 @@
       margin-bottom: 22px;
     }
 
-    .brand h1 {
-      margin: 8px 0 0;
-      font-size: clamp(1.7rem, 3vw, 2.5rem);
+    .admin-header h2 {
+      margin: 0;
       color: var(--verde-800);
+      font-size: 24px;
     }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 7px 12px;
-      border-radius: 999px;
-      background: var(--verde-100);
-      color: var(--verde-700);
-      font-weight: 700;
-      font-size: 0.8rem;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
+    .admin-header p {
+      margin: 6px 0 0;
+      color: var(--gris-500);
+      font-size: 14px;
     }
 
-    .header-actions {
+    .profile-button {
       display: flex;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
+      color: var(--gris-900);
+      text-decoration: none;
+      font-weight: 600;
     }
 
-    .ghost-link,
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--verde-600);
+      color: #fff;
+      font-weight: 700;
+    }
+
     button {
       font: inherit;
-    }
-
-    .ghost-link {
-      color: var(--verde-800);
-      text-decoration: none;
-      font-weight: 700;
-      border: 1px solid var(--gris-200);
-      background: var(--blanco);
-      border-radius: 10px;
-      padding: 10px 14px;
     }
 
     .panel {
@@ -153,16 +148,56 @@
       color: var(--verde-800);
     }
 
-    .content-grid {
+    .admin-grid {
       display: grid;
-      grid-template-columns: 300px minmax(0, 1fr);
+      grid-template-columns: 250px minmax(0, 1fr);
       gap: 22px;
+      align-items: start;
     }
 
-    .sidebar {
+    /* Menú del rol: el mismo que el del panel principal. */
+    .side {
+      background: var(--blanco);
+      border: var(--borde);
+      padding: 12px;
+      height: max-content;
+    }
+
+    .admin-nav-heading {
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 3px;
+      padding: 10px 12px 14px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid var(--gris-200);
+      color: var(--gris-900);
+      font-weight: 700;
+    }
+
+    .admin-nav-heading span {
+      color: var(--gris-500);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .side a {
+      display: block;
+      color: #334155;
+      text-decoration: none;
+      padding: 11px 12px;
+      font-size: 13px;
+      line-height: 1.35;
+      border-left: 3px solid transparent;
+    }
+
+    .side a:hover,
+    .side a.active {
+      background: var(--gris-100);
+      color: var(--verde-800);
+      border-left-color: var(--verde-600);
+      font-weight: 700;
     }
 
     .side-title {
@@ -355,35 +390,40 @@
       box-shadow: none;
     }
 
+    /* Vistas de esta pantalla: pestañas sobre el contenido, para dejar
+       el menú lateral a la navegación del rol. */
     .vista-nav {
-      display: grid;
-      gap: 4px;
-      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
     }
 
     .vista-link {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 10px 12px;
-      border: 0;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--gris-700);
-      font-size: 14px;
-      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      padding: 9px 15px;
+      border: 1px solid var(--gris-200);
+      border-radius: 999px;
+      background: var(--blanco);
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
       cursor: pointer;
+      transition: .18s ease;
     }
 
     .vista-link:hover {
-      background: var(--verde-50);
+      border-color: var(--verde-600);
       color: var(--verde-800);
     }
 
     .vista-link.activa {
       background: var(--verde-100);
+      border-color: var(--verde-600);
       color: var(--verde-800);
-      box-shadow: inset 3px 0 0 var(--verde-600);
+      box-shadow: none;
     }
 
     .vista-link[hidden] { display: none; }
@@ -524,92 +564,85 @@
       color: var(--gris-500);
     }
 
+    @media (max-width: 1000px) {
+      .admin-grid { grid-template-columns: 1fr; }
+    }
+
     @media (max-width: 880px) {
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .content-grid { grid-template-columns: 1fr; }
       .two-cols { grid-template-columns: 1fr; }
       .expediente-grid { grid-template-columns: 1fr; }
     }
 
-    @media (max-width: 560px) {
+    @media (max-width: 600px) {
       .metrics { grid-template-columns: 1fr; }
-      .topbar { align-items: flex-start; flex-direction: column; }
     }
   </style>
 </head>
 <body>
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco" />
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Gestion de certificados</p>
+        </div>
+      </div>
+      <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/reportes">Reportes</a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
   <div class="page-shell">
-    <header class="topbar">
-      <div class="brand">
-        <span class="badge">Módulo de apelaciones</span>
-        <h1>Gestión y revisión</h1>
+    <div class="admin-header">
+      <div>
+        <h2 id="welcomeTitle">Bienvenido</h2>
+        <p id="roleDescription">Gestión y revisión de apelaciones</p>
       </div>
-      <div class="header-actions">
-        <a class="ghost-link" id="backLink" href="/empresa">Volver a mis solicitudes</a>
-        <button class="secondary" id="logoutBtn" type="button">Cerrar sesión</button>
-      </div>
-    </header>
+    </div>
 
     <div id="alertBox" class="alert"></div>
 
-    <section class="metrics">
-      <div class="metric">
-        <div class="metric-label">Estado</div>
-        <div class="metric-value" id="metricEstado">Sin solicitud</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Solicitud</div>
-        <div class="metric-value" id="metricSolicitud">--</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Radicado</div>
-        <div class="metric-value" id="metricRadicado">--</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Último cambio</div>
-        <div class="metric-value" id="metricFecha">--</div>
-      </div>
-    </section>
-
-    <div class="content-grid">
-      <aside class="sidebar">
-        <div class="panel">
-          <h3 class="side-title">Apelaciones</h3>
-          <nav class="vista-nav" id="vistaNav">
-            <button class="vista-link" type="button" data-vista="bandeja">Bandeja del comité</button>
-            <button class="vista-link" type="button" data-vista="expediente">Expediente</button>
-            <button class="vista-link" type="button" data-vista="apelacion">Mi apelación</button>
-            <button class="vista-link" type="button" data-vista="requerimientos">Requerimientos</button>
-            <button class="vista-link" type="button" data-vista="decision">Decisión del comité</button>
-            <button class="vista-link" type="button" data-vista="asignar">Asignar comité</button>
-          </nav>
-          <p class="hint" id="vistaAyuda">Seleccione una apelación de la bandeja.</p>
-        </div>
-
-        <!-- Se usan poco: se guardan plegados para no robar espacio. -->
-        <details class="panel plegable">
-          <summary>Flujo y búsqueda</summary>
-
-          <h3 class="side-title">Flujo de la apelación</h3>
-          <div class="flow-list">
-            <div class="flow-item"><span class="flow-number">1</span><span>Solicitud rechazada</span></div>
-            <div class="flow-item"><span class="flow-number">2</span><span>Empresa presenta apelación</span></div>
-            <div class="flow-item"><span class="flow-number">3</span><span>Comité revisa evidencias</span></div>
-            <div class="flow-item"><span class="flow-number">4</span><span>Aprobación o rechazo final</span></div>
-          </div>
-
-          <h3 class="side-title" style="margin-top: 18px;">Buscar solicitud</h3>
-          <div class="stack">
-            <label for="solicitudId">ID de la solicitud</label>
-            <input id="solicitudId" type="text" placeholder="ID de la solicitud" />
-          </div>
-          <div class="actions">
-            <button class="primary" id="btnBuscar" type="button">Buscar</button>
-          </div>
-        </details>
-      </aside>
+    <div class="admin-grid">
+      <nav class="side admin-nav" aria-label="Navegación del panel">
+        <a href="/dashboard">Volver al panel</a>
+        <a href="/login" id="logoutLink" class="logout-link">Cerrar sesión</a>
+      </nav>
 
       <main class="main-column">
+        <section class="metrics">
+          <div class="metric">
+            <div class="metric-label">Estado</div>
+            <div class="metric-value" id="metricEstado">Sin solicitud</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Solicitud</div>
+            <div class="metric-value" id="metricSolicitud">--</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Radicado</div>
+            <div class="metric-value" id="metricRadicado">--</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Último cambio</div>
+            <div class="metric-value" id="metricFecha">--</div>
+          </div>
+        </section>
+
+        <nav class="vista-nav" id="vistaNav" aria-label="Vistas de apelaciones">
+          <button class="vista-link" type="button" data-vista="bandeja">Bandeja del comité</button>
+          <button class="vista-link" type="button" data-vista="expediente">Expediente</button>
+          <button class="vista-link" type="button" data-vista="apelacion">Mi apelación</button>
+          <button class="vista-link" type="button" data-vista="requerimientos">Requerimientos</button>
+          <button class="vista-link" type="button" data-vista="decision">Decisión del comité</button>
+          <button class="vista-link" type="button" data-vista="asignar">Asignar comité</button>
+        </nav>
+        <p class="hint" id="vistaAyuda">Seleccione una apelación de la bandeja.</p>
         <!-- =============== BANDEJA =============== -->
         <section class="panel" data-vista-panel="bandeja" hidden>
           <div class="section-header">
@@ -783,6 +816,28 @@
             <button class="primary" id="btnAsignarComite" type="button">Asignar comité</button>
           </div>
         </section>
+
+        <!-- Se usan poco: se guardan plegados para no robar espacio. -->
+        <details class="panel plegable" style="margin-top: 18px;">
+          <summary>Flujo y búsqueda</summary>
+
+          <h3 class="side-title">Flujo de la apelación</h3>
+          <div class="flow-list">
+            <div class="flow-item"><span class="flow-number">1</span><span>Solicitud rechazada</span></div>
+            <div class="flow-item"><span class="flow-number">2</span><span>Empresa presenta apelación</span></div>
+            <div class="flow-item"><span class="flow-number">3</span><span>Comité revisa evidencias</span></div>
+            <div class="flow-item"><span class="flow-number">4</span><span>Aprobación o rechazo final</span></div>
+          </div>
+
+          <h3 class="side-title" style="margin-top: 18px;">Buscar solicitud</h3>
+          <div class="stack">
+            <label for="solicitudId">ID de la solicitud</label>
+            <input id="solicitudId" type="text" placeholder="ID de la solicitud" />
+          </div>
+          <div class="actions">
+            <button class="primary" id="btnBuscar" type="button">Buscar</button>
+          </div>
+        </details>
       </main>
     </div>
   </div>
@@ -925,10 +980,10 @@
       document.getElementById('solicitudId').readOnly = !company;
       document.getElementById('motivo').readOnly = !company;
       document.getElementById('evidenciaDescripcion').readOnly = !company;
-      document.getElementById('backLink').href = company ? '/empresa' : '/dashboard';
-      document.getElementById('backLink').textContent = company
-        ? 'Volver a mis solicitudes'
-        : 'Volver al panel';
+      if (company) {
+        const volver = document.querySelector('nav.side a[href="/dashboard"]');
+        if (volver) volver.textContent = 'Volver a mis solicitudes';
+      }
 
       mostrarVista(company ? 'apelacion' : 'bandeja');
     }
@@ -1314,9 +1369,12 @@
         enlace.hidden = !permitidas.includes(enlace.dataset.vista);
         enlace.addEventListener('click', () => mostrarVista(enlace.dataset.vista));
       });
-      document.getElementById('vistaAyuda').textContent = esEmpresa()
-        ? 'Presente su apelación y adjunte los documentos que le pidan.'
-        : 'Abra una apelación de la bandeja para trabajar con ella.';
+      const ayuda = document.getElementById('vistaAyuda');
+      if (ayuda) {
+        ayuda.textContent = esEmpresa()
+          ? 'Presente su apelación y adjunte los documentos que le pidan.'
+          : 'Abra una apelación de la bandeja para trabajar con ella.';
+      }
     }
 
     // ==========================================================
@@ -1676,10 +1734,33 @@
     document.getElementById('btnAsignarComite').addEventListener('click', asignarComite);
     document.getElementById('btnActualizarElegibles')
       .addEventListener('click', () => cargarComiteElegible(state.currentAppealId));
-    document.getElementById('logoutBtn').addEventListener('click', () => {
+    document.getElementById('logoutLink').addEventListener('click', (evento) => {
+      evento.preventDefault();
       localStorage.removeItem('access_token');
       window.location.href = '/login';
     });
+
+    const usuario = (() => {
+      try {
+        return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      } catch (_) {
+        return null;
+      }
+    })();
+    if (!token || !usuario) {
+      window.location.href = '/login';
+    } else {
+      const rol = normalizarRol(usuario.role_name || '');
+      document.getElementById('welcomeTitle').textContent = 'Bienvenido, ' + (usuario.sub || 'usuario');
+      document.getElementById('roleDescription').textContent =
+        rol.includes('empresa') ? 'Apelaciones de la empresa'
+          : rol.includes('comite') ? 'Revisión y decisión de apelaciones'
+            : 'Administración de apelaciones y revisiones del comité';
+      const headerAvatar = document.getElementById('headerAvatar');
+      if (headerAvatar) {
+        headerAvatar.textContent = String(usuario.sub || 'U').charAt(0).toUpperCase();
+      }
+    }
 
     state.role = parseUserRole();
     configurarAccionesPorRol();
@@ -1700,5 +1781,6 @@
       buscarApelacionPorSolicitud();
     }
   </script>
+  <script src="/static/nav.js"></script>
 </body>
 </html>

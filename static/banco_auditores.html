@@ -7,8 +7,8 @@
 
     <title>CertiSENA | Banco de Auditores</title>
 
-    <link rel="stylesheet" href="/static/tema.css">
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/tema.css?v=20261028">
+    <link rel="stylesheet" href="/static/styles.css?v=20261028" />
 
     <style>
         .app-shell {
@@ -67,11 +67,32 @@
             height: max-content;
         }
 
+        .admin-nav-heading {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            padding: 10px 12px 14px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1f2937;
+            font-weight: 700;
+        }
+
+        .admin-nav-heading span {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+
         .admin-nav a {
             display: block;
             color: #334155;
             text-decoration: none;
-            padding: 12px;
+            padding: 11px 12px;
+            font-size: 13px;
+            line-height: 1.35;
             border-left: 3px solid transparent;
         }
 
@@ -80,6 +101,7 @@
             background: #f1f5f9;
             color: #256d00;
             border-left-color: #3baa01;
+            font-weight: 700;
         }
 
         .surface {
@@ -466,19 +488,15 @@
             </div>
 
 
-            <div style="display:flex; gap:12px; align-items:center;">
+            <div class="comite-header-user">
 
-                <a class="profile-button" href="/profile" title="Ir a mi perfil">
+                <a class="comite-back-button" href="/dashboard">Panel</a>
 
-                    <span class="profile-label">
-                        Mi perfil
-                    </span>
+                <a class="profile-link" href="/reportes">Reportes</a>
 
-                    <span class="avatar" id="headerAvatar">
-                        U
-                    </span>
+                <a class="profile-link" href="/profile">Mi perfil</a>
 
-                </a>
+                <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
 
             </div>
 
@@ -886,15 +904,10 @@
         }
 
 
-        document
-            .getElementById("headerAvatar")
-            .textContent =
-            (
-                user?.sub ||
-                "U"
-            )
-                .charAt(0)
-                .toUpperCase();
+        const headerAvatar = document.getElementById("headerAvatar");
+        if (headerAvatar) {
+            headerAvatar.textContent = (user?.sub || "U").charAt(0).toUpperCase();
+        }
 
 
         /* ====================================================
