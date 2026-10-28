@@ -169,6 +169,20 @@
     if (ruta && enLaMismaPagina(ruta)) enlace.classList.add("active");
   }
 
+  // Lo que identifica al elemento de salir, venga como enlace o como botón.
+  var SELECTOR_SALIR = '#logoutLink, a[href="/login"], .js-logout, button.salir, a.salir';
+
+  // Un menú con botones que cambian de vista en la misma pantalla se respeta:
+  // esos botones son la pantalla, no la navegación del rol. El botón de salir
+  // no cuenta, porque no cambia de vista: cierra la sesión.
+  function tieneBotonDeVista(nav) {
+    var botones = nav.querySelectorAll("button");
+    for (var i = 0; i < botones.length; i++) {
+      if (!botones[i].matches(SELECTOR_SALIR)) return true;
+    }
+    return false;
+  }
+
   function unificarMenuLateral(rol) {
     var menu = menuDelRol(rol);
     if (!menu) return;
@@ -180,12 +194,12 @@
     Array.prototype.forEach.call(contenedores, function (nav) {
       var enlaces = nav.querySelectorAll("a[href]");
       if (!enlaces.length) return;
-      if (nav.querySelector("button")) return;      // cambia de vista en la misma pantalla
+      if (tieneBotonDeVista(nav)) return;           // cambia de vista en la misma pantalla
       if (navegaPorSecciones(nav)) return;          // indice de secciones de la pantalla
 
-      // Se conserva el enlace de salir: su comportamiento está atado a ese
-      // elemento, así que se mueve en vez de volver a crearlo.
-      var salir = nav.querySelector('#logoutLink, a[href="/login"]');
+      // Se conserva el elemento de salir, enlace o botón: su comportamiento
+      // está atado a ese elemento, así que se mueve en vez de volver a crearlo.
+      var salir = nav.querySelector(SELECTOR_SALIR);
       var clase = enlaces[0].className;
 
       nav.innerHTML = "";
