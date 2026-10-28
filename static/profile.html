@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/static/tema.css">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/tema.css?v=20261028">
+    <link rel="stylesheet" href="/static/styles.css?v=20261028">
     <style>
         .profile-layout {
             max-width: var(--ancho-contenido);
@@ -83,25 +83,14 @@
       </div>
     </div>
 
-    <div class="header-buttons">
-      <a href="/dashboard" class="btn-login">Panel</a>
-      <a href="/profile" class="btn-login">Perfil</a>
-      <a href="/profile" class="profile-icon" id="profileIcon" title="Mi perfil">U</a>
+    <div class="comite-header-user">
+      <a class="comite-back-button" href="/dashboard">Panel</a>
+      <a class="profile-link" href="/reportes">Reportes</a>
+      <a class="profile-link" href="/profile">Mi perfil</a>
+      <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
     </div>
 
-    <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
-
   </div>
-
-  <div class="mobile-menu" id="mobileMenu">
-    <a href="/dashboard">Dashboard</a>
-    <a href="/profile">Perfil</a>
-  </div>
-
 </header>
 
 <main class="profile-layout">
@@ -150,10 +139,12 @@
 const hamburgerBtn = document.getElementById("hamburgerBtn");
 const mobileMenu = document.getElementById("mobileMenu");
 
-hamburgerBtn.addEventListener("click", function(){
+if (hamburgerBtn && mobileMenu) {
+  hamburgerBtn.addEventListener("click", function () {
     this.classList.toggle("active");
     mobileMenu.classList.toggle("open");
-});
+  });
+}
 
 document.querySelectorAll(".mobile-menu a").forEach(link => {
     link.addEventListener("click", function(){
@@ -200,7 +191,8 @@ function loadProfile() {
     document.getElementById("profileCorreo").textContent = "Cargando...";
     document.getElementById("profileId").textContent = userId;
     document.getElementById("profileRol").textContent = roleName;
-    document.getElementById("profileIcon").textContent = userName.charAt(0).toUpperCase();
+    const profileIcon = document.getElementById("profileIcon");
+    if (profileIcon) profileIcon.textContent = userName.charAt(0).toUpperCase();
     document.getElementById("profileIconLarge").textContent = userName.charAt(0).toUpperCase();
     const companyProfileLink = document.getElementById("companyProfileLink");
     if (companyProfileLink) {

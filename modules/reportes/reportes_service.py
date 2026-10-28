@@ -17,6 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import _normalize_role_name
+from modules.solicitudes import estado_solicitud as estados
 from modules.reportes import reportes_roles as roles_m12
 
 EMPRESA = roles_m12.EMPRESA
@@ -101,7 +102,11 @@ class ReportesService:
         resultado = await self.db.execute(text(f"""
             SELECT
                 u.nombre AS auditor,
-                COUNT(DISTINCT a_s.id) AS asignaciones,
+                -- Una asignacion cancelada o reasignada ya no es carga del
+                -- auditor. Mismo criterio que usa el inicio de auditoria.
+                COUNT(DISTINCT a_s.id) FILTER (
+                    WHERE a_s.estado_asignacion NOT IN ('Cancelada', 'Reasignado')
+                ) AS asignaciones,
                 COUNT(DISTINCT a.id_auditoria) AS auditorias,
                 COUNT(DISTINCT a.id_auditoria)
                     FILTER (WHERE a.fecha_fin IS NOT NULL) AS ejecutadas
@@ -121,6 +126,11 @@ class ReportesService:
     async def _solicitudes_criticas(self):
         extra, params = self._filtros(empresa=True)
         params["dias"] = roles_m12.DIAS_SOLICITUD_CRITICA
+        # Los estados salen del catalogo de M5: antes se enumeraban aqui las
+        # grafias una por una y bastaba con que apareciera otra para que el
+        # reporte dejara de ver esas solicitudes.
+        params["radicada"] = estados.RADICADA
+        params["en_revision"] = estados.EN_REVISION
         resultado = await self.db.execute(text(f"""
             SELECT
                 s.numero_radicado,
@@ -131,7 +141,7 @@ class ReportesService:
                 e.nit
             FROM solicitud s
             JOIN empresa e ON e.id_empresa = s.id_empresa
-            WHERE UPPER(TRIM(s.estado)) IN ('RADICADO', 'RADICADA', 'EN_REVISION', 'EN REVISION')
+            WHERE s.estado IN (:radicada, :en_revision)
               AND s.fecha IS NOT NULL
               AND (CURRENT_DATE - s.fecha::date) > :dias {extra}
             ORDER BY dias_abierta DESC;
@@ -251,20 +261,76 @@ class ReportesService:
     # 8. Disponibilidad horaria
     # ------------------------------------------------------------
     async def _disponibilidad_horaria(self):
+        """
+        Una fila por auditor, identificado por su documento, con los días que
+        tiene activos.
+
+        Antes salía una fila por registro, así que un mismo auditor aparecía
+        repetido cinco o seis veces, y además se mostraban los registros
+        cancelados, que ya no valen.
+
+        Los bloqueos de fecha van en su propia columna a propósito: están
+        activos, pero significan lo contrario que un día disponible, y
+        sumarlos a los demás haría leer el reporte al revés.
+        """
         extra, params = self._filtros(empresa=False, yo="da.id_usuario")
         resultado = await self.db.execute(text(f"""
+            WITH registros AS (
+                SELECT
+                    COALESCE(NULLIF(TRIM(u.num_doc), ''), 'Sin documento') AS documento,
+                    NULLIF(TRIM(u.tipo_doc), '') AS tipo_documento,
+                    u.nombre AS auditor,
+                    TRIM(da.tipo_registro) AS tipo_registro,
+                    da.dia_semana,
+                    da.fecha_inicio,
+                    da.hora_inicio,
+                    CASE
+                        WHEN da.dia_semana IS NOT NULL THEN
+                            CASE da.dia_semana
+                                WHEN 1 THEN 'Lunes'
+                                WHEN 2 THEN 'Martes'
+                                WHEN 3 THEN 'Miércoles'
+                                WHEN 4 THEN 'Jueves'
+                                WHEN 5 THEN 'Viernes'
+                                WHEN 6 THEN 'Sábado'
+                                WHEN 7 THEN 'Domingo'
+                                ELSE 'Día ' || da.dia_semana
+                            END
+                        ELSE TO_CHAR(da.fecha_inicio, 'DD/MM/YYYY')
+                    END
+                    || CASE
+                           WHEN da.hora_inicio IS NOT NULL AND da.hora_fin IS NOT NULL
+                           THEN ' ' || TO_CHAR(da.hora_inicio, 'HH24:MI')
+                                || '-' || TO_CHAR(da.hora_fin, 'HH24:MI')
+                           ELSE ''
+                       END AS dia
+                FROM disponibilidad_auditor da
+                JOIN usuario u ON u.id_usuario = da.id_usuario
+                WHERE UPPER(TRIM(da.estado)) = 'ACTIVO' {extra}
+            ),
+            activas AS (
+                -- Un mismo dia puede estar registrado varias veces (el auditor
+                -- lo volvio a guardar). En el reporte basta con nombrarlo una.
+                SELECT
+                    documento, tipo_documento, auditor, tipo_registro, dia,
+                    MIN(dia_semana) AS dia_semana,
+                    MIN(fecha_inicio) AS fecha_inicio,
+                    MIN(hora_inicio) AS hora_inicio
+                FROM registros
+                GROUP BY documento, tipo_documento, auditor, tipo_registro, dia
+            )
             SELECT
-                u.nombre AS auditor,
-                da.dia_semana,
-                da.fecha_inicio,
-                da.fecha_fin,
-                TRIM(da.tipo_registro) AS tipo_registro,
-                TRIM(da.estado) AS estado,
-                da.motivo
-            FROM disponibilidad_auditor da
-            JOIN usuario u ON u.id_usuario = da.id_usuario
-            WHERE TRUE {extra}
-            ORDER BY u.nombre, da.dia_semana, da.fecha_inicio;
+                documento,
+                tipo_documento,
+                auditor,
+                COUNT(*) FILTER (WHERE tipo_registro <> 'Bloqueo Fecha') AS dias_activos,
+                STRING_AGG(dia, ', ' ORDER BY dia_semana NULLS LAST, fecha_inicio, hora_inicio)
+                    FILTER (WHERE tipo_registro <> 'Bloqueo Fecha') AS dias_disponibles,
+                STRING_AGG(dia, ', ' ORDER BY dia_semana NULLS LAST, fecha_inicio, hora_inicio)
+                    FILTER (WHERE tipo_registro = 'Bloqueo Fecha') AS fechas_bloqueadas
+            FROM activas
+            GROUP BY documento, tipo_documento, auditor
+            ORDER BY auditor;
         """), params)
         return resultado.mappings().all()
 

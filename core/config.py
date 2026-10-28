@@ -8,6 +8,14 @@ class Settings:
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
+    # La base de Aiven es compartida y tiene pocos cupos de conexión.
+    # El pool por defecto (5 + 10 extra) agotaba esos cupos, así que se
+    # deja un margen pequeño y configurable.
+    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "1"))
+    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "1"))
+    DB_POOL_TIMEOUT: int = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+    DB_POOL_RECYCLE: int = int(os.getenv("DB_POOL_RECYCLE", "600"))
+
     # Imprimir cada sentencia SQL sirve para depurar, pero llena la
     # consola y hace lento el arranque. Se activa con SQL_ECHO=1.
     SQL_ECHO: bool = os.getenv("SQL_ECHO", "0").strip().lower() in ("1", "true", "si", "sí")

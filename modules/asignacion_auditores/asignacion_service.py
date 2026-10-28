@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from modules.solicitudes import estado_solicitud as estados
 from modules.asignacion_auditores.asignacion_schema import AsignacionAuditorCrear
 
 
@@ -125,7 +126,10 @@ class AsignacionAuditorService:
         norma = (norma or "").strip() or None
         sector = (sector or "").strip() or None
 
-        filtros = ["s.estado = 'APROBADO'", "s.deleted_at IS NULL"]
+        # El estado se compara contra el catalogo de M5: la tabla llego a
+        # tener 'APROBADO' y 'Aprobada', y un literal exacto dejaba fuera a
+        # las solicitudes escritas con la otra grafia.
+        filtros = [f"s.estado = '{estados.APROBADA}'", "s.deleted_at IS NULL"]
         params: dict = {}
         if buscar:
             filtros.append(

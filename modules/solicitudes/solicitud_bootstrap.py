@@ -20,6 +20,7 @@ from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
 from core.logger import logger
+from modules.solicitudes import estado_solicitud as estados
 from modules.solicitudes.solicitud_permissions import ROL_PUB
 
 # Roles que exige la matriz de M5 y que no están en la tabla `rol`.
@@ -58,6 +59,53 @@ async def ensure_solicitudes_schema(session) -> None:
     await session.execute(text("""
         CREATE INDEX IF NOT EXISTS idx_historial_estado_solicitud
             ON historial_estado (id_solicitud);
+    """))
+
+
+async def ensure_estados_canonicos(session) -> None:
+    """
+    Deja un solo nombre por estado y lo deja cerrado.
+
+    La tabla tenia 'Radicada' y 'RADICADO', 'APROBADO' y 'Aprobada'. Para una
+    consulta no son lo mismo: cada comparacion con un literal exacto perdia
+    las filas escritas con la otra grafia. Aqui se reescriben al valor
+    canonico de `estado_solicitud` y se anade una restriccion para que una
+    grafia nueva falle al escribirse en vez de ensuciar en silencio.
+
+    Es idempotente: si ya estan normalizados, los UPDATE no tocan ninguna fila.
+    """
+    casos = "\n".join(
+        f"            WHEN '{alias}' THEN '{canonico}'"
+        for alias, canonico in estados.ALIAS.items()
+    )
+    expresion = (
+        "CASE UPPER(TRANSLATE(TRIM(COALESCE(estado, '')), "
+        "'ÁÉÍÓÚÜÑáéíóúüñ_', 'AEIOUUNaeiouun '))\n"
+        f"{casos}\n"
+        "            ELSE estado\n"
+        "        END"
+    )
+
+    for tabla in ("solicitud", "historial_estado"):
+        await session.execute(text(f"""
+            UPDATE {tabla}
+            SET estado = {expresion}
+            WHERE estado IS NOT NULL AND estado <> ({expresion});
+        """))
+
+    admitidos = ", ".join(f"'{estado}'" for estado in estados.ESTADOS)
+    await session.execute(text(f"""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'chk_estado_solicitud'
+            ) THEN
+                ALTER TABLE solicitud DROP CONSTRAINT chk_estado_solicitud;
+            END IF;
+            ALTER TABLE solicitud
+            ADD CONSTRAINT chk_estado_solicitud
+            CHECK (estado IN ({admitidos}));
+        END $$;
     """))
 
 
@@ -212,6 +260,7 @@ async def preparar_modulo_solicitudes() -> None:
         try:
             await ensure_solicitudes_schema(session)
             await ensure_bloques_5_a_7(session)
+            await ensure_estados_canonicos(session)
             await seed_roles_solicitudes(session)
             await session.commit()
             logger.info("Modulo M5 (solicitudes) preparado correctamente.")

@@ -58,13 +58,39 @@ class UserService:
       )
 
     role_check = await self.db.execute(
-        text('SELECT id_rol FROM rol WHERE id_rol = :rol;'), {'rol': user_data.rol}
+        text('SELECT id_rol, nombre FROM rol WHERE id_rol = :rol;'), {'rol': user_data.rol}
     )
-    if not role_check.first():
+    rol = role_check.mappings().first()
+    if not rol:
       raise HTTPException(
           status_code=status.HTTP_400_BAD_REQUEST,
           detail='El rol proveído no existe.',
       )
+
+    es_empresa = (rol["nombre"] or '').strip().lower() == 'empresa'
+
+    if es_empresa:
+      # empresa.nit y empresa.correo son UNIQUE: se valida antes de crear la
+      # cuenta para no dejar usuarios Empresa sin empresa asociada.
+      nit_existente = await self.db.execute(
+          text('SELECT id_empresa FROM empresa WHERE nit = :nit;'),
+          {'nit': user_data.num_doc},
+      )
+      if nit_existente.first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='El NIT ya está registrado como empresa.',
+        )
+
+      correo_empresa = await self.db.execute(
+          text('SELECT id_empresa FROM empresa WHERE LOWER(correo) = LOWER(:correo);'),
+          {'correo': user_data.correo},
+      )
+      if correo_empresa.first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='El correo ya está registrado como empresa.',
+        )
 
     password = user_data.contrasena
 
@@ -95,8 +121,34 @@ class UserService:
               'num_doc': user_data.num_doc,
           },
       )
-      await self.db.commit()
       row = result.mappings().first()
+
+      if es_empresa and row:
+        # La cuenta Empresa debe aparecer de inmediato en el listado del
+        # administrador, que lee la tabla `empresa`, no `usuario`.
+        empresa = await self.db.execute(
+            text("""
+                INSERT INTO empresa (id_empresa, nombre, nit, correo)
+                VALUES (gen_random_uuid(), :nombre, :nit, :correo)
+                RETURNING id_empresa;
+            """),
+            {
+                'nombre': user_data.nombre,
+                'nit': user_data.num_doc,
+                'correo': user_data.correo,
+            },
+        )
+        id_empresa = empresa.mappings().first()["id_empresa"]
+        await self.db.execute(
+            text("""
+                INSERT INTO user_empresa (id_usuario, id_empresa, estado)
+                VALUES (:id_usuario, :id_empresa, 'Activo')
+                ON CONFLICT (id_usuario, id_empresa) DO NOTHING;
+            """),
+            {'id_usuario': row["id_usuario"], 'id_empresa': id_empresa},
+        )
+
+      await self.db.commit()
       return {k: v for k, v in row.items()} if row else {}
     except IntegrityError as e:
       await self.db.rollback()
@@ -111,6 +163,16 @@ class UserService:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='El correo ya está registrado.',
+        )
+      if 'uq_empresa_nit' in detalle:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='El NIT ya está registrado como empresa.',
+        )
+      if 'empresa_correo_key' in detalle:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='El correo ya está registrado como empresa.',
         )
       raise HTTPException(
           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from fastapi import HTTPException, status
 from sqlalchemy import text
 
+from modules.solicitudes import estado_solicitud as estados
 from modules.auditores.auditor_service import AuditorService
 from modules.agenda_auditor.agenda_schema import (
     DisponibilidadEditar,
@@ -472,7 +473,9 @@ class AgendaAuditorService(AuditorService):
 
     async def _listar_asignaciones_programables(self, id_usuario: UUID | None):
         filtros = [
-            "UPPER(TRIM(COALESCE(s.estado, ''))) = 'APROBADO'",
+            # Contra el catalogo de M5: 'APROBADO' exacto dejaba fuera a las
+            # solicitudes guardadas como 'Aprobada'.
+            f"s.estado = '{estados.APROBADA}'",
             "UPPER(TRIM(COALESCE(a.estado_asignacion, ''))) IN ('AGENDADA', 'PROGRAMADA', 'CONFIRMADO')",
             "UPPER(TRIM(COALESCE(u.estado, ''))) = 'ACTIVO'",
             "UPPER(TRIM(COALESCE(u.estado_auditor, ''))) IN ('ACTIVO', 'APROBADO', 'APROBADA')",
