@@ -24,6 +24,9 @@
             --shadow-hover: 0 8px 24px rgba(32, 74, 25, .10);
             --radius-card: 14px;
             --radius-control: 8px;
+            --portal-border: #e2e8f0;
+            --sombra-portal: 0 12px 32px rgba(15, 35, 22, .055);
+            --sena-green-soft: #f1f5f9;
         }
 
         * { box-sizing: border-box; }
@@ -81,76 +84,44 @@
             opacity: .92;
         }
 
-        .login-header .profile-link {
-            color: #fff;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 13.5px;
-            padding: 9px 15px;
-            border: 1px solid rgba(255, 255, 255, .35);
-            border-radius: 999px;
-            background: rgba(255, 255, 255, .08);
-            transition: .18s ease;
-        }
-
-        .login-header .profile-link:hover {
-            background: rgba(255, 255, 255, .18);
-            border-color: rgba(255, 255, 255, .55);
-        }
-
         /* =========================================================
-           LAYOUT
+           LAYOUT + MENU LATERAL
+           Mismo tamaño, diseño, posición y distancia que el menú de
+           static/auditor.html.
         ========================================================= */
         .portal-shell {
-            width: 100%;
             max-width: var(--ancho-contenido);
             margin: 0 auto;
-            padding: 24px 24px 48px;
-        }
-
-        .portal-grid {
+            padding: 18px 22px 28px;
             display: grid;
-            grid-template-columns: 250px minmax(0, 1fr);
-            gap: 22px;
+            grid-template-columns: 218px minmax(0, 1fr);
             align-items: start;
+            gap: 16px;
         }
 
-        /* =========================================================
-           SIDEBAR
-        ========================================================= */
         .side {
+            min-width: 0;
+            border: 1px solid var(--portal-border);
+            border-radius: 13px;
+            background: #fff;
+            box-shadow: var(--sombra-portal);
+            padding: 10px;
             position: sticky;
             top: 20px;
             align-self: start;
-            padding: 13px;
-            background: var(--white);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-card);
-            box-shadow: var(--shadow-card);
-        }
-
-        .side h3 {
-            margin: 5px 12px 12px;
-            color: var(--muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: .12em;
-            font-weight: 800;
+            z-index: 100;
         }
 
         .side a {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            padding: 11px 12px;
-            margin: 2px 0;
-            color: #334155;
-            text-decoration: none;
+            display: block;
             font-size: 13.5px;
-            font-weight: 600;
             line-height: 1.35;
+            padding: 8px 10px;
+            margin: 1px 0;
             border-left: 3px solid transparent;
             border-radius: 0 9px 9px 0;
+            color: #334155;
+            text-decoration: none;
             transition: background .18s ease, color .18s ease, border-color .18s ease;
         }
 
@@ -160,29 +131,57 @@
         }
 
         .side a.active {
-            background: var(--sena-green-light);
             color: var(--sena-green-dark);
+            background: var(--sena-green-soft);
             border-left-color: var(--sena-green-bright);
-            font-weight: 750;
+            font-weight: 700;
         }
 
-        .side a .side-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 7px;
-            background: #e2e8f0;
-            color: var(--sena-green-dark);
-            font-size: 11px;
-            font-weight: 800;
-            flex-shrink: 0;
-            transition: .18s ease;
+        @media (max-width: 980px) {
+            .portal-shell {
+                grid-template-columns: 205px minmax(0, 1fr);
+                padding: 16px;
+                gap: 13px;
+            }
         }
 
-        .side a.active .side-icon {
-            background: var(--sena-green-bright);
+        @media (max-width: 720px) {
+            .portal-shell {
+                grid-template-columns: 1fr;
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .side {
+                position: static;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 5px;
+                padding: 8px;
+            }
+
+            .side a {
+                margin: 0;
+                padding: 8px;
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 8px;
+            }
+
+            .side a.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--sena-green-bright);
+            }
+        }
+
+        /* El boton "Panel" del encabezado, sin el fondo blanco por defecto. */
+        .comite-header-user .comite-back-button {
+            background: transparent;
+            color: #fff;
+        }
+
+        .comite-header-user .comite-back-button:hover {
+            background: rgba(255, 255, 255, 0.12);
             color: #fff;
         }
 
@@ -201,35 +200,6 @@
             flex-direction: column;
             gap: 6px;
             margin-bottom: 4px;
-        }
-
-        .page-head-top {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 6px;
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--sena-green-dark);
-            background: #fff;
-            border: 1px solid #cfe3c5;
-            border-radius: 8px;
-            padding: 9px 15px;
-            font-size: 13px;
-            font-weight: 700;
-            text-decoration: none;
-            transition: .18s ease;
-        }
-
-        .back-link:hover {
-            background: var(--sena-green-light);
-            border-color: var(--sena-green);
-            transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(57, 169, 0, .10);
         }
 
         .page-head h1 {
@@ -635,43 +605,15 @@
         /* =========================================================
            RESPONSIVE
         ========================================================= */
-        @media (max-width: 1000px) {
-            .portal-grid { grid-template-columns: 1fr; }
-
-            .side {
-                position: static;
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 5px;
-            }
-
-            .side h3 { grid-column: 1 / -1; }
-
-            .side a {
-                margin: 0;
-                border-left: 0;
-                border-bottom: 2px solid transparent;
-                border-radius: 8px;
-            }
-
-            .side a.active {
-                border-left-color: transparent;
-                border-bottom-color: var(--sena-green-bright);
-            }
-        }
-
         @media (max-width: 700px) {
-            .portal-shell { padding: 16px 12px 32px; }
             .grid { grid-template-columns: 1fr; }
             .field.full { grid-column: auto; }
             .panel-body { padding: 16px; }
             .panel-head { padding: 14px 16px; }
-            .side { grid-template-columns: 1fr; }
             .weekday-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
             .login-header .sena-blanco { width: 58px; }
             .login-header h1 { font-size: 21px; }
             .login-header .subtitle { font-size: 12px; }
-            .login-header .profile-link { font-size: 12px; padding: 7px 12px; }
         }
 
         @media (max-width: 400px) {
@@ -820,227 +762,201 @@
                     <p class="subtitle">Disponibilidad semanal - Auditor</p>
                 </div>
             </div>
-            <a class="profile-link" href="/profile">Mi perfil</a>
+            <div class="comite-header-user">
+                <a class="comite-back-button" href="/dashboard">Panel</a>
+                <a class="profile-link" href="/perfil-auditor">Mi perfil</a>
+                <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+            </div>
         </div>
     </header>
 
     <main class="portal-shell">
-        <div class="portal-grid">
-
-            <!-- =========================================================
-                 MENÚ LATERAL
-            ========================================================= -->
-            <nav class="side" aria-label="Navegación de disponibilidad">
-                <h3>Gestión de disponibilidad</h3>
-
-                <a href="#configurar-horario" data-seccion="configurar-horario" class="active">
-                    <span class="side-icon">1</span>
-                    <span>Horario semanal</span>
-                </a>
-
-                <a href="#bloquear-fecha" data-seccion="bloquear-fecha">
-                    <span class="side-icon">2</span>
-                    <span>Bloquear fecha</span>
-                </a>
-
-                <a href="#desbloquear-fecha" data-seccion="desbloquear-fecha">
-                    <span class="side-icon">3</span>
-                    <span>Desbloquear fecha</span>
-                </a>
-
-                <a href="#disponibilidad-extraordinaria" data-seccion="disponibilidad-extraordinaria">
-                    <span class="side-icon">4</span>
-                    <span>Disponibilidad extraordinaria</span>
-                </a>
-
-                <a href="#historial-disponibilidad" data-seccion="historial-disponibilidad">
-                    <span class="side-icon">5</span>
-                    <span>Historial</span>
-                </a>
-            </nav>
+        <!-- MENÚ LATERAL: mismo diseno y tamano que el de static/auditor.html,
+             con los apartados propios de esta pantalla. -->
+        <nav class="side" aria-label="Navegación de disponibilidad">
+            <a href="#configurar-horario" data-seccion="configurar-horario" class="active">Horario semanal</a>
+            <a href="#bloquear-fecha" data-seccion="bloquear-fecha">Bloquear fecha</a>
+            <a href="#desbloquear-fecha" data-seccion="desbloquear-fecha">Desbloquear fecha</a>
+            <a href="#disponibilidad-extraordinaria" data-seccion="disponibilidad-extraordinaria">Disponibilidad extraordinaria</a>
+            <a href="#historial-disponibilidad" data-seccion="historial-disponibilidad">Historial</a>
+        </nav>
 
             <!-- =========================================================
                  CONTENIDO
             ========================================================= -->
-            <section class="content">
+        <section class="content">
 
-                <div class="page-head">
-                    <div class="page-head-top">
-                        <a href="/auditor" class="back-link">
-                            <span aria-hidden="true">←</span> Regresar
-                        </a>
-                    </div>
-                    <h1 id="pageTitle">Configurar horario semanal</h1>
-                    <p id="pageSubtitle">Define los días de la semana y la vigencia en los que estás disponible para atender auditorías.</p>
+            <div class="page-head">
+                <h1 id="pageTitle">Configurar horario semanal</h1>
+                <p id="pageSubtitle">Define los días de la semana y la vigencia en los que estás disponible para atender auditorías.</p>
+            </div>
+
+            <!-- ================================================
+                 SECCIÓN 1: CONFIGURAR HORARIO SEMANAL
+            ================================================= -->
+            <section id="configurar-horario" class="panel panel-section seccion-visible" data-seccion="configurar-horario">
+                <div class="panel-head">
+                    <h2>1. Configurar horario semanal</h2>
+                    <span class="pill">Recurrente por día</span>
                 </div>
-
-                <!-- ================================================
-                     SECCIÓN 1: CONFIGURAR HORARIO SEMANAL
-                ================================================= -->
-                <section id="configurar-horario" class="panel panel-section seccion-visible" data-seccion="configurar-horario">
-                    <div class="panel-head">
-                        <h2>1. Configurar horario semanal</h2>
-                        <span class="pill">Recurrente por día</span>
+                <div class="panel-body">
+                    <div class="section-note">
+                        <span class="note-icon" aria-hidden="true">ℹ</span>
+                        <span>
+                            <strong>¿Cómo funciona?</strong> Selecciona los días de la semana en los que puedes
+                            atender auditorías y define un rango de vigencia. El patrón se repetirá automáticamente
+                            dentro de ese rango.
+                        </span>
                     </div>
-                    <div class="panel-body">
-                        <div class="section-note">
-                            <span class="note-icon" aria-hidden="true">ℹ</span>
-                            <span>
-                                <strong>¿Cómo funciona?</strong> Selecciona los días de la semana en los que puedes
-                                atender auditorías y define un rango de vigencia. El patrón se repetirá automáticamente
-                                dentro de ese rango.
-                            </span>
-                        </div>
 
-                        <form id="weeklyForm">
-                            <div class="grid">
-                                <div class="field">
-                                    <label for="weeklyFrom">Vigente desde</label>
-                                    <input type="date" id="weeklyFrom" required>
-                                </div>
-                                <div class="field">
-                                    <label for="weeklyUntil">Vigente hasta (opcional)</label>
-                                    <input type="date" id="weeklyUntil">
-                                </div>
-                            </div>
-
-                            <div class="field" style="margin-top:16px;">
-                                <label for="weeklyReason">Motivo / observación</label>
-                                <input id="weeklyReason" maxlength="500" placeholder="Ej. Disponibilidad semanal">
-                            </div>
-
-                            <div class="hint" style="margin-top:16px;">Selecciona los días de la semana disponibles:</div>
-                            <div class="weekday-grid" id="weekdayGrid"></div>
-
-                            <div class="actions">
-                                <button type="submit" class="btn-primary">Guardar disponibilidad semanal</button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-
-                <!-- ================================================
-                     SECCIÓN 2: BLOQUEAR FECHA
-                ================================================= -->
-                <section id="bloquear-fecha" class="panel panel-section" data-seccion="bloquear-fecha">
-                    <div class="panel-head">
-                        <h2>2. Bloquear fecha del calendario</h2>
-                        <span class="pill">Bloqueo de día completo</span>
-                    </div>
-                    <div class="panel-body">
-                        <div class="section-note">
-                            <span class="note-icon" aria-hidden="true">ℹ</span>
-                            <span>
-                                <strong>Bloquea un día específico</strong> para indicar que no podrás atender
-                                auditorías (permisos, incapacidades, compromisos personales, etc.).
-                            </span>
-                        </div>
-
-                        <form id="blockForm">
+                    <form id="weeklyForm">
+                        <div class="grid">
                             <div class="field">
-                                <label for="blockDate">Fecha a bloquear</label>
-                                <input type="date" id="blockDate" required>
+                                <label for="weeklyFrom">Vigente desde</label>
+                                <input type="date" id="weeklyFrom" required>
                             </div>
-                            <div class="field" style="margin-top:16px;">
-                                <label for="blockReason">Motivo</label>
-                                <input id="blockReason" maxlength="500" placeholder="Motivo del bloqueo">
+                            <div class="field">
+                                <label for="weeklyUntil">Vigente hasta (opcional)</label>
+                                <input type="date" id="weeklyUntil">
                             </div>
-                            <div class="actions">
-                                <button type="submit" class="btn-primary">Bloquear fecha</button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-
-                <!-- ================================================
-                     SECCIÓN 3: DESBLOQUEAR FECHA
-                ================================================= -->
-                <section id="desbloquear-fecha" class="panel panel-section" data-seccion="desbloquear-fecha">
-                    <div class="panel-head">
-                        <h2>3. Desbloquear fecha del calendario</h2>
-                        <span class="pill">Liberar día</span>
-                    </div>
-                    <div class="panel-body">
-                        <div class="section-note">
-                            <span class="note-icon" aria-hidden="true">ℹ</span>
-                            <span>
-                                <strong>Libera un día previamente bloqueado</strong> para que vuelva a estar disponible
-                                para asignación de auditorías.
-                            </span>
                         </div>
 
-                        <p class="hint" style="margin-bottom:16px;">Seleccione una fecha bloqueada para desbloquear.</p>
-
-                        <div class="table-wrap" id="bloqueadasTable">
-                            <div class="empty">Cargando fechas bloqueadas...</div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- ================================================
-                     SECCIÓN 4: DISPONIBILIDAD EXTRAORDINARIA
-                ================================================= -->
-                <section id="disponibilidad-extraordinaria" class="panel panel-section" data-seccion="disponibilidad-extraordinaria">
-                    <div class="panel-head">
-                        <h2>4. Registrar disponibilidad extraordinaria</h2>
-                        <span class="pill">Excepción al horario</span>
-                    </div>
-                    <div class="panel-body">
-                        <div class="section-note">
-                            <span class="note-icon" aria-hidden="true">ℹ</span>
-                            <span>
-                                <strong>Registra una franja disponible fuera de tu horario habitual.</strong> Ideal para
-                                cubrir un rango de fechas que no sigue el patrón semanal (reemplazos, jornadas
-                                especiales, etc.).
-                            </span>
+                        <div class="field" style="margin-top:16px;">
+                            <label for="weeklyReason">Motivo / observación</label>
+                            <input id="weeklyReason" maxlength="500" placeholder="Ej. Disponibilidad semanal">
                         </div>
 
-                        <form id="extraForm">
-                            <div class="grid">
-                                <div class="field">
-                                    <label for="extraFrom">Vigente desde</label>
-                                    <input type="date" id="extraFrom" required>
-                                </div>
-                                <div class="field">
-                                    <label for="extraUntil">Vigente hasta</label>
-                                    <input type="date" id="extraUntil" required>
-                                </div>
-                            </div>
+                        <div class="hint" style="margin-top:16px;">Selecciona los días de la semana disponibles:</div>
+                        <div class="weekday-grid" id="weekdayGrid"></div>
 
-                            <div class="field" style="margin-top:16px;">
-                                <label for="extraReason">Motivo</label>
-                                <input id="extraReason" maxlength="500" placeholder="Motivo de disponibilidad extraordinaria">
-                            </div>
-
-                            <div class="actions">
-                                <button type="submit" class="btn-primary">Registrar disponibilidad</button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-
-                <!-- ================================================
-                     SECCIÓN 5: HISTORIAL DE DISPONIBILIDAD
-                ================================================= -->
-                <section id="historial-disponibilidad" class="panel panel-section" data-seccion="historial-disponibilidad">
-                    <div class="panel-head">
-                        <h2>5. Historial de disponibilidad</h2>
-                        <span class="pill">Trazabilidad</span>
-                    </div>
-                    <div class="panel-body">
-                        <div class="section-note">
-                            <span class="note-icon" aria-hidden="true">ℹ</span>
-                            <span>
-                                <strong>Historial completo.</strong> Aquí se listarán todos los registros de
-                                disponibilidad, bloqueos y desbloqueos que has realizado.
-                            </span>
+                        <div class="actions">
+                            <button type="submit" class="btn-primary">Guardar disponibilidad semanal</button>
                         </div>
-                        <p class="hint">Las disponibilidades registradas aparecerán aquí.</p>
-                    </div>
-                </section>
-
+                    </form>
+                </div>
             </section>
-        </div>
+
+            <!-- ================================================
+                 SECCIÓN 2: BLOQUEAR FECHA
+            ================================================= -->
+            <section id="bloquear-fecha" class="panel panel-section" data-seccion="bloquear-fecha">
+                <div class="panel-head">
+                    <h2>2. Bloquear fecha del calendario</h2>
+                    <span class="pill">Bloqueo de día completo</span>
+                </div>
+                <div class="panel-body">
+                    <div class="section-note">
+                        <span class="note-icon" aria-hidden="true">ℹ</span>
+                        <span>
+                            <strong>Bloquea un día específico</strong> para indicar que no podrás atender
+                            auditorías (permisos, incapacidades, compromisos personales, etc.).
+                        </span>
+                    </div>
+
+                    <form id="blockForm">
+                        <div class="field">
+                            <label for="blockDate">Fecha a bloquear</label>
+                            <input type="date" id="blockDate" required>
+                        </div>
+                        <div class="field" style="margin-top:16px;">
+                            <label for="blockReason">Motivo</label>
+                            <input id="blockReason" maxlength="500" placeholder="Motivo del bloqueo">
+                        </div>
+                        <div class="actions">
+                            <button type="submit" class="btn-primary">Bloquear fecha</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ================================================
+                 SECCIÓN 3: DESBLOQUEAR FECHA
+            ================================================= -->
+            <section id="desbloquear-fecha" class="panel panel-section" data-seccion="desbloquear-fecha">
+                <div class="panel-head">
+                    <h2>3. Desbloquear fecha del calendario</h2>
+                    <span class="pill">Liberar día</span>
+                </div>
+                <div class="panel-body">
+                    <div class="section-note">
+                        <span class="note-icon" aria-hidden="true">ℹ</span>
+                        <span>
+                            <strong>Libera un día previamente bloqueado</strong> para que vuelva a estar disponible
+                            para asignación de auditorías.
+                        </span>
+                    </div>
+
+                    <p class="hint" style="margin-bottom:16px;">Seleccione una fecha bloqueada para desbloquear.</p>
+
+                    <div class="table-wrap" id="bloqueadasTable">
+                        <div class="empty">Cargando fechas bloqueadas...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================================================
+                 SECCIÓN 4: DISPONIBILIDAD EXTRAORDINARIA
+            ================================================= -->
+            <section id="disponibilidad-extraordinaria" class="panel panel-section" data-seccion="disponibilidad-extraordinaria">
+                <div class="panel-head">
+                    <h2>4. Registrar disponibilidad extraordinaria</h2>
+                    <span class="pill">Excepción al horario</span>
+                </div>
+                <div class="panel-body">
+                    <div class="section-note">
+                        <span class="note-icon" aria-hidden="true">ℹ</span>
+                        <span>
+                            <strong>Registra una franja disponible fuera de tu horario habitual.</strong> Ideal para
+                            cubrir un rango de fechas que no sigue el patrón semanal (reemplazos, jornadas
+                            especiales, etc.).
+                        </span>
+                    </div>
+
+                    <form id="extraForm">
+                        <div class="grid">
+                            <div class="field">
+                                <label for="extraFrom">Vigente desde</label>
+                                <input type="date" id="extraFrom" required>
+                            </div>
+                            <div class="field">
+                                <label for="extraUntil">Vigente hasta</label>
+                                <input type="date" id="extraUntil" required>
+                            </div>
+                        </div>
+
+                        <div class="field" style="margin-top:16px;">
+                            <label for="extraReason">Motivo</label>
+                            <input id="extraReason" maxlength="500" placeholder="Motivo de disponibilidad extraordinaria">
+                        </div>
+
+                        <div class="actions">
+                            <button type="submit" class="btn-primary">Registrar disponibilidad</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ================================================
+                 SECCIÓN 5: HISTORIAL DE DISPONIBILIDAD
+            ================================================= -->
+            <section id="historial-disponibilidad" class="panel panel-section" data-seccion="historial-disponibilidad">
+                <div class="panel-head">
+                    <h2>5. Historial de disponibilidad</h2>
+                    <span class="pill">Trazabilidad</span>
+                </div>
+                <div class="panel-body">
+                    <div class="section-note">
+                        <span class="note-icon" aria-hidden="true">ℹ</span>
+                        <span>
+                            <strong>Historial completo.</strong> Aquí se listarán todos los registros de
+                            disponibilidad, bloqueos y desbloqueos que has realizado.
+                        </span>
+                    </div>
+                    <p class="hint">Las disponibilidades registradas aparecerán aquí.</p>
+                </div>
+            </section>
+
+        </section>
     </main>
 
     <!-- =========================================================
@@ -1588,6 +1504,17 @@
                 e.preventDefault();
                 mostrarSeccion(a.dataset.seccion, true);
             });
+        });
+
+        function cerrarSesion(evento) {
+            evento.preventDefault();
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+
+        ['logout', 'logoutButton'].forEach((id) => {
+            const enlace = document.getElementById(id);
+            if (enlace) enlace.addEventListener('click', cerrarSesion);
         });
 
         const hash = (window.location.hash || '').replace('#', '');

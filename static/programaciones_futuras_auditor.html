@@ -25,6 +25,9 @@
             --shadow-hover: 0 8px 24px rgba(32, 74, 25, .10);
             --radius-card: 14px;
             --radius-control: 8px;
+            --portal-border: #e2e8f0;
+            --sombra-portal: 0 12px 32px rgba(15, 35, 22, .055);
+            --sena-green-soft: #f1f5f9;
         }
 
         * { box-sizing: border-box; }
@@ -82,76 +85,44 @@
             opacity: .92;
         }
 
-        .login-header .profile-link {
-            color: #fff;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 13.5px;
-            padding: 9px 15px;
-            border: 1px solid rgba(255, 255, 255, .35);
-            border-radius: 999px;
-            background: rgba(255, 255, 255, .08);
-            transition: .18s ease;
-        }
-
-        .login-header .profile-link:hover {
-            background: rgba(255, 255, 255, .18);
-            border-color: rgba(255, 255, 255, .55);
-        }
-
         /* =========================================================
-           LAYOUT
+           LAYOUT + MENU LATERAL
+           Mismo tamaño, diseño, posición y distancia que el menú de
+           static/auditor.html.
         ========================================================= */
         .portal-shell {
-            width: 100%;
             max-width: var(--ancho-contenido);
             margin: 0 auto;
-            padding: 24px 24px 48px;
-        }
-
-        .portal-grid {
+            padding: 18px 22px 28px;
             display: grid;
-            grid-template-columns: 250px minmax(0, 1fr);
-            gap: 22px;
+            grid-template-columns: 218px minmax(0, 1fr);
             align-items: start;
+            gap: 16px;
         }
 
-        /* =========================================================
-           SIDEBAR
-        ========================================================= */
         .side {
+            min-width: 0;
+            border: 1px solid var(--portal-border);
+            border-radius: 13px;
+            background: #fff;
+            box-shadow: var(--sombra-portal);
+            padding: 10px;
             position: sticky;
             top: 20px;
             align-self: start;
-            padding: 13px;
-            background: var(--white);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-card);
-            box-shadow: var(--shadow-card);
-        }
-
-        .side h3 {
-            margin: 5px 12px 12px;
-            color: var(--muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: .12em;
-            font-weight: 800;
+            z-index: 100;
         }
 
         .side a {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            padding: 11px 12px;
-            margin: 2px 0;
-            color: #334155;
-            text-decoration: none;
+            display: block;
             font-size: 13.5px;
-            font-weight: 600;
             line-height: 1.35;
+            padding: 8px 10px;
+            margin: 1px 0;
             border-left: 3px solid transparent;
             border-radius: 0 9px 9px 0;
+            color: #334155;
+            text-decoration: none;
             transition: background .18s ease, color .18s ease, border-color .18s ease;
         }
 
@@ -161,47 +132,238 @@
         }
 
         .side a.active {
-            background: var(--sena-green-light);
             color: var(--sena-green-dark);
+            background: var(--sena-green-soft);
             border-left-color: var(--sena-green-bright);
-            font-weight: 750;
+            font-weight: 700;
         }
 
-        .side a .side-icon {
-            display: inline-flex;
+        @media (max-width: 980px) {
+            .portal-shell {
+                grid-template-columns: 205px minmax(0, 1fr);
+                padding: 16px;
+                gap: 13px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .portal-shell {
+                grid-template-columns: 1fr;
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .side {
+                position: static;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 5px;
+                padding: 8px;
+            }
+
+            .side a {
+                margin: 0;
+                padding: 8px;
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 8px;
+            }
+
+            .side a.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--sena-green-bright);
+            }
+        }
+
+        /* =========================================================
+           DROPDOWN "MI REGISTRO"
+        ========================================================= */
+        .side .dropdown-registro {
+            position: relative;
+            z-index: 101;
+        }
+
+        .side .dropdown-registro>a.menu-toggle {
+            display: flex;
             align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 7px;
-            background: #e2e8f0;
-            color: var(--sena-green-dark);
-            font-size: 11px;
-            font-weight: 800;
-            flex-shrink: 0;
-            transition: .18s ease;
+            justify-content: space-between;
+            gap: 8px;
+            cursor: pointer;
         }
 
-        .side a.active .side-icon {
-            background: var(--sena-green-bright);
+        .side .dropdown-registro>a.menu-toggle .dropdown-arrow {
+            font-size: 10px;
+            line-height: 1;
+            opacity: 0.65;
+            transition: transform .2s ease;
+        }
+
+        .side .dropdown-registro:hover>a.menu-toggle .dropdown-arrow,
+        .side .dropdown-registro:focus-within>a.menu-toggle .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .side .dropdown-registro .dropdown-content {
+            position: absolute;
+            top: 0;
+            left: calc(100% + 10px);
+            min-width: 240px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px;
+            background: #ffffff;
+            border: 1px solid var(--portal-border);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(15, 35, 22, .18);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-10px) translateZ(0);
+            transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 9999;
+            pointer-events: none;
+            isolation: isolate;
+        }
+
+        /* Flecha del tooltip */
+        .side .dropdown-registro .dropdown-content::before {
+            content: "";
+            position: absolute;
+            top: 16px;
+            left: -6px;
+            width: 10px;
+            height: 10px;
+            background: #ffffff;
+            border-left: 1px solid var(--portal-border);
+            border-bottom: 1px solid var(--portal-border);
+            transform: rotate(45deg);
+            z-index: 1;
+        }
+
+        /* Puente invisible para evitar que el menú se cierre al mover el ratón */
+        .side .dropdown-registro .dropdown-content::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -15px;
+            width: 15px;
+            height: 100%;
+        }
+
+        .side .dropdown-registro:hover .dropdown-content,
+        .side .dropdown-registro:focus-within .dropdown-content {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0) translateZ(0);
+            pointer-events: auto;
+        }
+
+        .side .dropdown-registro .dropdown-content a {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            margin: 0;
+            color: #334155;
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.4;
+            text-decoration: none;
+            border-radius: 8px;
+            border-left: none;
+            transition: background .15s ease, color .15s ease;
+            white-space: nowrap;
+        }
+
+        .side .dropdown-registro .dropdown-content a:hover {
+            background: var(--sena-green-soft);
+            color: var(--sena-green-dark);
+        }
+
+        .side .dropdown-registro .dropdown-content a.active {
+            color: var(--sena-green-dark);
+            background: var(--sena-green-soft);
+            font-weight: 700;
+        }
+
+        /* Mantiene resaltado el botón "Mi registro" cuando un hijo está activo */
+        .side .dropdown-registro:has(.dropdown-content a.active)>a.menu-toggle {
+            color: var(--sena-green-dark);
+            background: var(--sena-green-soft);
+            border-left-color: var(--sena-green-bright);
+            font-weight: 700;
+        }
+
+        /* Cierre explícito del desplegable "Mi registro" */
+        .side .dropdown-registro.cerrado .dropdown-content {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-10px) translateZ(0);
+            pointer-events: none;
+            transition-duration: 0.15s;
+        }
+
+        /* Adaptación móvil: el dropdown se muestra inline */
+        @media (max-width: 720px) {
+            .side .dropdown-registro {
+                grid-column: 1 / -1;
+            }
+
+            .side .dropdown-registro>a.menu-toggle {
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 8px;
+            }
+
+            .side .dropdown-registro:has(.dropdown-content a.active)>a.menu-toggle {
+                border-left-color: transparent;
+                border-bottom-color: var(--sena-green-bright);
+            }
+
+            .side .dropdown-registro .dropdown-content {
+                position: static;
+                left: auto;
+                top: auto;
+                margin: 4px 0 0;
+                min-width: 0;
+                padding: 4px 0 4px 10px;
+                background: transparent;
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+                pointer-events: auto;
+                display: none;
+            }
+
+            .side .dropdown-registro .dropdown-content::before,
+            .side .dropdown-registro .dropdown-content::after {
+                display: none;
+            }
+
+            .side .dropdown-registro:hover .dropdown-content,
+            .side .dropdown-registro:focus-within .dropdown-content {
+                display: flex;
+            }
+
+            .side .dropdown-registro .dropdown-content a {
+                white-space: normal;
+                border-left: 3px solid transparent;
+                border-radius: 0 8px 8px 0;
+                padding: 8px 10px;
+            }
+        }
+
+        /* El boton "Panel" del encabezado, sin el fondo blanco por defecto. */
+        .comite-header-user .comite-back-button {
+            background: transparent;
             color: #fff;
         }
 
-        .side .logout-link {
-            margin-top: 10px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 14px;
-            color: #b42318;
-        }
-
-        .side .logout-link:hover {
-            background: #f1f5f9;
-            color: #b42318;
-        }
-
-        .side .logout-link .side-icon {
-            background: #fffbeb;
-            color: #b42318;
+        .comite-header-user .comite-back-button:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
         }
 
         /* =========================================================
@@ -219,35 +381,6 @@
             flex-direction: column;
             gap: 6px;
             margin-bottom: 4px;
-        }
-
-        .page-head-top {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 6px;
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--sena-green-dark);
-            background: #fff;
-            border: 1px solid #cfe3c5;
-            border-radius: 8px;
-            padding: 9px 15px;
-            font-size: 13px;
-            font-weight: 700;
-            text-decoration: none;
-            transition: .18s ease;
-        }
-
-        .back-link:hover {
-            background: var(--sena-green-light);
-            border-color: var(--sena-green);
-            transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(57, 169, 0, .10);
         }
 
         .page-head h1 {
@@ -1046,48 +1179,16 @@
 
         /* =========================================================
            RESPONSIVE
+           (El menú lateral se adapta en los @media de arriba,
+           idénticos a los de static/auditor.html.)
         ========================================================= */
-        @media (max-width: 1000px) {
-            .portal-grid { grid-template-columns: 1fr; }
-
-            .side {
-                position: static;
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 5px;
-            }
-
-            .side h3 { grid-column: 1 / -1; }
-
-            .side a {
-                margin: 0;
-                border-left: 0;
-                border-bottom: 2px solid transparent;
-                border-radius: 8px;
-            }
-
-            .side a.active {
-                border-left-color: transparent;
-                border-bottom-color: var(--sena-green-bright);
-            }
-
-            .side .logout-link {
-                border-top: 0;
-                margin-top: 0;
-                padding-top: 11px;
-            }
-        }
-
         @media (max-width: 720px) {
-            .portal-shell { padding: 16px 12px 32px; }
             .filters { grid-template-columns: 1fr; }
             .panel-body { padding: 16px; }
             .panel-head { padding: 14px 16px; }
-            .side { grid-template-columns: 1fr; }
             .login-header .sena-blanco { width: 58px; }
             .login-header h1 { font-size: 21px; }
             .login-header .subtitle { font-size: 12px; }
-            .login-header .profile-link { font-size: 12px; padding: 7px 12px; }
             .filter-actions button { width: 100%; }
             .modal-body { padding: 16px; }
             .modal-head { padding: 14px 16px; }
@@ -1114,77 +1215,91 @@
                     <p class="subtitle">Programaciones futuras del auditor</p>
                 </div>
             </div>
-            <a class="profile-link" href="/profile">Mi perfil</a>
+            <div class="comite-header-user">
+                <a class="comite-back-button" href="/dashboard">Panel</a>
+                <a class="profile-link" href="/perfil-auditor">Mi perfil</a>
+                <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+            </div>
         </div>
     </header>
 
     <main class="portal-shell">
-        <div class="portal-grid">
-
-            <nav class="side" aria-label="Navegación de agenda">
-                <h3>Consulta de agenda</h3>
-
-                <a href="/consultar-auditorias-programadas">
-                    <span class="side-icon">1</span>
-                    <span>Consultar auditorías</span>
+        <!-- MENU LATERAL: el mismo de static/auditor.html -->
+        <nav class="side" aria-label="Navegación del auditor">
+            <div class="dropdown-registro">
+                <a class="menu-toggle" href="/auditor" data-seccion="inicioRegistro">
+                    Formulario de registro
+                    <span class="dropdown-arrow" aria-hidden="true">▾</span>
                 </a>
-
-                <a href="/programaciones-futuras-auditor" class="active">
-                    <span class="side-icon">2</span>
-                    <span>Programaciones futuras</span>
-                </a>
-            </nav>
-
-            <section class="content">
-
-                <div class="page-head">
-                    <div class="page-head-top">
-                        <a href="/auditor" class="back-link">
-                            <span aria-hidden="true">←</span> Volver al Dashboard
-                        </a>
-                    </div>
-                    <h1>Programaciones futuras</h1>
-                    <p>Consulta las auditorías que tienes programadas con siete días o más de anticipación a la fecha
-                        actual. Selecciona <strong>Ver detalles</strong> para consultar toda la información de la
-                        visita.</p>
+                <div class="dropdown-content">
+                    <a href="/auditor#datos-personales" data-seccion="datos-personales">Datos personales</a>
+                    <a href="/auditor#perfil" data-seccion="perfil">Perfil Auditor</a>
+                    <a href="/auditor#competencias" data-seccion="competencias">Competencias</a>
+                    <a href="/auditor#formacion" data-seccion="formacion">Formación académica</a>
+                    <a href="/auditor#experiencia-laboral" data-seccion="experiencia-laboral">Experiencia laboral</a>
+                    <a href="/auditor#experiencia-auditoria" data-seccion="experiencia-auditoria">Experiencia en auditoría</a>
+                    <a href="/auditor#documentos-soporte" data-seccion="documentos-soporte">Documentos de soporte</a>
+                    <a href="/auditor#conflictos" data-seccion="conflictos">Conflictos de Interés</a>
                 </div>
+            </div>
 
-                <div id="mensaje"></div>
+            <a href="/auditor">Mi registro</a>
+            <a href="/consultar-estado">Consultar estado del registro</a>
+            <a href="/conflictos-auditor">Consultar conflictos registrados</a>
+            <a href="/empresas-restringidas">Consultar empresas restringidas</a>
+            <a href="/consultar-auditorias-programadas">Consultar auditorías programadas</a>
+            <a href="/programaciones-futuras-auditor" class="active" aria-current="page">Programaciones futuras</a>
+            <a href="/disponibilidad-auditor">Disponibilidad semanal</a>
+            <a href="/notificaciones-auditor">Notificaciones</a>
+            <a href="/catalogo-competencias-auditor">Catálogo de competencias</a>
+            <a href="/reportes">Reportes</a>
+            <a id="logout" href="/login">Cerrar sesión</a>
+        </nav>
 
-                <!-- ================================================
-                     LISTADO DE PROGRAMACIONES FUTURAS
-                ================================================= -->
-                <section class="panel">
-                    <div class="panel-head">
-                        <h2>Auditorías programadas a partir de siete días</h2>
-                        <span class="pill" id="pillContador">Programaciones futuras</span>
+        <section class="content">
+
+            <div class="page-head">
+                <h1>Programaciones futuras</h1>
+                <p>Consulta las auditorías que tienes programadas con siete días o más de anticipación a la fecha
+                    actual. Selecciona <strong>Ver detalles</strong> para consultar toda la información de la
+                    visita.</p>
+            </div>
+
+            <div id="mensaje"></div>
+
+            <!-- ================================================
+                 LISTADO DE PROGRAMACIONES FUTURAS
+            ================================================= -->
+            <section class="panel">
+                <div class="panel-head">
+                    <h2>Auditorías programadas a partir de siete días</h2>
+                    <span class="pill" id="pillContador">Programaciones futuras</span>
+                </div>
+                <div class="panel-body">
+                    <p class="help-text" id="ayudaCriterio">
+                        Se muestran únicamente las auditorías en las que estás asignado y cuya fecha programada
+                        sea igual o superior a siete días después de la fecha actual. Las programaciones
+                        canceladas o ya ejecutadas no se muestran.
+                    </p>
+                    <div class="record-table-wrap">
+                        <table class="record-table">
+                            <thead>
+                                <tr>
+                                    <th>Solicitud aprobada / empresa</th>
+                                    <th>Tu rol</th>
+                                    <th>Estado</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rows"></tbody>
+                        </table>
                     </div>
-                    <div class="panel-body">
-                        <p class="help-text" id="ayudaCriterio">
-                            Se muestran únicamente las auditorías en las que estás asignado y cuya fecha programada
-                            sea igual o superior a siete días después de la fecha actual. Las programaciones
-                            canceladas o ya ejecutadas no se muestran.
-                        </p>
-                        <div class="record-table-wrap">
-                            <table class="record-table">
-                                <thead>
-                                    <tr>
-                                        <th>Solicitud aprobada / empresa</th>
-                                        <th>Tu rol</th>
-                                        <th>Estado</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="rows"></tbody>
-                            </table>
-                        </div>
-                        <div class="pagination" id="paginacion"></div>
-                        <p id="resumen" class="help-text" style="margin-top:12px;margin-bottom:0;"></p>
-                    </div>
-                </section>
-
+                    <div class="pagination" id="paginacion"></div>
+                    <p id="resumen" class="help-text" style="margin-top:12px;margin-bottom:0;"></p>
+                </div>
             </section>
-        </div>
+
+        </section>
     </main>
 
     <!-- =========================================================
@@ -1471,6 +1586,17 @@
 
         document.getElementById('modalDetalle').addEventListener('click', (event) => {
             if (event.target.id === 'modalDetalle') cerrarModal();
+        });
+
+        function cerrarSesion(event) {
+            event.preventDefault();
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+
+        ['logout', 'logoutButton'].forEach((id) => {
+            const enlace = document.getElementById(id);
+            if (enlace) enlace.addEventListener('click', cerrarSesion);
         });
 
         (async function init() {

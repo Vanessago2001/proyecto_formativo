@@ -10,11 +10,115 @@
     <style>
         [hidden] { display: none !important; }
 
-        .portal-shell { max-width: var(--ancho-contenido); margin:0 auto; padding:28px; }
-        .header-logo { display:flex; align-items:center; gap:16px; }
-        .header-logo img { width:76px; height:auto; }
-        .header-logo h1 { font-size:30px; margin:0; }
-        .header-logo p { font-size:13px; opacity:.92; margin-top:6px; }
+        :root {
+            --portal-border: #e2e8f0;
+            --sombra-portal: 0 12px 32px rgba(15, 35, 22, .055);
+            --sena-green-dark: #256d00;
+            --sena-green-soft: #f1f5f9;
+            --sena-green-bright: #3baa01;
+        }
+
+        /* =========================================================
+           LAYOUT + MENU LATERAL
+           Mismo tamaño, diseño, posición y distancia que el menú de
+           static/auditor.html.
+        ========================================================= */
+        .portal-shell {
+            max-width: var(--ancho-contenido);
+            margin: 0 auto;
+            padding: 18px 22px 28px;
+            display: grid;
+            grid-template-columns: 218px minmax(0, 1fr);
+            align-items: start;
+            gap: 16px;
+        }
+
+        .side {
+            min-width: 0;
+            border: 1px solid var(--portal-border);
+            border-radius: 13px;
+            background: #fff;
+            box-shadow: var(--sombra-portal);
+            padding: 10px;
+            position: sticky;
+            top: 20px;
+            align-self: start;
+            z-index: 100;
+        }
+
+        .side a {
+            display: block;
+            font-size: 13.5px;
+            line-height: 1.35;
+            padding: 8px 10px;
+            margin: 1px 0;
+            border-left: 3px solid transparent;
+            border-radius: 0 9px 9px 0;
+            color: #334155;
+            text-decoration: none;
+            transition: background .18s ease, color .18s ease, border-color .18s ease;
+        }
+
+        .side a:hover {
+            background: #f8fafc;
+            color: var(--sena-green-dark);
+        }
+
+        .side a.active {
+            color: var(--sena-green-dark);
+            background: var(--sena-green-soft);
+            border-left-color: var(--sena-green-bright);
+            font-weight: 700;
+        }
+
+        @media (max-width: 980px) {
+            .portal-shell {
+                grid-template-columns: 205px minmax(0, 1fr);
+                padding: 16px;
+                gap: 13px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .portal-shell {
+                grid-template-columns: 1fr;
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .side {
+                position: static;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 5px;
+                padding: 8px;
+            }
+
+            .side a {
+                margin: 0;
+                padding: 8px;
+                border-left: 0;
+                border-bottom: 2px solid transparent;
+                border-radius: 8px;
+            }
+
+            .side a.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--sena-green-bright);
+            }
+        }
+
+        /* El boton "Panel" del encabezado, sin el fondo blanco por defecto. */
+        .comite-header-user .comite-back-button {
+            background: transparent;
+            color: #fff;
+        }
+
+        .comite-header-user .comite-back-button:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+
 
         .card {
             background:#fff;
@@ -36,51 +140,7 @@
         .help-text { color:#5f6f69; font-size:13px; margin-bottom:12px; }
         .form-control { width:100%; box-sizing:border-box; }
 
-        .module-layout {
-            display:grid;
-            grid-template-columns:260px minmax(0,1fr);
-            gap:22px;
-            align-items:start;
-        }
         .module-content { min-width:0; }
-
-        .module-menu {
-            background:#fff;
-            border:1px solid #cbd5e1;
-            border-radius:12px;
-            padding:14px;
-            box-shadow:0 2px 8px rgba(37,109,0,.06);
-            position:sticky;
-            top:18px;
-        }
-        .module-menu h2 {
-            font-size:12px;
-            text-transform:uppercase;
-            letter-spacing:.6px;
-            color:#64748b;
-            margin:4px 8px 10px;
-        }
-        .menu-item {
-            display:block;
-            width:100%;
-            text-align:left;
-            border:1px solid transparent;
-            background:transparent;
-            color:#334155;
-            padding:11px 12px;
-            border-radius:8px;
-            font-size:13px;
-            font-weight:600;
-            cursor:pointer;
-            margin-bottom:6px;
-            transition:.18s ease;
-        }
-        .menu-item:hover { background:#f1f5f9; color:#256d00; }
-        .menu-item.active {
-            background:#e4f1dc;
-            border-color:#cfe3c5;
-            color:#256d00;
-        }
 
         .vista { display:none; }
         .vista.active { display:block; }
@@ -249,18 +309,6 @@
             color:#64748b;
             font-size:14px;
         }
-        .back-button {
-            display:inline-flex;
-            align-items:center;
-            gap:6px;
-            padding:8px 14px;
-            border-radius:6px;
-            background:#e2e8f0;
-            color:#334155;
-            text-decoration:none;
-            font-weight:600;
-            font-size:13px;
-        }
         .footer {
             text-align:center;
             padding:18px 0;
@@ -268,12 +316,6 @@
             font-size:12px;
             border-top:1px solid #cbd5e1;
             margin-top:28px;
-        }
-        @media(max-width:900px){
-            .module-layout { grid-template-columns:minmax(0,1fr); }
-            .module-menu { position:static; display:flex; gap:8px; overflow-x:auto; min-width:0; }
-            .module-menu h2 { display:none; }
-            .menu-item { width:auto; white-space:nowrap; margin-bottom:0; }
         }
         @media(max-width:720px){
             .card { padding:16px; }
@@ -286,155 +328,153 @@
 </head>
 <body>
     <header class="login-header">
-        <div class="header-content header-logo">
-            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
-            <div>
-                <h1>CertiSENA</h1>
-                <p class="subtitle">Competencias y certificaciones vigentes del auditor</p>
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Competencias y certificaciones vigentes del auditor</p>
+                </div>
+            </div>
+            <div class="comite-header-user">
+                <a class="comite-back-button" href="/dashboard">Panel</a>
+                <a class="profile-link" href="/perfil-auditor">Mi perfil</a>
+                <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
             </div>
         </div>
     </header>
 
     <main class="portal-shell">
-        <div class="acciones" style="margin-bottom:18px;">
-            <a href="/auditor" class="back-button">Regresar al portal</a>
-        </div>
+        <!-- MENU LATERAL: mismo diseno, tamano y posicion que el de static/auditor.html,
+             con los apartados propios de esta pantalla. -->
+        <nav class="side" aria-label="Menú del módulo de competencias">
+            <a href="#vistaCompetencias" data-vista="competencias" class="active" aria-current="page">Competencias registradas</a>
+            <a href="#vistaCertificaciones" data-vista="certificaciones">Registrar certificaciones vigentes</a>
+        </nav>
 
-        <div class="module-layout">
-            <nav class="module-menu" aria-label="Menú del módulo de competencias">
-                <h2>Menú</h2>
-                <button type="button" class="menu-item active" data-vista="competencias" aria-current="page">
-                    Competencias registradas
-                </button>
-                <button type="button" class="menu-item" data-vista="certificaciones">
-                    Registrar certificaciones vigentes
-                </button>
-            </nav>
-
-            <div class="module-content">
-                <!-- ============================================
-                     VISTA: COMPETENCIAS REGISTRADAS
-                ============================================= -->
-                <section class="vista active" id="vistaCompetencias">
-                    <section class="card">
-                        <div class="card-header">
-                            <div>
-                                <h2 class="card-title">Competencias registradas por este auditor</h2>
-                            </div>
-                            <button type="button" class="btn btn-primary" onclick="cargarCompetencias()">Actualizar listado</button>
+        <div class="module-content">
+            <!-- ============================================
+                 VISTA: COMPETENCIAS REGISTRADAS
+            ============================================= -->
+            <section class="vista active" id="vistaCompetencias">
+                <section class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Competencias registradas por este auditor</h2>
                         </div>
-                        <p class="help-text">Presione actualizar para cargar sus competencias registradas.</p>
-                    </section>
-
-                    <section class="card">
-                        <div class="record-table-wrap">
-                            <table class="record-table">
-                                <thead>
-                                    <tr>
-                                        <th>Tipo</th>
-                                        <th>Norma</th>
-                                        <th>Sector IAF</th>
-                                        <th>Título / institución</th>
-                                        <th>Descripción</th>
-                                        <th>Fecha inicio</th>
-                                        <th>Fecha fin</th>
-                                        <th>Vigente</th>
-                                        <th>Estado validación</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="rows"></tbody>
-                            </table>
-                        </div>
-                        <p id="resumen" class="help-text" style="margin-top:12px;"></p>
-                    </section>
+                        <button type="button" class="btn btn-primary" onclick="cargarCompetencias()">Actualizar listado</button>
+                    </div>
+                    <p class="help-text">Presione actualizar para cargar sus competencias registradas.</p>
                 </section>
 
-                <!-- ============================================
-                     VISTA: REGISTRAR CERTIFICACIONES VIGENTES
-                ============================================= -->
-                <section class="vista" id="vistaCertificaciones">
-                    <section class="card">
-                        <div class="card-header">
-                            <div>
-                                <h2 class="card-title">Registrar certificación vigente</h2>
-                            </div>
-                        </div>
-                        <p class="help-text">
-                            Seleccione el tipo de certificación y cargue el archivo de soporte.
-                            Podrá previsualizar el documento antes de finalizar el registro.
-                        </p>
-
-                        <form id="formCertificacion" novalidate>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="certTipo">Tipo de certificación</label>
-                                    <select id="certTipo" class="form-control" required>
-                                        <option value="">Seleccione un tipo de certificación</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="certArchivo">Archivo de la certificación</label>
-                                    <input id="certArchivo" class="form-control" type="file"
-                                           accept=".pdf,.jpg,.jpeg,.png" required>
-                                    <small class="help-text" style="margin:0;">Formatos permitidos: PDF, JPG, JPEG y PNG.</small>
-                                </div>
-                                <div class="form-group full-width">
-                                    <label for="certDescripcion">Descripción (opcional)</label>
-                                    <textarea id="certDescripcion" class="form-control" maxlength="500"
-                                              placeholder="Entidad emisora, número del certificado o cualquier dato relevante."></textarea>
-                                </div>
-                            </div>
-
-                            <div class="preview-panel" id="certPreview" hidden>
-                                <div class="preview-head">
-                                    <strong>Vista previa del documento</strong>
-                                    <div>
-                                        <button type="button" class="btn btn-secondary btn-sm" id="btnQuitarArchivo">Quitar archivo</button>
-                                    </div>
-                                </div>
-                                <div class="preview-body" id="certPreviewContenido"></div>
-                            </div>
-
-                            <div id="certEstado" role="status" aria-live="polite"></div>
-
-                            <div class="modal-actions" style="justify-content:flex-start;">
-                                <button type="submit" class="btn btn-primary" id="btnRegistrarCertificacion" disabled>
-                                    Registrar certificación
-                                </button>
-                                <button type="button" class="btn btn-secondary" id="btnLimpiarCertificacion">
-                                    Limpiar
-                                </button>
-                            </div>
-                        </form>
-                    </section>
-
-                    <section class="card">
-                        <div class="card-header">
-                            <div>
-                                <h2 class="card-title">Certificaciones registradas</h2>
-                            </div>
-                            <button type="button" class="btn btn-primary" onclick="cargarCertificaciones()">Actualizar listado</button>
-                        </div>
-                        <div class="record-table-wrap">
-                            <table class="record-table">
-                                <thead>
-                                    <tr>
-                                        <th>Tipo de certificación</th>
-                                        <th>Archivo</th>
-                                        <th>Descripción</th>
-                                        <th>Fecha de registro</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="rowsCertificaciones"></tbody>
-                            </table>
-                        </div>
-                        <p id="resumenCertificaciones" class="help-text" style="margin-top:12px;"></p>
-                    </section>
+                <section class="card">
+                    <div class="record-table-wrap">
+                        <table class="record-table">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Norma</th>
+                                    <th>Sector IAF</th>
+                                    <th>Título / institución</th>
+                                    <th>Descripción</th>
+                                    <th>Fecha inicio</th>
+                                    <th>Fecha fin</th>
+                                    <th>Vigente</th>
+                                    <th>Estado validación</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rows"></tbody>
+                        </table>
+                    </div>
+                    <p id="resumen" class="help-text" style="margin-top:12px;"></p>
                 </section>
-            </div>
+            </section>
+
+            <!-- ============================================
+                 VISTA: REGISTRAR CERTIFICACIONES VIGENTES
+            ============================================= -->
+            <section class="vista" id="vistaCertificaciones">
+                <section class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Registrar certificación vigente</h2>
+                        </div>
+                    </div>
+                    <p class="help-text">
+                        Seleccione el tipo de certificación y cargue el archivo de soporte.
+                        Podrá previsualizar el documento antes de finalizar el registro.
+                    </p>
+
+                    <form id="formCertificacion" novalidate>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="certTipo">Tipo de certificación</label>
+                                <select id="certTipo" class="form-control" required>
+                                    <option value="">Seleccione un tipo de certificación</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="certArchivo">Archivo de la certificación</label>
+                                <input id="certArchivo" class="form-control" type="file"
+                                       accept=".pdf,.jpg,.jpeg,.png" required>
+                                <small class="help-text" style="margin:0;">Formatos permitidos: PDF, JPG, JPEG y PNG.</small>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="certDescripcion">Descripción (opcional)</label>
+                                <textarea id="certDescripcion" class="form-control" maxlength="500"
+                                          placeholder="Entidad emisora, número del certificado o cualquier dato relevante."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="preview-panel" id="certPreview" hidden>
+                            <div class="preview-head">
+                                <strong>Vista previa del documento</strong>
+                                <div>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="btnQuitarArchivo">Quitar archivo</button>
+                                </div>
+                            </div>
+                            <div class="preview-body" id="certPreviewContenido"></div>
+                        </div>
+
+                        <div id="certEstado" role="status" aria-live="polite"></div>
+
+                        <div class="modal-actions" style="justify-content:flex-start;">
+                            <button type="submit" class="btn btn-primary" id="btnRegistrarCertificacion" disabled>
+                                Registrar certificación
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="btnLimpiarCertificacion">
+                                Limpiar
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Certificaciones registradas</h2>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="cargarCertificaciones()">Actualizar listado</button>
+                    </div>
+                    <div class="record-table-wrap">
+                        <table class="record-table">
+                            <thead>
+                                <tr>
+                                    <th>Tipo de certificación</th>
+                                    <th>Archivo</th>
+                                    <th>Descripción</th>
+                                    <th>Fecha de registro</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rowsCertificaciones"></tbody>
+                        </table>
+                    </div>
+                    <p id="resumenCertificaciones" class="help-text" style="margin-top:12px;"></p>
+                </section>
+            </section>
         </div>
     </main>
 
@@ -980,7 +1020,7 @@
             document.querySelectorAll('.vista').forEach(vista => {
                 vista.classList.toggle('active', vista.id === 'vista' + nombre.charAt(0).toUpperCase() + nombre.slice(1));
             });
-            document.querySelectorAll('.menu-item').forEach(item => {
+            document.querySelectorAll('.side a[data-vista]').forEach(item => {
                 const activo = item.dataset.vista === nombre;
                 item.classList.toggle('active', activo);
                 if (activo) {
@@ -994,8 +1034,22 @@
             }
         }
 
-        document.querySelectorAll('.menu-item').forEach(item => {
-            item.addEventListener('click', () => activarVista(item.dataset.vista));
+        document.querySelectorAll('.side a[data-vista]').forEach(item => {
+            item.addEventListener('click', (evento) => {
+                evento.preventDefault();
+                activarVista(item.dataset.vista);
+            });
+        });
+
+        function cerrarSesion(evento) {
+            evento.preventDefault();
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+
+        ['logout', 'logoutButton'].forEach((id) => {
+            const enlace = document.getElementById(id);
+            if (enlace) enlace.addEventListener('click', cerrarSesion);
         });
 
         document.querySelectorAll('.modal').forEach(modal => {
@@ -1020,5 +1074,6 @@
         cargarCatalogo().then(() => Promise.all([cargarCompetencias(), cargarCertificaciones()]));
     </script>
     <script src="/static/session-guard.js"></script>
+    <script src="/static/nav.js"></script>
 </body>
 </html>
