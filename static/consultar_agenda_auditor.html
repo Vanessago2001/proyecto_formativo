@@ -169,46 +169,6 @@
             font-weight: 700;
         }
 
-        /* Navegación entre las secciones de esta pantalla. El menú lateral
-           queda reservado para la navegación del rol. */
-        .page-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-
-        .page-tabs a {
-            display: inline-flex;
-            align-items: center;
-            padding: 9px 15px;
-            background: var(--white);
-            border: 1px solid var(--line);
-            border-radius: 999px;
-            color: #334155;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 700;
-            line-height: 1.3;
-            transition: .18s ease;
-        }
-
-        .page-tabs a:hover {
-            border-color: var(--sena-green-bright);
-            color: var(--sena-green-dark);
-        }
-
-        .page-tabs a.active {
-            background: var(--sena-green-light);
-            border-color: var(--sena-green-bright);
-            color: var(--sena-green-dark);
-        }
-
-        @media (max-width: 720px) {
-            .page-tabs { flex-direction: column; }
-            .page-tabs a { justify-content: center; }
-        }
-
         /* =========================================================
            CONTENIDO PRINCIPAL
         ========================================================= */
@@ -224,36 +184,6 @@
             flex-direction: column;
             gap: 6px;
             margin-bottom: 4px;
-        }
-
-        .page-head-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 6px;
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--sena-green-dark);
-            background: #fff;
-            border: 1px solid #cfe3c5;
-            border-radius: 8px;
-            padding: 9px 15px;
-            font-size: 13px;
-            font-weight: 700;
-            text-decoration: none;
-            transition: .18s ease;
-        }
-
-        .back-link:hover {
-            background: var(--sena-green-light);
-            border-color: var(--sena-green);
-            transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(57, 169, 0, .10);
         }
 
         .page-head h1 {
@@ -902,6 +832,125 @@
             font-size: 13px;
         }
 
+        /* =========================================================
+           SELECTORES EN TABLA (solicitud y sede)
+
+           La tabla es la vista del <select> de siempre: el select
+           queda oculto pero sigue siendo la fuente de datos y de
+           eventos para el resto de la pantalla.
+        ========================================================= */
+        .selector-origen {
+            display: none;
+        }
+
+        .selector-tabla {
+            min-width: 0;
+        }
+
+        .selector-celda-radio {
+            width: 58px;
+            text-align: center;
+        }
+
+        .selector-radio {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        input.selector-radio-input {
+            flex: 0 0 auto;
+            width: 17px;
+            min-width: 17px;
+            height: 17px;
+            min-height: 17px;
+            padding: 0;
+            margin: 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 50%;
+            background: #fff;
+            accent-color: var(--sena-green);
+            cursor: pointer;
+        }
+
+        .selector-fila {
+            cursor: pointer;
+        }
+
+        .selector-fila.deshabilitada {
+            cursor: not-allowed;
+            color: #94a3b8;
+        }
+
+        .selector-fila.deshabilitada .cell-strong {
+            color: #94a3b8;
+        }
+
+        .selector-fila.seleccionada,
+        .selector-fila.seleccionada:hover {
+            background: #f1f5f9;
+        }
+
+        .selector-fila.seleccionada td {
+            border-bottom-color: #cfe3c5;
+        }
+
+        .selector-fila.seleccionada td:first-child {
+            box-shadow: inset 3px 0 0 var(--sena-green);
+        }
+
+        .selector-paginacion {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .selector-paginacion-info {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .selector-paginacion-numeros {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .selector-pager {
+            min-width: 34px;
+            min-height: 34px;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            color: #334155;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .2s ease, border-color .2s ease, color .2s ease;
+        }
+
+        .selector-pager:hover {
+            border-color: var(--sena-green);
+            background: #f1f5f9;
+            color: var(--sena-green-dark);
+        }
+
+        .selector-pager.active,
+        .selector-pager.active:hover {
+            border-color: var(--sena-green);
+            background: var(--sena-green);
+            color: #fff;
+        }
+
+        .selector-pager:focus-visible {
+            outline: 3px solid rgba(59, 170, 1, .25);
+            outline-offset: 2px;
+        }
+
         .row-actions {
             display: flex;
             gap: 6px;
@@ -913,6 +962,25 @@
             padding: 7px 11px;
             font-size: 12px;
             white-space: nowrap;
+        }
+
+        /* Listas que solo se ven al pulsar su boton de "Ver". */
+        .auditores-lista {
+            display: block;
+            margin-top: 4px;
+        }
+
+        .acciones-lista {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .auditores-lista[hidden],
+        .acciones-lista[hidden] {
+            display: none;
         }
 
         .cell-strong {
@@ -1601,7 +1669,7 @@
 
         .filtro-tabla {
             display: grid;
-            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
             gap: 12px;
             align-items: end;
             margin: 0 0 14px;
@@ -1701,10 +1769,20 @@
     <main class="portal-shell">
         <div class="portal-grid">
             <!-- =========================================================
-                 MENÚ LATERAL
+                 MENÚ LATERAL: secciones de esta pantalla
             ========================================================= -->
-            <nav class="side admin-nav" aria-label="Navegación de la agenda">
-                <a href="/consultar-agenda-auditor">Consultar agenda de auditor</a>
+            <nav class="side agenda-menu" aria-label="Secciones de la agenda">
+                <div class="admin-nav-heading">
+                    <span>Agenda</span>
+                    Consultar agenda de auditor
+                </div>
+                <a href="#schedule" data-seccion="schedule" class="active">Programar una auditoría</a>
+                <a href="#assignments" data-seccion="assignments">Solicitudes con auditores asignados</a>
+                <a href="#weekly" data-seccion="weekly">Disponibilidad semanal</a>
+                <a href="#blocked" data-seccion="blocked">Registrar fecha no disponible</a>
+                <a href="#month" data-seccion="month">Disponibilidad mensual y auditorías</a>
+                <a href="#history" data-seccion="history">Historial de disponibilidad</a>
+                <a href="#bitacora" data-seccion="bitacora">Bitácora de validación</a>
             </nav>
 
             <!-- =========================================================
@@ -1712,24 +1790,9 @@
             ========================================================= -->
             <section class="content">
                 <div class="page-head">
-                    <div class="page-head-top">
-                        <a href="/dashboard" class="back-link">
-                            <span aria-hidden="true">←</span> Volver al panel
-                        </a>
-                    </div>
                     <h1 id="pageTitle">Programar una auditoría</h1>
                     <p id="pageSubtitle">Programa una solicitud aprobada y registra el mismo horario para todos los
                         auditores que ya fueron asignados a esa empresa.</p>
-                </div>
-
-                <div class="page-tabs" role="tablist" aria-label="Secciones de la agenda">
-                    <a href="#schedule" data-seccion="schedule" class="active">Programar una auditoría</a>
-                    <a href="#assignments" data-seccion="assignments">Solicitudes con auditores asignados</a>
-                    <a href="#weekly" data-seccion="weekly">Disponibilidad semanal</a>
-                    <a href="#blocked" data-seccion="blocked">Registrar fecha no disponible</a>
-                    <a href="#month" data-seccion="month">Disponibilidad mensual y auditorías</a>
-                    <a href="#history" data-seccion="history">Historial de disponibilidad</a>
-                    <a href="#bitacora" data-seccion="bitacora">Bitácora de validación</a>
                 </div>
 
                 <div id="globalNotice" class="notice" role="status" aria-live="polite"></div>
@@ -1770,9 +1833,10 @@
                             <div class="grid two">
                                 <div class="field full">
                                     <label for="assignmentSelect">Solicitud aprobada / empresa</label>
-                                    <select id="assignmentSelect" required>
+                                    <select id="assignmentSelect" class="selector-origen">
                                         <option value="">Cargando solicitudes...</option>
                                     </select>
+                                    <div class="selector-tabla-contenedor" id="assignmentTabla"></div>
                                     <p class="hint">Cada solicitud aparece una sola vez, aunque tenga varios auditores
                                         asignados.</p>
                                 </div>
@@ -1789,9 +1853,10 @@
                                 </div>
                                 <div class="field full">
                                     <label for="scheduleSede">Sede de la empresa (opcional)</label>
-                                    <select id="scheduleSede">
+                                    <select id="scheduleSede" class="selector-origen">
                                         <option value="">Dirección principal de la empresa</option>
                                     </select>
+                                    <div class="selector-tabla-contenedor" id="sedeTabla"></div>
                                     <p class="hint">Si la empresa tiene varias sedes, elige en cuál se realizará la auditoría.</p>
                                 </div>
                                 <div class="field full team-block">
@@ -1891,6 +1956,14 @@
                                     <option value="Auditor líder">Auditor líder</option>
                                     <option value="Auditor Lider">Auditor Lider</option>
                                     <option value="Observador">Observador</option>
+                                </select>
+                            </div>
+                            <div class="filtro-campo">
+                                <label for="filtroProgramacionEstado">Estado</label>
+                                <select id="filtroProgramacionEstado" class="form-control">
+                                    <option value="">Sin canceladas</option>
+                                    <option value="Cancelada">Solo canceladas</option>
+                                    <option value="Todos">Todos</option>
                                 </select>
                             </div>
                             <div class="filtro-campo">
@@ -2457,6 +2530,7 @@
             const select = $("scheduleSede");
             if (!select) return;
             select.innerHTML = '<option value="">Dirección principal de la empresa</option>';
+            pintarSelectorTabla("sedeTabla");
             if (!idEmpresa) return;
             try {
                 const token = localStorage.getItem("access_token") || localStorage.getItem("accessToken") || localStorage.getItem("token");
@@ -2486,6 +2560,7 @@
                     option.textContent = `${sede.nombre_sede || "Sede"} - ${sede.ciudad || ""} - ${sede.direccion || ""}`;
                     option.dataset.direccion = sede.direccion || "";
                     option.dataset.ciudad = sede.ciudad || "";
+                    option.dataset.nombre = sede.nombre_sede || "Sede";
                     const ocupada = ocupadas.get(String(sede.id_sede));
                     if (ocupada) {
                         option.disabled = true;
@@ -2511,8 +2586,10 @@
                         : null;
                     if (sedeProgramada && opcion) select.value = sedeProgramada;
                 }
+                pintarSelectorTabla("sedeTabla");
             } catch (error) {
                 console.error("No fue posible cargar las sedes:", error);
+                pintarSelectorTabla("sedeTabla");
             }
         }
         const scheduleSedeSelect = $("scheduleSede");
@@ -2560,6 +2637,141 @@
             $("scheduleAddress").value = group?.empresa_direccion || "";
             $("scheduleCity").value = group?.empresa_ciudad || "";
         }
+        /* =========================================================
+           SELECTORES EN TABLA
+
+           La tabla es la vista del <select> de siempre: el select
+           queda oculto, pero sigue siendo la fuente de datos y de
+           eventos para el resto de la pantalla.
+        ========================================================= */
+        const POR_PAGINA_SELECTOR = 3;
+        const selectoresTabla = new Map();
+
+        function pintarSelectorTabla(contenedorId) {
+            const entrada = selectoresTabla.get(contenedorId);
+            if (!entrada) return;
+            const { config, estado } = entrada;
+            const select = $(config.selectId);
+            const filas = config.filas(select);
+            const seleccion = String(select.value);
+            const totalPaginas = Math.max(1, Math.ceil(filas.length / POR_PAGINA_SELECTOR));
+            estado.pagina = Math.min(Math.max(1, estado.pagina), totalPaginas);
+
+            // Una selección externa (por ejemplo "Programar" desde la tabla de
+            // solicitudes) lleva al paginador hasta la página que la contiene.
+            if (seleccion !== estado.seleccion) {
+                estado.seleccion = seleccion;
+                const indice = filas.findIndex((fila) => String(fila.valor) === seleccion);
+                if (indice >= 0) estado.pagina = Math.floor(indice / POR_PAGINA_SELECTOR) + 1;
+            }
+
+            const desde = (estado.pagina - 1) * POR_PAGINA_SELECTOR;
+            const enPagina = filas.slice(desde, desde + POR_PAGINA_SELECTOR);
+            const cuerpo = enPagina.length
+                ? enPagina.map((fila) => {
+                    const activa = String(fila.valor) === seleccion;
+                    return `<tr class="selector-fila${activa ? " seleccionada" : ""}${fila.deshabilitado ? " deshabilitada" : ""}" data-valor="${esc(fila.valor)}">
+                        <td class="selector-celda-radio"><span class="selector-radio"><input class="selector-radio-input" type="radio" name="${esc(config.nombreRadio)}" value="${esc(fila.valor)}"${activa ? " checked" : ""}${fila.deshabilitado ? " disabled" : ""}></span></td>
+                        ${fila.celdas.map((celda) => `<td>${celda}</td>`).join("")}
+                    </tr>`;
+                }).join("")
+                : `<tr><td colspan="${config.titulos.length + 1}" class="empty">${esc(config.textoVacio(select))}</td></tr>`;
+
+            $(contenedorId).innerHTML = `
+                <div class="table-wrap">
+                    <table class="selector-tabla">
+                        <thead>
+                            <tr>
+                                <th class="selector-celda-radio">Elegir</th>
+                                ${config.titulos.map((titulo) => `<th>${esc(titulo)}</th>`).join("")}
+                            </tr>
+                        </thead>
+                        <tbody>${cuerpo}</tbody>
+                    </table>
+                </div>
+                ${totalPaginas > 1 ? `
+                <div class="selector-paginacion">
+                    <span class="selector-paginacion-info">Página ${estado.pagina} de ${totalPaginas} · ${filas.length} en total</span>
+                    <div class="selector-paginacion-numeros">
+                        ${Array.from({ length: totalPaginas }, (_, indice) => indice + 1).map((pagina) => `<button type="button" class="selector-pager${pagina === estado.pagina ? " active" : ""}" data-pagina="${pagina}"${pagina === estado.pagina ? ' aria-current="page"' : ""}>${pagina}</button>`).join("")}
+                    </div>
+                </div>` : ""}
+            `;
+        }
+
+        function registrarSelectorTabla(config) {
+            const contenedor = $(config.contenedorId);
+            const select = $(config.selectId);
+            if (!contenedor || !select) return;
+            const entrada = { config, estado: { pagina: 1, seleccion: null } };
+            selectoresTabla.set(config.contenedorId, entrada);
+            select.addEventListener("change", () => pintarSelectorTabla(config.contenedorId));
+            contenedor.addEventListener("click", (event) => {
+                const paginador = event.target.closest(".selector-pager");
+                if (paginador) {
+                    entrada.estado.pagina = Number(paginador.dataset.pagina) || 1;
+                    entrada.estado.seleccion = String(select.value);
+                    pintarSelectorTabla(config.contenedorId);
+                    return;
+                }
+                const fila = event.target.closest(".selector-fila");
+                if (!fila || fila.classList.contains("deshabilitada")) return;
+                if (fila.dataset.valor === String(select.value)) return;
+                select.value = fila.dataset.valor;
+                select.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+            pintarSelectorTabla(config.contenedorId);
+        }
+
+        registrarSelectorTabla({
+            contenedorId: "assignmentTabla",
+            selectId: "assignmentSelect",
+            nombreRadio: "selectorSolicitud",
+            titulos: ["Radicado", "Empresa", "Auditores asignados"],
+            textoVacio: (select) => select.options[0]?.textContent || "No hay solicitudes disponibles.",
+            filas: (select) => Array.from(select.options)
+                .filter((opcion) => opcion.value !== "")
+                .map((opcion) => {
+                    const grupo = assignments[Number(opcion.value)] ||
+                        (window.__solicitudesAsignadas || [])[Number(opcion.value)] || {};
+                    const auditores = grupo.auditores || [];
+                    const nombres = auditores.slice(0, 2)
+                        .map((auditor) => auditor.auditor_nombre || "Auditor")
+                        .join(", ") + (auditores.length > 2 ? ` y ${auditores.length - 2} más` : "");
+                    return {
+                        valor: opcion.value,
+                        celdas: [
+                            `<span class="cell-strong">${esc(grupo.numero_radicado || grupo.id_solicitud || opcion.textContent)}</span>`,
+                            `<span class="cell-line">${esc(grupo.empresa_nombre || "-")}</span><span class="cell-meta">${esc(grupo.empresa_ciudad || "")}</span>`,
+                            `<span class="cell-line">${esc(auditores.length || "-")} asignado(s)</span><span class="cell-meta">${esc(nombres)}</span>`
+                        ]
+                    };
+                })
+        });
+
+        registrarSelectorTabla({
+            contenedorId: "sedeTabla",
+            selectId: "scheduleSede",
+            nombreRadio: "selectorSede",
+            titulos: ["Sede", "Ciudad", "Dirección", "Estado"],
+            textoVacio: (select) => select.options[0]?.textContent || "La empresa no tiene sedes registradas.",
+            filas: (select) => Array.from(select.options).map((opcion, indice) => {
+                const principal = indice === 0;
+                const grupo = currentAssignment() || {};
+                const ocupada = opcion.dataset.ocupada === "1";
+                return {
+                    valor: opcion.value,
+                    deshabilitado: Boolean(opcion.disabled),
+                    celdas: [
+                        `<span class="cell-strong">${esc(principal ? "Dirección principal de la empresa" : (opcion.dataset.nombre || opcion.textContent))}</span>`,
+                        `<span class="cell-line">${esc(principal ? (grupo.empresa_ciudad || "-") : (opcion.dataset.ciudad || "-"))}</span>`,
+                        `<span class="cell-line">${esc(principal ? (grupo.empresa_direccion || "-") : (opcion.dataset.direccion || "-"))}</span>`,
+                        `<span class="pill${ocupada ? " blocked" : ""}">${ocupada ? "Ya programada" : "Disponible"}</span>`
+                    ]
+                };
+            })
+        });
+
         function documentLabel(auditor) {
             const tipo = auditor?.auditor_tipo_doc || auditor?.tipo_doc || auditor?.tipo_documento || auditor?.tipo_identificacion || "";
             const numero = auditor?.auditor_num_doc || auditor?.num_doc || auditor?.numero_documento || auditor?.numero_doc || auditor?.documento_identidad || auditor?.documento || "";
@@ -2576,6 +2788,19 @@
         }
         function isTerminalSchedule(row) {
             return ["cancelada", "cancelado", "finalizada", "finalizado", "terminada", "terminado"].includes(normalizedStatus(row?.estado));
+        }
+        function esProgramacionCancelada(row) {
+            return ["cancelada", "cancelado"].includes(normalizedStatus(row?.estado));
+        }
+
+        // Un botón que muestra u oculta su lista dentro de la misma celda.
+        function alternarRevelado(boton, claseLista, etiquetaCerrada) {
+            const lista = boton.parentElement.querySelector("." + claseLista);
+            if (!lista) return;
+            const abierto = !lista.hidden;
+            lista.hidden = abierto;
+            boton.setAttribute("aria-expanded", String(!abierto));
+            boton.textContent = abierto ? etiquetaCerrada : "Ocultar";
         }
         function dateTimeParts(value) {
             if (!value) return { date: "", time: "" };
@@ -3181,8 +3406,8 @@
             await onAuditorChanged();
         }
 
-        // Filtro de la tabla de programaciones (nombre / documento / rol)
-        ["filtroAuditorTexto", "filtroAuditorRol"].forEach(id => {
+        // Filtro de la tabla de programaciones (nombre / documento / rol / estado)
+        ["filtroAuditorTexto", "filtroAuditorRol", "filtroProgramacionEstado"].forEach(id => {
             const el = $(id);
             if (!el) return;
             el.addEventListener("input", () => {
@@ -3199,6 +3424,7 @@
             filtroLimpiar.addEventListener("click", () => {
                 $("filtroAuditorTexto").value = "";
                 $("filtroAuditorRol").value = "";
+                $("filtroProgramacionEstado").value = "";
                 const group = currentAssignment();
                 if (group) loadScheduleList(group);
             });
@@ -3246,8 +3472,10 @@
                     select.appendChild(option);
                 });
                 if (!assignments.length) select.innerHTML = '<option value="">No hay solicitudes con auditores asignados</option>';
+                pintarSelectorTabla("assignmentTabla");
             } catch (error) {
                 $("assignmentSelect").innerHTML = '<option value="">No fue posible cargar solicitudes</option>';
+                pintarSelectorTabla("assignmentTabla");
                 showNotice("scheduleNotice", `Error al cargar asignaciones: ${error.message}`, "error");
             }
         }
@@ -4249,19 +4477,33 @@
                     return;
                 }
 
-                const filasFiltradas = aplicarFiltroAuditores(rows);
+                // Las canceladas solo se ven si se filtra por ese estado.
+                const estadoFiltro = ($("filtroProgramacionEstado")?.value || "").trim();
+                const visibles = rows.filter((row) => {
+                    if (estadoFiltro === "Cancelada") return esProgramacionCancelada(row);
+                    if (estadoFiltro === "Todos") return true;
+                    return !esProgramacionCancelada(row);
+                });
+                const filasFiltradas = aplicarFiltroAuditores(visibles);
                 if (!filasFiltradas.length) {
-                    $("scheduleList").innerHTML = '<div class="empty">No hay programaciones que coincidan con el filtro.</div>';
+                    $("scheduleList").innerHTML = visibles.length
+                        ? '<div class="empty">No hay programaciones que coincidan con el filtro.</div>'
+                        : '<div class="empty">No hay programaciones activas. Elige "Solo canceladas" en el filtro de estado para verlas.</div>';
                     return;
                 }
+                // El detalle de "Ver" se abre por el índice de lo que se pinta.
+                window.__programacionesActuales = filasFiltradas;
                 const tableRows = filasFiltradas.map((row, idx) => {
                     const terminal = isTerminalSchedule(row);
                     const id = row.id_programacion || "";
-                    const auditoresHtml = (row.auditores_programados || []).map(a => `<span class="cell-line">${esc(a)}</span>`).join("") || '<span class="cell-meta">—</span>';
+                    const auditoresLista = (row.auditores_programados || []).map(a => `<span class="cell-line">${esc(a)}</span>`).join("") || '<span class="cell-meta">Sin auditores registrados</span>';
                     return `<tr>
                         <td><span class="cell-strong">${esc(row.numero_radicado || row.id_solicitud || group.numero_radicado || "—")}</span></td>
                         <td><span class="cell-line">${esc(row.empresa_nombre || group.empresa_nombre || "—")}</span></td>
-                        <td>${auditoresHtml}</td>
+                        <td>
+                            <button class="secondary" type="button" data-program-action="auditores" aria-expanded="false" title="Ver los auditores de esta programación">Ver</button>
+                            <div class="auditores-lista" hidden>${auditoresLista}</div>
+                        </td>
                         <td><span class="cell-line">${esc(row.direccion_servicio || group.empresa_direccion || "—")}</span><span class="cell-meta">${esc(row.ciudad_servicio || group.empresa_ciudad || "")}</span></td>
                         <td><span class="cell-line">${esc(formatDateTime(row.fecha_inicio))}</span></td>
                         <td><span class="cell-line">${esc(formatDateTime(row.fecha_fin))}</span></td>
@@ -4269,9 +4511,12 @@
                         <td><span class="pill ${terminal ? "blocked" : "audit"}">${esc(row.estado || "—")}</span></td>
                         <td><span class="cell-line">${esc(row.motivo_cancelacion || row.motivo_reprogramacion || "—")}</span></td>
                         <td class="row-actions">
-                            <button class="secondary" type="button" data-program-action="view" data-program-index="${idx}" title="Ver detalle completo">Ver</button>
-                            <button class="secondary" type="button" data-program-action="edit" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Editar programación">Editar</button>
-                            <button class="danger" type="button" data-program-action="cancel" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Cancelar programación">Cancelar</button>
+                            <button class="secondary" type="button" data-program-action="toggle" aria-expanded="false">Ver acciones</button>
+                            <div class="acciones-lista" hidden>
+                                <button class="secondary" type="button" data-program-action="view" data-program-index="${idx}" title="Ver detalle completo">Ver</button>
+                                <button class="secondary" type="button" data-program-action="edit" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Editar programación">Editar</button>
+                                <button class="danger" type="button" data-program-action="cancel" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Cancelar programación">Cancelar</button>
+                            </div>
                         </td>
                     </tr>`;
                 }).join("");
@@ -4285,6 +4530,12 @@
                 });
                 $("scheduleList").querySelectorAll('[data-program-action="cancel"]').forEach(button => {
                     button.addEventListener("click", () => cancelarProgramacion(button.dataset.programId));
+                });
+                $("scheduleList").querySelectorAll('[data-program-action="auditores"]').forEach(button => {
+                    button.addEventListener("click", () => alternarRevelado(button, "auditores-lista", "Ver"));
+                });
+                $("scheduleList").querySelectorAll('[data-program-action="toggle"]').forEach(button => {
+                    button.addEventListener("click", () => alternarRevelado(button, "acciones-lista", "Ver acciones"));
                 });
 
                 const activeRows = rows.filter(row => !isTerminalSchedule(row) && row.id_programacion);
@@ -4533,7 +4784,7 @@
             document.querySelectorAll(".panel-section").forEach((seccion) => {
                 seccion.classList.toggle("seccion-visible", seccion.dataset.seccion === clave);
             });
-            document.querySelectorAll(".page-tabs a[data-seccion]").forEach((enlace) => {
+            document.querySelectorAll(".agenda-menu a[data-seccion]").forEach((enlace) => {
                 enlace.classList.toggle("active", enlace.dataset.seccion === clave);
             });
             actualizarAuditorSeleccionadoEnFiltros();
@@ -4545,7 +4796,7 @@
             if (clave === "blocked") { cargarProgramacionesBloqueo(); cargarBloqueosVigentes(); }
         }
 
-        document.querySelectorAll(".page-tabs a[data-seccion]").forEach((enlace) => {
+        document.querySelectorAll(".agenda-menu a[data-seccion]").forEach((enlace) => {
             enlace.addEventListener("click", (event) => {
                 event.preventDefault();
                 mostrarSeccionAgenda(enlace.dataset.seccion);
@@ -4764,7 +5015,7 @@
         });
     </script>
 
-    <script src="/static/session.js"></script>
+    <script src="/static/session.js?v=20261029"></script>
 <script src="/static/nav.js"></script>
 </body>
 

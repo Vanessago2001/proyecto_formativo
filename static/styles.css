@@ -980,6 +980,58 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     background: #f1f5f9;
 }
 
+.comite-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.comite-pagination-info {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.comite-pagination-numeros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.comite-pager {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 6px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.comite-pager:hover {
+    border-color: #3baa01;
+    background: #f1f5f9;
+    color: #256d00;
+}
+
+.comite-pager.active,
+.comite-pager.active:hover {
+    border-color: #3baa01;
+    background: #3baa01;
+    color: #fff;
+}
+
+.comite-pager:focus-visible {
+    outline: 3px solid rgba(59, 170, 1, .25);
+    outline-offset: 2px;
+}
+
 .comite-table-empty,
 .comite-loading,
 .comite-empty-state {

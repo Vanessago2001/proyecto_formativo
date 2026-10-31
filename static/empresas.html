@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028">
+  <link rel="stylesheet" href="/static/styles.css?v=20261030">
 </head>
 
 <body class="comite-page">
@@ -164,12 +164,14 @@
         actual: null,
         texto: "",
         filtroEstado: "",
+        paginaListado: 1,
         editandoEmpresa: false,
         sedeEditada: null,
         sedeContactos: null,
         contactoEditado: null,
         aprobaciones: [],
         filtroAprobacion: "Pendiente",
+        paginaAprobaciones: 1,
         rechazando: null
       };
 
@@ -233,6 +235,21 @@
       const vacioTabla = (columnas, texto) => '<tr><td colspan="' + columnas + '"><div class="comite-table-empty">' + esc(texto) + "</div></td></tr>";
       const accion = (nombre, texto, id) => '<button class="comite-table-action" type="button" data-accion="' + nombre + '" data-id="' + esc(id) + '">' + texto + "</button>";
       const boton = (nombre, texto, tipo) => '<button class="comite-button ' + tipo + '" type="button" data-accion="' + nombre + '">' + texto + "</button>";
+
+      const paginador = (pagina, totalPaginas, etiqueta) => totalPaginas > 1 ?
+        '<nav class="comite-pagination" aria-label="' + esc(etiqueta) + '">' +
+        '<span class="comite-pagination-info">Página ' + pagina + " de " + totalPaginas + "</span>" +
+        '<div class="comite-pagination-numeros">' +
+        Array.from({ length: totalPaginas }, (_, i) => i + 1).map((n) =>
+          '<button class="comite-pager' + (n === pagina ? " active" : "") + '" type="button" data-pagina="' + n + '"' +
+          (n === pagina ? ' aria-current="page"' : "") + ">" + n + "</button>").join("") +
+        "</div></nav>" : "";
+
+      function ligarPaginador(contenedor, alCambiar) {
+        contenedor.querySelectorAll("button[data-pagina]").forEach((botonPagina) => {
+          botonPagina.addEventListener("click", () => alCambiar(Number(botonPagina.dataset.pagina)));
+        });
+      }
       const encabezado = (titulo, descripcion, extra) => '<div class="comite-panel-heading"><div><h3>' + titulo + "</h3><p>" + descripcion + "</p></div>" + (extra || "") + "</div>";
 
       function claseEstado(valor) {
@@ -264,7 +281,7 @@
       // ---------------- menú y vistas ----------------
       const opcionesMenu = [];
       if (puede("listar")) opcionesMenu.push(["listado", "Empresas registradas"]);
-      opcionesMenu.push(["detalle", VISTAS.detalle[0]]);
+      if (esEmpresa) opcionesMenu.push(["detalle", VISTAS.detalle[0]]);
       if (puede("gestionar")) opcionesMenu.push(["registrar", "Registrar empresa"]);
       if (puede("verAprobaciones")) opcionesMenu.push(["aprobaciones", VISTAS.aprobaciones[0]]);
       $("#menu").innerHTML = opcionesMenu.map(([vista, texto]) =>
@@ -280,13 +297,16 @@
         mostrar("");
         if (nombre === "listado") return cargarListado();
         if (nombre === "detalle") return cargarDetalle();
-        if (nombre === "aprobaciones") return cargarAprobaciones();
+        if (nombre === "aprobaciones") { estado.paginaAprobaciones = 1; return cargarAprobaciones(); }
       }
 
       // ---------------- listado (EMP-004 / EMP-005) ----------------
+      const POR_PAGINA = 5;
+
       async function cargarListado() {
         const caja = $("#vista-listado");
         caja.innerHTML = cargando("Cargando empresas...");
+        estado.paginaListado = 1;
         try {
           estado.empresas = (await api("/api/empresas/")) || [];
           renderizarListado();
@@ -302,6 +322,12 @@
           (!estado.filtroEstado || (e.estado || "Activa") === estado.filtroEstado) &&
           (!texto || [e.nombre, e.nit, e.ciudad, e.correo].some((v) => String(v || "").toLowerCase().includes(texto))));
 
+        const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA));
+        estado.paginaListado = Math.min(Math.max(1, estado.paginaListado), totalPaginas);
+        const desde = (estado.paginaListado - 1) * POR_PAGINA;
+        const enPagina = visibles.slice(desde, desde + POR_PAGINA);
+        const conteo = visibles.length === 1 ? "1 empresa" : visibles.length + " empresas";
+
         $("#vista-listado").innerHTML =
           '<div class="comite-toolbar">' +
           '<form id="formBuscar" class="comite-search-form"><label for="buscarTexto">Buscar empresa</label><div class="comite-search-row">' +
@@ -311,22 +337,30 @@
           selector("filtroEstado", "Estado", [["", "Todos"], ["Activa", "Activa"], ["Suspendida", "Suspendida"], ["Inactiva", "Inactiva"]], estado.filtroEstado) +
           "</div></div>" +
           panel(
-            encabezado("Empresas", visibles.length + (visibles.length === 1 ? " empresa" : " empresas"),
+            encabezado("Empresas", totalPaginas > 1 ? (desde + 1) + "-" + (desde + enPagina.length) + " de " + conteo : conteo,
               puede("gestionar") ? '<button class="comite-button primary" type="button" data-ir="registrar">Registrar empresa</button>' : "") +
             '<div class="comite-table-wrap"><table><thead><tr><th>Empresa</th><th>NIT</th><th>Ciudad</th><th>Correo</th><th>Estado</th><th>Acción</th></tr></thead><tbody>' +
-            (visibles.map((e) => "<tr><td><strong>" + esc(e.nombre) + "</strong></td><td>" + esc(e.nit) + "</td><td>" + esc(e.ciudad) + "</td>" +
+            (enPagina.map((e) => "<tr><td><strong>" + esc(e.nombre) + "</strong></td><td>" + esc(e.nit) + "</td><td>" + esc(e.ciudad) + "</td>" +
               "<td>" + esc(e.correo) + "</td><td>" + chip(e.estado || "Activa") + "</td><td>" + accion("ver", "Ver detalle", e.id_empresa) + "</td></tr>").join("") ||
               vacioTabla(6, "No hay empresas para mostrar con los filtros actuales.")) +
-            "</tbody></table></div>"
+            "</tbody></table></div>" +
+            paginador(estado.paginaListado, totalPaginas, "Páginas del listado de empresas")
           );
+
+        ligarPaginador($("#vista-listado"), (pagina) => {
+          estado.paginaListado = pagina;
+          renderizarListado();
+        });
 
         $("#formBuscar").addEventListener("submit", (evento) => {
           evento.preventDefault();
           estado.texto = val("buscarTexto");
+          estado.paginaListado = 1;
           renderizarListado();
         });
         $("#filtroEstado").addEventListener("change", (evento) => {
           estado.filtroEstado = evento.target.value;
+          estado.paginaListado = 1;
           renderizarListado();
         });
       }
@@ -547,7 +581,13 @@
         const lista = estado.aprobaciones;
         const enRechazo = lista.find((a) => String(a.id_aprobacion) === estado.rechazando);
 
-        const filas = lista.map((a) => {
+        const totalPaginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+        estado.paginaAprobaciones = Math.min(Math.max(1, estado.paginaAprobaciones), totalPaginas);
+        const desde = (estado.paginaAprobaciones - 1) * POR_PAGINA;
+        const enPagina = lista.slice(desde, desde + POR_PAGINA);
+        const conteo = lista.length === 1 ? "1 solicitud" : lista.length + " solicitudes";
+
+        const filas = enPagina.map((a) => {
           let acciones = "";
           if (puedeAprobar(a)) {
             acciones = accion("aprobar", "Aprobar", a.id_aprobacion) + accion("rechazar", "Rechazar", a.id_aprobacion);
@@ -575,16 +615,23 @@
           selector("filtroAprobacion", "Estado", [["Pendiente", "Pendientes"], ["Aprobada", "Aprobadas"], ["Rechazada", "Rechazadas"], ["", "Todas"]], estado.filtroAprobacion) +
           "</div></div>" +
           panel(
-            encabezado(puede("aprobar") ? "Solicitudes por revisar" : "Solicitudes enviadas", lista.length + (lista.length === 1 ? " solicitud" : " solicitudes")) +
+            encabezado(puede("aprobar") ? "Solicitudes por revisar" : "Solicitudes enviadas", totalPaginas > 1 ? (desde + 1) + "-" + (desde + enPagina.length) + " de " + conteo : conteo) +
             '<div class="comite-table-wrap"><table><thead><tr><th>Fecha</th><th>Acción</th><th>Empresa</th><th>Solicitante</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' +
             (filas || vacioTabla(6, "No hay solicitudes de aprobación con este filtro.")) +
-            "</tbody></table></div>"
+            "</tbody></table></div>" +
+            paginador(estado.paginaAprobaciones, totalPaginas, "Páginas de las solicitudes de aprobación")
           ) +
           rechazo + "</div>";
+
+        ligarPaginador($("#vista-aprobaciones"), (pagina) => {
+          estado.paginaAprobaciones = pagina;
+          renderizarAprobaciones();
+        });
 
         $("#filtroAprobacion").addEventListener("change", (evento) => {
           estado.filtroAprobacion = evento.target.value;
           estado.rechazando = null;
+          estado.paginaAprobaciones = 1;
           cargarAprobaciones();
         });
       }
@@ -773,7 +820,7 @@
       })();
     })();
   </script>
-  <script src="/static/session.js"></script>
+  <script src="/static/session.js?v=20261029"></script>
 <script src="/static/nav.js"></script>
 </body>
 

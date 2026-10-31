@@ -8,7 +8,7 @@
     <title>CertiSENA | Banco de Auditores</title>
 
     <link rel="stylesheet" href="/static/tema.css?v=20261028">
-    <link rel="stylesheet" href="/static/styles.css?v=20261028" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261030" />
 
     <style>
         .app-shell {
@@ -310,6 +310,21 @@
         .action-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        .actions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .actions-list[hidden],
+        #paginacionBanco[hidden] {
+            display: none;
+        }
+
+        .acciones-toggle {
+            background: #f8fafc;
         }
 
         .message {
@@ -729,7 +744,7 @@
 
                         </table>
 
-                        <div id="paginacionBanco" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;"></div>
+                        <div id="paginacionBanco" class="comite-pagination" hidden></div>
 
                     </div>
 
@@ -1191,156 +1206,64 @@
            BOTONES DE ACCIÓN
         ==================================================== */
 
-        function renderActionButtons(
-            solicitud
-        ) {
+        function renderActionButtons(solicitud) {
 
-            const id =
-                solicitud.id_postulacion;
-
+            const id = escapeHtml(solicitud.id_postulacion);
 
             const estado =
                 solicitud.estado_postulacion ||
                 solicitud.estado ||
                 "";
 
+            const botones = [];
 
-            let html = `
+            if (accionDisponible(estado, "revision")) {
+                botones.push(`<button type="button" class="action-button revision" data-action="revision" data-id="${id}">Pasar a En Revisión</button>`);
+            }
 
+            if (accionDisponible(estado, "correcciones")) {
+                botones.push(`<button type="button" class="action-button correcciones" data-action="correcciones" data-id="${id}">Solicitar correcciones</button>`);
+            }
+
+            if (accionDisponible(estado, "aprobar")) {
+                botones.push(`<button type="button" class="action-button aprobar" data-action="aprobar" data-id="${id}">Aprobar</button>`);
+            }
+
+            if (accionDisponible(estado, "rechazar")) {
+                botones.push(`<button type="button" class="action-button rechazar" data-action="rechazar" data-id="${id}">Rechazar</button>`);
+            }
+
+            botones.push(`<button type="button" class="action-button" data-action="ver" data-id="${id}">Ver solicitud</button>`);
+
+            if (botones.length === 1) {
+                return `<div class="actions-container">${botones[0]}</div>`;
+            }
+
+            return `
                 <div class="actions-container">
-
-            `;
-
-
-            /*
-             * EN REVISIÓN
-             */
-
-            if (
-                accionDisponible(
-                    estado,
-                    "revision"
-                )
-            ) {
-
-                html += `
-
-                    <button
-                        type="button"
-                        class="action-button revision"
-                        data-action="revision"
-                        data-id="${escapeHtml(id)}"
-                    >
-                        Pasar a En Revisión
-                    </button>
-
-                `;
-
-            }
-
-
-            /*
-             * CORRECCIONES
-             */
-
-            if (
-                accionDisponible(
-                    estado,
-                    "correcciones"
-                )
-            ) {
-
-                html += `
-
-                    <button
-                        type="button"
-                        class="action-button correcciones"
-                        data-action="correcciones"
-                        data-id="${escapeHtml(id)}"
-                    >
-                        Solicitar correcciones
-                    </button>
-
-                `;
-
-            }
-
-
-            /*
-             * APROBAR
-             */
-
-            if (
-                accionDisponible(
-                    estado,
-                    "aprobar"
-                )
-            ) {
-
-                html += `
-
-                    <button
-                        type="button"
-                        class="action-button aprobar"
-                        data-action="aprobar"
-                        data-id="${escapeHtml(id)}"
-                    >
-                        Aprobar
-                    </button>
-
-                `;
-
-            }
-
-
-            /*
-             * RECHAZAR
-             */
-
-            if (
-                accionDisponible(
-                    estado,
-                    "rechazar"
-                )
-            ) {
-
-                html += `
-
-                    <button
-                        type="button"
-                        class="action-button rechazar"
-                        data-action="rechazar"
-                        data-id="${escapeHtml(id)}"
-                    >
-                        Rechazar
-                    </button>
-
-                `;
-
-            }
-
-
-            /*
-             * VER SOLICITUD
-             */
-
-            html += `
-
-                    <button
-                        type="button"
-                        class="action-button"
-                        data-action="ver"
-                        data-id="${escapeHtml(id)}"
-                    >
-                        Ver solicitud
-                    </button>
-
+                    <button type="button" class="action-button acciones-toggle" data-action="toggle" data-id="${id}" aria-expanded="false">Ver acciones</button>
+                    <div class="actions-list" hidden>
+                        ${botones.join("")}
+                    </div>
                 </div>
-
             `;
 
+        }
 
-            return html;
+
+        function alternarAcciones(boton) {
+
+            const lista = boton.parentElement?.querySelector(".actions-list");
+
+            if (!lista) {
+                return;
+            }
+
+            const abierto = !lista.hidden;
+
+            lista.hidden = abierto;
+            boton.setAttribute("aria-expanded", String(!abierto));
+            boton.textContent = abierto ? "Ver acciones" : "Ocultar acciones";
 
         }
 
@@ -1462,6 +1385,11 @@
 
             console.log("CLICK EN ACCIÓN:", { action, id });
 
+            if (action === "toggle") {
+                alternarAcciones(button);
+                return;
+            }
+
             if (!id) {
                 showMessage("La solicitud no tiene un identificador válido.");
                 return;
@@ -1557,24 +1485,46 @@
         function renderPaginacionBanco(total, totalPaginas) {
             const contenedor = document.getElementById("paginacionBanco");
             if (!contenedor) return;
-            if (total === 0) {
+
+            if (total === 0 || totalPaginas <= 1) {
+                contenedor.hidden = true;
                 contenedor.innerHTML = "";
                 return;
             }
-            const inicio = (paginaBanco - 1) * POR_PAGINA_BANCO + 1;
-            const fin = Math.min(paginaBanco * POR_PAGINA_BANCO, total);
+
+            contenedor.hidden = false;
             contenedor.innerHTML = `
-                <span>Mostrando ${inicio}-${fin} de ${total}</span>
-                <button type="button" class="secondary-action" ${paginaBanco <= 1 ? "disabled" : ""} onclick="cambiarPaginaBanco(-1)">Anterior</button>
-                <span>Página ${paginaBanco} de ${totalPaginas}</span>
-                <button type="button" class="secondary-action" ${paginaBanco >= totalPaginas ? "disabled" : ""} onclick="cambiarPaginaBanco(1)">Siguiente</button>
+                <span class="comite-pagination-info">Página ${paginaBanco} de ${totalPaginas}</span>
+                <div class="comite-pagination-numeros">
+                    ${Array.from({ length: totalPaginas }, (_, indice) => indice + 1)
+                        .map(
+                            (pagina) => `
+                                <button
+                                    type="button"
+                                    class="comite-pager${pagina === paginaBanco ? " active" : ""}"
+                                    data-pagina="${pagina}"
+                                    ${pagina === paginaBanco ? 'aria-current="page"' : ""}
+                                >${pagina}</button>
+                            `
+                        )
+                        .join("")}
+                </div>
             `;
         }
 
-        function cambiarPaginaBanco(delta) {
-            paginaBanco += delta;
-            renderPaginaBanco();
-        }
+
+        document
+            .getElementById("paginacionBanco")
+            ?.addEventListener("click", (event) => {
+                const boton = event.target.closest("button[data-pagina]");
+                if (!boton) return;
+
+                const pagina = Number(boton.dataset.pagina);
+                if (!Number.isInteger(pagina) || pagina === paginaBanco) return;
+
+                paginaBanco = pagina;
+                renderPaginaBanco();
+            });
 
         async function loadSolicitudes() {
 
@@ -2396,7 +2346,7 @@
     </script>
 
 
-    <script src="/static/session.js"></script>
+    <script src="/static/session.js?v=20261029"></script>
 
 <script src="/static/nav.js"></script>
 </body>
