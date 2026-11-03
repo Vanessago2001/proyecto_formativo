@@ -252,10 +252,11 @@ class AsignacionAuditorService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La solicitud no existe.")
 
         solicitud = dict(solicitud)
-        if solicitud["estado"] != "APROBADO":
+        # La base guarda el canon 'Aprobada'; el literal 'APROBADO' bloqueaba toda asignación.
+        if not estados.es(solicitud["estado"], estados.APROBADA):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Solo se pueden asignar auditores a solicitudes en estado APROBADO.",
+                detail="Solo se pueden asignar auditores a solicitudes en estado Aprobada.",
             )
         if not solicitud.get("id_norma"):
             raise HTTPException(

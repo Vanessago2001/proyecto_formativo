@@ -1431,10 +1431,8 @@
             const buscar = document.getElementById("buscar").value.trim().toLowerCase();
             const estadoFiltro = document.getElementById("estado").value.trim();
 
-            const estadosOcultos = new Set(["Aprobado", "Rechazado", "Cancelado"]);
             const filtradas = solicitudesBanco.filter((solicitud) => {
                 const estado = (solicitud.estado_postulacion || solicitud.estado || "").trim();
-                if (!estadoFiltro && estadosOcultos.has(estado)) return false;
                 if (estadoFiltro && estado !== estadoFiltro) return false;
                 if (!buscar) return true;
                 const texto = [
