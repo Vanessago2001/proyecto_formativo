@@ -1,0 +1,183 @@
+1. Esquema de Base de Datos (PostgreSQL)
+SQL
+-- Tabla de Usuarios con soporte para Desactivación Lógica y Bloqueo por Intentos Fallidos
+CREATE TABLE usuarios (
+    id SERIAL PRIMARY KEY,
+    nit VARCHAR(20) UNIQUE,
+    correo VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'Activo', -- 'Activo', 'Inactivo', 'Bloqueado'
+    intentos_fallidos INT DEFAULT 0,
+    bloqueado_hasta TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de Trazabilidad de Accesos (REQ-USR-007)
+CREATE TABLE logs_acceso (
+    id SERIAL PRIMARY KEY,
+    usuario_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    correo_intentado VARCHAR(255) NOT NULL,
+    ip_origen VARCHAR(45) NOT NULL,
+    exitoso BOOLEAN NOT NULL,
+    motivo_fallo VARCHAR(100),
+    fecha_hora TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+2. Controlador de Autenticación (authController.js)
+JavaScript
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const db = require('../config/db'); // Conexión a PostgreSQL (pg)
+
+const INTENTOS_MAXIMOS = 5;
+const TIEMPO_BLOQUEO_MINUTOS = 15;
+
+/**
+ * Controlador para la verificación del inicio de sesión con políticas de seguridad SENA ISO.
+ */
+const login = async (req, res) => {
+    const { correo, password } = req.body;
+    const ipOrigen = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+    // Validación de entrada
+    if (!correo || !password) {
+        return res.status(400).json({ status: 'error', message: 'El correo y la contraseña son obligatorios.' });
+    }
+
+    try {
+        // 1. Buscar usuario en base de datos
+        const result = await db.query('SELECT * FROM usuarios WHERE correo = $1', [correo]);
+        const usuario = result.rows[0];
+
+        // Evitar enumeración de usuarios retornando mensaje estándar
+        if (!usuario) {
+            await registrarLogAcceso(null, correo, ipOrigen, false, 'Usuario no existente');
+            return res.status(401).json({ status: 'error', message: 'Credenciales inválidas.' });
+        }
+
+        // 2. Verificar REQ-USR-008: Desactivación lógica
+        if (usuario.estado === 'Inactivo') {
+            await registrarLogAcceso(usuario.id, correo, ipOrigen, false, 'Cuenta inactiva');
+            return res.status(403).json({ status: 'error', message: 'La cuenta se encuentra inactiva. Contacte al administrador.' });
+        }
+
+        // 3. Verificar REQ-USR-006: Bloqueo de cuenta activo
+        if (usuario.estado === 'Bloqueado') {
+            const ahora = new Date();
+            if (usuario.bloqueado_hasta && usuario.bloqueado_hasta > ahora) {
+                await registrarLogAcceso(usuario.id, correo, ipOrigen, false, 'Intento en cuenta bloqueada');
+                return res.status(423).json({ 
+                    status: 'error', 
+                    message: `Cuenta bloqueada por seguridad debido a múltiples intentos fallidos. Intente nuevamente después de ${usuario.bloqueado_hasta.toISOString()}` 
+                });
+            } else {
+                // El tiempo de bloqueo expiró: reactivar cuenta automáticamente
+                await db.query(
+                    "UPDATE usuarios SET estado = 'Activo', intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = $1",
+                    [usuario.id]
+                );
+                usuario.estado = 'Activo';
+            }
+        }
+
+        // 4. Validar contraseña
+        const passwordValida = await bcrypt.compare(password, usuario.password_hash);
+
+        if (!passwordValida) {
+            const nuevosIntentos = usuario.intentos_fallidos + 1;
+
+            if (nuevosIntentos >= INTENTOS_MAXIMOS) {
+                const tiempoDesbloqueo = new Date(Date.now() + TIEMPO_BLOQUEO_MINUTOS * 60 * 1000);
+                await db.query(
+                    "UPDATE usuarios SET estado = 'Bloqueado', intentos_fallidos = $1, bloqueado_hasta = $2 WHERE id = $3",
+                    [nuevosIntentos, tiempoDesbloqueo, usuario.id]
+                );
+                await registrarLogAcceso(usuario.id, correo, ipOrigen, false, 'Bloqueo alcanzado por contraseña errónea');
+                
+                return res.status(423).json({ 
+                    status: 'error', 
+                    message: 'Ha superado el número máximo de intentos fallidos. Su cuenta ha sido bloqueada temporalmente.' 
+                });
+            } else {
+                await db.query('UPDATE usuarios SET intentos_fallidos = $1 WHERE id = $2', [nuevosIntentos, usuario.id]);
+                await registrarLogAcceso(usuario.id, correo, ipOrigen, false, 'Contraseña errónea');
+                
+                return res.status(401).json({ status: 'error', message: 'Credenciales inválidas.' });
+            }
+        }
+
+        // 5. Login Exitoso: Reiniciar contador de fallos y actualizar estado
+        await db.query(
+            "UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = $1",
+            [usuario.id]
+        );
+
+        // 6. Verificar REQ-USR-007: Trazabilidad de accesos (Grabar Log Exitoso)
+        await registrarLogAcceso(usuario.id, correo, ipOrigen, true, 'Autenticación exitosa');
+
+        // 7. Generación de Session Token (JWT)
+        const token = jwt.sign(
+            { id: usuario.id, correo: usuario.correo, nit: usuario.nit },
+            process.env.JWT_SECRET,
+            { expiresIn: '2h' }
+        );
+
+        // Envío seguro de cookie
+        res.cookie('auth_token', token, {
+            httpOnly: true, // Inaccesible para JavaScript en Frontend (Mitiga XSS)
+            secure: process.env.NODE_ENV === 'production', // Fuerza transporte sobre HTTPS
+            sameSite: 'strict', // Mitiga ataques CSRF
+            maxAge: 2 * 60 * 60 * 1000 // Expiración en 2 horas
+        });
+
+        return res.status(200).json({
+            status: 'success',
+            message: 'Inicio de sesión exitoso.',
+            user: {
+                id: usuario.id,
+                nit: usuario.nit,
+                correo: usuario.correo
+            }
+        });
+
+    } catch (error) {
+        console.error('Error durante el procedimiento de Login:', error);
+        return res.status(500).json({ status: 'error', message: 'Error interno del servidor.' });
+    }
+};
+
+/**
+ * Función auxiliar para cumplir con la trazabilidad de accesos (REQ-USR-007)
+ */
+async function registrarLogAcceso(usuarioId, correo, ipOrigen, exitoso, motivoFallo) {
+    try {
+        await db.query(
+            'INSERT INTO logs_acceso (usuario_id, correo_intentado, ip_origen, exitoso, motivo_fallo) VALUES ($1, $2, $3, $4, $5)',
+            [usuarioId, correo, ipOrigen, exitoso, motivoFallo]
+        );
+    } catch (err) {
+        console.error('Fallo crítico guardando trazabilidad de accesos:', err);
+    }
+}
+
+module.exports = { login };
+3. Configuración de Rutas y Middleware de Seguridad (authRoutes.js)
+Para reforzar la seguridad antes de llegar al controlador, se incluye un limitador de frecuencia (Rate Limiting) para mitigar ataques de fuerza bruta en la red:
+
+JavaScript
+const express = require('express');
+const router = express.Router();
+const rateLimit = require('express-rate-limit');
+const { login } = require('../controllers/authController');
+
+// Limitador estricto para evitar inundación de peticiones por IP
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 10, // Máximo 10 peticiones por IP en la ventana
+    message: { status: 'error', message: 'Demasiadas solicitudes desde esta IP, intente más tarde.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+router.post('/login', loginLimiter, login);
+
+module.exports = router;

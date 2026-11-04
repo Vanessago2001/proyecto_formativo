@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA - Registrarse</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/tema.css?v=20261028">
+    <link rel="stylesheet" href="/static/styles.css?v=20261028">
+</head>
+<body>
+
+<header class="login-header">
+  <div class="header-content">
+
+        <div class="header-left">
+
+    <img src="/static/sena_blanco.png"
+         alt="Logo SENA"
+         class="sena-blanco">
+
+    <div>
+
+        <h1>CertiSENA</h1>
+
+        <p class="subtitle">
+            Plataforma de gestión y consulta de certificados
+        </p>
+
+        <p style="font-size:12px;opacity:.85;margin-top:4px;">
+            Servicio Nacional de Aprendizaje • CertiSENA
+        </p>
+
+    </div>
+
+</div>
+
+        <div class="header-buttons">
+
+            <div class="nav-dropdown">
+                <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+                    Consulta pública <span class="nav-caret">▼</span>
+                </button>
+                <div class="nav-dropdown-menu">
+                    <div class="nav-dropdown-panel">
+                        <a href="/buscar_empresa">Buscar empresa por NIT</a>
+                        <a href="/">Consultar estado de vigencia</a>
+                        <a href="/verificar-certificado">Verificar certificado</a>
+                        <a href="/consulta-norma">Consultar norma evaluada</a>
+                        <a href="/vigencia">Consultar vigencia y plazos</a>
+                        <a href="/validar">Validar autenticidad</a>
+                        <a href="/constancia">Descargar constancia pública</a>
+                    </div>
+                </div>
+            </div>
+
+            <a href="/login" class="btn-login">
+                Iniciar sesión
+            </a>
+
+        </div>
+
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+    </div>
+
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="/login">Iniciar sesión</a>
+        <div class="mobile-menu-group">
+            <span class="mobile-menu-label">Consulta pública</span>
+            <a href="/buscar_empresa">Buscar empresa por NIT</a>
+            <a href="/">Consultar estado de vigencia</a>
+            <a href="/verificar-certificado">Verificar certificado</a>
+            <a href="/consulta-norma">Consultar norma evaluada</a>
+            <a href="/vigencia">Consultar vigencia y plazos</a>
+            <a href="/validar">Validar autenticidad</a>
+            <a href="/constancia">Descargar constancia pública</a>
+        </div>
+    </div>
+
+</header>
+
+<main class="login-container">
+
+    <section class="login-form">
+
+        <h2>Crear cuenta</h2>
+
+        <div class="form-group">
+
+            <label for="tipo_doc">
+                Tipo de documento
+            </label>
+
+            <select id="tipo_doc" name="tipo_doc" required>
+                <option value="">Seleccione tipo de documento</option>
+                <option value="Cédula de Ciudadanía">Cédula de Ciudadanía</option>
+                <option value="Cédula de Extranjería">Cédula de Extranjería</option>
+                <option value="NIT">NIT</option>
+                <option value="Tarjeta de Identidad">Tarjeta de Identidad</option>
+                <option value="Pasaporte">Pasaporte</option>
+            </select>
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="num_doc">
+                Número de documento
+            </label>
+
+            <input
+                type="text"
+                id="num_doc"
+                name="num_doc"
+                placeholder="Ingrese su número de documento"
+                required
+                minlength="4">
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="nombre" id="nombreLabel">
+                Nombre completo
+            </label>
+
+            <input
+                type="text"
+                id="nombre"
+                name="nombre"
+                placeholder="Ingrese su nombre completo"
+                required
+                minlength="4">
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="correo">
+                Correo electrónico
+            </label>
+
+            <input
+                type="email"
+                id="correo"
+                name="correo"
+                placeholder="Ingrese su correo electrónico"
+                required>
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="password">
+                Contraseña
+            </label>
+
+            <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Ingrese una contraseña (mínimo 6 caracteres)"
+                required
+                minlength="6">
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="rol">
+                Rol
+            </label>
+
+            <select id="rol" name="rol" required>
+                <option value="">Seleccione un rol</option>
+                <option value="">Cargando opciones...</option>
+            </select>
+
+        </div>
+
+        <button type="submit" id="btnRegister" class="btn-login">
+            Registrarse
+        </button>
+
+        <div id="errorMessage" class="error-message"></div>
+
+    </section>
+
+</main>
+
+<footer class="login-footer">
+
+    <p>
+        © 2026 CertiSENA - SENA. Todos los derechos reservados.
+    </p>
+
+</footer>
+
+<script>
+
+// Cambiar el label de nombre según el tipo de documento
+document.getElementById("tipo_doc").addEventListener("change", function(){
+    const nombreLabel = document.getElementById("nombreLabel");
+    const nombreInput = document.getElementById("nombre");
+
+    if(this.value === "NIT"){
+        nombreLabel.textContent = "Razón social";
+        nombreInput.placeholder = "Ingrese la razón social";
+    } else {
+        nombreLabel.textContent = "Nombre completo";
+        nombreInput.placeholder = "Ingrese su nombre completo";
+    }
+});
+
+document.getElementById("btnRegister").addEventListener("click", async function(e){
+
+    e.preventDefault();
+
+    const tipo_doc = document.getElementById("tipo_doc").value;
+
+    const num_doc = document.getElementById("num_doc").value.trim();
+
+    const nombre = document.getElementById("nombre").value.trim();
+
+    const correo = document.getElementById("correo").value.trim();
+
+    const password = document.getElementById("password").value;
+
+    const rol = document.getElementById("rol").value;
+
+    const errorMsg = document.getElementById("errorMessage");
+
+    errorMsg.textContent = "";
+
+    if(!tipo_doc || !num_doc || !nombre || !correo || !password || !rol){
+
+        errorMsg.textContent = "Por favor complete todos los campos.";
+
+        return;
+
+    }
+
+    const btnRegister = this;
+    const textoOriginalRegister = btnRegister.textContent;
+    btnRegister.disabled = true;
+    btnRegister.textContent = "Procesando...";
+
+    try{
+
+        const response = await fetch("/users/register",{
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":"application/json"
+            },
+
+            body:JSON.stringify({
+                tipo_doc,
+                num_doc,
+                nombre,
+                correo,
+                contrasena: password,
+                rol: rol
+            })
+
+        });
+
+        const data = await response.json();
+
+        if(!response.ok){
+
+            errorMsg.textContent = data.detail || "Error al registrarse. Inténtalo de nuevo.";
+
+            return;
+
+        }
+
+        window.location.href = "/login";
+
+    }
+
+    catch(error){
+
+        errorMsg.textContent = "Error de conexión con el servidor.";
+
+    }
+
+    finally{
+
+        btnRegister.disabled = false;
+        btnRegister.textContent = textoOriginalRegister;
+
+    }
+
+});
+
+fetch("/users/public-roles")
+    .then(response => response.json())
+    .then(roles => {
+        const select = document.getElementById("rol");
+        select.innerHTML = '<option value="">Seleccione un perfil</option>';
+        const displayed = new Set();
+        roles.forEach(role => {
+            if (!displayed.has(role.nombre)) {
+                select.add(new Option(role.nombre, role.id_rol));
+                displayed.add(role.nombre);
+            }
+        });
+    })
+    .catch(() => {
+        document.getElementById("errorMessage").textContent = "No fue posible cargar los perfiles de registro.";
+    });
+
+// Menú hamburguesa
+const hamburgerBtn = document.getElementById("hamburgerBtn");
+const mobileMenu = document.getElementById("mobileMenu");
+
+hamburgerBtn.addEventListener("click", function(){
+    this.classList.toggle("active");
+    mobileMenu.classList.toggle("open");
+});
+
+document.querySelectorAll(".mobile-menu a").forEach(link => {
+    link.addEventListener("click", function(){
+        hamburgerBtn.classList.remove("active");
+        mobileMenu.classList.remove("open");
+    });
+});
+
+</script>
+
+<script src="/static/session.js?v=20261029"></script>
+</body>
+</html>
