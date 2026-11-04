@@ -10,7 +10,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css?v=20261028">
   <link rel="stylesheet" href="/static/tema.css?v=20261028">
-<<<<<<< HEAD
   <style>
     .cert-inactive-notice {
       margin: 0 0 14px;
@@ -23,8 +22,6 @@
       font-weight: 700;
     }
   </style>
-=======
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
 </head>
 
 <body class="comite-page certificados-page">
@@ -34,11 +31,7 @@
         <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
         <div>
           <h1>CertiSENA</h1>
-<<<<<<< HEAD
           <p id="headerSubtitle" class="subtitle">Gestión de certificados</p>
-=======
-          <p class="subtitle">Gestión de certificados</p>
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
         </div>
       </div>
       <div id="authControls" class="comite-header-user">
@@ -47,7 +40,6 @@
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
-<<<<<<< HEAD
       <div id="publicControls" class="header-buttons" hidden>
         <div class="nav-dropdown">
           <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
@@ -88,9 +80,6 @@
         <a href="/constancia">Descargar constancia pública</a>
       </div>
     </nav>
-=======
-    </div>
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
   </header>
 
   <main class="comite-shell">
@@ -394,15 +383,12 @@
         feedback.className = "comite-feedback" + (message ? " " + kind : "");
       }
 
-<<<<<<< HEAD
       function inactiveCompanyNotice(status) {
         return String(status || "").trim().toLowerCase() === "inactiva"
           ? '<p class="cert-inactive-notice" role="status">Empresa inactiva</p>'
           : "";
       }
 
-=======
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
       function statusClass(value) {
         const normalized = String(value || "").trim().toLowerCase();
         if (normalized === "vigente") return "approved";
@@ -883,12 +869,8 @@
           const response = await fetch("/certificados/publico/" + encodeURIComponent(code));
           const certificate = await response.json().catch(() => null);
           if (!response.ok) throw new Error(certificate && certificate.detail || "No se encontró un certificado público vigente.");
-<<<<<<< HEAD
           result.innerHTML = inactiveCompanyNotice(certificate.estado_empresa) +
             '<p class="cert-signature-note">Firma PAdES registrada. Comprueba la identidad del firmante y las huellas antes de aceptarlo.</p><dl class="comite-facts cert-public-facts">' +
-=======
-          result.innerHTML = '<p class="cert-signature-note">Firma PAdES registrada. Comprueba la identidad del firmante y las huellas antes de aceptarlo.</p><dl class="comite-facts cert-public-facts">' +
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
             fact("Empresa", certificate.empresa) + fact("NIT", certificate.nit) +
             fact("Norma", [certificate.norma_codigo, certificate.norma, certificate.norma_version].filter(Boolean).join(" ")) +
             fact("Alcance", certificate.alcance) + fact("Código", certificate.codigo_verificacion) +
@@ -954,12 +936,9 @@
       }
 
       $("#roleLabel").textContent = publicMode ? "Consulta sin autenticación" : "Rol: " + roleLabel;
-<<<<<<< HEAD
       $("#headerSubtitle").textContent = publicMode
         ? "Plataforma de gestión y consulta de certificados"
         : "Gestión de certificados";
-=======
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
       $("#leaderPanel").hidden = !canAssignLeader || publicOnly;
       $("#createPanel").hidden = !canCreate;
       $("#alertsNav").hidden = !canSeeAlerts || publicMode;
@@ -968,7 +947,6 @@
       $("#exportCompaniesButton").hidden = !canExport || publicOnly;
       $("#committeeNav").hidden = publicOnly;
       $("#authControls").hidden = publicMode;
-<<<<<<< HEAD
       $("#publicControls").hidden = !publicMode;
       $("#hamburgerBtn").hidden = !publicMode;
       $("#mobileMenu").hidden = !publicMode;
@@ -986,10 +964,6 @@
           $("#mobileMenu").classList.remove("open");
         });
       });
-=======
-      $("#roleNote").hidden = publicMode;
-      $("#refreshButton").hidden = publicOnly;
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
       $("#createForm").addEventListener("submit", async (event) => {
         event.preventDefault();
         const button = $("#createButton");

@@ -24,7 +24,6 @@
     .modal-field strong { display: block; color: #5f6f69; font-size: 11px; text-transform: uppercase; margin-bottom: 2px; }
     .modal-close { margin-top: 16px; padding: 8px 16px; border: none; border-radius: 6px; background: #3baa01; color: #fff; cursor: pointer; font-weight: 600; }
     .empty { text-align: center; color: #64748b; padding: 24px; }
-<<<<<<< HEAD
     .portal {
         max-width: var(--ancho-contenido);
         margin: 0 auto;
@@ -50,29 +49,6 @@
         height: max-content;
         align-self: start;
         z-index: 100;
-=======
-    /* =====================================================
-       MENU LATERAL: el mismo de static/dashboard.html, con su
-       mismo diseno, tamano de letras y posicion.
-    ====================================================== */
-    .app-shell {
-        max-width: var(--ancho-contenido);
-        margin: 0 auto;
-        padding: 28px;
-    }
-
-    .admin-grid {
-        display: grid;
-        grid-template-columns: 260px minmax(0, 1fr);
-        gap: 24px;
-    }
-
-    .admin-nav {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        padding: 12px;
-        height: max-content;
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
     }
 
     .admin-nav-heading {
@@ -94,7 +70,6 @@
         text-transform: uppercase;
     }
 
-<<<<<<< HEAD
     .side a {
         display: block;
         color: #334155;
@@ -116,27 +91,10 @@
     .side a.active {
         background: #f1f5f9;
         color: #39a900;
-=======
-    .admin-nav a {
-        display: block;
-        color: #334155;
-        text-decoration: none;
-        padding: 11px 12px;
-        font-size: 13px;
-        line-height: 1.35;
-        border-left: 3px solid transparent;
-    }
-
-    .admin-nav a.active,
-    .admin-nav a:hover {
-        background: #f1f5f9;
-        color: #256d00;
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
         border-left-color: #3baa01;
         font-weight: 700;
     }
 
-<<<<<<< HEAD
     .content {
         min-width: 0;
         padding: 22px;
@@ -177,15 +135,6 @@
         .side a.active {
             border-left-color: transparent;
             border-bottom-color: #3baa01;
-=======
-    @media (max-width: 800px) {
-        .app-shell {
-            padding: 18px;
-        }
-
-        .admin-grid {
-            grid-template-columns: 1fr;
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
         }
     }
 
@@ -220,7 +169,6 @@
     </div>
   </header>
 
-<<<<<<< HEAD
   <main class="portal">
     <nav class="side admin-nav" aria-label="Navegación del auditor">
       <a href="/auditor#inicioRegistro">Formulario de registro</a>
@@ -238,36 +186,6 @@
     </nav>
 
     <section class="surface content">
-=======
-  <main class="app-shell">
-    <div class="admin-grid">
-    <!-- MENU LATERAL: el mismo de static/dashboard.html -->
-    <nav class="admin-nav" aria-label="Navegación del panel">
-      <div class="admin-nav-heading">
-        <span>Administración</span>
-        Empresas restringidas
-      </div>
-      <a href="/dashboard">Resumen</a>
-      <a href="/empresas">Empresas registradas</a>
-      <a href="/dashboard#usuarios">Gestionar usuarios</a>
-      <a href="/asignacion-auditores">Asignación de auditores</a>
-      <a href="/consultar-auditorias-programadas-admin">Consultar auditorías programadas</a>
-      <a href="/consultar-auditorias-programadas-admin#futuras">Consultar programaciones futuras</a>
-      <a href="/consultar-agenda-auditor">Consultar agenda de auditor</a>
-      <a href="/revision-solicitudes">Revisión de solicitudes</a>
-      <a href="/banco-auditores">Banco de auditores</a>
-      <a href="/conflictos-administrador">Conflictos de interés</a>
-      <a href="/empresas-restringidas" class="active" aria-current="page">Consultar empresas restringidas</a>
-      <a href="/gestion-certificados">Gestión de certificados</a>
-      <a href="/apelacion">Apelaciones</a>
-      <a href="/comite">Ir al Comité de certificación</a>
-      <a href="/reportes">Reportes</a>
-      <a href="/profile">Mi perfil</a>
-      <a id="logout" href="/login">Cerrar sesión</a>
-    </nav>
-
-    <div class="surface">
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
       <h2>Empresas restringidas</h2>
       <p class="help-text">Listado real de empresas con conflictos de interés activos que bloquean asignación.</p>
       <div class="table-wrap">
@@ -285,12 +203,7 @@
         </table>
       </div>
       <div id="mensajeEmpresas" class="empty">Cargando empresas restringidas...</div>
-<<<<<<< HEAD
     </section>
-=======
-    </div>
-    </div>
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
   </main>
 
   <div class="modal-overlay" id="modalEmpresa">

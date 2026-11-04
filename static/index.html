@@ -20,10 +20,7 @@
         .cd-estado { display: inline-block; border-radius: 999px; padding: 3px 11px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 8px; background: #f1f5f9; color: #4b5563; }
         .cd-card.ok .cd-estado { background: #e2e8f0; color: #1a7f37; }
         .cd-card.tramite .cd-estado { background: #fffbeb; color: #8d6e00; }
-<<<<<<< HEAD
         .cd-inactividad { margin: 0 0 10px; padding: 9px 12px; border: 1px solid #f5c6cb; border-radius: 6px; background: #fffbeb; color: #b42318; font-size: 13px; font-weight: 700; }
-=======
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
         .cd-nombre { margin: 0; color: #2f7d32; font-size: 17px; font-weight: 700; }
         .cd-sub { margin: 2px 0 10px; color: #6b7280; font-size: 12px; }
         .cd-rows { display: grid; grid-template-columns: 150px 1fr; row-gap: 5px; font-size: 13px; }
@@ -212,13 +209,9 @@ function claseEstado(estado) {
 
 function tarjeta(fila) {
     const estado = fila.estado_general || "SIN DATOS";
-<<<<<<< HEAD
     const empresaInactiva = String(fila.estado_empresa || "").trim().toLowerCase() === "inactiva";
     return `<article class="cd-card ${claseEstado(estado)}">
         ${empresaInactiva ? '<p class="cd-inactividad" role="status">Empresa inactiva</p>' : ""}
-=======
-    return `<article class="cd-card ${claseEstado(estado)}">
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
         <span class="cd-estado">${esc(estado)}</span>
         <p class="cd-nombre">${esc(fila.empresa)}</p>
         <p class="cd-sub">NIT ${esc(fila.nit)}${fila.ciudad ? " - " + esc(fila.ciudad) : ""}</p>
@@ -249,10 +242,7 @@ async function consultar() {
     try {
         const params = new URLSearchParams();
         params.set("nit", nit);
-<<<<<<< HEAD
         params.set("nit_exacto", "true");
-=======
->>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
 
         const respuesta = await fetch(`/api/consultas-publicas/documentos?${params.toString()}`);
 
