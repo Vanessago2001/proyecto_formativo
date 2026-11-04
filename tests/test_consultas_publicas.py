@@ -149,8 +149,6 @@ async def test_validacion_publica_incluye_estado_de_empresa(db, cliente):
 
     assert respuesta.status_code == status.HTTP_200_OK
     assert respuesta.json()["documento"]["estado_empresa"] == "Inactiva"
-
-
 async def test_consulta_de_documentos_responde_sin_token(db, cliente):
     # Sin resultados la consulta ejecuta dos sentencias (principal y respaldo).
     db.execute.return_value = _filas([])
@@ -331,8 +329,6 @@ async def test_consulta_de_vigencia_con_nit_exacto_no_busca_por_coincidencias_pa
     assert len(sentencias) == 2
     assert all("ILIKE" not in sql.upper() for sql in sentencias)
     assert all("REPLACE" in sql.upper() for sql in sentencias)
-
-
 # ============================================================
 # 4. CONSTANCIA EN PDF (PUB-009)
 # ============================================================

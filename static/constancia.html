@@ -27,7 +27,10 @@
         .ct-btn:disabled { opacity: .6; cursor: wait; }
         #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
         .ct-card { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #2f7d32; border-radius: 3px; padding: 20px 22px; margin-top: 18px; }
+<<<<<<< HEAD
         .ct-inactividad { margin: 0 0 10px; padding: 9px 12px; border: 1px solid #f5c6cb; border-radius: 6px; background: #fffbeb; color: #b42318; font-size: 13px; font-weight: 700; }
+=======
+>>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
         .ct-empresa { margin: 0; color: #374151; font-size: 16px; font-weight: 700; }
         .ct-sub { margin: 2px 0 12px; color: #6b7280; font-size: 12px; }
         .ct-rows { display: grid; grid-template-columns: 190px 1fr; row-gap: 6px; font-size: 13px; }
@@ -203,7 +206,10 @@
 
         function tarjeta(empresa, urlPdf) {
             return `<article class="ct-card">
+<<<<<<< HEAD
                 ${String(empresa.estado || "").trim().toLowerCase() === "inactiva" ? '<p class="ct-inactividad" role="status">Empresa inactiva</p>' : ""}
+=======
+>>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
                 <p class="ct-empresa">${esc(empresa.nombre)}</p>
                 <p class="ct-sub">NIT ${esc(empresa.nit)}${empresa.ciudad ? " - " + esc(empresa.ciudad) : ""}</p>
                 <dl class="ct-rows">

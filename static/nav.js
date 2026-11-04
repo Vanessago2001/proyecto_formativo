@@ -106,6 +106,7 @@
     });
   }
 
+<<<<<<< HEAD
   function ajustarCabeceraAuditor() {
     var encabezado = document.querySelector("header.login-header");
     if (!encabezado) return;
@@ -151,6 +152,8 @@
     acciones.replaceChildren(panel, perfil, salir);
   }
 
+=======
+>>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
 
   /* ----------------------------------------------------------
      4. El menú lateral es el mismo en todas las pantallas.
@@ -173,9 +176,14 @@
     ["/empresas", "Empresas registradas"],
     ["/dashboard#usuarios", "Gestionar usuarios"],
     ["/asignacion-auditores", "Asignación de auditores"],
+<<<<<<< HEAD
     ["/consultar-auditorias-programadas-admin#listado", "Consultar auditorías"],
     ["/consultar-auditorias-programadas-admin#reprogramaciones", "Solicitudes de reprogramación"],
     ["/consultar-auditorias-programadas-admin#futuras", "Programaciones futuras"],
+=======
+    ["/consultar-auditorias-programadas-admin", "Consultar auditorías programadas"],
+    ["/consultar-auditorias-programadas-admin#futuras", "Consultar programaciones futuras"],
+>>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
     ["/consultar-agenda-auditor", "Consultar agenda de auditor"],
     ["/revision-solicitudes", "Revisión de solicitudes"],
     ["/banco-auditores", "Banco de auditores"],
@@ -189,6 +197,7 @@
   ];
 
   var MENU_AUDITOR = [
+<<<<<<< HEAD
     ["/auditor#inicioRegistro", "Formulario de registro"],
     ["/auditor#historial-academico", "Historial académico"],
     ["/consultar-estado", "Consultar estado del registro"],
@@ -199,6 +208,17 @@
     ["/disponibilidad-auditor", "Disponibilidad semanal"],
     ["/notificaciones-auditor", "Notificaciones"],
     ["/catalogo-competencias-auditor", "Catálogo de competencias"],
+=======
+    ["/auditor", "Mi registro"],
+    ["/consultar-estado", "Estado del registro"],
+    ["/catalogo-competencias-auditor", "Catálogo de competencias"],
+    ["/conflictos-auditor", "Conflictos registrados"],
+    ["/consultar-auditorias-programadas", "Auditorías programadas"],
+    ["/programaciones-futuras-auditor", "Programaciones futuras"],
+    ["/disponibilidad-auditor", "Disponibilidad semanal"],
+    ["/notificaciones-auditor", "Notificaciones"],
+    ["/perfil-auditor", "Mi perfil"],
+>>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
     ["/reportes", "Reportes"]
   ];
 
@@ -341,9 +361,12 @@
       ajustarEnlacesAlPanel(panelDelRol(rol));
     }
     ajustarEnlacesDePerfil();
+<<<<<<< HEAD
     if (/auditor/.test(rol) && !/administrar/.test(rol)) {
       ajustarCabeceraAuditor();
     }
+=======
+>>>>>>> 92b0d89c3be5b4d5a3630bdb836d9b0d31ea9898
   }
 
   if (document.readyState === "loading") {
