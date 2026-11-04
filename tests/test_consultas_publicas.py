@@ -34,6 +34,7 @@ EMPRESA = {
     "nombre": "Café del Eje",
     "nit": "900123456-7",
     "ciudad": "Manizales",
+    "estado": "Inactiva",
 }
 
 ULTIMA_SOLICITUD = {
@@ -126,7 +127,28 @@ async def test_buscar_empresa_por_nit_responde_sin_token(db, cliente):
     datos = respuesta.json()
     assert len(datos) == 1
     assert datos[0]["nombre"] == "Café del Eje"
+    assert datos[0]["estado"] == "Inactiva"
     assert datos[0]["ultima_solicitud"]["numero_radicado"] == "RAD-2026-001"
+
+
+async def test_validacion_publica_incluye_estado_de_empresa(db, cliente):
+    db.execute.return_value = _una_fila({
+        "codigo_verificacion": "CV-123",
+        "cert_estado": "VIGENTE",
+        "cert_emision": date(2026, 1, 1),
+        "cert_vence": date(2099, 1, 1),
+        "numero_radicado": "RAD-2026-001",
+        "empresa": EMPRESA["nombre"],
+        "nit": EMPRESA["nit"],
+        "ciudad": EMPRESA["ciudad"],
+        "estado_empresa": EMPRESA["estado"],
+    })
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/validar", params={"codigo": "CV-123"})
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert respuesta.json()["documento"]["estado_empresa"] == "Inactiva"
 
 
 async def test_consulta_de_documentos_responde_sin_token(db, cliente):
@@ -251,6 +273,64 @@ async def test_un_tramite_sin_certificado_se_reporta_en_tramite(db, cliente):
     assert fila["vigente"] is False
     assert fila["estado_general"] == "EN TRAMITE - Radicada"
     assert fila["norma_completa"] == "--"
+
+
+async def test_consulta_publica_incluye_estado_de_empresa_inactiva_sin_tramites(db, cliente):
+    db.execute.side_effect = [
+        _filas([]),
+        _filas([{
+            "id_empresa": EMPRESA["id_empresa"],
+            "empresa": EMPRESA["nombre"],
+            "nit": EMPRESA["nit"],
+            "ciudad": EMPRESA["ciudad"],
+            "estado_empresa": "Inactiva",
+        }]),
+    ]
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/documentos", params={"nit": EMPRESA["nit"]})
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    fila = respuesta.json()[0]
+    assert fila["estado_empresa"] == "Inactiva"
+    assert fila["estado_general"] == "REGISTRADA"
+
+
+async def test_consulta_publica_incluye_estado_empresa_en_tramites(db, cliente):
+    db.execute.side_effect = [_filas([{
+        "id_solicitud": "s-3",
+        "numero_radicado": "RAD-2026-003",
+        "estado_tramite": "Radicada",
+        "id_empresa": EMPRESA["id_empresa"],
+        "empresa": EMPRESA["nombre"],
+        "nit": EMPRESA["nit"],
+        "ciudad": EMPRESA["ciudad"],
+        "estado_empresa": "Inactiva",
+        "cert_vence": None,
+    }])]
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/documentos", params={"nit": EMPRESA["nit"]})
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert respuesta.json()[0]["estado_empresa"] == "Inactiva"
+
+
+async def test_consulta_de_vigencia_con_nit_exacto_no_busca_por_coincidencias_parciales(db, cliente):
+    db.execute.side_effect = [_filas([]), _filas([])]
+
+    async with cliente as ac:
+        respuesta = await ac.get(
+            f"{BASE}/documentos",
+            params={"nit": "90", "nit_exacto": "true"},
+        )
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert respuesta.json() == []
+    sentencias = _sql_ejecutados(db)
+    assert len(sentencias) == 2
+    assert all("ILIKE" not in sql.upper() for sql in sentencias)
+    assert all("REPLACE" in sql.upper() for sql in sentencias)
 
 
 # ============================================================

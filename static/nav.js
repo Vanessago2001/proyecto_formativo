@@ -106,6 +106,51 @@
     });
   }
 
+  function ajustarCabeceraAuditor() {
+    var encabezado = document.querySelector("header.login-header");
+    if (!encabezado) return;
+
+    var subtitulo = encabezado.querySelector(".subtitle");
+    if (subtitulo) subtitulo.textContent = "Portal de auditoría";
+
+    var contenido = encabezado.querySelector(".header-content");
+    if (!contenido) return;
+
+    var acciones = encabezado.querySelector(".comite-header-user");
+    if (!acciones) {
+      acciones = document.createElement("div");
+      acciones.className = "comite-header-user";
+      contenido.appendChild(acciones);
+    }
+
+    var panel = encabezado.querySelector(".comite-back-button") ||
+      encabezado.querySelector('a[href="/dashboard"], a[href="/auditor"]');
+    if (!panel) panel = document.createElement("a");
+    panel.className = "comite-back-button";
+    panel.href = "/auditor";
+    panel.textContent = "Panel";
+    panel.style.display = "";
+
+    var perfil = encabezado.querySelector(".profile-link") ||
+      encabezado.querySelector('a[href="/profile"], a[href="/perfil-auditor"]');
+    if (!perfil) perfil = document.createElement("a");
+    perfil.className = "profile-link";
+    perfil.href = "/perfil-auditor";
+    perfil.textContent = "Mi perfil";
+    perfil.style.display = "";
+
+    var salir = acciones.querySelector(".comite-logout, #logoutButton") ||
+      encabezado.querySelector(".comite-logout, #logoutButton");
+    if (!salir) {
+      salir = document.createElement("button");
+      salir.type = "button";
+      salir.className = "comite-logout js-salir";
+    }
+    salir.textContent = "Cerrar sesión";
+
+    acciones.replaceChildren(panel, perfil, salir);
+  }
+
 
   /* ----------------------------------------------------------
      4. El menú lateral es el mismo en todas las pantallas.
@@ -128,8 +173,9 @@
     ["/empresas", "Empresas registradas"],
     ["/dashboard#usuarios", "Gestionar usuarios"],
     ["/asignacion-auditores", "Asignación de auditores"],
-    ["/consultar-auditorias-programadas-admin", "Consultar auditorías programadas"],
-    ["/consultar-auditorias-programadas-admin#futuras", "Consultar programaciones futuras"],
+    ["/consultar-auditorias-programadas-admin#listado", "Consultar auditorías"],
+    ["/consultar-auditorias-programadas-admin#reprogramaciones", "Solicitudes de reprogramación"],
+    ["/consultar-auditorias-programadas-admin#futuras", "Programaciones futuras"],
     ["/consultar-agenda-auditor", "Consultar agenda de auditor"],
     ["/revision-solicitudes", "Revisión de solicitudes"],
     ["/banco-auditores", "Banco de auditores"],
@@ -143,15 +189,16 @@
   ];
 
   var MENU_AUDITOR = [
-    ["/auditor", "Mi registro"],
-    ["/consultar-estado", "Estado del registro"],
-    ["/catalogo-competencias-auditor", "Catálogo de competencias"],
-    ["/conflictos-auditor", "Conflictos registrados"],
-    ["/consultar-auditorias-programadas", "Auditorías programadas"],
+    ["/auditor#inicioRegistro", "Formulario de registro"],
+    ["/auditor#historial-academico", "Historial académico"],
+    ["/consultar-estado", "Consultar estado del registro"],
+    ["/conflictos-auditor", "Consultar conflictos registrados"],
+    ["/empresas-restringidas", "Consultar empresas restringidas"],
+    ["/consultar-auditorias-programadas", "Consultar auditorías programadas"],
     ["/programaciones-futuras-auditor", "Programaciones futuras"],
     ["/disponibilidad-auditor", "Disponibilidad semanal"],
     ["/notificaciones-auditor", "Notificaciones"],
-    ["/perfil-auditor", "Mi perfil"],
+    ["/catalogo-competencias-auditor", "Catálogo de competencias"],
     ["/reportes", "Reportes"]
   ];
 
@@ -294,6 +341,9 @@
       ajustarEnlacesAlPanel(panelDelRol(rol));
     }
     ajustarEnlacesDePerfil();
+    if (/auditor/.test(rol) && !/administrar/.test(rol)) {
+      ajustarCabeceraAuditor();
+    }
   }
 
   if (document.readyState === "loading") {

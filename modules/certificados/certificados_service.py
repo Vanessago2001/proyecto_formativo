@@ -85,7 +85,8 @@ class CertificadosService:
                 s.numero_radicado, s.id_empresa,
                 e.nombre AS empresa, e.nit,
                 n.codigo AS norma_codigo, n.nombre AS norma,
-                n.version AS norma_version, a.descripcion AS alcance
+                n.version AS norma_version, a.descripcion AS alcance,
+                e.estado AS estado_empresa
             FROM certificado c
             JOIN solicitud s ON s.id_solicitud = c.id_solicitud
             JOIN empresa e ON e.id_empresa = s.id_empresa
@@ -112,7 +113,7 @@ class CertificadosService:
             campos_publicos = {
                 "codigo_verificacion", "estado_certificado", "fecha_emision",
                 "fecha_vencimiento", "numero_radicado", "empresa", "nit",
-                "norma_codigo", "norma", "norma_version", "alcance",
+                "norma_codigo", "norma", "norma_version", "alcance", "estado_empresa",
                 "firmante", "huella_pdf", "huella_certificado",
             }
             return {campo: valor for campo, valor in certificado.items() if campo in campos_publicos}
@@ -743,7 +744,8 @@ class CertificadosService:
                 c.fecha_vencimiento, c.huella_pdf,
                 c.huella_firmante AS huella_certificado,
                 firmante.nombre AS firmante, e.nombre AS empresa,
-                e.nit, n.codigo AS norma_codigo, n.nombre AS norma,
+                e.nit, e.estado AS estado_empresa,
+                n.codigo AS norma_codigo, n.nombre AS norma,
                 n.version AS norma_version, a.descripcion AS alcance
             FROM certificado c
             JOIN solicitud s ON s.id_solicitud = c.id_solicitud

@@ -162,46 +162,6 @@
             font-weight: 700;
         }
 
-        /* Navegación entre las vistas de esta pantalla. El menú lateral
-           queda reservado para la navegación del rol. */
-        .page-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-
-        .page-tabs a {
-            display: inline-flex;
-            align-items: center;
-            padding: 9px 15px;
-            background: var(--white);
-            border: 1px solid var(--line);
-            border-radius: 999px;
-            color: #334155;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 700;
-            line-height: 1.3;
-            transition: .18s ease;
-        }
-
-        .page-tabs a:hover {
-            border-color: var(--sena-green-bright);
-            color: var(--sena-green-dark);
-        }
-
-        .page-tabs a.active {
-            background: var(--sena-green-light);
-            border-color: var(--sena-green-bright);
-            color: var(--sena-green-dark);
-        }
-
-        @media (max-width: 720px) {
-            .page-tabs { flex-direction: column; }
-            .page-tabs a { justify-content: center; }
-        }
-
         /* =========================================================
            CONTENIDO
         ========================================================= */
@@ -1099,26 +1059,17 @@
         <div class="portal-grid">
 
             <nav class="side admin-nav" aria-label="Navegación de auditorías">
-                <a href="/consultar-auditorias-programadas-admin">Consultar auditorías programadas</a>
+                <a href="/consultar-auditorias-programadas-admin#listado">Consultar auditorías</a>
+                <a href="/consultar-auditorias-programadas-admin#reprogramaciones">Solicitudes de reprogramación</a>
+                <a href="/consultar-auditorias-programadas-admin#futuras">Programaciones futuras</a>
             </nav>
 
             <section class="content">
 
                 <div class="page-head">
-                    <div class="page-head-top">
-                        <a href="/dashboard" class="back-link" id="btnRegresar">
-                            <span aria-hidden="true">←</span> Volver al Dashboard
-                        </a>
-                    </div>
                     <h1>Consultar auditorías programadas</h1>
                     <p>Consulta las auditorías que te han asignado o, si eres administrador, todas las programaciones
                         registradas en el sistema.</p>
-                </div>
-
-                <div class="page-tabs" role="tablist" aria-label="Vistas de la consulta">
-                    <a href="#listado" data-vista="listado" class="active">Consultar auditorías</a>
-                    <a href="#reprogramaciones" data-vista="reprogramaciones">Solicitudes de reprogramación</a>
-                    <a href="#futuras" data-vista="futuras">Programaciones futuras</a>
                 </div>
 
                 <div id="mensaje"></div>
@@ -1425,13 +1376,6 @@
             } catch { return null; }
         }
 
-        document.querySelectorAll('.page-tabs a[data-vista]').forEach(enlace => {
-            enlace.addEventListener('click', (event) => {
-                event.preventDefault();
-                mostrarVistaAdmin(enlace.dataset.vista);
-            });
-        });
-
         async function cargarDatos() {
             const uid = await resolverUsuario();
             if (!uid) { mostrarMensaje('No se pudo identificar al usuario.', 'error'); return; }
@@ -1604,9 +1548,6 @@
             if (panelListado) panelListado.style.display = esListado ? '' : 'none';
             if (panelRepro) panelRepro.style.display = esRepro ? '' : 'none';
             if (panelFuturas) panelFuturas.style.display = vista === 'futuras' ? '' : 'none';
-            document.querySelectorAll('.page-tabs a[data-vista]').forEach(enlace => {
-                enlace.classList.toggle('active', enlace.dataset.vista === vista);
-            });
             const h1 = document.querySelector('.page-head h1');
             const sub = document.querySelector('.page-head p');
             if (h1) {
@@ -2618,12 +2559,27 @@
             const uid = await resolverUsuario();
             if (!uid) { mostrarMensaje('No se puede identificar el usuario.', 'error'); return; }
             await cargarDatos();
-            // Permite abrir directamente una vista concreta (#futuras, #reprogramaciones).
-            const hash = (location.hash || '').replace('#', '').trim();
-            if (hash === 'futuras' || hash === 'reprogramaciones') {
-                mostrarVistaAdmin(hash);
+            // Las vistas se abren desde el menú lateral y se pueden enlazar por hash.
+            const vista = (location.hash || '#listado').slice(1).trim();
+            if (['listado', 'reprogramaciones', 'futuras'].includes(vista)) {
+                mostrarVistaAdmin(vista);
+                actualizarMenuVista(vista);
             }
         })();
+
+        function actualizarMenuVista(vista) {
+            document.querySelectorAll('.admin-nav a[href*="consultar-auditorias-programadas-admin"]').forEach(enlace => {
+                const vistaEnlace = new URL(enlace.href, location.href).hash.slice(1);
+                enlace.classList.toggle('active', vistaEnlace === vista);
+            });
+        }
+
+        window.addEventListener('hashchange', () => {
+            const vista = location.hash.slice(1).trim();
+            if (!['listado', 'reprogramaciones', 'futuras'].includes(vista)) return;
+            mostrarVistaAdmin(vista);
+            actualizarMenuVista(vista);
+        });
     </script>
 <script src="/static/nav.js"></script>
 <script src="/static/session.js?v=20261029"></script>

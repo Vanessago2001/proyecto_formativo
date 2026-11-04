@@ -34,6 +34,7 @@
         .va-veredicto.falso .va-titulo { color: #b42318; }
         .va-detalle { margin: 0; color: #4b5563; font-size: 13px; line-height: 1.5; }
         .va-card { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #2f7d32; border-radius: 3px; padding: 20px 22px; margin-top: 16px; }
+        .va-inactividad { margin: 0 0 10px; padding: 9px 12px; border: 1px solid #f5c6cb; border-radius: 6px; background: #fffbeb; color: #b42318; font-size: 13px; font-weight: 700; }
         .va-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px; background: #f1f5f9; color: #4b5563; }
         .va-card.ok .va-estado { background: #e2e8f0; color: #1a7f37; }
         .va-card.por .va-estado { background: #fffbeb; color: #8d6e00; }
@@ -219,6 +220,7 @@
         function tarjetaDocumento(doc) {
             const vigencia = doc.estado_vigencia || "SIN FECHA DE VENCIMIENTO";
             return `<article class="va-card ${claseVigencia(vigencia)}">
+                ${String(doc.estado_empresa || "").trim().toLowerCase() === "inactiva" ? '<p class="va-inactividad" role="status">Empresa inactiva</p>' : ""}
                 <span class="va-estado">${esc(vigencia)}</span>
                 <p class="va-empresa">${esc(doc.empresa)}</p>
                 <p class="va-sub">NIT ${esc(doc.nit)}${doc.ciudad ? " - " + esc(doc.ciudad) : ""}</p>

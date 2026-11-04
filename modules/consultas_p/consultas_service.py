@@ -17,8 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Columnas de empresa que sí se publican. `correo` y `direccion` se excluyen a
 # propósito: agregarlas aquí expone datos de contacto en un endpoint sin login.
-COLUMNAS_PUBLICAS_EMPRESA = "id_empresa, nombre, nit, ciudad"
-COLUMNAS_PUBLICAS_EMPRESA_ALIAS = "id_empresa, nombre AS empresa, nit, ciudad"
+COLUMNAS_PUBLICAS_EMPRESA = "id_empresa, nombre, nit, ciudad, estado"
+COLUMNAS_PUBLICAS_EMPRESA_ALIAS = "id_empresa, nombre AS empresa, nit, ciudad, estado AS estado_empresa"
 
 # Tope de empresas por búsqueda. Sin él, un NIT corto que coincida con muchas
 # filas dispara las 6 consultas por empresa del detalle (N+1) sin límite.
@@ -193,7 +193,12 @@ class ConsultasPublicasService:
 
         return empresas
 
-    async def consulta_publica(self, codigo: str = "", nit: str = "") -> list[dict]:
+    async def consulta_publica(
+        self,
+        codigo: str = "",
+        nit: str = "",
+        nit_exacto: bool = False,
+    ) -> list[dict]:
         codigo = (codigo or "").strip()
         nit = (nit or "").strip()
         if not codigo and not nit:
@@ -208,14 +213,23 @@ class ConsultasPublicasService:
             )
             params["codigo_parcial"] = _escapar_comodines(codigo)
         if nit:
-            condiciones.append(
-                "(REPLACE(REPLACE(REPLACE(TRIM(e.nit), '.', ''), '-', ''), ' ', '')"
-                " = REPLACE(REPLACE(REPLACE(TRIM(:nit), '.', ''), '-', ''), ' ', '')"
-                " OR TRIM(e.nit) ILIKE '%' || :nit_parcial || '%'"
-                " OR TRIM(e.nombre) ILIKE '%' || :nit_parcial || '%')"
+            nit_normalizado = (
+                "REPLACE(REPLACE(REPLACE(TRIM(e.nit), '.', ''), '-', ''), ' ', '')"
             )
+            nit_parametro = (
+                "REPLACE(REPLACE(REPLACE(TRIM(:nit), '.', ''), '-', ''), ' ', '')"
+            )
+            if nit_exacto:
+                condiciones.append(f"{nit_normalizado} = {nit_parametro}")
+            else:
+                condiciones.append(
+                    f"({nit_normalizado} = {nit_parametro}"
+                    " OR TRIM(e.nit) ILIKE '%' || :nit_parcial || '%'"
+                    " OR TRIM(e.nombre) ILIKE '%' || :nit_parcial || '%')"
+                )
             params["nit"] = nit
-            params["nit_parcial"] = _escapar_comodines(nit)
+            if not nit_exacto:
+                params["nit_parcial"] = _escapar_comodines(nit)
 
         where = " AND ".join(condiciones)
         result = await self.db.execute(text(f"""
@@ -230,6 +244,7 @@ class ConsultasPublicasService:
                 e.nombre AS empresa,
                 e.nit,
                 e.ciudad,
+                e.estado AS estado_empresa,
                 n.codigo AS norma_codigo,
                 n.nombre AS norma_nombre,
                 n.version AS norma_version,
@@ -282,17 +297,31 @@ class ConsultasPublicasService:
             resultados.append(f)
 
         if not resultados and nit:
+            nit_normalizado = (
+                "REPLACE(REPLACE(REPLACE(TRIM(nit), '.', ''), '-', ''), ' ', '')"
+            )
+            nit_parametro = (
+                "REPLACE(REPLACE(REPLACE(TRIM(:nit), '.', ''), '-', ''), ' ', '')"
+            )
+            filtro_empresa = (
+                f"{nit_normalizado} = {nit_parametro}"
+                if nit_exacto
+                else (
+                    f"{nit_normalizado} = {nit_parametro}"
+                    " OR TRIM(nit) ILIKE '%' || :nit_parcial || '%'"
+                    " OR TRIM(nombre) ILIKE '%' || :nit_parcial || '%'"
+                )
+            )
+            parametros_empresa = {"nit": nit}
+            if not nit_exacto:
+                parametros_empresa["nit_parcial"] = _escapar_comodines(nit)
             emp = await self.db.execute(text(f"""
                 SELECT {COLUMNAS_PUBLICAS_EMPRESA_ALIAS}
                 FROM empresa
-                WHERE
-                    REPLACE(REPLACE(REPLACE(TRIM(nit), '.', ''), '-', ''), ' ', '')
-                        = REPLACE(REPLACE(REPLACE(TRIM(:nit), '.', ''), '-', ''), ' ', '')
-                    OR TRIM(nit) ILIKE '%' || :nit_parcial || '%'
-                    OR TRIM(nombre) ILIKE '%' || :nit_parcial || '%'
+                WHERE {filtro_empresa}
                 ORDER BY nombre ASC
                 LIMIT 5;
-            """), {"nit": nit, "nit_parcial": _escapar_comodines(nit)})
+            """), parametros_empresa)
             for row in emp.mappings().all():
                 e = dict(row)
                 e.update({
@@ -350,6 +379,7 @@ class ConsultasPublicasService:
                 e.nombre AS empresa,
                 e.nit,
                 e.ciudad,
+                e.estado AS estado_empresa,
                 n.codigo AS norma_codigo,
                 n.nombre AS norma_nombre,
                 n.version AS norma_version

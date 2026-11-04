@@ -10,6 +10,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css?v=20261028">
   <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <style>
+    .cert-inactive-notice {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border: 1px solid #f5c6cb;
+      border-radius: 6px;
+      background: #fffbeb;
+      color: #b42318;
+      font-size: 13px;
+      font-weight: 700;
+    }
+  </style>
 </head>
 
 <body class="comite-page certificados-page">
@@ -19,7 +31,7 @@
         <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
         <div>
           <h1>CertiSENA</h1>
-          <p class="subtitle">Gestión de certificados</p>
+          <p id="headerSubtitle" class="subtitle">Gestión de certificados</p>
         </div>
       </div>
       <div id="authControls" class="comite-header-user">
@@ -28,7 +40,46 @@
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
+      <div id="publicControls" class="header-buttons" hidden>
+        <div class="nav-dropdown">
+          <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+            Consulta pública <span class="nav-caret">▼</span>
+          </button>
+          <div class="nav-dropdown-menu">
+            <div class="nav-dropdown-panel">
+              <a href="/buscar_empresa">Buscar empresa por NIT</a>
+              <a href="/">Consultar estado de vigencia</a>
+              <a href="/verificar-certificado">Verificar certificado</a>
+              <a href="/consulta-norma">Consultar norma evaluada</a>
+              <a href="/vigencia">Consultar vigencia y plazos</a>
+              <a href="/validar">Validar autenticidad</a>
+              <a href="/constancia">Descargar constancia pública</a>
+            </div>
+          </div>
+        </div>
+        <a href="/login" class="btn-login">Iniciar sesión</a>
+        <a href="/register" class="btn-login">Registrarse</a>
+      </div>
+      <button id="hamburgerBtn" class="hamburger-btn" type="button" aria-label="Menú" aria-expanded="false" hidden>
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
     </div>
+    <nav id="mobileMenu" class="mobile-menu" aria-label="Navegación pública" hidden>
+      <a href="/login">Iniciar sesión</a>
+      <a href="/register">Registrarse</a>
+      <div class="mobile-menu-group">
+        <span class="mobile-menu-label">Consulta pública</span>
+        <a href="/buscar_empresa">Buscar empresa por NIT</a>
+        <a href="/">Consultar estado de vigencia</a>
+        <a href="/verificar-certificado">Verificar certificado</a>
+        <a href="/consulta-norma">Consultar norma evaluada</a>
+        <a href="/vigencia">Consultar vigencia y plazos</a>
+        <a href="/validar">Validar autenticidad</a>
+        <a href="/constancia">Descargar constancia pública</a>
+      </div>
+    </nav>
   </header>
 
   <main class="comite-shell">
@@ -330,6 +381,12 @@
       function showFeedback(message, kind) {
         feedback.textContent = message || "";
         feedback.className = "comite-feedback" + (message ? " " + kind : "");
+      }
+
+      function inactiveCompanyNotice(status) {
+        return String(status || "").trim().toLowerCase() === "inactiva"
+          ? '<p class="cert-inactive-notice" role="status">Empresa inactiva</p>'
+          : "";
       }
 
       function statusClass(value) {
@@ -812,7 +869,8 @@
           const response = await fetch("/certificados/publico/" + encodeURIComponent(code));
           const certificate = await response.json().catch(() => null);
           if (!response.ok) throw new Error(certificate && certificate.detail || "No se encontró un certificado público vigente.");
-          result.innerHTML = '<p class="cert-signature-note">Firma PAdES registrada. Comprueba la identidad del firmante y las huellas antes de aceptarlo.</p><dl class="comite-facts cert-public-facts">' +
+          result.innerHTML = inactiveCompanyNotice(certificate.estado_empresa) +
+            '<p class="cert-signature-note">Firma PAdES registrada. Comprueba la identidad del firmante y las huellas antes de aceptarlo.</p><dl class="comite-facts cert-public-facts">' +
             fact("Empresa", certificate.empresa) + fact("NIT", certificate.nit) +
             fact("Norma", [certificate.norma_codigo, certificate.norma, certificate.norma_version].filter(Boolean).join(" ")) +
             fact("Alcance", certificate.alcance) + fact("Código", certificate.codigo_verificacion) +
@@ -878,6 +936,9 @@
       }
 
       $("#roleLabel").textContent = publicMode ? "Consulta sin autenticación" : "Rol: " + roleLabel;
+      $("#headerSubtitle").textContent = publicMode
+        ? "Plataforma de gestión y consulta de certificados"
+        : "Gestión de certificados";
       $("#leaderPanel").hidden = !canAssignLeader || publicOnly;
       $("#createPanel").hidden = !canCreate;
       $("#alertsNav").hidden = !canSeeAlerts || publicMode;
@@ -886,8 +947,23 @@
       $("#exportCompaniesButton").hidden = !canExport || publicOnly;
       $("#committeeNav").hidden = publicOnly;
       $("#authControls").hidden = publicMode;
+      $("#publicControls").hidden = !publicMode;
+      $("#hamburgerBtn").hidden = !publicMode;
+      $("#mobileMenu").hidden = !publicMode;
       $("#roleNote").hidden = publicMode;
       $("#refreshButton").hidden = publicOnly;
+      $("#hamburgerBtn").addEventListener("click", () => {
+        const isOpen = $("#mobileMenu").classList.toggle("open");
+        $("#hamburgerBtn").classList.toggle("active", isOpen);
+        $("#hamburgerBtn").setAttribute("aria-expanded", String(isOpen));
+      });
+      $("#mobileMenu").querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", () => {
+          $("#hamburgerBtn").classList.remove("active");
+          $("#hamburgerBtn").setAttribute("aria-expanded", "false");
+          $("#mobileMenu").classList.remove("open");
+        });
+      });
       $("#createForm").addEventListener("submit", async (event) => {
         event.preventDefault();
         const button = $("#createButton");

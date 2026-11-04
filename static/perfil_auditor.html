@@ -43,15 +43,14 @@
                 <h1>CertiSENA</h1>
                 <p class="subtitle">Perfil del auditor</p>
             </div>
+            <div class="comite-header-user">
+                <a class="comite-back-button" href="/auditor">Panel</a>
+                <button class="comite-logout" type="button" onclick="cerrarSesion()">Cerrar sesión</button>
+            </div>
         </div>
     </header>
 
     <main class="portal-shell">
-        <div style="margin-bottom:18px;display:flex;gap:10px;flex-wrap:wrap;">
-            <a class="back-button" href="/auditor">Volver al Dashboard</a>
-            <button type="button" class="btn btn-danger" onclick="cerrarSesion()">Cerrar sesión</button>
-        </div>
-
         <div id="mensaje" style="display:none;padding:12px 14px;border-radius:8px;margin-bottom:16px;font-weight:600;"></div>
 
         <!-- TARJETA: FOTO + DATOS BÁSICOS -->
@@ -300,6 +299,7 @@
         cargarPerfil();
     </script>
 <script src="/static/session.js?v=20261029"></script>
+        <script src="/static/nav.js"></script>
         <script src="/static/session-guard.js"></script>
 </body>
 </html>
