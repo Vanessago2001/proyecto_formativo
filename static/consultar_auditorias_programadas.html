@@ -1226,7 +1226,7 @@
         <!-- MENU LATERAL: el mismo de static/auditor.html -->
         <nav class="side" aria-label="Navegación del auditor">
             <div class="dropdown-registro">
-                <a class="menu-toggle" href="/auditor" data-seccion="inicioRegistro">
+                <a class="menu-toggle" href="/auditor#inicioRegistro" data-seccion="inicioRegistro">
                     Formulario de registro
                     <span class="dropdown-arrow" aria-hidden="true">▾</span>
                 </a>
@@ -1238,18 +1238,20 @@
                     <a href="/auditor#experiencia-laboral" data-seccion="experiencia-laboral">Experiencia laboral</a>
                     <a href="/auditor#experiencia-auditoria" data-seccion="experiencia-auditoria">Experiencia en auditoría</a>
                     <a href="/auditor#documentos-soporte" data-seccion="documentos-soporte">Documentos de soporte</a>
-                    <a href="/auditor#conflictos" data-seccion="conflictos">Conflictos de Interés</a>
+                    <a href="/auditor#conflictos" data-seccion="conflictos">Conflictos y declaraciones</a>
                 </div>
             </div>
 
-            <a href="/auditor">Mi registro</a>
+            <a href="/auditor#historial-academico" data-seccion="historial-academico">Historial académico</a>
             <a href="/consultar-estado">Consultar estado del registro</a>
             <a href="/conflictos-auditor">Consultar conflictos registrados</a>
             <a href="/empresas-restringidas">Consultar empresas restringidas</a>
             <a href="/consultar-auditorias-programadas" class="active" aria-current="page">Consultar auditorías programadas</a>
             <a href="/programaciones-futuras-auditor">Programaciones futuras</a>
             <a href="/disponibilidad-auditor">Disponibilidad semanal</a>
-            <a href="/notificaciones-auditor">Notificaciones</a>
+            <a href="/notificaciones-auditor" style="display:flex;align-items:center;gap:6px;">Notificaciones
+                <span id="notifBadge" style="display:none;width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 2px #fff;"></span>
+            </a>
             <a href="/catalogo-competencias-auditor">Catálogo de competencias</a>
             <a href="/reportes">Reportes</a>
             <a id="logout" href="/login">Cerrar sesión</a>
@@ -2220,6 +2222,29 @@
             const uid = await resolverUsuario();
             if (!uid) { mostrarMensaje('No se puede identificar al usuario.', 'error'); return; }
             await cargarDatos();
+        })();
+    </script>
+    <script>
+        (function () {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+            let uid = null;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                uid = payload.user_id || payload.id_usuario || payload.sub;
+            } catch (e) { return; }
+            if (!uid) return;
+            fetch('/auditores/' + encodeURIComponent(uid) + '/notificaciones', {
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    const items = Array.isArray(data.notificaciones) ? data.notificaciones : [];
+                    const hayNoLeidas = items.some(n => !n.leida);
+                    const badge = document.getElementById('notifBadge');
+                    if (badge && hayNoLeidas) badge.style.display = 'inline-block';
+                })
+                .catch(() => { });
         })();
     </script>
      <script src="/static/session.js?v=20261029"></script>
