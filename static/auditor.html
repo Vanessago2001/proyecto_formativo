@@ -395,6 +395,7 @@
             --sena-green: #256d00;
             --sena-green-dark: #1b4b12;
             --sena-green-bright: #3baa01;
+            --sena-green-hover: #2f8f00;
             --sena-green-soft: #f1f5f9;
             --portal-ink: #172b24;
             --portal-muted: #64748b;
@@ -2244,6 +2245,133 @@
                 border-radius: 0 8px 8px 0;
                 padding: 8px 10px;
             }
+        }
+
+
+        /* =====================================================
+           UNIFICACIÓN DE BOTONES DEL FORMULARIO
+           Todas las acciones (guardar, editar, eliminar, ver,
+           reemplazar, adjuntar) comparten tamaño, radio, tipografía,
+           borde y estados. El color es la única variable y según la
+           acción: azul primario, gris secundario, rojo riesgo, verde
+           envío.
+        ====================================================== */
+        .btn-save-section,
+        .btn-edit-section,
+        .btn-mini,
+        .btn-repostular,
+        .documento-soporte-acciones .btn-mini {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            gap: 6px;
+            height: auto;
+            min-width: 34px;
+            min-height: 34px;
+            padding: 0 14px;
+            border-width: 1px;
+            border-style: solid;
+            border-radius: 9px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.15;
+            cursor: pointer;
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+        }
+
+        .btn-save-section,
+        .btn-edit-section {
+            margin-top: 10px;
+        }
+
+        .btn-edit-section {
+            margin-left: 8px;
+        }
+
+        .btn-save-section,
+        .btn-mini-ver {
+            background: #0284c7;
+            border-color: #0284c7;
+            color: #fff;
+            box-shadow: 0 3px 8px rgba(2, 132, 199, .18);
+        }
+
+        .btn-save-section:hover:not(:disabled),
+        .btn-mini-ver:hover:not(:disabled) {
+            background: #0369a1;
+            border-color: #0369a1;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(2, 132, 199, .22);
+        }
+
+        .btn-edit-section,
+        .btn-mini-reemplazar {
+            background: #64748b;
+            border-color: #64748b;
+            color: #fff;
+            box-shadow: 0 3px 8px rgba(100, 116, 139, .18);
+        }
+
+        .btn-edit-section:hover:not(:disabled),
+        .btn-mini-reemplazar:hover:not(:disabled) {
+            background: #475569;
+            border-color: #475569;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(100, 116, 139, .22);
+        }
+
+        .btn-mini-eliminar {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #fff;
+            box-shadow: 0 3px 8px rgba(220, 38, 38, .18);
+        }
+
+        .btn-mini-eliminar:hover:not(:disabled) {
+            background: #b91c1c;
+            border-color: #b91c1c;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(220, 38, 38, .24);
+        }
+
+        .btn-repostular {
+            background: var(--sena-green-bright);
+            border-color: var(--sena-green-bright);
+            color: #fff;
+            box-shadow: 0 3px 8px rgba(59, 170, 1, .18);
+        }
+
+        .btn-repostular:hover:not(:disabled) {
+            background: var(--sena-green-hover);
+            border-color: var(--sena-green-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-save-section:disabled,
+        .btn-edit-section:disabled,
+        .btn-mini:disabled,
+        .btn-repostular:disabled {
+            background: #94a3b8;
+            border-color: #94a3b8;
+            color: #fff;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* El botón que cierra el registro conserva su porte de acción
+           principal, pero el mismo radio y tipografía del resto. */
+        .btn-submit {
+            border: 1px solid #256d00;
+            border-radius: 9px;
+            font-weight: 600;
+        }
+
+        input[type="file"].form-control::file-selector-button {
+            border-radius: 9px;
+            font-size: 12px;
+            font-weight: 600;
         }
     </style>
 
