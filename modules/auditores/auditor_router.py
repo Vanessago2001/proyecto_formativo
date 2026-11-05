@@ -802,8 +802,18 @@ async def declarar_sin_conflicto(
 async def crear_conflicto(
     id_usuario: UUID,
     data: ConflictoInteresCrear,
+    usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if (
+        not es_rol_administrativo(usuario)
+        and str(id_usuario) != str(usuario["id_usuario"])
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para declarar conflictos de otro usuario.",
+        )
+
     return await AuditorService(db).crear_conflicto(
         id_usuario,
         data,

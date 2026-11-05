@@ -1467,6 +1467,31 @@ class AuditorService:
         )
         return result.scalar()
 
+    async def _obtener_postulacion_del_conflicto(self, id_usuario: UUID):
+        # Los filtros de asignación y de agenda leen el conflicto por
+        # ci.id_postulacion de la postulación aprobada más reciente, así que un
+        # conflicto declarado después del registro necesita ese enlace para
+        # bloquear algo; con el registro aún abierto se usa esa misma postulación.
+        result = await self.db.execute(
+            text("""
+                SELECT pa.id_postulacion
+                FROM postulacion_auditor pa
+                WHERE pa.id_usuario = :id_usuario
+                  AND (
+                        LOWER(pa.estado) IN ('aprobado', 'aprobada')
+                        OR pa.estado IN ('Borrador', 'Correcciones', 'Enviado')
+                  )
+                ORDER BY
+                    CASE WHEN LOWER(pa.estado) IN ('aprobado', 'aprobada')
+                         THEN 0 ELSE 1 END,
+                    pa.fecha_revision DESC NULLS LAST,
+                    pa.fecha_postulacion DESC NULLS LAST
+                LIMIT 1
+            """),
+            {"id_usuario": id_usuario},
+        )
+        return result.scalar()
+
     # ========================================================
     # INICIAR REGISTRO
     # ========================================================
@@ -2615,19 +2640,20 @@ class AuditorService:
         data: ConflictoInteresCrear,
     ):
 
-        await self._verificar_usuario_borrador(id_usuario)
-
-        # La interfaz permite declarar un único conflicto. Eliminamos
-        # registros anteriores para evitar duplicados históricos.
-        await self.db.execute(
-            text("""
-                DELETE FROM conflicto_interes
-                WHERE id_usuario = :id_usuario
-            """),
+        # Un conflicto se declara también tiempo después de aprobado el
+        # registro, y cada declaración es un registro nuevo: no se reemplaza
+        # lo ya declarado.
+        existe = await self.db.execute(
+            text("SELECT id_usuario FROM usuario WHERE id_usuario = :id_usuario"),
             {"id_usuario": id_usuario},
         )
+        if not existe.scalar():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No se encontró el usuario auditor.",
+            )
 
-        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
+        id_postulacion = await self._obtener_postulacion_del_conflicto(id_usuario)
         result = await self.db.execute(
             text("""
                 INSERT INTO conflicto_interes (
@@ -2741,20 +2767,6 @@ class AuditorService:
         )
 
         actualizado = result.mappings().first()
-
-        if actualizado:
-            # Conservamos únicamente el conflicto que acaba de editarse.
-            await self.db.execute(
-                text("""
-                    DELETE FROM conflicto_interes
-                    WHERE id_usuario = :id_usuario
-                      AND id_conflicto <> :id_conflicto
-                """),
-                {
-                    "id_usuario": id_usuario,
-                    "id_conflicto": id_conflicto,
-                },
-            )
 
         if not actualizado:
             raise HTTPException(

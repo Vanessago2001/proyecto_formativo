@@ -1205,8 +1205,8 @@
                         <td>${item.estado || '-'}</td>
                         <td><span class="descripcion-conflicto" title="Clic para ver la descripci\u00f3n completa" onclick="this.classList.toggle('expandido')">${escapeHtml(item.descripcion || '-')}</span></td>
                         <td class="action-group">
-                            <button type="button" class="btn-review btn-approve" onclick="actualizarConflicto('${item.id_conflicto}')">Actualizar conflicto de interés</button>
-                            <button type="button" class="btn-review btn-reject" onclick="eliminarConflicto('${item.id_conflicto}')">Eliminar conflicto antes de asignación</button>
+                            <button type="button" class="btn-review btn-approve" onclick="actualizarConflicto('${item.id_conflicto}')">Actualizar</button>
+                            <button type="button" class="btn-review btn-reject" onclick="eliminarConflicto('${item.id_conflicto}')">Eliminar</button>
                         </td>
                     </tr>`;
                 }).join('');
