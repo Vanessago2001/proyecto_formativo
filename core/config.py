@@ -85,6 +85,9 @@ class Settings:
     CERTIFICADOS_STORAGE_DIR: str = os.getenv(
         "CERTIFICADOS_STORAGE_DIR", "storage/certificados_firmados"
     )
+    COMITE_ACTAS_STORAGE_DIR: str = os.getenv(
+        "COMITE_ACTAS_STORAGE_DIR", "storage/actas_comite"
+    )
 
     def __init__(self) -> None:
 

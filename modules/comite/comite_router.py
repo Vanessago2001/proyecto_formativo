@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.security import _normalize_role_name, get_current_user
 from modules.solicitudes import estado_solicitud as estados
+from modules.comite.comite_acta_service import ComiteActaService
 from modules.comite.comite_service import ComiteService
 from modules.solicitudes.documento_service import CARPETA_ARCHIVOS, DocumentoService
 
@@ -293,21 +294,57 @@ async def consultar_informe_auditor(
             detail="No tienes permisos para consultar el informe del auditor del comité de certificación.",
         )
 
-    existencia = await db.execute(text("""
-        SELECT id_solicitud
-        FROM solicitud
-        WHERE id_solicitud = :expediente_id AND deleted_at IS NULL;
+    resultado = await db.execute(text("""
+        SELECT i.id_informe, i.id_auditoria, i.version, i.tipo, i.contenido,
+               i.estado, i.fecha_generacion, i.fecha_finalizacion,
+               i.fecha_envio_comite, i.hash_documento, i.firma_digital,
+               a.estado AS estado_auditoria
+        FROM auditoria a
+        JOIN informe_auditoria i ON i.id_auditoria = a.id_auditoria
+        JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+        WHERE a.id_solicitud = :expediente_id
+          AND s.deleted_at IS NULL
+          AND i.fecha_envio_comite IS NOT NULL
+        ORDER BY i.fecha_envio_comite DESC, i.version DESC
+        LIMIT 1;
     """), {"expediente_id": expediente_id})
-    if not existencia.mappings().first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El expediente no existe o fue eliminado.")
+    informe = resultado.mappings().first()
+    if not informe:
+        existencia = await db.execute(text("""
+            SELECT id_solicitud
+            FROM solicitud
+            WHERE id_solicitud = :expediente_id AND deleted_at IS NULL;
+        """), {"expediente_id": expediente_id})
+        if not existencia.mappings().first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El expediente no existe o fue eliminado.")
+    contenido = (informe["contenido"] or {}) if informe else {}
+    resumen_hallazgos = contenido.get("hallazgos") or {}
+    mayores = resumen_hallazgos.get("no_conformidades_mayores", 0)
+    menores = resumen_hallazgos.get("no_conformidades_menores", 0)
+    resumen_resultado = (
+        f"{mayores} no conformidad{'es' if mayores != 1 else ''} "
+        f"mayor{'es' if mayores != 1 else ''}, "
+        f"{menores} menor{'es' if menores != 1 else ''}"
+    ) if resumen_hallazgos else None
+    resultado_informe = (
+        contenido.get("resultado")
+        or contenido.get("conclusion")
+        or resumen_resultado
+        or (informe["estado"] if informe else None)
+    )
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-004",
         "permiso": "Consultar informe del auditor",
         "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
         "expediente_id": expediente_id,
-        "informe": None,
-        "disponible": False,
+        "informe": ({
+            **dict(informe),
+            "resultado": resultado_informe,
+            "fecha": informe["fecha_finalizacion"] or informe["fecha_envio_comite"],
+            "firmado": bool(informe["firma_digital"]),
+        } if informe else None),
+        "disponible": informe is not None,
     }
 
 
@@ -327,21 +364,34 @@ async def consultar_evidencias_fisicas(
         )
 
     resultado = await db.execute(text("""
-        SELECT d.id_documento, d.tipo_documento AS tipo, d.nombre_archivo,
-               d.observaciones AS descripcion, d.fecha_subida, d.url_archivo
-        FROM documento_solicitud d
-        JOIN solicitud s ON s.id_solicitud = d.id_solicitud
-        WHERE d.id_solicitud = :expediente_id
+        SELECT e.id_evidencia, e.id_auditoria, e.id_hallazgo,
+               e.nombre_archivo, e.tipo_archivo, e.version, e.estado,
+               e.observaciones AS descripcion, e.fecha_subida,
+               e.hash_archivo, COALESCE(u.nombre, u.correo) AS subida_por
+        FROM auditoria a
+        JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+        JOIN evidencia e ON e.id_auditoria = a.id_auditoria
+        LEFT JOIN usuario u ON u.id_usuario = e.id_usuario_subida
+        WHERE a.id_solicitud = :expediente_id
           AND s.deleted_at IS NULL
-        ORDER BY d.fecha_subida DESC;
+        ORDER BY e.fecha_subida DESC;
     """), {"expediente_id": expediente_id})
+    evidencias = [dict(fila) for fila in resultado.mappings().all()]
+    if not evidencias:
+        existencia = await db.execute(text("""
+            SELECT id_solicitud FROM solicitud
+            WHERE id_solicitud = :expediente_id AND deleted_at IS NULL;
+        """), {"expediente_id": expediente_id})
+        if not existencia.mappings().first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El expediente no existe o fue eliminado.")
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-005",
         "permiso": "Consultar evidencias físicas",
         "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
         "expediente_id": expediente_id,
-        "evidencias": [dict(fila) for fila in resultado.mappings().all()],
+        "evidencias": evidencias,
+        "disponible": True,
     }
 
 
@@ -360,21 +410,37 @@ async def consultar_no_conformidades(
             detail="No tienes permisos para consultar las no conformidades del comité de certificación.",
         )
 
-    existencia = await db.execute(text("""
-        SELECT id_solicitud
-        FROM solicitud
-        WHERE id_solicitud = :expediente_id AND deleted_at IS NULL;
+    resultado = await db.execute(text("""
+        SELECT h.id_hallazgo AS id, h.clasificacion,
+               h.titulo AS codigo, h.descripcion, h.requisito_relacionado, h.estado,
+               h.fecha_registro, h.fecha_cierre, v.numeral,
+               v.descripcion AS requisito_descripcion
+        FROM auditoria a
+        JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+        JOIN hallazgo h ON h.id_auditoria = a.id_auditoria
+        LEFT JOIN evaluacion_requisito e ON e.id_evaluacion = h.id_evaluacion
+        LEFT JOIN variable_requisito v ON v.id_variable = e.id_variable
+        WHERE a.id_solicitud = :expediente_id
+          AND s.deleted_at IS NULL
+          AND h.tipo = 'NO_CONFORMIDAD'
+        ORDER BY h.fecha_registro DESC;
     """), {"expediente_id": expediente_id})
-    if not existencia.mappings().first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El expediente no existe o fue eliminado.")
+    hallazgos = [dict(fila) for fila in resultado.mappings().all()]
+    if not hallazgos:
+        existencia = await db.execute(text("""
+            SELECT id_solicitud FROM solicitud
+            WHERE id_solicitud = :expediente_id AND deleted_at IS NULL;
+        """), {"expediente_id": expediente_id})
+        if not existencia.mappings().first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El expediente no existe o fue eliminado.")
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-006",
         "permiso": "Consultar no conformidades",
         "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
         "expediente_id": expediente_id,
-        "no_conformidades": [],
-        "disponible": False,
+        "no_conformidades": hallazgos,
+        "disponible": True,
     }
 
 
@@ -427,21 +493,33 @@ async def consultar_observaciones_tecnicos(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar observaciones de técnicos del comité.",
         )
-    existencia = await db.execute(text("""
-        SELECT id_solicitud
-        FROM solicitud
-        WHERE id_solicitud = :expediente_id AND deleted_at IS NULL;
+    resultado = await db.execute(text("""
+        SELECT o.id_observacion, o.texto AS descripcion, o.tipo,
+               o.fecha, COALESCE(u.nombre, u.correo) AS tecnico
+        FROM observacion_solicitud o
+        JOIN solicitud s ON s.id_solicitud = o.id_solicitud
+        LEFT JOIN usuario u ON u.id_usuario = o.id_usuario
+        WHERE o.id_solicitud = :expediente_id
+          AND s.deleted_at IS NULL
+          AND LOWER(o.tipo) = 'tecnica'
+        ORDER BY o.fecha DESC;
     """), {"expediente_id": expediente_id})
-    if not existencia.mappings().first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El expediente no existe o fue eliminado.")
+    observaciones = [dict(fila) for fila in resultado.mappings().all()]
+    if not observaciones:
+        existencia = await db.execute(text("""
+            SELECT id_solicitud FROM solicitud
+            WHERE id_solicitud = :expediente_id AND deleted_at IS NULL;
+        """), {"expediente_id": expediente_id})
+        if not existencia.mappings().first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El expediente no existe o fue eliminado.")
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-008",
         "permiso": "Consultar observaciones de técnicos",
         "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
         "expediente_id": expediente_id,
-        "observaciones": [],
-        "disponible": False,
+        "observaciones": observaciones,
+        "disponible": True,
     }
 
 
@@ -840,7 +918,32 @@ async def generar_acta_del_comite_definitiva(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_DECISION_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para generar acta definitiva.")
-    return await ComiteService(db).registrar_accion("acta-definitiva", payload, current_user)
+    try:
+        expediente_id = UUID(str(payload.get("expediente_id") or payload.get("id_solicitud")))
+    except (TypeError, ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="El campo expediente_id debe ser un UUID válido.",
+        )
+    comentario = payload.get("comentario")
+    if not isinstance(comentario, str) or not comentario.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="El comentario es obligatorio para generar el acta.",
+        )
+    return await ComiteActaService(db).generar(expediente_id, comentario.strip(), current_user)
+
+
+@router.get("/acta-estado/{expediente_id}")
+async def consultar_estado_acta(
+    expediente_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    role_name = _normalize_role_name(current_user.get("role_name"))
+    if role_name not in COMITE_CONSULTA_PERMISOS:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar el estado del acta.")
+    return await ComiteActaService(db).estado(expediente_id, current_user)
 
 
 @router.get("/acta-firmada/{expediente_id}")
@@ -853,18 +956,14 @@ async def descargar_acta_firmada(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para descargar el acta firmada.")
-    resultado = await db.execute(text("""
-        SELECT id_accion
-        FROM comite_accion
-        WHERE id_solicitud = :expediente_id AND accion = 'firmar-acta'
-        ORDER BY fecha DESC
-        LIMIT 1;
-    """), {"expediente_id": expediente_id})
-    if not resultado.mappings().first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No hay un acta firmada para este expediente.")
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="La firma quedó registrada, pero el sistema aún no genera el archivo PDF del acta.",
+    contenido, version = await ComiteActaService(db).descargar_firmada(expediente_id)
+    return Response(
+        content=contenido,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="acta-{expediente_id}-v{version}.pdf"',
+            "Cache-Control": "no-store",
+        },
     )
 
 
@@ -878,7 +977,20 @@ async def firmar_electronicamente_acta(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_DECISION_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para firmar electrónicamente acta.")
-    return await ComiteService(db).registrar_accion("firmar-acta", payload, current_user)
+    try:
+        expediente_id = UUID(str(payload.get("expediente_id") or payload.get("id_solicitud")))
+    except (TypeError, ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="El campo expediente_id debe ser un UUID válido.",
+        )
+    password_firma = payload.get("password_firma")
+    if not isinstance(password_firma, str) or not password_firma:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="El campo password_firma es obligatorio.",
+        )
+    return await ComiteActaService(db).firmar(expediente_id, password_firma, current_user)
 
 
 @router.post("/cerrar-expediente")

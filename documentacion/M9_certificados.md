@@ -35,8 +35,9 @@ sin inicio de sesión está disponible en `/verificar-certificado`.
 Las empresas solo pueden consultar certificados asociados a sus vínculos activos
 en `user_empresa`. El portal público solo expone certificados publicados,
 vigentes y no vencidos, siempre que exista firmante asignado, huellas y archivo
-PAdES registrados. Las
-acciones marcadas `REQ` responden con
+PAdES registrados. La publicación para consulta pública es independiente: un
+certificado firmado queda disponible para descarga en la cuenta de su empresa
+titular, sin exponerlo automáticamente a terceros. Las acciones marcadas `REQ` responden con
 `requiere_aprobacion: true`; en el CSV se informa mediante
 `X-Requiere-Aprobacion: true`.
 
@@ -59,6 +60,14 @@ se guarda en `firma_certificado` el número del documento, datos generales y un
 código cifrado (HMAC-SHA256). Endpoints: `GET /certificados/firma/estado`,
 `POST /certificados/firma/configurar`, `GET /certificados/firma/qr`. No se usa
 reconocimiento facial.
+
+Al iniciar sesión con la cuenta del líder activo, la pantalla de certificados
+muestra únicamente los certificados pendientes que están asignados a esa
+persona; la vista previa y la firma vuelven a verificar la asignación en el
+servidor. Después de firmar, el certificado pasa a `VIGENTE` y aparece en la
+cuenta de la empresa titular vinculada en `user_empresa`, donde puede abrirlo y
+descargar el PDF con su firma verificada por huella. La búsqueda pública sigue
+requiriendo la operación explícita de publicación.
 
 La configuración de credenciales, almacenamiento externo, CA de confianza y
 limitaciones TSA está en [la guía de firma del Comité](../../guia_firma_comite.md).

@@ -136,6 +136,19 @@
     </div>
   </main>
 
+  <dialog id="actaSignDialog" aria-labelledby="actaSignTitle">
+    <form id="actaSignForm">
+      <h2 id="actaSignTitle">Firmar acta del Comité</h2>
+      <p>La firma se aplicará con el certificado digital del líder asignado.</p>
+      <label for="actaSignPassword">Contraseña de firma</label>
+      <input id="actaSignPassword" type="password" autocomplete="current-password" required>
+      <div class="comite-decision-actions">
+        <button id="cancelActaSign" class="comite-button secondary" type="button">Cancelar</button>
+        <button id="confirmActaSign" class="comite-button primary" type="submit">Firmar acta</button>
+      </div>
+    </form>
+  </dialog>
+
   <script>
     (() => {
       "use strict";
@@ -280,23 +293,29 @@
         const panel = $("#detailPanel");
         panel.innerHTML = '<div class="comite-loading">Cargando expediente...</div>';
         try {
-          const [detail, report, nonconformities, observations, auditor] = await Promise.all([
+          const [detail, report, evidence, nonconformities, observations, auditor, acta] = await Promise.all([
             api("/comite/expediente-completo/" + encodeURIComponent(id)),
             api("/comite/informe-auditor/" + encodeURIComponent(id)),
+            api("/comite/evidencias-fisicas/" + encodeURIComponent(id)),
             api("/comite/no-conformidades/" + encodeURIComponent(id)),
             api("/comite/observaciones-tecnicos/" + encodeURIComponent(id)),
-            api("/comite/auditor-responsable/" + encodeURIComponent(id))
+            api("/comite/auditor-responsable/" + encodeURIComponent(id)),
+            api("/comite/acta-estado/" + encodeURIComponent(id))
           ]);
-          renderDetail(id, detail, report, nonconformities, observations, auditor);
+          renderDetail(id, detail, report, evidence, nonconformities, observations, auditor, acta);
         } catch (error) {
           panel.innerHTML = '<div class="comite-empty-state"><h3>No se pudo cargar el expediente</h3><p>' + escapeHtml(error.message) + '</p></div>';
           showFeedback(error.message, "error");
         }
       }
 
-      function renderDetail(id, detail, report, nonconformities, observations, auditor) {
+      function renderDetail(id, detail, report, evidence, nonconformities, observations, auditor, actaStatus) {
         const expediente = detail && detail.expediente ? detail.expediente : {};
         const hasFinalDecision = ["APROBADO", "APROBADA", "RECHAZADO", "RECHAZADA"].includes(String(expediente.estado || "").toUpperCase());
+        const acta = actaStatus && actaStatus.acta;
+        const actaGenerada = Boolean(acta && acta.estado === "GENERADA");
+        const actaFirmada = Boolean(acta && acta.estado === "FIRMADA");
+        const evidenceItems = evidence && evidence.evidencias || [];
         const nonconformityItems = nonconformities && nonconformities.no_conformidades || [];
         const observationItems = observations && observations.observaciones || [];
         const reportData = report && report.informe || {};
@@ -317,16 +336,16 @@
           '</dl>' +
           '<div class="comite-detail-section"><h4>Documentos y evidencias</h4><div class="comite-detail-list">' +
           '<button class="comite-resource" data-resource="/comite/expediente-descargar/' + escapeHtml(id) + '">Descargar expediente digital <span>COM-003</span></button>' +
-          '<button class="comite-resource" data-resource="/comite/evidencias-fisicas/' + escapeHtml(id) + '">Consultar evidencias físicas <span>COM-005</span></button>' +
-          '<button class="comite-resource" data-resource="/comite/acta-firmada/' + escapeHtml(id) + '">Descargar acta firmada <span>COM-026</span></button>' +
+          '<button class="comite-resource" data-resource="/comite/acta-firmada/' + escapeHtml(id) + '"' + (actaFirmada ? "" : " disabled") + '>Descargar acta firmada <span>COM-026</span></button>' +
           '</div></div>' +
+          '<div class="comite-detail-section"><h4>Evidencias físicas</h4>' + (evidence && evidence.disponible ? renderItems(evidenceItems, "No hay evidencias registradas.") : '<p class="comite-muted">No se pudieron consultar las evidencias físicas.</p>') + '</div>' +
           '<div class="comite-detail-section"><h4>Consultas relacionadas</h4><div class="comite-detail-list">' +
           '<button class="comite-resource" data-resource="/comite/empresa-evaluada/' + escapeHtml(expediente.id_empresa || "") + '">Consultar datos de la empresa <span>COM-023</span></button>' +
           '<button class="comite-resource" data-resource="/comite/historial-por-empresa/' + escapeHtml(expediente.id_empresa || "") + '">Consultar historial por empresa <span>COM-021</span></button>' +
           '<button class="comite-resource" data-resource="/comite/historial-solicitudes-previas/' + escapeHtml(expediente.usuario_creador || "") + '">Consultar solicitudes previas <span>COM-007</span></button>' +
           '</div></div>' +
-          '<div class="comite-detail-section"><h4>No conformidades</h4>' + (nonconformities && nonconformities.disponible ? renderItems(nonconformityItems, "No hay no conformidades registradas.") : '<p class="comite-muted">La consulta de no conformidades aún no está conectada a una fuente de datos.</p>') + '</div>' +
-          '<div class="comite-detail-section"><h4>Observaciones técnicas</h4>' + (observations && observations.disponible ? renderItems(observationItems, "No hay observaciones registradas.") : '<p class="comite-muted">La consulta de observaciones técnicas aún no está conectada a una fuente de datos.</p>') + '</div>' +
+          '<div class="comite-detail-section"><h4>No conformidades</h4>' + (nonconformities && nonconformities.disponible ? renderItems(nonconformityItems, "No hay no conformidades registradas.") : '<p class="comite-muted">No se pudieron consultar las no conformidades.</p>') + '</div>' +
+          '<div class="comite-detail-section"><h4>Observaciones técnicas</h4>' + (observations && observations.disponible ? renderItems(observationItems, "No hay observaciones registradas.") : '<p class="comite-muted">No se pudieron consultar las observaciones técnicas.</p>') + '</div>' +
           '<div class="comite-detail-section"><h4>Dictamen del comité</h4><label for="decisionComment">Comentario de la decisión</label><textarea id="decisionComment" rows="3" placeholder="Registra la justificación o las observaciones del comité"></textarea>' + decisionActions + '</div>' +
           (canDecide ? '<div class="comite-detail-section"><h4>Acta y seguimiento</h4><div class="comite-decision-actions">' +
             '<button class="comite-button secondary" data-decision="/comite/decisiones">Registrar decisión</button>' +
@@ -334,9 +353,10 @@
             '<button class="comite-button secondary" data-decision="/comite/observaciones-acta">Agregar observación al acta</button>' +
             '<button class="comite-button secondary" data-decision="/comite/restricciones-alcance">Registrar restricción</button>' +
             '<button class="comite-button secondary" data-decision="/comite/comentarios-debate">Comentar debate</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/acta-definitiva" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Solicitar generación del acta</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/firmar-acta" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Solicitar firma electrónica</button>' +
-            '<button class="comite-button danger" data-decision="/comite/cerrar-expediente" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Cerrar expediente</button>' +
+            '<p class="comite-muted">' + escapeHtml(acta ? "Acta v" + acta.version + ": " + acta.estado : "No se ha generado el acta definitiva.") + '</p>' +
+            '<button class="comite-button secondary" data-decision="/comite/acta-definitiva" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Generar acta definitiva</button>' +
+            '<button class="comite-button secondary" data-decision="/comite/firmar-acta" ' + (actaGenerada && actaStatus.puede_firmar ? "" : "disabled") + '>Firmar acta PAdES</button>' +
+            '<button class="comite-button danger" data-decision="/comite/cerrar-expediente" data-requires-acta-signed ' + (actaFirmada ? "" : "disabled") + '>Cerrar expediente</button>' +
             (isSuperAdmin ? '<button class="comite-button danger" data-decision="/comite/reabrir-dictamen">Reabrir dictamen</button>' : '') +
             '</div></div>' : '');
 
@@ -351,12 +371,12 @@
 
       function renderItems(items, emptyText) {
         if (!items.length) return '<p class="comite-muted">' + emptyText + '</p>';
-        return '<ul class="comite-item-list">' + items.map((item) => '<li><strong>' + escapeHtml(item.codigo || item.tecnico || item.tipo || "Registro") + '</strong><span>' + escapeHtml(item.descripcion || item.comentario || item.ubicacion || item.estado || "Sin detalle") + '</span></li>').join("") + '</ul>';
+        return '<ul class="comite-item-list">' + items.map((item) => '<li><strong>' + escapeHtml(item.codigo || item.nombre_archivo || item.tecnico || item.tipo || "Registro") + '</strong><span>' + escapeHtml(item.descripcion || item.comentario || item.ubicacion || item.estado || item.tipo_archivo || "Sin detalle") + '</span></li>').join("") + '</ul>';
       }
 
       async function loadResource(path) {
         try {
-          if (path.includes("/comite/expediente-descargar/")) {
+          if (path.includes("/comite/expediente-descargar/") || path.includes("/comite/acta-firmada/")) {
             const response = await fetch(path, { headers: { Authorization: "Bearer " + token } });
             if (response.status === 401) {
               localStorage.clear();
@@ -365,13 +385,15 @@
             }
             if (!response.ok) {
               const errorBody = await response.json().catch(() => null);
-              throw new Error(errorBody && errorBody.detail || "No fue posible descargar el expediente.");
+              throw new Error(errorBody && errorBody.detail || "No fue posible descargar el archivo.");
             }
             const blob = await response.blob();
             const downloadUrl = URL.createObjectURL(blob);
             const anchor = document.createElement("a");
             anchor.href = downloadUrl;
-            anchor.download = "expediente-" + state.selectedId + ".zip";
+            anchor.download = path.includes("/comite/acta-firmada/")
+              ? "acta-" + state.selectedId + ".pdf"
+              : "expediente-" + state.selectedId + ".zip";
             anchor.click();
             URL.revokeObjectURL(downloadUrl);
             showFeedback("Expediente descargado.", "success");
@@ -386,6 +408,12 @@
 
       async function submitDecision(path) {
         if (!state.selectedId) return;
+        if (path === "/comite/firmar-acta") {
+          $("#actaSignPassword").value = "";
+          $("#actaSignDialog").showModal();
+          $("#actaSignPassword").focus();
+          return;
+        }
         const comment = $("#decisionComment").value.trim();
         if (!comment) {
           showFeedback("Escribe un comentario antes de registrar la decisión.", "error");
@@ -397,15 +425,14 @@
         try {
           const result = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expediente_id: state.selectedId, comentario: comment }) });
           await Promise.all([loadExpedientes(), loadHistory()]);
+          if (["/comite/acta-definitiva", "/comite/cerrar-expediente", "/comite/reabrir-dictamen"].includes(path)) {
+            await loadDetail(state.selectedId);
+          }
           const statusBadge = $("#detailPanel .comite-status");
           if (statusBadge && result && result.estado) {
             statusBadge.textContent = result.estado;
             statusBadge.className = "comite-status " + statusClass(result.estado);
-            const hasFinalDecision = esDecisionFinal(result.estado);
-            $("#detailPanel").querySelectorAll("[data-requires-final]").forEach((button) => {
-              button.disabled = !hasFinalDecision;
-            });
-            if (hasFinalDecision) bloquearAccionesDeDictamen(true);
+            if (esDecisionFinal(result.estado)) bloquearAccionesDeDictamen(true);
           }
           showFeedback(result && result.mensaje || "La acción del comité fue guardada.", "success");
           mostrarAvisoArriba();
@@ -560,6 +587,31 @@
           showFeedback(error.message, "error");
         }
       });
+      $("#actaSignForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = $("#confirmActaSign");
+        button.disabled = true;
+        try {
+          const result = await api("/comite/firmar-acta", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              expediente_id: state.selectedId,
+              password_firma: $("#actaSignPassword").value
+            })
+          });
+          $("#actaSignDialog").close();
+          showFeedback(result && result.mensaje || "Acta firmada digitalmente.", "success");
+          await loadDetail(state.selectedId);
+          await loadHistory();
+        } catch (error) {
+          showFeedback(error.message, "error");
+        } finally {
+          $("#actaSignPassword").value = "";
+          button.disabled = false;
+        }
+      });
+      $("#cancelActaSign").addEventListener("click", () => $("#actaSignDialog").close());
       $("#logoutButton").addEventListener("click", () => { localStorage.clear(); window.location.href = "/login"; });
       loadExpedientes();
     })();

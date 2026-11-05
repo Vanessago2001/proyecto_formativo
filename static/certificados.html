@@ -349,7 +349,8 @@
         const aliases = {
           superadministrador: "superadmin", superadm: "superadmin",
           administrador: "admin", adm: "admin", aux: "auxiliar",
-          comite: "comite", empresario: "empresa", emp: "empresa",
+          comite: "comite", comitedecertificacion: "comite",
+          empresario: "empresa", emp: "empresa",
           publico: "public", pub: "public"
         };
         return aliases[normalized] || normalized;
@@ -718,7 +719,10 @@
               body: JSON.stringify({ password_firma: $("#signPassword").value })
             });
             $("#signPassword").value = "";
-            successMessage = "Certificado firmado y emitido correctamente. Huella SHA-256 del PDF: " + result.huella_pdf;
+            state.seleccionado = null;
+            state.certificadoActual = null;
+            $("#detailPanel").innerHTML = '<div class="comite-empty-state"><h3>Certificado emitido</h3><p>El certificado firmado ya está disponible para la empresa titular en su cuenta.</p></div>';
+            successMessage = "Certificado firmado y emitido. Disponible para la empresa titular. Huella SHA-256 del PDF: " + result.huella_pdf;
           } else if (action === "renew") {
             const result = await api("/certificados/" + encodeURIComponent(id) + "/renovar", {
               method: "POST", headers: { "Content-Type": "application/json" },

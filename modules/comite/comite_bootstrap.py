@@ -21,6 +21,27 @@ async def ensure_comite_schema(session) -> None:
         CREATE INDEX IF NOT EXISTS idx_comite_accion_solicitud_fecha
             ON comite_accion (id_solicitud, fecha DESC);
     """))
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS comite_acta (
+            id_acta UUID PRIMARY KEY,
+            id_solicitud UUID NOT NULL REFERENCES solicitud(id_solicitud) ON DELETE RESTRICT,
+            version INTEGER NOT NULL CHECK (version > 0),
+            estado VARCHAR(20) NOT NULL
+                CHECK (estado IN ('GENERADA', 'FIRMADA', 'ANULADA')),
+            huella_pdf VARCHAR(64) NOT NULL,
+            huella_firmante VARCHAR(128),
+            id_usuario_genero UUID REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+            id_usuario_firmante UUID REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+            datos JSONB NOT NULL,
+            fecha_generacion TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            fecha_firma TIMESTAMP WITH TIME ZONE,
+            UNIQUE (id_solicitud, version)
+        );
+    """))
+    await session.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_comite_acta_solicitud_version
+            ON comite_acta (id_solicitud, version DESC);
+    """))
 
 
 async def preparar_modulo_comite() -> None:

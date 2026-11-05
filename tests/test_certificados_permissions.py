@@ -21,6 +21,7 @@ from modules.certificados.certificados_permissions import (
 )
 from modules.certificados.certificados_service import (
     certificado_esta_vigente,
+    es_usuario_comite,
     es_usuario_empresa,
     validar_transicion,
 )
@@ -121,7 +122,10 @@ def test_cer010_no_concede_firma_al_rol_comite_en_general():
 
 
 def test_excepcion_de_firma_solo_entrega_contexto_comite_al_servicio_asignado():
-    from modules.certificados.certificados_router import requiere_firma_lider_o_permiso
+    from modules.certificados.certificados_router import (
+        requiere_firma_lider_o_permiso,
+        requiere_permiso_o_lider,
+    )
 
     dependencia = requiere_firma_lider_o_permiso()
     usuario_comite = asyncio.run(dependencia({
@@ -135,6 +139,169 @@ def test_excepcion_de_firma_solo_entrega_contexto_comite_al_servicio_asignado():
 
     assert usuario_comite["id_usuario"] == "11111111-1111-4111-8111-111111111111"
     assert usuario_auxiliar["requiere_aprobacion"] is True
+    assert asyncio.run(requiere_permiso_o_lider("CER-011")({
+        "id_usuario": "11111111-1111-4111-8111-111111111111",
+        "role_name": "Comité",
+    }))["role_name"] == "Comité"
+    assert es_usuario_comite({"role_name": "Comité de Certificación"})
+
+
+def test_lider_del_comite_solo_lista_sus_certificados_pendientes():
+    from modules.certificados.certificados_service import CertificadosService
+
+    id_lider = "11111111-1111-4111-8111-111111111111"
+    id_asignacion = "33333333-3333-4333-8333-333333333333"
+    certificados = [{
+        "id_certificado": "44444444-4444-4444-8444-444444444444",
+        "codigo_verificacion": "CS-2026-000001",
+        "estado_certificado": "PENDIENTE_FIRMA",
+    }]
+    db = FakeDatabase(
+        {
+            "id_asignacion": id_asignacion,
+            "id_usuario": id_lider,
+            "nombre": "Líder",
+            "correo": "lider@example.test",
+        },
+        certificados,
+    )
+
+    resultado = asyncio.run(CertificadosService(db).listar(
+        {"id_usuario": id_lider, "role_name": "Comité"}
+    ))
+
+    assert resultado == certificados
+    sql = str(db.executions[1][0][0])
+    assert "TRIM(UPPER(c.estado_certificado)) = :estado_pendiente" in sql
+    assert "c.id_asignacion_lider = :id_asignacion_lider" in sql
+    assert db.executions[1][0][1]["id_asignacion_lider"] == id_asignacion
+
+
+def test_usuario_comite_no_asignado_no_puede_listar_certificados_pendientes():
+    from modules.certificados.certificados_service import CertificadosService
+
+    db = FakeDatabase({
+        "id_asignacion": "33333333-3333-4333-8333-333333333333",
+        "id_usuario": "11111111-1111-4111-8111-111111111111",
+        "nombre": "Líder",
+        "correo": "lider@example.test",
+    })
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(CertificadosService(db).listar({
+            "id_usuario": "99999999-9999-4999-8999-999999999999",
+            "role_name": "Comité",
+        }))
+
+    assert error.value.status_code == 403
+    assert len(db.executions) == 1
+
+
+def test_lider_asignado_puede_listar_abrir_y_previsualizar_certificado():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from core.database import get_db
+    from core.security import get_current_user
+    from modules.certificados.certificados_router import router
+
+    certificado = _public_certificate_row(
+        estado_certificado="PENDIENTE_FIRMA",
+        fecha_emision=None,
+        publico_certificado=False,
+        id_asignacion_lider="33333333-3333-4333-8333-333333333333",
+        id_firmante=None,
+        huella_firmante=None,
+        huella_pdf=None,
+    )
+    db = FakeDatabase()
+    usuario = {
+        "id_usuario": "11111111-1111-4111-8111-111111111111",
+        "role_name": "Comité",
+    }
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: usuario
+
+    async def override_db():
+        yield db
+
+    app.dependency_overrides[get_db] = override_db
+    client = TestClient(app)
+    db.responses = [
+        {
+            "id_asignacion": certificado["id_asignacion_lider"],
+            "id_usuario": usuario["id_usuario"],
+            "nombre": "Líder",
+            "correo": "lider@example.test",
+        },
+        [certificado],
+    ]
+    listado = client.get("/certificados/")
+    assert listado.status_code == 200
+    assert listado.json()[0]["estado_certificado"] == "PENDIENTE_FIRMA"
+
+    fila_asignada = {
+        "estado_certificado": "PENDIENTE_FIRMA",
+        "id_usuario": usuario["id_usuario"],
+        "id_rol_comite": 7,
+    }
+    db.responses = [fila_asignada, certificado]
+    detalle = client.get(f"/certificados/{certificado['id_certificado']}")
+    assert detalle.status_code == 200
+    assert detalle.json()["estado_certificado"] == "PENDIENTE_FIRMA"
+
+    db.responses = [fila_asignada, certificado]
+    vista_previa = client.get(f"/certificados/{certificado['id_certificado']}/pdf/preview")
+    assert vista_previa.status_code == 200
+    assert vista_previa.headers["content-type"] == "application/pdf"
+    assert vista_previa.content.startswith(b"%PDF-")
+
+
+def test_empresa_titular_lista_certificado_firmado_aunque_no_sea_publico():
+    from modules.certificados.certificados_service import CertificadosService
+
+    id_empresa = "55555555-5555-4555-8555-555555555555"
+    certificado = _public_certificate_row(publico_certificado=False)
+    db = FakeDatabase([{"id_empresa": id_empresa}], [certificado])
+
+    resultado = asyncio.run(CertificadosService(db).listar({
+        "id_usuario": "77777777-7777-4777-8777-777777777777",
+        "role_name": "Empresa",
+    }))
+
+    assert resultado == [certificado]
+    consulta = str(db.executions[1][0][0])
+    assert "s.id_empresa IN (:empresa_0)" in consulta
+    assert "WHERE c.publico_certificado" not in consulta
+
+
+def test_empresa_titular_puede_descargar_pdf_firmado_no_publicado(tmp_path, monkeypatch):
+    from core.config import settings
+    from modules.certificados.certificados_router import descargar_certificado
+
+    assert nivel_permiso("CER-012", "Empresa") is NivelPermiso.CONCEDIDO
+    certificado = _public_certificate_row(
+        publico_certificado=False,
+        huella_pdf=hashlib.sha256(b"%PDF-1.4 firmado").hexdigest(),
+    )
+    id_certificado = UUID(certificado["id_certificado"])
+    monkeypatch.setattr(settings, "CERTIFICADOS_STORAGE_DIR", str(tmp_path))
+    (tmp_path / f"{id_certificado}.pdf").write_bytes(b"%PDF-1.4 firmado")
+    db = FakeDatabase(
+        certificado,
+        [{"id_empresa": certificado["id_empresa"]}],
+        certificado,
+        [{"id_empresa": certificado["id_empresa"]}],
+    )
+
+    respuesta = asyncio.run(descargar_certificado(
+        id_certificado,
+        {"id_usuario": "77777777-7777-4777-8777-777777777777", "role_name": "Empresa"},
+        db,
+    ))
+
+    assert respuesta.status_code == 200
+    assert respuesta.media_type == "application/pdf"
+    assert respuesta.body == b"%PDF-1.4 firmado"
 
 
 def test_comite_puede_registrar_motivo_sin_suspender():

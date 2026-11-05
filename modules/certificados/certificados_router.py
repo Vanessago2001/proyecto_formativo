@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from core.security import _normalize_role_name, get_current_user, require_role
+from core.security import get_current_user, require_role
 from modules.certificados.certificados_pdf import generar_pdf_certificado
 from modules.certificados.certificados_permissions import (
     marcar_aprobacion,
@@ -14,6 +14,7 @@ from modules.certificados.certificados_permissions import (
     requiere_permiso,
     PERMISOS_M9,
     F,
+    NivelPermiso,
     REQ,
 )
 from modules.certificados.certificados_schema import (
@@ -27,6 +28,7 @@ from modules.certificados.certificados_schema import (
 )
 from modules.certificados.certificados_service import (
     CertificadosService,
+    es_usuario_comite,
     es_usuario_publico,
     ESTADO_VIGENTE,
 )
@@ -44,8 +46,7 @@ def _csv_safe_value(value):
 
 def requiere_firma_lider_o_permiso():
     async def verificar(usuario: dict = Depends(get_current_user)) -> dict:
-        rol = _normalize_role_name(usuario.get("role_name"))
-        if rol == "comite":
+        if es_usuario_comite(usuario):
             # CER-010 deniega el rol Comité en general. El servicio permite
             # continuar solo si este usuario es el líder asignado al certificado.
             return usuario
@@ -56,6 +57,22 @@ def requiere_firma_lider_o_permiso():
                 detail=f"Permiso CER-010 ({PERMISOS_M9['CER-010'][0]}) denegado para el rol.",
             )
         usuario["requiere_aprobacion"] = nivel is REQ
+        return usuario
+
+    return verificar
+
+
+def requiere_permiso_o_lider(codigo: str):
+    async def verificar(usuario: dict = Depends(get_current_user)) -> dict:
+        if es_usuario_comite(usuario):
+            return usuario
+        nivel = nivel_permiso(codigo, usuario.get("role_name"))
+        if nivel is F:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permiso {codigo} ({PERMISOS_M9[codigo][0]}) denegado para el rol.",
+            )
+        usuario["requiere_aprobacion"] = nivel is NivelPermiso.REQUIERE_APROBACION
         return usuario
 
     return verificar
@@ -177,7 +194,7 @@ async def generar_certificado(
 async def listar_certificados(
     limite: int = Query(default=100, ge=1, le=500),
     desplazamiento: int = Query(default=0, ge=0),
-    usuario: dict = Depends(requiere_permiso("CER-011")),
+    usuario: dict = Depends(requiere_permiso_o_lider("CER-011")),
     db: AsyncSession = Depends(get_db),
 ):
     return await CertificadosService(db).listar(usuario, limite, desplazamiento)
@@ -246,19 +263,25 @@ async def exportar_empresas_certificadas(
 @router.get("/{id_certificado}", summary="CER-011 · Consultar certificado")
 async def consultar_certificado(
     id_certificado: UUID,
-    usuario: dict = Depends(requiere_permiso("CER-011")),
+    usuario: dict = Depends(requiere_permiso_o_lider("CER-011")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await CertificadosService(db)._obtener(id_certificado, usuario)
+    service = CertificadosService(db)
+    if es_usuario_comite(usuario):
+        await service.validar_lider_asignado(id_certificado, usuario)
+    return await service._obtener(id_certificado, usuario)
 
 
 @router.get("/{id_certificado}/pdf/preview", summary="CER-009 · Generar PDF de revisión", response_class=Response)
 async def generar_pdf_revision(
     id_certificado: UUID,
-    usuario: dict = Depends(requiere_permiso("CER-009")),
+    usuario: dict = Depends(requiere_permiso_o_lider("CER-009")),
     db: AsyncSession = Depends(get_db),
 ):
-    certificado = await CertificadosService(db)._obtener(id_certificado)
+    service = CertificadosService(db)
+    if es_usuario_comite(usuario):
+        await service.validar_lider_asignado(id_certificado, usuario)
+    certificado = await service._obtener(id_certificado, usuario)
     return Response(
         content=generar_pdf_certificado(certificado),
         media_type="application/pdf",
@@ -289,9 +312,11 @@ async def firmar_certificado(
     usuario: dict = Depends(requiere_firma_lider_o_permiso()),
     db: AsyncSession = Depends(get_db),
 ):
-    # La contraseña de firma se valida contra el usuario autenticado, nunca contra otro.
+    service = CertificadosService(db)
+    await service.validar_lider_asignado(id_certificado, usuario)
+    # La contraseña se verifica solo después de comprobar que el usuario puede firmar este certificado.
     firma = await FirmaService(db).verificar(usuario, datos.password_firma)
-    return await CertificadosService(db).firmar_con_lider_asignado(id_certificado, usuario, firma)
+    return await service.firmar_con_lider_asignado(id_certificado, usuario, firma)
 
 
 @router.post("/{id_certificado}/reenviar", summary="CER-013 · Reenviar certificado por correo")

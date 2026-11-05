@@ -49,6 +49,11 @@ class ComiteService:
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="El comentario es obligatorio para registrar una acción del comité.",
             )
+        if accion in {"acta-definitiva", "firmar-acta"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Las actas deben generarse y firmarse mediante el flujo PAdES del Comité.",
+            )
 
         resultado = await self.db.execute(
             text("""
@@ -82,7 +87,7 @@ class ComiteService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"El expediente ya tiene un dictamen {estado_actual.lower()}.",
             )
-        if accion in {"acta-definitiva", "firmar-acta", "cerrar-expediente"} and estado_normalizado not in ESTADOS_DICTAMEN:
+        if accion == "cerrar-expediente" and estado_normalizado not in ESTADOS_DICTAMEN:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="La acción requiere que el expediente tenga un dictamen aprobado o rechazado.",
@@ -92,6 +97,21 @@ class ComiteService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Solo se puede reabrir un expediente con dictamen final o cerrado.",
             )
+        if accion == "cerrar-expediente":
+            acta_resultado = await self.db.execute(text("""
+                SELECT estado
+                FROM comite_acta
+                WHERE id_solicitud = :id_solicitud
+                ORDER BY version DESC
+                LIMIT 1
+                FOR UPDATE;
+            """), {"id_solicitud": str(id_solicitud)})
+            acta = acta_resultado.mappings().first()
+            if not acta or acta["estado"] != "FIRMADA":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="El expediente solo se puede cerrar después de generar y firmar el acta definitiva.",
+                )
 
         if nuevo_estado:
             actualizacion = await self.db.execute(
@@ -129,6 +149,13 @@ class ComiteService:
                     "observacion": f"[COM] {accion} por {usuario.get('nombre') or usuario.get('correo') or 'usuario'}"[:255],
                 },
             )
+        if accion == "reabrir-dictamen":
+            await self.db.execute(text("""
+                UPDATE comite_acta
+                SET estado = 'ANULADA'
+                WHERE id_solicitud = :id_solicitud
+                  AND estado IN ('GENERADA', 'FIRMADA');
+            """), {"id_solicitud": str(id_solicitud)})
 
         datos_json = json.dumps(datos, ensure_ascii=False, default=str)
         guardado = await self.db.execute(
@@ -155,11 +182,7 @@ class ComiteService:
 
         await self.db.commit()
         mensaje = "La acción del comité fue guardada."
-        if accion == "firmar-acta":
-            mensaje = "La solicitud de firma quedó registrada; aún no se genera firma electrónica ni PDF."
-        elif accion == "acta-definitiva":
-            mensaje = "La solicitud de generación del acta quedó registrada; aún no se genera un PDF."
-        elif accion == "solicitar-info-adicional":
+        if accion == "solicitar-info-adicional":
             mensaje = "La solicitud de información quedó registrada; no se envió una notificación al auditor."
         return {
             "id_accion": str(registro["id_accion"]),
