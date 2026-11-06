@@ -22,28 +22,31 @@
     .modal-field strong { display: block; color: #5f6f69; font-size: 11px; text-transform: uppercase; margin-bottom: 2px; }
     .modal-close { margin-top: 16px; }
     .empty { text-align: center; color: #64748b; padding: 24px; }
-    /* =====================================================
-       MENU LATERAL: el mismo de static/dashboard.html, con su
-       mismo diseno, tamano de letras y posicion.
-    ====================================================== */
-    .app-shell {
+    .portal {
         max-width: var(--ancho-contenido);
         margin: 0 auto;
-        padding: 28px;
-    }
-
-    .admin-grid {
+        padding: 26px 30px 38px;
         display: grid;
         grid-template-columns: 260px minmax(0, 1fr);
         gap: 24px;
         align-items: start;
     }
 
-    .admin-nav {
+    .side,
+    .content {
         background: #fff;
         border: 1px solid #e2e8f0;
-        padding: 12px;
+        border-radius: 16px;
+        box-shadow: 0 12px 32px rgba(15, 35, 22, .055);
+    }
+
+    .side {
+        padding: 13px;
+        position: sticky;
+        top: 20px;
         height: max-content;
+        align-self: start;
+        z-index: 100;
     }
 
     .admin-nav-heading {
@@ -65,31 +68,71 @@
         text-transform: uppercase;
     }
 
-    .admin-nav a {
+    .side a {
         display: block;
         color: #334155;
         text-decoration: none;
-        padding: 11px 12px;
-        font-size: 13px;
-        line-height: 1.35;
+        padding: 10px 11px;
+        margin: 2px 0;
+        font-size: 13.5px;
+        line-height: 1.4;
         border-left: 3px solid transparent;
+        border-radius: 0 9px 9px 0;
+        transition: background .18s ease, color .18s ease, border-color .18s ease;
     }
 
-    .admin-nav a.active,
-    .admin-nav a:hover {
+    .side a:hover {
+        background: #f8fafc;
+        color: #39a900;
+    }
+
+    .side a.active {
         background: #f1f5f9;
-        color: #256d00;
+        color: #39a900;
         border-left-color: #3baa01;
         font-weight: 700;
     }
 
-    @media (max-width: 800px) {
-        .app-shell {
-            padding: 18px;
+    .content {
+        min-width: 0;
+        padding: 22px;
+    }
+
+    @media (max-width: 980px) {
+        .portal {
+            grid-template-columns: 205px minmax(0, 1fr);
+            padding: 22px;
+            gap: 16px;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .portal {
+            grid-template-columns: 1fr;
+            padding: 14px;
+            gap: 14px;
         }
 
-        .admin-grid {
-            grid-template-columns: 1fr;
+        .side {
+            position: static;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 5px;
+            padding: 10px;
+        }
+
+        .side a {
+            margin: 0;
+            padding: 9px 10px;
+            border-left: 0;
+            border-bottom: 2px solid transparent;
+            border-radius: 8px;
+            font-size: 13.5px;
+        }
+
+        .side a.active {
+            border-left-color: transparent;
+            border-bottom-color: #3baa01;
         }
     }
   </style>
@@ -113,34 +156,23 @@
     </div>
   </header>
 
-  <main class="app-shell">
-    <div class="admin-grid">
-    <!-- MENU LATERAL: el mismo de static/dashboard.html -->
-    <nav class="admin-nav" aria-label="Navegación del panel">
-      <div class="admin-nav-heading">
-        <span>Administración</span>
-        Empresas restringidas
-      </div>
-      <a href="/dashboard">Resumen</a>
-      <a href="/empresas">Empresas registradas</a>
-      <a href="/dashboard#usuarios">Gestionar usuarios</a>
-      <a href="/asignacion-auditores">Asignación de auditores</a>
-      <a href="/consultar-auditorias-programadas-admin">Consultar auditorías programadas</a>
-      <a href="/consultar-auditorias-programadas-admin#futuras">Consultar programaciones futuras</a>
-      <a href="/consultar-agenda-auditor">Consultar agenda de auditor</a>
-      <a href="/revision-solicitudes">Revisión de solicitudes</a>
-      <a href="/banco-auditores">Banco de auditores</a>
-      <a href="/conflictos-administrador">Conflictos de interés</a>
+  <main class="portal">
+    <nav class="side admin-nav" aria-label="Navegación del auditor">
+      <a href="/auditor#inicioRegistro">Formulario de registro</a>
+      <a href="/auditor#historial-academico">Historial académico</a>
+      <a href="/consultar-estado">Consultar estado del registro</a>
+      <a href="/conflictos-auditor">Consultar conflictos registrados</a>
       <a href="/empresas-restringidas" class="active" aria-current="page">Consultar empresas restringidas</a>
-      <a href="/gestion-certificados">Gestión de certificados</a>
-      <a href="/apelacion">Apelaciones</a>
-      <a href="/comite">Ir al Comité de certificación</a>
+      <a href="/consultar-auditorias-programadas">Consultar auditorías programadas</a>
+      <a href="/programaciones-futuras-auditor">Programaciones futuras</a>
+      <a href="/disponibilidad-auditor">Disponibilidad semanal</a>
+      <a href="/notificaciones-auditor">Notificaciones</a>
+      <a href="/catalogo-competencias-auditor">Catálogo de competencias</a>
       <a href="/reportes">Reportes</a>
-      <a href="/profile">Mi perfil</a>
       <a id="logout" href="/login">Cerrar sesión</a>
     </nav>
 
-    <div class="surface">
+    <section class="surface content">
       <h2>Empresas restringidas</h2>
       <p class="help-text">Listado real de empresas con conflictos de interés activos que bloquean asignación.</p>
       <div class="table-wrap">
@@ -158,8 +190,7 @@
         </table>
       </div>
       <div id="mensajeEmpresas" class="empty">Cargando empresas restringidas...</div>
-    </div>
-    </div>
+    </section>
   </main>
 
   <div class="modal-overlay" id="modalEmpresa">

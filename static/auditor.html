@@ -311,6 +311,7 @@
             --sena-green: #256d00;
             --sena-green-dark: #1b4b12;
             --sena-green-bright: #3baa01;
+            --sena-green-hover: #2f8f00;
             --sena-green-soft: #f1f5f9;
             --portal-ink: #172b24;
             --portal-muted: #64748b;
@@ -884,86 +885,42 @@
             }
         }
 
-        /* Declaración condicional de conflictos y miniaturas de archivos */
-        .conflicto-opcion-card {
+
+
+        /* Aviso de conflictos y miniaturas de archivos */
+        .conflicto-aviso {
             margin: 16px 0 20px;
             padding: 15px 16px;
             border: 1px solid #e2e8f0;
             border-radius: 12px;
             background: linear-gradient(135deg, #f8fafc, #fff);
-        }
-
-        .conflicto-opcion {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            cursor: pointer;
             color: #24452d;
-        }
-
-        .conflicto-opcion input {
-            position: absolute;
-            opacity: 0;
-            width: 1px;
-            height: 1px;
-        }
-
-        .conflicto-opcion-check {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex: 0 0 22px;
-            width: 22px;
-            height: 22px;
-            border: 1.5px solid #a9c59d;
-            border-radius: 6px;
-            background: #fff;
-            color: transparent;
-            font-size: 14px;
-            font-weight: 800;
-            transition: all .18s ease;
-        }
-
-        .conflicto-opcion input:checked+.conflicto-opcion-check {
-            background: #256d00;
-            border-color: #256d00;
-            color: #fff;
-        }
-
-        .conflicto-opcion input:focus-visible+.conflicto-opcion-check {
-            outline: 3px solid rgba(59, 170, 1, .22);
-            outline-offset: 2px;
-        }
-
-        .conflicto-opcion-texto {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
 
-        .conflicto-opcion-texto strong {
+        .conflicto-aviso strong {
             font-size: 13.5px;
             color: #1b4b12;
         }
 
-        .conflicto-opcion-texto small {
+        .conflicto-aviso p {
+            margin: 0;
             color: #647567;
-            font-size: 12px;
-            line-height: 1.5;
-            font-weight: 400;
+            font-size: 12.5px;
+            line-height: 1.55;
         }
 
-        .conflicto-ayuda {
-            margin: 10px 0 0;
+        .conflicto-enlace {
+            color: #256d00;
+            font-weight: 600;
+            text-decoration: underline;
         }
 
-        .conflicto-campos[hidden] {
-            display: none !important;
-        }
-
-        .conflicto-campos {
-            padding: 2px 0 7px;
-            animation: panelEntrar .18s ease both;
+        .conflicto-enlace:hover,
+        .conflicto-enlace:focus-visible {
+            color: #1b4b12;
         }
 
         .declaraciones-obligatorias {
@@ -1679,19 +1636,17 @@
             gap: 9px;
         }
 
-        .conflicto-opcion-card,
+        .conflicto-aviso,
         .experiencia-opcional-card {
             margin: 10px 0 13px;
             padding: 11px 12px;
             border-radius: 10px;
         }
 
-        .conflicto-opcion-texto strong,
         .experiencia-opcional-texto strong {
             font-size: 12.5px;
         }
 
-        .conflicto-opcion-texto small,
         .experiencia-opcional-texto small {
             font-size: 11px;
         }
@@ -2200,7 +2155,7 @@
                     </a>
 
                     <a href="#conflictos" data-seccion="conflictos">
-                        Conflictos de Interés
+                        Conflictos y declaraciones
                     </a>
                 </div>
             </div>
@@ -2301,7 +2256,7 @@
                     <div class="panel-inicio-paso">
                         <span class="paso-numero">03</span>
                         <div><strong>Adjunta y envía</strong>
-                            <p>Carga los soportes necesarios y declara los conflictos de interés antes de enviar el
+                            <p>Carga los soportes necesarios y acepta las declaraciones antes de enviar el
                                 registro.</p>
                         </div>
                     </div>
@@ -2886,55 +2841,19 @@
        SECCIÓN 8 - CONFLICTOS
   ====================================================== -->
 
-            <form id="formConflictos" class="form-section panel-formulario" data-titulo="Conflictos de interés">
+            <form id="formConflictos" class="form-section panel-formulario" data-titulo="Conflictos y declaraciones">
 
                 <h3 id="conflictos">
-                    8. Declaración de Conflictos de Interés
+                    8. Conflictos de Interés y Declaraciones
                 </h3>
 
-                <div class="conflicto-opcion-card">
-                    <label class="conflicto-opcion" for="tiene_conflicto">
-                        <input type="checkbox" id="tiene_conflicto" name="tiene_conflicto">
-                        <span class="conflicto-opcion-check" aria-hidden="true">✓</span>
-                        <span class="conflicto-opcion-texto">
-                            <strong>Empresas con posible conflicto de interés</strong>
-                            <small>Marque esta opción si tiene alguna relación que deba declarar con una
-                                empresa.</small>
-                        </span>
-                    </label>
-                    <p class="help-text conflicto-ayuda">Si no marca esta casilla, se entenderá que declara no tener
-                        empresas con posible conflicto de interés.</p>
+                <div class="conflicto-aviso">
+                    <strong>Conflictos de interés</strong>
+                    <p>Se declaran y administran desde la pantalla
+                        <a class="conflicto-enlace" href="/conflictos-auditor">Conflictos de interés</a>.
+                        Allí puede registrar nuevos conflictos cuando aparezcan, sin volver a usar este formulario de
+                        registro.</p>
                 </div>
-
-                <div id="camposConflicto" class="conflicto-campos" hidden>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="id_empresa">Empresa relacionada <span>*</span></label>
-                            <select id="id_empresa" data-cierra-dropdown="mi-registro" name="id_empresa" class="form-control">
-                                <option value="">Cargando empresas...</option>
-                            </select>
-                            <span class="help-text">Seleccione la empresa con la que podría existir un conflicto de
-                                interés.</span>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="tipo_conflicto">Tipo de conflicto <span>*</span></label>
-                            <select id="tipo_conflicto" data-cierra-dropdown="mi-registro" name="tipo_conflicto" class="form-control">
-                                <option value="">Seleccione el tipo</option>
-                                <option value="Exempleado">Exempleado</option>
-                                <option value="Asesoría Previa">Asesoría Previa</option>
-                                <option value="Parentesco">Parentesco</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <label for="descripcion_conf">Descripción <span>*</span></label>
-                            <textarea id="descripcion_conf" name="descripcion" class="form-control"
-                                placeholder="Describa la relación o situación que podría generar el conflicto de interés..."></textarea>
-                        </div>
-                    </div>
-                </div>
-
 
                 <!-- =================================================
          DECLARACIONES
@@ -3001,15 +2920,6 @@
                 <!-- =================================================
          BOTONES
     ================================================== -->
-
-                <button type="submit" id="btnGuardarConflicto" class="btn btn-primario btn-save-section">
-                    Guardar declaraciones
-                </button>
-
-                <button type="button" id="btnEditarConflicto" class="btn btn-secundario btn-edit-section" style="display:none;">
-                    Editar borrador
-                </button>
-
 
                 <button type="button" id="btnEnviarGeneral" class="btn btn-primario btn-bloque btn-submit">
                     Enviar Formulario al Banco de Auditores
@@ -3713,7 +3623,7 @@
         /* =====================================================
            PERMISO PARA MODIFICAR LOS REGISTROS
 
-           Titulos, experiencias y conflictos solo se pueden modificar si el
+           Titulos y experiencias solo se pueden modificar si el
            estado del auditor lo permite, que es lo mismo que exige
            _verificar_usuario_borrador() en el servidor.
         ===================================================== */
@@ -4086,119 +3996,6 @@
             habilitarSeccion(formId);
 
         }
-
-
-        /* =====================================================
-           CARGAR EMPRESAS
-        ====================================================== */
-
-        async function cargarEmpresas() {
-
-            const select =
-                document.getElementById(
-                    'id_empresa'
-                );
-
-
-            console.log(
-                '🔵 Iniciando carga de empresas...'
-            );
-
-
-            try {
-
-                const response =
-                    await fetch(
-                        '/auditores/catalogos/empresas'
-                    );
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        `HTTP ${response.status}: ${response.statusText}`
-                    );
-
-                }
-
-
-                const empresas =
-                    await response.json();
-
-
-                select.innerHTML = `
-          <option value="">
-            Seleccione una empresa
-          </option>
-        `;
-
-
-                if (
-                    !Array.isArray(empresas) ||
-                    empresas.length === 0
-                ) {
-
-                    select.innerHTML = `
-            <option value="">
-              No hay empresas registradas
-            </option>
-          `;
-
-                    return;
-
-                }
-
-
-                empresas.forEach(
-                    (empresa) => {
-
-                        const option =
-                            document.createElement(
-                                'option'
-                            );
-
-
-                        option.value =
-                            empresa.id_empresa;
-
-
-                        option.textContent =
-                            empresa.nit
-                                ? `${empresa.nombre} - NIT ${empresa.nit}`
-                                : empresa.nombre;
-
-
-                        select.appendChild(
-                            option
-                        );
-
-                    }
-                );
-
-
-                console.log(
-                    `🟢 Se cargaron ${empresas.length} empresas.`
-                );
-
-
-            } catch (error) {
-
-                console.error(
-                    '🔴 Error cargando empresas:',
-                    error
-                );
-
-
-                select.innerHTML = `
-          <option value="">
-            Error al cargar empresas
-          </option>
-        `;
-
-            }
-
-        }
-
 
         /* =====================================================
            CARGAR NORMAS
@@ -5649,50 +5446,6 @@
 
 
                 /* =================================================
-                   CONFLICTO
-                ================================================== */
-
-                if (
-                    data.conflictos &&
-                    data.conflictos.length > 0
-                ) {
-
-                    const conflicto =
-                        data.conflictos[0];
-
-
-                    console.log(
-                        '🟢 Conflicto recuperado:',
-                        conflicto
-                    );
-
-
-                    setValue(
-                        'id_empresa',
-                        conflicto.id_empresa
-                    );
-
-                    setValue(
-                        'tipo_conflicto',
-                        conflicto.tipo_conflicto
-                    );
-
-                    setValue(
-                        'descripcion_conf',
-                        conflicto.descripcion
-                    );
-
-                    setChecked('tiene_conflicto', true);
-                    actualizarSeccionConflicto();
-
-                    guardarLocal(
-                        'conflicto',
-                        conflicto
-                    );
-
-                }
-
-                /* =================================================
                    DECLARACIONES
                 ================================================== */
 
@@ -5722,33 +5475,6 @@
                         setChecked('acepta_imparcialidad', true);
                         setChecked('acepta_confidencialidad', true);
                     }
-                }
-
-                if (!existeConflictoServidor && declaraciones && typeof declaraciones.tiene_conflicto === 'boolean') {
-                    setChecked('tiene_conflicto', declaraciones.tiene_conflicto);
-                }
-                actualizarSeccionConflicto();
-
-
-                /* =================================================
-                   BLOQUEAR SECCIÓN 4 SI EXISTE CONFLICTO
-                ================================================== */
-
-                if (
-                    data.conflictos &&
-                    data.conflictos.length > 0
-                ) {
-
-                    bloquearSeccion(
-                        'formConflictos'
-                    );
-
-                } else {
-
-                    habilitarSeccion(
-                        'formConflictos'
-                    );
-
                 }
 
                 const estadosBloqueados = [
@@ -5862,27 +5588,6 @@
 
 
         /* =====================================================
-           EDITAR CONFLICTO
-        ====================================================== */
-
-        document
-            .getElementById(
-                'btnEditarConflicto'
-            )
-            .addEventListener(
-                'click',
-                () => {
-
-                    editarSeccion(
-                        'formConflictos',
-                        'Conflictos de Interés'
-                    );
-
-                }
-            );
-
-
-        /* =====================================================
            FOTO PROFESIONAL: VISTA PREVIA Y CARGA
            Usa el endpoint de documentos ya presente en el portal.
         ====================================================== */
@@ -5963,37 +5668,6 @@
                 : null;
             mostrarFotoProfesionalGuardada(fotoProfesionalUrl, fotoProfesionalDocumento);
             return url;
-        }
-
-        /* =====================================================
-           CONFLICTO: MOSTRAR CAMPOS SOLO SI SE MARCA LA OPCIÓN
-        ====================================================== */
-        function actualizarSeccionConflicto() {
-            const casilla = document.getElementById('tiene_conflicto');
-            const campos = document.getElementById('camposConflicto');
-            const tieneConflicto = Boolean(casilla && casilla.checked);
-            if (campos) {
-                campos.hidden = !tieneConflicto;
-                campos.setAttribute('aria-hidden', tieneConflicto ? 'false' : 'true');
-            }
-            ['id_empresa', 'tipo_conflicto', 'descripcion_conf'].forEach((id) => {
-                const campo = document.getElementById(id);
-                if (!campo) return;
-                campo.required = tieneConflicto;
-                campo.setAttribute('aria-required', tieneConflicto ? 'true' : 'false');
-            });
-            const ayuda = document.querySelector('.conflicto-ayuda');
-            if (ayuda) {
-                ayuda.textContent = tieneConflicto
-                    ? 'Complete los datos de la empresa y describa el posible conflicto.'
-                    : 'No ha marcado posibles conflictos. Las declaraciones obligatorias permanecen visibles para continuar.';
-            }
-            const botonGuardar = document.getElementById('btnGuardarConflicto');
-            if (botonGuardar) {
-                botonGuardar.textContent = tieneConflicto
-                    ? 'Registrar conflicto y declaraciones'
-                    : 'Guardar declaraciones';
-            }
         }
 
         /* =====================================================
@@ -6930,122 +6604,6 @@
         });
 
 
-        /* =====================================================
-           GUARDAR CONFLICTO Y DECLARACIONES
-        ====================================================== */
-        document.getElementById('formConflictos').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const tieneConflicto = document.getElementById('tiene_conflicto').checked;
-            const aceptaImp = document.getElementById('acepta_imparcialidad').checked;
-            const aceptaConf = document.getElementById('acepta_confidencialidad').checked;
-
-            if (!aceptaImp || !aceptaConf) {
-                alert('Debe aceptar las declaraciones de Imparcialidad y Confidencialidad.');
-                return;
-            }
-
-            const declaracionesActuales = {
-                tiene_conflicto: tieneConflicto,
-                declaracion_sin_conflicto: !tieneConflicto,
-                acepta_imparcialidad: aceptaImp,
-                acepta_confidencialidad: aceptaConf
-            };
-
-            const guardarDeclaraciones = () => guardarLocal('declaraciones', declaracionesActuales);
-
-            if (!tieneConflicto) {
-                try {
-                    const res = await fetch(
-                        `/auditores/registro/${userId}/conflictos`,
-                        {
-                            method: 'DELETE',
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        }
-                    );
-
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        throw new Error(
-                            data.detail ||
-                            'No fue posible registrar la declaracion sin conflictos.'
-                        );
-                    }
-
-                    guardarLocal('conflicto', null);
-                    guardarDeclaraciones();
-                    alert(
-                        data.mensaje ||
-                        'Declaraciones guardadas. Ha indicado que no tiene empresas con posible conflicto de interes.'
-                    );
-                    bloquearSeccion('formConflictos');
-                    await cargarBorrador();
-                } catch (error) {
-                    alert(
-                        error.message ||
-                        'No fue posible registrar la declaracion sin conflictos.'
-                    );
-                }
-                return;
-            }
-
-            const empId = document.getElementById('id_empresa').value.trim();
-            const tipoConflicto = document.getElementById('tipo_conflicto').value.trim();
-            const descripcion = document.getElementById('descripcion_conf').value.trim();
-
-            if (!empId) {
-                alert('Seleccione la empresa relacionada con el posible conflicto.');
-                return;
-            }
-            if (!tipoConflicto) {
-                alert('Escriba el tipo de conflicto de interés.');
-                return;
-            }
-            if (!descripcion) {
-                alert('Ingrese la descripción del conflicto de interés.');
-                return;
-            }
-
-            const payload = {
-                id_empresa: empId,
-                tipo_conflicto: tipoConflicto,
-                descripcion: descripcion,
-                bloquea_asignacion: false
-            };
-
-            try {
-                const res = await fetch(`/auditores/registro/${userId}/conflictos`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    throw new Error(mensajeDeError(data, 'No fue posible registrar el conflicto.'));
-                }
-
-                guardarDeclaraciones();
-                guardarLocal('conflicto', payload);
-                alert(data.mensaje || 'Conflicto y declaraciones guardados correctamente.');
-                bloquearSeccion('formConflictos');
-                await cargarBorrador();
-            } catch (error) {
-                console.error('Error guardando el conflicto:', error);
-                alert(error.message || 'No fue posible registrar el conflicto.');
-            }
-        });
-
-        document.getElementById('tiene_conflicto').addEventListener('change', () => {
-            actualizarSeccionConflicto();
-            guardarDeclaracionesLocales();
-        });
-
         document
             .getElementById(
                 'acepta_imparcialidad'
@@ -7071,8 +6629,6 @@
             guardarLocal(
                 'declaraciones',
                 {
-                    tiene_conflicto: document.getElementById('tiene_conflicto').checked,
-                    declaracion_sin_conflicto: !document.getElementById('tiene_conflicto').checked,
                     acepta_imparcialidad: document.getElementById('acepta_imparcialidad').checked,
                     acepta_confidencialidad: document.getElementById('acepta_confidencialidad').checked
                 }
@@ -7143,17 +6699,6 @@
                     }
 
 
-                    const tieneConflicto = document.getElementById('tiene_conflicto').checked;
-                    const tipoConflicto = document.getElementById('tipo_conflicto').value.trim();
-                    const empresa = document.getElementById('id_empresa').value;
-                    const descripcion = document.getElementById('descripcion_conf').value.trim();
-
-                    if (tieneConflicto && (!tipoConflicto || !empresa || !descripcion)) {
-                        alert('Complete la empresa, el tipo y la descripción del conflicto de interés antes de continuar.');
-                        return;
-                    }
-
-
                     const aceptaImp =
                         document.getElementById(
                             'acepta_imparcialidad'
@@ -7200,7 +6745,7 @@
                             '⚠️ ATENCIÓN\n\n' +
                             'Está a punto de enviar su inscripción al Banco de Auditores.\n\n' +
                             'Después de realizar el envío, su registro cambiará a estado PENDIENTE y quedará sujeto a revisión administrativa.\n\n' +
-                            'Verifique que todos los datos, competencias, declaraciones y documentos soporte sean correctos. Si marcó posibles conflictos, revise también sus datos.\n\n' +
+                            'Verifique que todos los datos, competencias, declaraciones y documentos soporte sean correctos.\n\n' +
                             '¿Desea continuar?'
                         );
 
@@ -7232,7 +6777,6 @@
 
                         const payload = {
                             id_usuario: userId,
-                            declaracion_sin_conflicto: !tieneConflicto,
                             acepta_imparcialidad: aceptaImp,
                             acepta_confidencialidad: aceptaConf
                         };
@@ -7414,7 +6958,7 @@
                 'experiencia-laboral': 'Experiencia laboral',
                 'experiencia-auditoria': 'Experiencia en auditoría',
                 'documentos-soporte': 'Documentos de soporte',
-                conflictos: 'Conflictos de interés',
+                conflictos: 'Conflictos y declaraciones',
                 'catalogo-competencias': 'Catálogo de competencias',
                 'historial-academico': 'Historial académico'
             };
@@ -7615,7 +7159,6 @@
 
         document.getElementById('deseaExperienciaAuditoria')?.addEventListener('change', actualizarExperienciaAuditoriaOpcional);
 
-        actualizarSeccionConflicto();
         actualizarExperienciaAuditoriaOpcional();
         inicializarNavegacionSecciones();
         inicializarVistasDeArchivo();
@@ -7678,8 +7221,6 @@
         async function inicializar() {
 
             await cargarNormas();
-
-            await cargarEmpresas();
 
             await cargarBorrador();
             await cargarDocumentosSoporte();

@@ -61,6 +61,23 @@
             margin-top: 20px;
             padding-top: 16px;
             border-top: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+        }
+        .leader-signing-action {
+            margin-top: 18px;
+            padding: 18px;
+            border: 1px solid #b7dfaa;
+            border-radius: 8px;
+            background: #f5fbf2;
+            text-align: center;
+        }
+        .leader-signing-action p {
+            margin: 0 0 12px;
+        }
+        .leader-signing-action .btn-login {
+            display: inline-block;
+            width: auto;
+            text-decoration: none;
         }
         /* El JS muestra este enlace con display:inline-block; se conserva el centrado del boton. */
         #companyProfileLink[style*="inline-block"] { display: inline-flex !important; }
@@ -141,6 +158,11 @@
     </div>
     </div>
 
+    <section id="leaderSigningAction" class="leader-signing-action" hidden>
+      <p id="leaderSigningMessage"></p>
+      <a id="leaderSigningLink" href="/gestion-certificados" class="btn-login" hidden>Ver certificados pendientes para firmar</a>
+    </section>
+
     <div class="profile-actions grupo-botones">
       <a href="/dashboard" class="btn btn-secundario">Volver al Dashboard</a>
       <a href="/empresa" class="btn btn-primario" id="companyProfileLink" style="display: none;">Ir a mi empresa</a>
@@ -214,6 +236,7 @@ function loadProfile() {
         return;
     }
     const isCompany = /empresa/i.test(roleName || "");
+    const normalizedRole = roleName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
     document.getElementById("profileNombre").textContent = userName;
     document.getElementById("profileCorreo").textContent = "Cargando...";
@@ -226,10 +249,36 @@ function loadProfile() {
     if (companyProfileLink) {
         companyProfileLink.style.display = isCompany ? "inline-block" : "none";
     }
+    if (/comite/.test(normalizedRole)) {
+        checkLeaderSigningAccess(token);
+    }
 
     fetch("/users/me", { headers: { "Authorization": `Bearer ${token}` } })
       .then(response => response.ok ? response.json() : null)
       .then(data => { if (data) document.getElementById("profileCorreo").textContent = data.correo || "--"; });
+}
+
+async function checkLeaderSigningAccess(token) {
+    const panel = document.getElementById("leaderSigningAction");
+    try {
+        const response = await fetch("/certificados/lider-comite/actual", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            throw new Error(data && data.detail || "No se pudo consultar la asignación del líder.");
+        }
+        if (data.es_lider) {
+            document.getElementById("leaderSigningMessage").textContent =
+                "Tu cuenta está asignada como líder firmante del Comité.";
+            document.getElementById("leaderSigningLink").hidden = false;
+            panel.hidden = false;
+        }
+    } catch (error) {
+        document.getElementById("leaderSigningMessage").textContent =
+            "No se pudo verificar tu asignación de líder: " + error.message;
+        panel.hidden = false;
+    }
 }
 
 // Cerrar sesión

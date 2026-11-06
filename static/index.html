@@ -241,7 +241,9 @@ function claseEstado(estado) {
 
 function tarjeta(fila) {
     const estado = fila.estado_general || "SIN DATOS";
+    const empresaInactiva = String(fila.estado_empresa || "").trim().toLowerCase() === "inactiva";
     return `<article class="cd-card ${claseEstado(estado)}">
+        ${empresaInactiva ? '<p class="cd-inactividad" role="status">Empresa inactiva</p>' : ""}
         <span class="cd-estado">${esc(estado)}</span>
         <p class="cd-nombre">${esc(fila.empresa)}</p>
         <p class="cd-sub">NIT ${esc(fila.nit)}${fila.ciudad ? " - " + esc(fila.ciudad) : ""}</p>
@@ -273,6 +275,7 @@ async function consultar() {
     try {
         const params = new URLSearchParams();
         params.set("nit", nit);
+        params.set("nit_exacto", "true");
 
         const respuesta = await fetch(`/api/consultas-publicas/documentos?${params.toString()}`);
 

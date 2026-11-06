@@ -34,6 +34,7 @@ EMPRESA = {
     "nombre": "Café del Eje",
     "nit": "900123456-7",
     "ciudad": "Manizales",
+    "estado": "Inactiva",
 }
 
 ULTIMA_SOLICITUD = {
@@ -126,7 +127,28 @@ async def test_buscar_empresa_por_nit_responde_sin_token(db, cliente):
     datos = respuesta.json()
     assert len(datos) == 1
     assert datos[0]["nombre"] == "Café del Eje"
+    assert datos[0]["estado"] == "Inactiva"
     assert datos[0]["ultima_solicitud"]["numero_radicado"] == "RAD-2026-001"
+
+
+async def test_validacion_publica_incluye_estado_de_empresa(db, cliente):
+    db.execute.return_value = _una_fila({
+        "codigo_verificacion": "CV-123",
+        "cert_estado": "VIGENTE",
+        "cert_emision": date(2026, 1, 1),
+        "cert_vence": date(2099, 1, 1),
+        "numero_radicado": "RAD-2026-001",
+        "empresa": EMPRESA["nombre"],
+        "nit": EMPRESA["nit"],
+        "ciudad": EMPRESA["ciudad"],
+        "estado_empresa": EMPRESA["estado"],
+    })
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/validar", params={"codigo": "CV-123"})
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert respuesta.json()["documento"]["estado_empresa"] == "Inactiva"
 
 
 async def test_consulta_de_documentos_responde_sin_token(db, cliente):
@@ -253,6 +275,65 @@ async def test_un_tramite_sin_certificado_se_reporta_en_tramite(db, cliente):
     assert fila["norma_completa"] == "--"
 
 
+async def test_consulta_publica_incluye_estado_de_empresa_inactiva_sin_tramites(db, cliente):
+    db.execute.side_effect = [
+        _filas([]),
+        _filas([{
+            "id_empresa": EMPRESA["id_empresa"],
+            "empresa": EMPRESA["nombre"],
+            "nit": EMPRESA["nit"],
+            "ciudad": EMPRESA["ciudad"],
+            "estado_empresa": "Inactiva",
+        }]),
+    ]
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/documentos", params={"nit": EMPRESA["nit"]})
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    fila = respuesta.json()[0]
+    assert fila["estado_empresa"] == "Inactiva"
+    # Punto 1 del QA: una empresa inactiva no se muestra como "REGISTRADA".
+    assert fila["estado_general"] == "EMPRESA INACTIVA"
+
+
+async def test_consulta_publica_incluye_estado_empresa_en_tramites(db, cliente):
+    db.execute.side_effect = [_filas([{
+        "id_solicitud": "s-3",
+        "numero_radicado": "RAD-2026-003",
+        "estado_tramite": "Radicada",
+        "id_empresa": EMPRESA["id_empresa"],
+        "empresa": EMPRESA["nombre"],
+        "nit": EMPRESA["nit"],
+        "ciudad": EMPRESA["ciudad"],
+        "estado_empresa": "Inactiva",
+        "cert_vence": None,
+    }])]
+
+    async with cliente as ac:
+        respuesta = await ac.get(f"{BASE}/documentos", params={"nit": EMPRESA["nit"]})
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert respuesta.json()[0]["estado_empresa"] == "Inactiva"
+
+
+async def test_consulta_de_vigencia_con_nit_exacto_no_busca_por_coincidencias_parciales(db, cliente):
+    db.execute.side_effect = [_filas([]), _filas([])]
+
+    async with cliente as ac:
+        respuesta = await ac.get(
+            f"{BASE}/documentos",
+            params={"nit": "90", "nit_exacto": "true"},
+        )
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert respuesta.json() == []
+    sentencias = _sql_ejecutados(db)
+    assert len(sentencias) == 2
+    assert all("ILIKE" not in sql.upper() for sql in sentencias)
+    assert all("REPLACE" in sql.upper() for sql in sentencias)
+
+
 # ============================================================
 # 4. CONSTANCIA EN PDF (PUB-009)
 # ============================================================
@@ -298,33 +379,33 @@ async def test_el_portal_bloquea_quien_consulta_demasiado(db, cliente, monkeypat
     assert codigos[5:] == [status.HTTP_429_TOO_MANY_REQUESTS] * 2
 
 
-@pytest.mark.parametrize("nit", ["%25", "1", "900", "abc123456", "900123456-78"])
-async def test_un_nit_incompleto_o_con_comodines_se_rechaza_sin_consultar(db, cliente, nit):
+@pytest.mark.parametrize("nit, parcial", [("1", "1"), ("900", "900"), ("Cafe", "Cafe"), ("%25", "\\%")])
+async def test_la_busqueda_acepta_nit_parcial_o_nombre_y_escapa_comodines(db, cliente, nit, parcial):
     """
-    El NIT se busca completo: antes un solo dígito (o `%`) coincidía por
-    subcadena con cualquier NIT que lo contuviera, y siempre salía 900123456-7.
-    Ahora un NIT mal formado responde 422 con un mensaje claro y ni siquiera
-    llega a la base de datos.
+    Decisión del equipo: la búsqueda pública acepta parte del NIT o del nombre
+    de la empresa (ILIKE). `%` y `_` se escapan para buscarse como texto y no
+    traer toda la tabla.
     """
+    _cargar_busqueda_por_nit(db, [])
+
     async with cliente as ac:
-        empresa = await ac.get(f"{BASE}/empresa/{nit}")
-        documentos = await ac.get(f"{BASE}/documentos", params={"nit": nit.replace("%25", "%")})
+        respuesta = await ac.get(f"{BASE}/empresa/{nit}")
 
-    assert empresa.status_code == 422
-    assert documentos.status_code == 422
-    assert "NIT no válido" in empresa.json()["detail"]
-    db.execute.assert_not_called()
+    assert respuesta.status_code == status.HTTP_200_OK
+    sql, parametros = db.execute.call_args_list[0].args
+    assert "ILIKE" in str(sql).upper()
+    assert parametros["nit_parcial"] == parcial
 
 
-async def test_la_busqueda_de_nit_es_exacta_y_no_por_subcadena(db, cliente):
+async def test_la_busqueda_con_nit_completo_tambien_compara_exacto(db, cliente):
     _cargar_busqueda_por_nit(db, [])
 
     async with cliente as ac:
         await ac.get(f"{BASE}/empresa/900.123.456-7")
 
     sql, parametros = db.execute.call_args_list[0].args
-    assert "ILIKE" not in str(sql).upper()
-    assert parametros == {"nit_completo": "9001234567", "nit_base": "900123456"}
+    assert parametros["nit_completo"] == "9001234567"
+    assert parametros["nit_base"] == "900123456"
 
 
 # ============================================================

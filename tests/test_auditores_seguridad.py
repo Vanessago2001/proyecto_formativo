@@ -162,3 +162,50 @@ def test_eliminar_conflicto_de_otro_usuario_devuelve_403(app):
     )
 
     assert respuesta.status_code == 403
+
+
+def test_declara_conflicto_de_otro_usuario_devuelve_403(app):
+    autenticar(app)
+
+    respuesta = TestClient(app).post(
+        f"/auditores/registro/{ID_OTRO_AUDITOR}/conflictos",
+        json={
+            "id_empresa": str(ID_CONFLICTO),
+            "tipo_conflicto": "Exempleado",
+            "descripcion": "Trabajé allí",
+        },
+    )
+
+    assert respuesta.status_code == 403
+
+
+def test_declara_conflicto_sin_token_devuelve_401(app):
+    respuesta = TestClient(app).post(
+        f"/auditores/registro/{ID_AUDITOR}/conflictos",
+        json={
+            "id_empresa": str(ID_CONFLICTO),
+            "tipo_conflicto": "Exempleado",
+            "descripcion": "Trabajé allí",
+        },
+    )
+
+    assert respuesta.status_code == 401
+
+
+def test_el_propio_auditor_declara_su_conflicto(app, monkeypatch):
+    async def _crear(self, id_usuario, data):
+        return {"id_conflicto": ID_CONFLICTO, "mensaje": "ok"}
+
+    monkeypatch.setattr(AuditorService, "crear_conflicto", _crear)
+    autenticar(app)
+
+    respuesta = TestClient(app).post(
+        f"/auditores/registro/{ID_AUDITOR}/conflictos",
+        json={
+            "id_empresa": str(ID_CONFLICTO),
+            "tipo_conflicto": "Exempleado",
+            "descripcion": "Trabajé allí",
+        },
+    )
+
+    assert respuesta.status_code == 200

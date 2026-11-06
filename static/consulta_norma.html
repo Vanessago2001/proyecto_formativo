@@ -24,6 +24,7 @@
         #conteo { color: #6b7280; font-size: 13px; margin: 16px 2px 10px; }
         #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
         .cn-card { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #9aa5b1; border-radius: 3px; padding: 20px 22px; margin-bottom: 16px; }
+        .cn-inactividad { margin: 0 0 10px; padding: 9px 12px; border: 1px solid #f5c6cb; border-radius: 6px; background: #fffbeb; color: #b42318; font-size: 13px; font-weight: 700; }
         .cn-card.vigente { border-left-color: #2f7d32; }
         .cn-card.tramite { border-left-color: #f9a825; }
         .cn-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px; background: #f1f5f9; color: #4b5563; }
@@ -225,10 +226,12 @@
 
         function tarjeta(fila) {
             const estado = fila.estado_general || "SIN DATOS";
+            const empresaInactiva = String(fila.estado_empresa || "").trim().toLowerCase() === "inactiva";
             const norma = (fila.norma_completa || "").trim();
             const sinNorma = !norma || norma === "--";
 
             return `<article class="cn-card ${claseEstado(estado)}">
+                ${empresaInactiva ? '<p class="cn-inactividad" role="status">Empresa inactiva</p>' : ""}
                 <span class="cn-estado">${esc(estado)}</span>
                 <p class="cn-norma-label">Norma evaluada</p>
                 <p class="cn-norma ${sinNorma ? "cn-sin-norma" : ""}">${esc(sinNorma ? "Sin norma registrada" : norma)}</p>

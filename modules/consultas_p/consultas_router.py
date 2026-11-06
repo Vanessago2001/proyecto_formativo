@@ -44,11 +44,17 @@ async def buscar_empresa_por_nit(
 async def consulta_documentos(
     codigo: str = "",
     nit: str = "",
+    nit_exacto: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     """Busca por número de radicado, código de verificación o NIT y devuelve el
-    estado del trámite (`CERTIFICADA`, `EN TRAMITE - x` o `REGISTRADA`)."""
-    return await ConsultasPublicasService(db).consulta_publica(codigo=codigo, nit=nit)
+    estado del trámite (`CERTIFICADA`, `EN TRAMITE - x` o `REGISTRADA`).
+    Con `nit_exacto=true`, solo devuelve coincidencias exactas del NIT."""
+    return await ConsultasPublicasService(db).consulta_publica(
+        codigo=codigo,
+        nit=nit,
+        nit_exacto=nit_exacto,
+    )
 
 
 @router.get(

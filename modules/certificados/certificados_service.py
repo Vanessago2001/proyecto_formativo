@@ -23,14 +23,18 @@ ESTADO_PENDIENTE_FIRMA = "PENDIENTE_FIRMA"
 ESTADO_VIGENTE = "VIGENTE"
 ESTADO_SUSPENDIDO = "SUSPENDIDO"
 ESTADOS_VISIBLES_PUBLICOS = {ESTADO_VIGENTE}
+ROLES_COMITE = {"comite", "comitedecertificacion"}
 
 # Criterio único de "certificado visible en el portal público": publicado,
-# vigente y de una empresa activa. La firma PAdES NO es requisito para
-# consultarlo (solo para descargar el PDF firmado); antes unas consultas la
-# exigían y otras no, y "Publicados" marcaba 0 mientras la consulta por código
-# sí encontraba el certificado.
+# firmado por el líder del comité (PAdES), vigente y de una empresa activa.
+# Todas las consultas públicas usan este mismo criterio para que "Publicados"
+# y la consulta por código coincidan.
 _CRITERIO_PUBLICO_SQL = (
     "{p}publico_certificado IS TRUE"
+    " AND {p}id_firmante IS NOT NULL"
+    " AND {p}huella_firmante IS NOT NULL"
+    " AND {p}codigo_hash IS NOT NULL"
+    " AND {p}huella_pdf IS NOT NULL"
     " AND TRIM(UPPER({p}estado_certificado)) = 'VIGENTE'"
     " AND {p}fecha_vencimiento >= CURRENT_DATE"
     " AND NOT EXISTS ("
@@ -48,6 +52,10 @@ def es_usuario_empresa(usuario: dict) -> bool:
 
 def es_usuario_publico(usuario: dict) -> bool:
     return _normalize_role_name(usuario.get("role_name")) in {"public", "publico"}
+
+
+def es_usuario_comite(usuario: dict) -> bool:
+    return _normalize_role_name(usuario.get("role_name")) in ROLES_COMITE
 
 
 def certificado_esta_vigente(certificado: dict, hoy: date | None = None) -> bool:
@@ -103,7 +111,8 @@ class CertificadosService:
                 s.numero_radicado, s.id_empresa,
                 e.nombre AS empresa, e.nit,
                 n.codigo AS norma_codigo, n.nombre AS norma,
-                n.version AS norma_version, a.descripcion AS alcance
+                n.version AS norma_version, a.descripcion AS alcance,
+                e.estado AS estado_empresa
             FROM certificado c
             JOIN solicitud s ON s.id_solicitud = c.id_solicitud
             JOIN empresa e ON e.id_empresa = s.id_empresa
@@ -130,7 +139,7 @@ class CertificadosService:
             campos_publicos = {
                 "codigo_verificacion", "estado_certificado", "fecha_emision",
                 "fecha_vencimiento", "numero_radicado", "empresa", "nit",
-                "norma_codigo", "norma", "norma_version", "alcance",
+                "norma_codigo", "norma", "norma_version", "alcance", "estado_empresa",
                 "firmante", "huella_pdf", "huella_certificado",
             }
             return {campo: valor for campo, valor in certificado.items() if campo in campos_publicos}
@@ -159,6 +168,18 @@ class CertificadosService:
             """), params)
             return [dict(fila) for fila in resultado.mappings().all()]
 
+        filtro_lider = ""
+        if es_usuario_comite(usuario):
+            lider = await self.validar_lider_actual(usuario)
+            filtro_lider = """
+                AND TRIM(UPPER(c.estado_certificado)) = :estado_pendiente
+                AND c.id_asignacion_lider = :id_asignacion_lider
+            """
+            params.update({
+                "estado_pendiente": ESTADO_PENDIENTE_FIRMA,
+                "id_asignacion_lider": str(lider["id_asignacion"]),
+            })
+
         filtro_empresa = ""
         if es_usuario_empresa(usuario):
             empresas = await self._empresas_del_usuario(usuario)
@@ -179,7 +200,7 @@ class CertificadosService:
             JOIN solicitud s ON s.id_solicitud = c.id_solicitud
             JOIN empresa e ON e.id_empresa = s.id_empresa
             LEFT JOIN norma n ON n.id_norma = s.id_norma
-            WHERE 1 = 1 {filtro_empresa}
+            WHERE 1 = 1 {filtro_empresa} {filtro_lider}
             ORDER BY c.fecha_emision DESC NULLS LAST, c.fecha_registro DESC
             LIMIT :limite OFFSET :desplazamiento;
         """), params)
@@ -196,6 +217,48 @@ class CertificadosService:
             ORDER BY u.nombre;
         """))
         return [dict(fila) for fila in resultado.mappings().all()]
+
+    async def validar_lider_actual(self, usuario: dict) -> dict:
+        lider = await self.lider_comite_actual()
+        if not lider or str(lider["id_usuario"]) != str(usuario.get("id_usuario")):
+            raise HTTPException(
+                status_code=403,
+                detail="Solo el líder activo del Comité puede consultar certificados pendientes de firma.",
+            )
+        return lider
+
+    async def validar_lider_asignado(
+        self, id_certificado: UUID, usuario: dict
+    ) -> None:
+        resultado = await self.db.execute(text("""
+            SELECT c.estado_certificado, u.id_usuario, r.id_rol AS id_rol_comite
+            FROM certificado c
+            LEFT JOIN asignacion_lider_comite a
+              ON a.id_asignacion = c.id_asignacion_lider
+             AND a.fecha_fin IS NULL
+            LEFT JOIN usuario u
+              ON u.id_usuario = a.id_usuario
+             AND u.estado = 'Activo'
+            LEFT JOIN rol r
+              ON r.id_rol = u.rol_id
+             AND LOWER(TRANSLATE(r.nombre, 'ÁÉÍÓÚáéíóú', 'AEIOUaeiou'))
+                 IN ('comite', 'comite de certificacion')
+            WHERE c.id_certificado = :id_certificado;
+        """), {"id_certificado": str(id_certificado)})
+        certificado = resultado.mappings().first()
+        if not certificado:
+            raise HTTPException(status_code=404, detail="Certificado no encontrado.")
+        if str(certificado["estado_certificado"]).strip().upper() != ESTADO_PENDIENTE_FIRMA:
+            raise HTTPException(status_code=409, detail="El certificado ya no está pendiente de firma.")
+        if not certificado["id_usuario"]:
+            raise HTTPException(status_code=409, detail="El certificado no tiene una asignación de líder activa.")
+        if not certificado["id_rol_comite"]:
+            raise HTTPException(status_code=409, detail="El líder asignado ya no tiene un rol activo del Comité.")
+        if str(certificado["id_usuario"]) != str(usuario.get("id_usuario")):
+            raise HTTPException(
+                status_code=403,
+                detail="Solo el líder del Comité asignado a este certificado puede firmarlo.",
+            )
 
     async def lider_comite_actual(self) -> dict | None:
         resultado = await self.db.execute(text("""
@@ -704,6 +767,8 @@ class CertificadosService:
                 status_code=409,
                 detail="No se puede publicar un certificado sin firma digital PAdES registrada.",
             )
+        if publicar:
+            self._leer_pdf_firmado(id_certificado, certificado.get("huella_pdf"))
         await self.db.execute(text("""
             UPDATE certificado
             SET publico_certificado = :publicar
@@ -743,10 +808,8 @@ class CertificadosService:
 
         El código se compara sin distinguir mayúsculas, espacios ni guiones (el
         mismo criterio de `/api/consultas-publicas/validar`), para que el código
-        copiado del PDF se encuentre. La firma PAdES ya no es requisito para
-        consultarlo: se informa en `firmado` y solo condiciona la descarga del
-        PDF firmado. Antes se exigía y los certificados vigentes sin firma
-        respondían "Certificado público no encontrado".
+        copiado del PDF se encuentre. Solo se publican certificados firmados por
+        el líder del comité (firma PAdES).
         """
         codigo_normalizado = re.sub(r"[^A-Z0-9]", "", (codigo or "").upper())
         fila = None
@@ -774,6 +837,10 @@ class CertificadosService:
                 LEFT JOIN usuario firmante ON firmante.id_usuario = c.id_firmante
                 WHERE regexp_replace(UPPER(COALESCE(c.codigo_verificacion, '')), '[^A-Z0-9]', '', 'g') = :codigo
                   AND c.publico_certificado IS TRUE
+                  AND c.id_firmante IS NOT NULL
+                  AND c.huella_firmante IS NOT NULL
+                  AND c.codigo_hash IS NOT NULL
+                  AND c.huella_pdf IS NOT NULL
                   AND TRIM(UPPER(c.estado_certificado)) = 'VIGENTE'
                   AND c.fecha_vencimiento >= CURRENT_DATE
                 ORDER BY c.fecha_emision DESC NULLS LAST

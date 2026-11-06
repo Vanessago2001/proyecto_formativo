@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 from datetime import date, timedelta
 from uuid import UUID
 
@@ -119,7 +120,11 @@ def test_qr_es_svg():
     assert "<svg" in generar_qr_svg("CERTISENA-FIRMA:abc")
 
 
-def test_publicar_certificado_firmado_ya_no_devuelve_409():
+def test_publicar_certificado_firmado_ya_no_devuelve_409(tmp_path, monkeypatch):
+    from core.config import settings
+
+    contenido = b"%PDF-1.4 certificado firmado"
+    monkeypatch.setattr(settings, "CERTIFICADOS_STORAGE_DIR", str(tmp_path))
     fila = {
         "estado_certificado": "VIGENTE",
         "fecha_vencimiento": date.today() + timedelta(days=10),
@@ -127,8 +132,9 @@ def test_publicar_certificado_firmado_ya_no_devuelve_409():
         "id_firmante": "66666666-6666-4666-8666-666666666666",
         "huella_firmante": "b" * 64,
         "codigo_hash": "a" * 64,
-        "huella_pdf": "c" * 64,
+        "huella_pdf": hashlib.sha256(contenido).hexdigest(),
     }
+    (tmp_path / f"{'11111111-1111-4111-8111-111111111111'}.pdf").write_bytes(contenido)
     publicado = {**fila, "publico_certificado": True, "id_certificado": "x", "id_empresa": "e"}
     db = FakeDatabase(fila, [], [], publicado)
     resultado = asyncio.run(CertificadosService(db).cambiar_publicacion(
@@ -138,3 +144,29 @@ def test_publicar_certificado_firmado_ya_no_devuelve_409():
     sql = str(db.executions[0][0][0])
     for campo in ("id_firmante", "huella_firmante", "codigo_hash", "huella_pdf"):
         assert campo in sql
+
+
+def test_no_publica_un_pdf_que_no_coincide_con_la_huella(tmp_path, monkeypatch):
+    from core.config import settings
+
+    monkeypatch.setattr(settings, "CERTIFICADOS_STORAGE_DIR", str(tmp_path))
+    fila = {
+        "estado_certificado": "VIGENTE",
+        "fecha_vencimiento": date.today() + timedelta(days=10),
+        "url_certificado": "/certificados/x/pdf",
+        "id_firmante": "66666666-6666-4666-8666-666666666666",
+        "huella_firmante": "b" * 64,
+        "codigo_hash": "a" * 64,
+        "huella_pdf": "c" * 64,
+    }
+    (tmp_path / "11111111-1111-4111-8111-111111111111.pdf").write_bytes(b"PDF alterado")
+    db = FakeDatabase(fila)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(CertificadosService(db).cambiar_publicacion(
+            UUID("11111111-1111-4111-8111-111111111111"), True, USUARIO
+        ))
+
+    assert error.value.status_code == 409
+    assert db.commits == 0
+    assert len(db.executions) == 1

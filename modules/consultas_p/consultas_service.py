@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Columnas de empresa que sí se publican. `correo` y `direccion` se excluyen a
 # propósito: agregarlas aquí expone datos de contacto en un endpoint sin login.
-COLUMNAS_PUBLICAS_EMPRESA = "id_empresa, nombre, nit, ciudad, estado AS estado_empresa"
+COLUMNAS_PUBLICAS_EMPRESA = "id_empresa, nombre, nit, ciudad, estado, estado AS estado_empresa"
 COLUMNAS_PUBLICAS_EMPRESA_ALIAS = (
     "id_empresa, nombre AS empresa, nit, ciudad, estado AS estado_empresa"
 )
@@ -124,6 +124,48 @@ def _nit_o_422(nit: str) -> dict:
     return parametros
 
 
+def _escapar_comodines(valor: str) -> str:
+    """
+    Neutraliza `%` y `_` para que se busquen como texto literal.
+
+    Sin esto, consultar `%` hace que el `ILIKE '%' || :x || '%'` coincida con
+    toda la tabla. PostgreSQL ya usa la barra invertida como carácter de
+    escape por defecto en LIKE, así que no hace falta una cláusula ESCAPE.
+    """
+    return (valor or "").replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def filtro_nit_publico(
+    columna_nit: str,
+    columna_nombre: str,
+    nit: str,
+    exacto: bool = False,
+) -> tuple[str, dict]:
+    """
+    Condición de búsqueda pública por NIT y sus parámetros.
+
+    Siempre acepta el NIT exacto (con o sin puntos, guion o dígito de
+    verificación). Salvo con ``exacto=True``, también encuentra empresas cuyo
+    NIT o nombre contienen el texto escrito (búsqueda parcial que decidió el
+    equipo). Nunca responde 422: un texto que no es NIT solo busca coincidencias.
+    """
+    normalizado = (
+        f"REPLACE(REPLACE(REPLACE(TRIM({columna_nit}), '.', ''), '-', ''), ' ', '')"
+        " = REPLACE(REPLACE(REPLACE(TRIM(:nit), '.', ''), '-', ''), ' ', '')"
+    )
+    partes = [normalizado]
+    params: dict = {"nit": nit}
+    datos = normalizar_nit(nit)
+    if datos:
+        partes.append(condicion_nit(columna_nit))
+        params.update(datos)
+    if not exacto:
+        partes.append(f"TRIM({columna_nit}) ILIKE '%' || :nit_parcial || '%'")
+        partes.append(f"TRIM({columna_nombre}) ILIKE '%' || :nit_parcial || '%'")
+        params["nit_parcial"] = _escapar_comodines(nit)
+    return "(" + " OR ".join(partes) + ")", params
+
+
 def empresa_activa(estado: str | None) -> bool:
     """Sin estado se asume 'Activa' (es el valor por defecto de la columna)."""
     return (estado or "Activa").strip().lower() == ESTADO_EMPRESA_ACTIVA
@@ -209,11 +251,11 @@ class ConsultasPublicasService:
     async def buscar_por_nit(self, nit: str) -> list[dict]:
         if not (nit or "").strip():
             return []
-        parametros = _nit_o_422(nit)
+        filtro, parametros = filtro_nit_publico("nit", "nombre", nit.strip())
         result = await self.db.execute(text(f"""
             SELECT {COLUMNAS_PUBLICAS_EMPRESA}
             FROM empresa
-            WHERE {condicion_nit("nit")}
+            WHERE {filtro}
             ORDER BY nombre ASC
             LIMIT {MAX_EMPRESAS_POR_BUSQUEDA};
         """), parametros)
@@ -332,7 +374,12 @@ class ConsultasPublicasService:
 
         return empresas
 
-    async def consulta_publica(self, codigo: str = "", nit: str = "") -> list[dict]:
+    async def consulta_publica(
+        self,
+        codigo: str = "",
+        nit: str = "",
+        nit_exacto: bool = False,
+    ) -> list[dict]:
         codigo = normalizar_codigo(codigo)
         nit = (nit or "").strip()
         if not codigo and not nit:
@@ -347,8 +394,9 @@ class ConsultasPublicasService:
             )
             params["codigo"] = codigo
         if nit:
-            condiciones.append(condicion_nit("e.nit"))
-            params.update(_nit_o_422(nit))
+            filtro, parametros_nit = filtro_nit_publico("e.nit", "e.nombre", nit, nit_exacto)
+            condiciones.append(filtro)
+            params.update(parametros_nit)
 
         where = " AND ".join(condiciones)
         result = await self.db.execute(text(f"""
@@ -444,13 +492,14 @@ class ConsultasPublicasService:
             resultados.append(f)
 
         if not resultados and nit:
+            filtro_empresa, parametros_empresa = filtro_nit_publico("nit", "nombre", nit, nit_exacto)
             emp = await self.db.execute(text(f"""
                 SELECT {COLUMNAS_PUBLICAS_EMPRESA_ALIAS}
                 FROM empresa
-                WHERE {condicion_nit("nit")}
+                WHERE {filtro_empresa}
                 ORDER BY nombre ASC
                 LIMIT 5;
-            """), {k: params[k] for k in ("nit_completo", "nit_base")})
+            """), parametros_empresa)
             for row in emp.mappings().all():
                 e = dict(row)
                 if empresa_activa(e.get("estado_empresa")):

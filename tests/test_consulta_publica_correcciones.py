@@ -361,18 +361,21 @@ def _fila_publica(**cambios):
     return fila
 
 
-def test_certificado_publico_sin_firma_se_encuentra():
+def test_consulta_publica_por_codigo_solo_publica_certificados_firmados():
+    # Decisión del equipo: solo se publican certificados firmados (PAdES) por el
+    # líder del comité. El código se sigue comparando sin mayúsculas ni guiones.
     from modules.certificados.certificados_service import CertificadosService
 
     bd = _BD(_fila_publica())
     certificado = asyncio.run(CertificadosService(bd).publico("cert 2026-0001"))
 
     assert certificado["codigo_verificacion"] == "CERT-2026-0001"
-    assert certificado["firmado"] is False
     assert "id_certificado" not in certificado
     sql, params = bd.llamadas[0]
     assert params == {"codigo": "CERT20260001"}
-    assert "huella_pdf IS NOT NULL\n" not in sql  # la firma ya no filtra la consulta
+    for requisito in ("id_firmante IS NOT NULL", "huella_firmante IS NOT NULL",
+                      "codigo_hash IS NOT NULL", "huella_pdf IS NOT NULL"):
+        assert requisito in sql
 
 
 def test_pdf_publico_sin_firma_explica_que_no_hay_pdf_firmado():
@@ -395,11 +398,11 @@ def test_certificado_publico_de_empresa_inactiva_no_se_muestra():
     assert "inactiva" in error.value.detail
 
 
-def test_metricas_y_listado_publico_usan_el_mismo_criterio_sin_firma():
+def test_metricas_y_listado_publico_usan_el_mismo_criterio_con_firma():
     from modules.certificados import certificados_service as cs
 
     for criterio in (cs.CRITERIO_PUBLICO, cs.CRITERIO_PUBLICO_C):
-        assert "huella_pdf" not in criterio and "id_firmante" not in criterio
+        assert "huella_pdf IS NOT NULL" in criterio and "id_firmante IS NOT NULL" in criterio
         assert "publico_certificado IS TRUE" in criterio
         assert "'activa'" in criterio
 

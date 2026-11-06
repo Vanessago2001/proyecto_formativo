@@ -158,6 +158,7 @@ def generar_pdf_constancia(empresa: dict) -> bytes:
     campos = [
         ("Empresa", nombre),
         ("NIT", nit),
+        ("Estado de la empresa", empresa.get("estado") or "No disponible"),
         ("Ciudad", empresa.get("ciudad")),
         ("Radicada", "Sí" if radicado else "No"),
         ("Número de radicado", radicado or "Sin radicar"),

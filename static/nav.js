@@ -116,6 +116,51 @@
     });
   }
 
+  function ajustarCabeceraAuditor() {
+    var encabezado = document.querySelector("header.login-header");
+    if (!encabezado) return;
+
+    var subtitulo = encabezado.querySelector(".subtitle");
+    if (subtitulo) subtitulo.textContent = "Portal de auditoría";
+
+    var contenido = encabezado.querySelector(".header-content");
+    if (!contenido) return;
+
+    var acciones = encabezado.querySelector(".comite-header-user");
+    if (!acciones) {
+      acciones = document.createElement("div");
+      acciones.className = "comite-header-user";
+      contenido.appendChild(acciones);
+    }
+
+    var panel = encabezado.querySelector(".comite-back-button") ||
+      encabezado.querySelector('a[href="/dashboard"], a[href="/auditor"]');
+    if (!panel) panel = document.createElement("a");
+    panel.className = "comite-back-button";
+    panel.href = "/auditor";
+    panel.textContent = "Panel";
+    panel.style.display = "";
+
+    var perfil = encabezado.querySelector(".profile-link") ||
+      encabezado.querySelector('a[href="/profile"], a[href="/perfil-auditor"]');
+    if (!perfil) perfil = document.createElement("a");
+    perfil.className = "profile-link";
+    perfil.href = "/perfil-auditor";
+    perfil.textContent = "Mi perfil";
+    perfil.style.display = "";
+
+    var salir = acciones.querySelector(".comite-logout, #logoutButton") ||
+      encabezado.querySelector(".comite-logout, #logoutButton");
+    if (!salir) {
+      salir = document.createElement("button");
+      salir.type = "button";
+      salir.className = "comite-logout js-salir";
+    }
+    salir.textContent = "Cerrar sesión";
+
+    acciones.replaceChildren(panel, perfil, salir);
+  }
+
 
   /* ----------------------------------------------------------
      4. Menú lateral en acordeón, el mismo en todas las pantallas.
@@ -839,6 +884,9 @@
       ajustarEnlacesAlPanel(panelDelRol(rol));
     }
     ajustarEnlacesDePerfil();
+    if (/auditor/.test(rol) && !/administrar/.test(rol)) {
+      ajustarCabeceraAuditor();
+    }
   }
 
   if (document.readyState === "loading") {

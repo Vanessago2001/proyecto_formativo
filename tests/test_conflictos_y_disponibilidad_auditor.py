@@ -54,8 +54,10 @@ class SesionConflictos:
         params = params or {}
         self.sql.append(sql)
         if sql.startswith("SELECT") and "FROM usuario" in sql:
-            return ResultadoFalso([self.usuario])
-        if sql.startswith("SELECT id_postulacion FROM postulacion_auditor"):
+            return ResultadoFalso([self.usuario], escalar=self.usuario["id_usuario"])
+        if sql.startswith("SELECT id_postulacion FROM postulacion_auditor") or sql.startswith(
+            "SELECT pa.id_postulacion FROM postulacion_auditor"
+        ):
             return ResultadoFalso([], escalar=None)
         if sql.startswith("SELECT id_conflicto FROM conflicto_interes"):
             existe = next(
@@ -140,13 +142,15 @@ def test_crear_conflicto_desde_registro_con_auditor_aprobado_ya_no_responde_409(
     assert not any(q.startswith("DELETE") for q in sesion.sql)
 
 
-def test_crear_conflicto_en_borrador_conserva_el_reemplazo_del_formulario():
+def test_crear_conflicto_en_borrador_tambien_agrega_sin_reemplazar():
+    # Los conflictos ya no se declaran en el formulario de registro: cada
+    # declaración es un registro nuevo, también mientras el registro está abierto.
     sesion = SesionConflictos(estado_auditor="Postulante", conflictos=[conflicto(ID_OTRA_EMPRESA)])
 
     correr(AuditorService(sesion).crear_conflicto(ID_USUARIO, datos()))
 
-    assert len(sesion.conflictos) == 1
-    assert sesion.conflictos[0]["id_empresa"] == ID_EMPRESA
+    assert len(sesion.conflictos) == 2
+    assert not any(q.startswith("DELETE") for q in sesion.sql)
 
 
 def test_declarar_conflicto_repetido_con_la_misma_empresa_explica_que_hacer():

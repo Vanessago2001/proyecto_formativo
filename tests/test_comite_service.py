@@ -47,29 +47,19 @@ async def test_aprobar_guarda_accion_y_actualiza_estado_en_una_transaccion():
 
 
 @pytest.mark.asyncio
-async def test_firma_se_persiste_sin_pretender_que_se_genero_un_pdf():
+async def test_firma_de_acta_no_se_acepta_como_accion_generica():
     id_solicitud = uuid4()
     db = AsyncMock()
-    db.execute.side_effect = [
-        resultado_falso({"id_solicitud": id_solicitud, "estado": "Aprobada"}),
-        resultado_falso({
-            "id_accion": uuid4(),
-            "id_solicitud": id_solicitud,
-            "accion": "firmar-acta",
-            "fecha": datetime.now(timezone.utc),
-        }),
-    ]
+    with pytest.raises(HTTPException) as error:
+        await ComiteService(db).registrar_accion(
+            "firmar-acta",
+            {"expediente_id": str(id_solicitud), "comentario": "Firmo el acta"},
+            {"id_usuario": str(uuid4())},
+        )
 
-    respuesta = await ComiteService(db).registrar_accion(
-        "firmar-acta",
-        {"expediente_id": str(id_solicitud), "comentario": "Firmo el acta"},
-        {"id_usuario": str(uuid4())},
-    )
-
-    assert respuesta["estado"] == "Aprobada"
-    assert "aún no se genera firma electrónica ni PDF" in respuesta["mensaje"]
-    assert "INSERT INTO comite_accion" in str(db.execute.await_args_list[1].args[0])
-    assert db.commit.await_count == 1
+    assert error.value.status_code == 409
+    db.execute.assert_not_awaited()
+    db.commit.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -90,7 +80,7 @@ async def test_no_registra_una_decision_sobre_expediente_ya_finalizado():
 
 
 @pytest.mark.asyncio
-async def test_no_permite_firmar_un_acta_antes_de_un_dictamen():
+async def test_firma_de_acta_se_rechaza_en_el_registro_generico():
     db = AsyncMock()
     db.execute.return_value = resultado_falso({"id_solicitud": uuid4(), "estado": "Radicada"})
 
@@ -102,7 +92,7 @@ async def test_no_permite_firmar_un_acta_antes_de_un_dictamen():
         )
 
     assert error.value.status_code == 409
-    assert db.execute.await_count == 1
+    assert db.execute.await_count == 0
     db.commit.assert_not_awaited()
 
 
@@ -123,8 +113,18 @@ async def test_cerrar_y_reabrir_actualizan_el_estado_y_el_historial(
     db = AsyncMock()
     db.execute.side_effect = [
         resultado_falso({"id_solicitud": id_solicitud, "estado": estado_anterior}),
+        *(
+            [resultado_falso({"estado": "FIRMADA"})]
+            if accion == "cerrar-expediente"
+            else []
+        ),
         resultado_falso({"estado": estado_esperado}),
         resultado_falso(),
+        *(
+            [resultado_falso()]
+            if accion == "reabrir-dictamen"
+            else []
+        ),
         resultado_falso({
             "id_accion": uuid4(),
             "id_solicitud": id_solicitud,
@@ -140,8 +140,28 @@ async def test_cerrar_y_reabrir_actualizan_el_estado_y_el_historial(
     )
 
     assert respuesta["estado"] == estado_esperado
-    assert db.execute.await_count == 4
+    assert db.execute.await_count == 5
     assert db.commit.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_no_cierra_expediente_sin_acta_firmada():
+    db = AsyncMock()
+    db.execute.side_effect = [
+        resultado_falso({"id_solicitud": uuid4(), "estado": "APROBADA"}),
+        resultado_falso(None),
+    ]
+
+    with pytest.raises(HTTPException) as error:
+        await ComiteService(db).registrar_accion(
+            "cerrar-expediente",
+            {"expediente_id": str(uuid4()), "comentario": "Cierre"},
+            {"id_usuario": str(uuid4())},
+        )
+
+    assert error.value.status_code == 409
+    assert db.execute.await_count == 2
+    db.commit.assert_not_awaited()
 
 
 @pytest.mark.asyncio
