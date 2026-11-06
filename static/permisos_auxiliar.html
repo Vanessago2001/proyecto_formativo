@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiSENA | Permisos de auxiliares</title>
+
+    <link rel="stylesheet" href="/static/tema.css?v=20261028">
+    <link rel="stylesheet" href="/static/styles.css?v=20261028">
+
+    <style>
+        :root {
+            --sena-green: #3baa01;
+            --sena-green-dark: #256d00;
+            --sena-green-hover: #2f8f00;
+            --sena-green-light: #f1f5f9;
+            --surface: #ffffff;
+            --surface-soft: #f8fafc;
+            --border-color: #e2e8f0;
+            --text-primary: #1f2937;
+            --text-secondary: #5f6f69;
+            --shadow-card: none;
+            --shadow-hover: none;
+            --radius-card: 8px;
+            --radius-control: 6px;
+        }
+
+        /* BASE */
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+
+        /* MENU LATERAL: el mismo de static/dashboard.html, con su
+           mismo diseno, tamano de letras y posicion. */
+
+        .app-shell {
+            max-width: var(--ancho-contenido);
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 260px minmax(0, 1fr);
+            gap: 24px;
+        }
+
+        .admin-nav {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            height: max-content;
+        }
+
+        .admin-nav-heading {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            padding: 10px 12px 14px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1f2937;
+            font-weight: 700;
+        }
+
+        .admin-nav-heading span {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+
+        .admin-nav a {
+            display: block;
+            color: #334155;
+            text-decoration: none;
+            padding: 11px 12px;
+            font-size: 13px;
+            line-height: 1.35;
+            border-left: 3px solid transparent;
+        }
+
+        .admin-nav a.active,
+        .admin-nav a:hover {
+            background: #f1f5f9;
+            color: #256d00;
+            border-left-color: #3baa01;
+            font-weight: 700;
+        }
+
+        @media (max-width: 800px) {
+            .app-shell {
+                padding: 18px;
+            }
+
+            .admin-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            min-width: 0;
+        }
+
+
+        .top-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 0;
+            min-width: 0;
+        }
+
+        /* BARRA SUPERIOR Y REGRESO */
+
+        .page-context {
+            min-width: 0;
+        }
+
+        .page-context p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* TARJETAS */
+
+        .section-card {
+            min-width: 0;
+            padding: 24px;
+            margin: 0;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            transition: box-shadow 0.25s ease,
+                border-color 0.25s ease;
+        }
+
+        .section-card:hover {
+            border-color: #cfe3c5;
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* TÍTULOS */
+
+        .section-title {
+            color: var(--sena-green-dark);
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.45;
+            margin: 0 0 14px;
+        }
+
+        .section-card>.section-title:first-child {
+            padding-bottom: 14px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        /* TEXTOS AUXILIARES */
+
+        .help-text {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.7;
+            margin: 0 0 16px;
+        }
+
+        .section-card>.help-text {
+            max-width: 850px;
+        }
+
+        /* PERMISOS DE AUXILIARES */
+
+        .pa-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+        .pa-toolbar .pa-campo { display: flex; flex-direction: column; gap: 6px; min-width: 240px; flex: 1; }
+        .pa-toolbar label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .pa-control { width: 100%; }
+        .pa-resumen { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0; }
+        .pa-modulo { border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+        .pa-modulo > summary { cursor: pointer; padding: 12px 16px; background: var(--surface-soft); font-weight: 700; color: var(--sena-green-dark); display: flex; justify-content: space-between; gap: 12px; list-style: none; }
+        .pa-modulo > summary::-webkit-details-marker { display: none; }
+        .pa-modulo > summary .cuenta { font-weight: 600; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+        .pa-fila { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 16px; border-top: 1px solid var(--border-color); }
+        .pa-fila .info { min-width: 0; }
+        .pa-fila .codigo { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--text-secondary); }
+        .pa-fila .desc { font-size: 14px; color: var(--text-primary); }
+        .pa-fila .meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; overflow-wrap: anywhere; }
+        .pa-fila .meta.vencido { color: #b45309; font-weight: 600; }
+        .pa-switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
+        .pa-switch input { opacity: 0; width: 0; height: 0; }
+        .pa-switch .pista { position: absolute; inset: 0; background: #cbd5e1; border-radius: 999px; cursor: pointer; transition: background .2s; }
+        .pa-switch .pista::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+        .pa-switch input:checked + .pista { background: var(--sena-green); }
+        .pa-switch input:checked + .pista::before { transform: translateX(20px); }
+        .pa-switch input:focus-visible + .pista { outline: 2px solid var(--sena-green-dark); outline-offset: 2px; }
+        .pa-vacio { padding: 18px; text-align: center; color: var(--text-secondary); font-size: 14px; }
+        .pa-tabla-wrap { overflow-x: auto; }
+        .pa-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .pa-tabla th, .pa-tabla td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); text-align: left; vertical-align: top; }
+        .pa-tabla th { background: var(--surface-soft); color: var(--text-primary); font-weight: 700; }
+        .pa-evento { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+        .pa-evento.Otorgado { background: #dcfce7; color: #166534; }
+        .pa-evento.Revocado { background: #fee2e2; color: #991b1b; }
+        .pa-evento.Usado { background: #e0f2fe; color: #075985; }
+        /* El JS agrega "peligro" al boton de aceptar cuando se retira un permiso. */
+        .pa-boton.btn.peligro { background: var(--rojo-700); border-color: var(--rojo-700); color: #fff; }
+        .pa-boton.btn.peligro:hover { background: #8f1d15; border-color: #8f1d15; }
+
+        .pa-modal { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+        .pa-modal.activo { display: flex; }
+        .pa-modal .caja { background: #fff; border-radius: 8px; padding: 24px; width: 100%; max-width: 460px; box-shadow: 0 10px 25px rgba(0,0,0,.2); }
+        .pa-modal h3 { margin: 0 0 6px; color: var(--sena-green-dark); }
+        .pa-modal p { margin: 0 0 14px; font-size: 14px; color: #334155; }
+        .pa-modal .pa-campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+        .pa-modal label { font-size: 13px; font-weight: 600; }
+        .pa-modal textarea { resize: vertical; min-height: 80px; }
+        .pa-modal .error { color: #dc2626; font-size: 13px; min-height: 18px; margin: 0 0 8px; }
+        .pa-modal .acciones { display: flex; justify-content: flex-end; gap: 10px; }
+        .pa-aviso { position: fixed; right: 16px; bottom: 16px; background: #1f2937; color: #fff; padding: 12px 16px; border-radius: 10px; font-size: 14px; z-index: 10000; display: none; max-width: calc(100% - 32px); }
+        .pa-aviso.activo { display: block; }
+        .pa-aviso.error { background: #b91c1c; }
+    </style>
+</head>
+
+<body>
+    <header class="login-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Permisos de auxiliares - el administrador delega actividades al auxiliar</p>
+                </div>
+            </div>
+            <div class="comite-header-user">
+                <a class="comite-back-button" href="/dashboard">Panel</a>
+                <a class="profile-link" href="/reportes">Reportes</a>
+                <a class="profile-link" href="/profile">Mi perfil</a>
+                <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-shell">
+      <div class="admin-grid">
+        <!-- MENU LATERAL: nav.js lo reemplaza por el menú común -->
+        <nav class="admin-nav" aria-label="Navegación del panel">
+            <div class="admin-nav-heading">
+                <span>Administración</span>
+                Permisos de auxiliares
+            </div>
+            <a href="/dashboard">Resumen</a>
+            <a href="/permisos-auxiliar" class="active" aria-current="page">Permisos de auxiliares</a>
+            <a href="/profile">Mi perfil</a>
+            <a id="logout" href="/login">Cerrar sesión</a>
+        </nav>
+
+        <section class="content">
+            <nav class="top-navigation comite-page-heading" aria-label="Navegación de la página">
+                <div class="page-context">
+                    <span class="comite-kicker">Administración</span>
+                    <h2>Permisos de auxiliares</h2>
+                    <p>Las acciones marcadas REQ en la matriz de permisos normalmente requieren aprobación de un superior. Si otorga aquí un permiso, ese auxiliar podrá ejecutar la acción directamente mientras el permiso esté vigente.</p>
+                </div>
+            </nav>
+
+            <div class="section-card">
+                <h2 class="section-title">Auxiliar</h2>
+                <div class="pa-toolbar">
+                    <div class="pa-campo">
+                        <label for="selAuxiliar">Seleccione el auxiliar</label>
+                        <select id="selAuxiliar" class="pa-control">
+                            <option value="">Cargando auxiliares...</option>
+                        </select>
+                    </div>
+                    <div class="pa-campo">
+                        <label for="filtro">Buscar permiso</label>
+                        <input id="filtro" class="pa-control" type="search" placeholder="Código o descripción">
+                    </div>
+                </div>
+                <p class="pa-resumen" id="resumen"></p>
+            </div>
+
+            <div class="section-card">
+                <h2 class="section-title">Permisos delegables</h2>
+                <p class="help-text">Active el interruptor para otorgar el permiso y desactívelo para retirarlo. Cada cambio pide un motivo y queda en el historial.</p>
+                <div id="listaPermisos"><div class="pa-vacio">Seleccione un auxiliar para ver sus permisos.</div></div>
+            </div>
+
+            <div class="section-card">
+                <h2 class="section-title">Historial</h2>
+                <p class="help-text">Otorgamientos, revocaciones y acciones que el auxiliar ejecutó con permiso delegado.</p>
+                <div class="pa-tabla-wrap">
+                    <table class="pa-tabla">
+                        <thead>
+                            <tr><th>Fecha</th><th>Evento</th><th>Permiso</th><th>Auxiliar</th><th>Realizado por</th><th>Detalle</th></tr>
+                        </thead>
+                        <tbody id="historial"><tr><td colspan="6" class="pa-vacio">Sin registros.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+      </div>
+    </main>
+
+    <div class="pa-modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+        <div class="caja">
+            <h3 id="modalTitulo">Otorgar permiso</h3>
+            <p id="modalTexto"></p>
+            <div class="pa-campo">
+                <label for="modalMotivo">Motivo</label>
+                <textarea id="modalMotivo" class="pa-control" maxlength="500" placeholder="Explique por qué (mínimo 5 caracteres)"></textarea>
+            </div>
+            <div class="pa-campo" id="campoVence">
+                <label for="modalVence">Vence el (opcional)</label>
+                <input id="modalVence" class="pa-control" type="date">
+            </div>
+            <p class="error" id="modalError"></p>
+            <div class="acciones">
+                <button type="button" class="pa-boton secundario btn btn-secundario" id="modalCancelar">Cancelar</button>
+                <button type="button" class="pa-boton btn btn-primario" id="modalAceptar">Otorgar</button>
+            </div>
+        </div>
+    </div>
+    <div class="pa-aviso" id="aviso" role="status" aria-live="polite"></div>
+
+    <script>
+    (function () {
+        const API = '/api/permisos-auxiliar';
+        const token = localStorage.getItem('access_token');
+        if (!token) { window.location.href = '/login'; return; }
+
+        let auxiliarActual = null;
+        let datosPermisos = [];
+        let pendiente = null; // { codigo, otorgar, input }
+
+        const $ = (id) => document.getElementById(id);
+
+        function esc(v) {
+            if (v === null || v === undefined) return '';
+            return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        function fecha(v) {
+            if (!v) return '';
+            const d = new Date(v);
+            return isNaN(d) ? esc(v) : d.toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+        }
+
+        function soloFecha(v) {
+            if (!v) return '';
+            const partes = String(v).slice(0, 10).split('-');
+            return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : esc(v);
+        }
+
+        function avisar(texto, error) {
+            const el = $('aviso');
+            el.textContent = texto;
+            el.classList.toggle('error', !!error);
+            el.classList.add('activo');
+            clearTimeout(avisar._t);
+            avisar._t = setTimeout(() => el.classList.remove('activo'), 4500);
+        }
+
+        async function api(ruta, opciones = {}) {
+            const res = await fetch(API + ruta, {
+                ...opciones,
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json',
+                           ...(opciones.body ? { 'Content-Type': 'application/json' } : {}) },
+            });
+            if (res.status === 401) { window.location.href = '/login'; throw new Error('Sesión vencida'); }
+            let cuerpo = null;
+            try { cuerpo = await res.json(); } catch (_) { /* sin cuerpo */ }
+            if (!res.ok) {
+                let detalle = cuerpo && cuerpo.detail;
+                if (Array.isArray(detalle)) detalle = detalle.map((d) => d.msg).join('; ');
+                throw new Error(detalle || ('Error ' + res.status));
+            }
+            return cuerpo;
+        }
+
+        async function cargarAuxiliares() {
+            const sel = $('selAuxiliar');
+            try {
+                const lista = await api('/auxiliares');
+                if (!lista.length) {
+                    sel.innerHTML = '<option value="">No hay usuarios con rol Auxiliar</option>';
+                    return;
+                }
+                sel.innerHTML = '<option value="">Seleccione...</option>' + lista.map((a) =>
+                    `<option value="${esc(a.id_usuario)}">${esc(a.nombre)} · ${esc(a.correo)}${a.estado !== 'Activo' ? ' (' + esc(a.estado) + ')' : ''} · ${a.permisos_vigentes} vigente(s)</option>`
+                ).join('');
+                const previo = new URLSearchParams(location.search).get('auxiliar');
+                if (previo && lista.some((a) => String(a.id_usuario) === previo)) {
+                    sel.value = previo;
+                    await cargarPermisos(previo);
+                }
+            } catch (e) {
+                sel.innerHTML = '<option value="">No se pudieron cargar</option>';
+                avisar(e.message, true);
+            }
+        }
+
+        async function cargarPermisos(id) {
+            auxiliarActual = id || null;
+            if (!id) {
+                datosPermisos = [];
+                $('listaPermisos').innerHTML = '<div class="pa-vacio">Seleccione un auxiliar para ver sus permisos.</div>';
+                $('resumen').textContent = '';
+                await cargarHistorial();
+                return;
+            }
+            $('listaPermisos').innerHTML = '<div class="pa-vacio">Cargando...</div>';
+            try {
+                const datos = await api('/auxiliares/' + encodeURIComponent(id));
+                datosPermisos = datos.permisos || [];
+                const aux = datos.auxiliar || {};
+                const vigentes = datosPermisos.filter((p) => p.otorgado).length;
+                $('resumen').textContent = `${aux.nombre || ''} (${aux.estado || ''}) · ${vigentes} de ${datosPermisos.length} permisos otorgados.`;
+                pintarPermisos();
+            } catch (e) {
+                $('listaPermisos').innerHTML = `<div class="pa-vacio">${esc(e.message)}</div>`;
+            }
+            await cargarHistorial();
+        }
+
+        function pintarPermisos() {
+            const filtro = $('filtro').value.trim().toLowerCase();
+            const grupos = new Map();
+            datosPermisos
+                .filter((p) => !filtro || p.codigo.toLowerCase().includes(filtro) || (p.descripcion || '').toLowerCase().includes(filtro))
+                .forEach((p) => {
+                    if (!grupos.has(p.modulo)) grupos.set(p.modulo, []);
+                    grupos.get(p.modulo).push(p);
+                });
+            if (!grupos.size) {
+                $('listaPermisos').innerHTML = '<div class="pa-vacio">Ningún permiso coincide con la búsqueda.</div>';
+                return;
+            }
+            let html = '';
+            grupos.forEach((permisos, modulo) => {
+                const activos = permisos.filter((p) => p.otorgado).length;
+                html += `<details class="pa-modulo"${activos || filtro ? ' open' : ''}><summary><span>${esc(modulo)}</span><span class="cuenta">${activos}/${permisos.length} otorgados</span></summary>`;
+                permisos.forEach((p) => {
+                    const d = p.detalle || {};
+                    let meta = '';
+                    if (p.otorgado) {
+                        meta = `<div class="meta">Otorgado ${fecha(d.fecha_otorgado)} por ${esc(d.otorgado_por_nombre || '')}${d.fecha_vencimiento ? ' · vence ' + soloFecha(d.fecha_vencimiento) : ' · sin vencimiento'}${d.motivo ? ' · ' + esc(d.motivo) : ''}</div>`;
+                    } else if (p.vencido) {
+                        meta = `<div class="meta vencido">Vencido el ${soloFecha(d.fecha_vencimiento)}: ya no vale. Actívelo de nuevo para renovarlo.</div>`;
+                    }
+                    html += `<div class="pa-fila"><div class="info"><div class="codigo">${esc(p.codigo)}</div><div class="desc">${esc(p.descripcion)}</div>${meta}</div>
+                        <label class="pa-switch" title="${p.otorgado ? 'Retirar' : 'Otorgar'} ${esc(p.codigo)}">
+                          <input type="checkbox" data-codigo="${esc(p.codigo)}" ${p.otorgado ? 'checked' : ''} aria-label="${esc(p.codigo)} ${esc(p.descripcion)}">
+                          <span class="pista"></span>
+                        </label></div>`;
+                });
+                html += '</details>';
+            });
+            $('listaPermisos').innerHTML = html;
+        }
+
+        async function cargarHistorial() {
+            const cuerpo = $('historial');
+            try {
+                const filas = await api('/historial' + (auxiliarActual ? '?id_usuario=' + encodeURIComponent(auxiliarActual) : ''));
+                if (!filas.length) {
+                    cuerpo.innerHTML = '<tr><td colspan="6" class="pa-vacio">Sin registros.</td></tr>';
+                    return;
+                }
+                cuerpo.innerHTML = filas.map((f) => `<tr>
+                    <td>${fecha(f.fecha)}</td>
+                    <td><span class="pa-evento ${esc(f.evento)}">${esc(f.evento)}</span></td>
+                    <td><strong>${esc(f.codigo_permiso)}</strong><br><span style="color:var(--text-secondary)">${esc(f.descripcion)}</span></td>
+                    <td>${esc(f.usuario_nombre)}</td>
+                    <td>${esc(f.actor_nombre)}</td>
+                    <td>${esc(f.detalle)}${f.evento === 'Otorgado' && f.fecha_vencimiento ? '<br><small>Vence ' + soloFecha(f.fecha_vencimiento) + '</small>' : ''}</td>
+                </tr>`).join('');
+            } catch (e) {
+                cuerpo.innerHTML = `<tr><td colspan="6" class="pa-vacio">${esc(e.message)}</td></tr>`;
+            }
+        }
+
+        function abrirModal(input) {
+            const codigo = input.dataset.codigo;
+            const permiso = datosPermisos.find((p) => p.codigo === codigo) || { descripcion: codigo };
+            const otorgar = input.checked;
+            pendiente = { codigo, otorgar, input };
+            $('modalTitulo').textContent = otorgar ? 'Otorgar permiso' : 'Retirar permiso';
+            $('modalTexto').textContent = `${codigo} · ${permiso.descripcion}`;
+            $('campoVence').style.display = otorgar ? '' : 'none';
+            $('modalVence').value = '';
+            $('modalVence').min = new Date().toISOString().slice(0, 10);
+            $('modalMotivo').value = '';
+            $('modalError').textContent = '';
+            const aceptar = $('modalAceptar');
+            aceptar.textContent = otorgar ? 'Otorgar' : 'Retirar';
+            aceptar.classList.toggle('peligro', !otorgar);
+            $('modal').classList.add('activo');
+            $('modalMotivo').focus();
+        }
+
+        function cerrarModal(revertir) {
+            if (revertir && pendiente) pendiente.input.checked = !pendiente.otorgar;
+            pendiente = null;
+            $('modal').classList.remove('activo');
+        }
+
+        async function confirmar() {
+            if (!pendiente) return;
+            const motivo = $('modalMotivo').value.trim();
+            if (motivo.length < 5) { $('modalError').textContent = 'Escriba un motivo de al menos 5 caracteres.'; return; }
+            const boton = $('modalAceptar');
+            boton.disabled = true;
+            try {
+                if (pendiente.otorgar) {
+                    await api(`/auxiliares/${encodeURIComponent(auxiliarActual)}/otorgar`, {
+                        method: 'POST',
+                        body: JSON.stringify({ codigo_permiso: pendiente.codigo, motivo, fecha_vencimiento: $('modalVence').value || null }),
+                    });
+                    avisar(`Permiso ${pendiente.codigo} otorgado.`);
+                } else {
+                    await api(`/auxiliares/${encodeURIComponent(auxiliarActual)}/revocar/${encodeURIComponent(pendiente.codigo)}`, {
+                        method: 'POST', body: JSON.stringify({ motivo }),
+                    });
+                    avisar(`Permiso ${pendiente.codigo} retirado.`);
+                }
+                cerrarModal(false);
+                await cargarPermisos(auxiliarActual);
+            } catch (e) {
+                $('modalError').textContent = e.message;
+            } finally {
+                boton.disabled = false;
+            }
+        }
+
+        $('selAuxiliar').addEventListener('change', (e) => cargarPermisos(e.target.value));
+        $('filtro').addEventListener('input', pintarPermisos);
+        $('listaPermisos').addEventListener('change', (e) => {
+            if (e.target.matches('input[type=checkbox][data-codigo]')) abrirModal(e.target);
+        });
+        $('modalCancelar').addEventListener('click', () => cerrarModal(true));
+        $('modalAceptar').addEventListener('click', confirmar);
+        $('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') cerrarModal(true); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pendiente) cerrarModal(true); });
+
+        // nav.js conserva este enlace del menú pero no lo programa.
+        const salir = $('logout');
+        if (salir) salir.addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); location.href = '/login'; });
+
+        cargarAuxiliares();
+        cargarHistorial();
+    })();
+    </script>
+    <script src="/static/session.js?v=20261029"></script>
+    <script src="/static/nav.js"></script>
+</body>
+
+</html>

@@ -111,11 +111,21 @@ async def iniciar_registro_auditor(
 # CONSULTAR ESTADO POR CORREO
 # ============================================================
 
-@public_router.get("/registro/estado")
+@router.get("/registro/estado")
 async def consultar_estado_auditor(
     correo: str,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Exige sesión y que el correo consultado sea el de la propia cuenta:
+    # la respuesta incluye nombre y documento de identidad. Solo los roles
+    # administrativos pueden consultar el estado de otra persona.
+    propio = (current_user.get("correo") or "").strip().lower()
+    if not es_rol_administrativo(current_user) and correo.strip().lower() != propio:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo puede consultar el estado de su propio registro.",
+        )
     return await AuditorService(db).consultar_estado_por_correo(
         correo=correo
     )
@@ -725,11 +735,14 @@ async def eliminar_conflicto(
     "/registro/empresas-restringidas",
 )
 async def consultar_empresas_restringidas(
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # El auditor solo ve sus propios conflictos; los roles administrativos ven todos.
+    propio = None if es_rol_administrativo(current_user) else current_user["id_usuario"]
     return {
         "empresas":
-            await AuditorService(db).consultar_empresas_restringidas()
+            await AuditorService(db).consultar_empresas_restringidas(propio)
     }
 
 @router.post(
@@ -866,6 +879,22 @@ async def crear_titulo(
     )
 
 
+@router.put(
+    "/registro/{id_usuario}/titulos/{id_titulo}",
+)
+async def actualizar_titulo(
+    id_usuario: UUID,
+    id_titulo: UUID,
+    data: TituloAcademicoCrear,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).actualizar_titulo_academico(
+        id_usuario,
+        id_titulo,
+        data,
+    )
+
+
 @router.delete(
     "/registro/{id_usuario}/titulos/{id_titulo}",
 )
@@ -910,6 +939,22 @@ async def crear_experiencia_laboral(
     )
 
 
+@router.put(
+    "/registro/{id_usuario}/experiencias-laborales/{id_experiencia}",
+)
+async def actualizar_experiencia_laboral(
+    id_usuario: UUID,
+    id_experiencia: UUID,
+    data: ExperienciaLaboralCrear,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).actualizar_experiencia_laboral(
+        id_usuario,
+        id_experiencia,
+        data,
+    )
+
+
 @router.delete(
     "/registro/{id_usuario}/experiencias-laborales/{id_experiencia}",
 )
@@ -950,6 +995,22 @@ async def crear_experiencia_auditoria(
 ):
     return await AuditorService(db).crear_experiencia_auditoria(
         id_usuario,
+        data,
+    )
+
+
+@router.put(
+    "/registro/{id_usuario}/experiencias-auditoria/{id_experiencia}",
+)
+async def actualizar_experiencia_auditoria(
+    id_usuario: UUID,
+    id_experiencia: UUID,
+    data: ExperienciaAuditoriaCrear,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AuditorService(db).actualizar_experiencia_auditoria(
+        id_usuario,
+        id_experiencia,
         data,
     )
 

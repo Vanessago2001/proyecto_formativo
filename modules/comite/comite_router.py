@@ -1,9 +1,10 @@
+from datetime import date
 from io import BytesIO
 from pathlib import Path
 from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.security import _normalize_role_name, get_current_user
 from modules.solicitudes import estado_solicitud as estados
-from modules.comite.comite_service import ComiteService
+from modules.comite.comite_service import (
+    FILTRO_ESTADO_PENDIENTES,
+    FILTRO_ESTADO_TODOS,
+    ComiteService,
+    construir_filtro_expedientes,
+)
+from modules.reportes.exportacion_tabular import Columna, respuesta_exportacion
 from modules.solicitudes.documento_service import CARPETA_ARCHIVOS, DocumentoService
 
 router = APIRouter(prefix="/comite", tags=["Comité de certificación"])
@@ -129,10 +136,15 @@ COMITE_SUPERADMIN_ONLY_PERMISOS = {
 
 @router.get("/expedientes-pendientes")
 async def consultar_expedientes_pendientes(
+    estado: str | None = Query(default=FILTRO_ESTADO_PENDIENTES, description="pendientes, todos o un estado de M5"),
+    q: str | None = Query(default=None, description="NIT, radicado o empresa"),
+    norma: str | None = Query(default=None, description="Código de la norma (ISO-9001)"),
+    fecha_desde: date | None = Query(default=None, description="Radicado desde (AAAA-MM-DD)"),
+    fecha_hasta: date | None = Query(default=None, description="Radicado hasta (AAAA-MM-DD)"),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Permiso COM-001: consultar expedientes pendientes."""
+    """Permiso COM-001: consultar expedientes pendientes (con filtros combinables)."""
     role_name = _normalize_role_name(current_user.get("role_name"))
 
     if role_name not in COMITE_CERTIFICACION_PERMISOS:
@@ -141,7 +153,8 @@ async def consultar_expedientes_pendientes(
             detail="No tienes permisos para consultar expedientes pendientes del comité de certificación.",
         )
 
-    resultado = await db.execute(text("""
+    condiciones, params = construir_filtro_expedientes(estado, q, norma, fecha_desde, fecha_hasta)
+    resultado = await db.execute(text(f"""
         SELECT
             s.id_solicitud AS id,
             COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo,
@@ -149,24 +162,32 @@ async def consultar_expedientes_pendientes(
             e.nit,
             n.codigo AS norma,
             s.estado,
-            s.fecha_creacion
+            s.fecha_creacion,
+            COALESCE(s.fecha_radicacion, s.fecha_creacion) AS fecha_radicacion
         FROM solicitud s
         LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
         LEFT JOIN norma n ON n.id_norma = s.id_norma
         WHERE s.deleted_at IS NULL
-          -- Los estados vienen del catalogo de M5, no de una lista a mano.
-          AND s.estado IN (:estado_radicada, :estado_en_revision)
-        ORDER BY s.fecha_creacion DESC;
-    """), {
-        "estado_radicada": estados.RADICADA,
-        "estado_en_revision": estados.EN_REVISION,
-    })
+          -- Los estados vienen del catalogo de M5, no de una lista a mano.{condiciones}
+        ORDER BY COALESCE(s.fecha_radicacion, s.fecha_creacion) DESC;
+    """), params)
+    expedientes = [dict(fila) for fila in resultado.mappings().all()]
+    normas = await db.execute(text("SELECT codigo, nombre FROM norma ORDER BY codigo;"))
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-001",
         "permiso": "Consultar expedientes pendientes",
         "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
-        "expedientes": [dict(fila) for fila in resultado.mappings().all()],
+        "filtro": {
+            "estado": estado or FILTRO_ESTADO_PENDIENTES,
+            "q": q,
+            "norma": norma,
+            "fecha_desde": fecha_desde,
+            "fecha_hasta": fecha_hasta,
+        },
+        "estados_disponibles": [FILTRO_ESTADO_PENDIENTES, FILTRO_ESTADO_TODOS, *estados.ESTADOS],
+        "normas": [dict(fila) for fila in normas.mappings().all()],
+        "expedientes": expedientes,
     }
 
 
@@ -678,8 +699,37 @@ async def consultar_decisiones_historicas(
     }
 
 
+# Nombre legible de cada acción del Comité (el mismo que muestra comite.html).
+NOMBRE_ACCION_COMITE = {
+    "aprobar": "Aprobó el otorgamiento",
+    "rechazar": "Rechazó el expediente",
+    "decisiones": "Registró la decisión",
+    "decision-borrador": "Guardó un borrador",
+    "decision-definitiva": "Registró la decisión definitiva",
+    "solicitar-info-adicional": "Solicitó información adicional",
+    "observaciones-acta": "Agregó una observación al acta",
+    "restricciones-alcance": "Registró una restricción de alcance",
+    "comentarios-debate": "Comentó el debate",
+    "acta-definitiva": "Generó el acta definitiva",
+    "firmar-acta": "Firmó el acta",
+    "cerrar-expediente": "Cerró el expediente",
+    "reabrir-dictamen": "Reabrió el dictamen",
+}
+
+COLUMNAS_EXPORTACION_DECISIONES = [
+    Columna("fecha", "Fecha", 17),
+    Columna("codigo_expediente", "Expediente", 20),
+    Columna("empresa", "Empresa", 28),
+    Columna("accion", "Acción", 30, lambda v: NOMBRE_ACCION_COMITE.get(str(v or ""), v)),
+    Columna("comentario", "Comentario", 50),
+    Columna("usuario", "Registrada por", 24),
+    Columna("estado_expediente", "Estado actual del expediente", 18),
+]
+
+
 @router.get("/exportar-decisiones")
 async def exportar_decisiones_consolidadas(
+    formato: str | None = Query(default=None, description="xlsx (Excel) o pdf; sin valor devuelve JSON"),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -706,12 +756,22 @@ async def exportar_decisiones_consolidadas(
         LEFT JOIN usuario u ON u.id_usuario::TEXT = a.id_usuario
         ORDER BY a.fecha DESC, a.id_accion DESC;
     """))
+    decisiones = [dict(fila) for fila in resultado.mappings().all()]
+    if formato:
+        return respuesta_exportacion(
+            formato,
+            titulo="Historial de decisiones del Comité de certificación",
+            columnas=COLUMNAS_EXPORTACION_DECISIONES,
+            filas=decisiones,
+            nombre_base="decisiones-comite",
+            hoja="Decisiones",
+        )
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-020",
         "permiso": "Exportar decisiones consolidadas",
         "roles_autorizados": ["SUPERADM", "ADM", "REQ"],
-        "decisiones": [dict(fila) for fila in resultado.mappings().all()],
+        "decisiones": decisiones,
     }
 
 

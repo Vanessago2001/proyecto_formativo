@@ -41,51 +41,6 @@
         }
 
         /* =========================================================
-           HEADER
-        ========================================================= */
-        .login-header {
-            background: #3baa01;
-            color: #fff;
-            padding: 20px clamp(18px, 4vw, 42px);
-        }
-
-        .login-header .header-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 18px;
-            max-width: var(--ancho-contenido);
-            margin: 0 auto;
-        }
-
-        .login-header .header-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .login-header .sena-blanco {
-            width: 72px;
-            height: auto;
-            object-fit: contain;
-            flex-shrink: 0;
-        }
-
-        .login-header h1 {
-            margin: 0;
-            font-size: 26px;
-            line-height: 1.15;
-            letter-spacing: -.02em;
-        }
-
-        .login-header .subtitle {
-            margin: 4px 0 0;
-            font-size: 13px;
-            line-height: 1.5;
-            opacity: .92;
-        }
-
-        /* =========================================================
            LAYOUT + MENU LATERAL
            Mismo tamaño, diseño, posición y distancia que el menú de
            static/auditor.html.
@@ -93,7 +48,7 @@
         .portal-shell {
             max-width: var(--ancho-contenido);
             margin: 0 auto;
-            padding: 18px 22px 28px;
+            padding: 28px;
             display: grid;
             grid-template-columns: 218px minmax(0, 1fr);
             align-items: start;
@@ -356,17 +311,6 @@
             }
         }
 
-        /* El boton "Panel" del encabezado, sin el fondo blanco por defecto. */
-        .header-content .comite-header-user .comite-back-button {
-            background: transparent;
-            color: #fff;
-        }
-
-        .header-content .comite-header-user .comite-back-button:hover {
-            background: rgba(255, 255, 255, 0.12);
-            color: #fff;
-        }
-
         /* =========================================================
            CONTENIDO
         ========================================================= */
@@ -484,28 +428,6 @@
 
         .form-control {
             width: 100%;
-            height: 42px;
-            min-height: 42px;
-            padding: 0 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: var(--radius-control);
-            font: inherit;
-            font-size: 13.5px;
-            color: var(--ink);
-            background: #fff;
-            outline: none;
-            box-sizing: border-box;
-            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-        }
-
-        .form-control:hover:not(:disabled) {
-            border-color: #a9c59d;
-        }
-
-        .form-control:focus {
-            outline: 3px solid rgba(59, 170, 1, .14);
-            border-color: var(--sena-green-bright);
-            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
         }
 
         input[type="date"].form-control {
@@ -532,30 +454,11 @@
             flex-wrap: wrap;
         }
 
-        button,
-        .mini-btn {
-            height: 42px;
-            min-height: 42px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 18px;
-            border: 0;
-            border-radius: var(--radius-control);
+        /* Botones de accion: clases btn de tema.css. Aqui solo la base de
+           los botones especiales (paginacion y cierre del modal). */
+        button {
             font-family: inherit;
-            font-size: 13px;
-            font-weight: 700;
             cursor: pointer;
-            box-sizing: border-box;
-            white-space: nowrap;
-            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
-        }
-
-        button.mini-btn,
-        .mini-btn {
-            background: linear-gradient(135deg, #256d00, #256d00);
-            color: #fff;
-            box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
         }
 
         /* Acciones siempre en un solo renglon */
@@ -569,58 +472,12 @@
         }
 
         .record-table .row-actions .mini-btn {
-            height: 32px;
-            min-height: 32px;
-            padding: 0 11px;
-            font-size: 11.5px;
-            line-height: 1;
             white-space: nowrap;
             flex: 0 0 auto;
-            border: 0;
         }
 
         .record-table .row-actions .badge {
             flex: 0 0 auto;
-        }
-
-        button.mini-btn:hover,
-        .mini-btn:hover {
-            background: linear-gradient(135deg, #2f8f00, #256d00);
-            transform: translateY(-1px);
-            box-shadow: 0 8px 18px rgba(37, 109, 0, .22);
-        }
-
-        button.mini-btn:disabled,
-        .mini-btn:disabled {
-            opacity: .55;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        /* Botón "Limpiar" gris */
-        button.mini-btn[style*="94a3b8"] {
-            background: #94a3b8 !important;
-            box-shadow: 0 3px 8px rgba(100, 116, 139, .18);
-        }
-
-        button.mini-btn[style*="94a3b8"]:hover {
-            background: #7d8ea3 !important;
-        }
-
-        /* Botón "Ver" de la tabla */
-        .mini-btn.view {
-            height: 32px;
-            min-height: 32px;
-            padding: 0 14px;
-            font-size: 11.5px;
-            background: var(--sena-green-bright);
-            box-shadow: 0 3px 8px rgba(59, 170, 1, .20);
-        }
-
-        .mini-btn.view:hover {
-            background: var(--sena-green-dark);
-            box-shadow: 0 4px 12px rgba(37, 109, 0, .24);
         }
 
         /* =========================================================
@@ -1063,31 +920,9 @@
             align-self: flex-start;
         }
 
-        /* Select de exportación */
+        /* Select de exportación (alto, borde y flecha: tema.css) */
         .modal-export-select {
             width: 100%;
-            height: 42px;
-            min-height: 42px;
-            padding: 0 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: var(--radius-control);
-            font: inherit;
-            font-size: 13.5px;
-            color: var(--ink);
-            background: #fff;
-            cursor: pointer;
-            outline: none;
-            box-sizing: border-box;
-            transition: border-color .15s, box-shadow .15s;
-        }
-
-        .modal-export-select:hover {
-            border-color: #a9c59d;
-        }
-
-        .modal-export-select:focus {
-            border-color: var(--sena-green-bright);
-            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
         }
 
         /* Botones del modal */
@@ -1101,70 +936,6 @@
         }
 
         .badge.confirmada { background: #e4f1dc; color: #166534; }
-
-        .mini-btn.confirm {
-            background: #15803d;
-            border-color: #15803d;
-            color: #fff;
-        }
-        .mini-btn.confirm:hover { background: #166534; }
-
-        .mini-btn.reprogramar {
-            background: #b45309;
-            border-color: #b45309;
-            color: #fff;
-        }
-        .mini-btn.reprogramar:hover { background: #92400e; }
-
-        .btn-small {
-            height: 38px;
-            min-height: 38px;
-            padding: 0 16px;
-            border: 0;
-            border-radius: var(--radius-control);
-            font-family: inherit;
-            font-size: 12.5px;
-            font-weight: 700;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            color: #fff;
-            white-space: nowrap;
-            transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
-        }
-
-        .btn-small:hover {
-            transform: translateY(-1px);
-        }
-
-        .btn-ver {
-            background: linear-gradient(135deg, #256d00, #256d00);
-            box-shadow: 0 4px 10px rgba(37, 109, 0, .20);
-        }
-
-        .btn-ver:hover {
-            box-shadow: 0 6px 14px rgba(37, 109, 0, .28);
-        }
-
-        .btn-editar {
-            background: linear-gradient(135deg, #2563eb, #1e4db8);
-            box-shadow: 0 4px 10px rgba(37, 99, 235, .20);
-        }
-
-        .btn-editar:hover {
-            box-shadow: 0 6px 14px rgba(37, 99, 235, .28);
-        }
-
-        .btn-cancelar {
-            background: linear-gradient(135deg, #dc2626, #b42318);
-            box-shadow: 0 4px 10px rgba(220, 38, 38, .20);
-        }
-
-        .btn-cancelar:hover {
-            box-shadow: 0 6px 14px rgba(220, 38, 38, .28);
-        }
 
         /* =========================================================
            FOOTER
@@ -1187,14 +958,10 @@
             .filters { grid-template-columns: 1fr; }
             .panel-body { padding: 16px; }
             .panel-head { padding: 14px 16px; }
-            .login-header .sena-blanco { width: 58px; }
-            .login-header h1 { font-size: 21px; }
-            .login-header .subtitle { font-size: 12px; }
             .filter-actions button { width: 100%; }
             .modal-body { padding: 16px; }
             .modal-head { padding: 14px 16px; }
             .modal-fields-grid { grid-template-columns: 1fr; }
-            .btn-small { width: 100%; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1217,9 +984,10 @@
                 </div>
             </div>
             <div class="comite-header-user">
-                <a class="comite-back-button" href="/dashboard">Panel</a>
-                <a class="profile-link" href="/perfil-auditor">Mi perfil</a>
-                <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+              <a class="comite-back-button" href="/dashboard">Panel</a>
+              <a class="profile-link" href="/reportes">Reportes</a>
+              <a class="profile-link" href="/perfil-auditor" title="Mi perfil" aria-label="Mi perfil"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
+              <button id="logoutButton" class="comite-logout js-salir" type="button">Cerrar sesión</button>
             </div>
         </div>
     </header>
@@ -1436,7 +1204,7 @@
                         <td>${escapeHtml(r.rol_auditor || 'Auditor')}</td>
                         <td><span class="badge ${claseEstado(r.estado)}">${escapeHtml(r.estado || 'No disponible')}</span></td>
                         <td class="row-actions">
-                            <button class="mini-btn view" type="button" onclick="verDetalle('${escapeHtml(r.id_programacion || '')}')">Ver detalles</button>
+                            <button class="btn btn-secundario btn-sm mini-btn view" type="button" onclick="verDetalle('${escapeHtml(r.id_programacion || '')}')">Ver detalles</button>
                         </td>
                     </tr>
                 `).join('');

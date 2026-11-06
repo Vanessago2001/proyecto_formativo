@@ -41,7 +41,7 @@
     .page-shell {
       max-width: var(--ancho-contenido);
       margin: 0 auto;
-      padding: 24px 20px 48px;
+      padding: 28px 28px 48px;
     }
 
     .admin-header {
@@ -91,7 +91,7 @@
     .panel {
       background: var(--blanco);
       border: var(--borde);
-      border-radius: 16px;
+      border-radius: 8px;
       box-shadow: var(--sombra);
       padding: 24px;
     }
@@ -128,7 +128,7 @@
     .metric {
       background: var(--blanco);
       border: var(--borde);
-      border-radius: 14px;
+      border-radius: 8px;
       padding: 18px 18px 16px;
       box-shadow: var(--sombra);
     }
@@ -250,12 +250,15 @@
       font: inherit;
     }
 
-    input, textarea, select {
+    /* Campos: los del sistema (tema.css). El padding se declara porque
+       styles.css, cargado despues, pone "* { padding: 0 }". */
+    input:not([type="checkbox"]):not([type="radio"]), textarea, select {
       width: 100%;
-      border-radius: 10px;
-      border: 1px solid #cfe3c5;
-      background: #ffffff;
-      padding: 11px 12px;
+      min-height: var(--campo-alto);
+      border-radius: var(--campo-radio);
+      border: 1px solid var(--campo-borde);
+      background-color: #ffffff;
+      padding: 8px 10px;
       color: var(--gris-900);
     }
 
@@ -283,23 +286,8 @@
       margin-top: 18px;
     }
 
-    button {
-      border: none;
-      border-radius: 10px;
-      padding: 11px 18px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: filter 0.2s ease;
-    }
-
-    button:hover { filter: brightness(0.97); }
-    button:active { filter: brightness(0.94); }
-
-    .primary { background: var(--verde-600); color: var(--blanco); }
-    .secondary { background: #f1f5f9; color: var(--verde-900); }
-    .muted-action { background: #f1f5f9; color: var(--azul-700); }
-    .warning { background: var(--amarillo-100); color: var(--amarillo-700); }
-    .danger { background: #dc2626; color: var(--blanco); }
+    /* Botones de accion: clases btn + variante de tema.css (las clases
+       antiguas primary/secondary/danger/warning/muted-action quedan solo como marca). */
 
     .status {
       display: inline-flex;
@@ -383,8 +371,9 @@
       flex-shrink: 0;
     }
 
-    /* Un boton que todavia no se puede usar tiene que verse asi. */
-    button:disabled {
+    /* Una pestana que todavia no se puede usar tiene que verse asi
+       (los botones .btn ya traen su estado deshabilitado). */
+    .vista-link:disabled {
       opacity: 0.45;
       cursor: not-allowed;
       box-shadow: none;
@@ -455,13 +444,6 @@
 
     .archivo-fila small { color: var(--gris-500); }
 
-    .quitar-archivo {
-      border: 0;
-      background: transparent;
-      color: var(--rojo-700);
-      font-weight: 700;
-      cursor: pointer;
-    }
 
     .hint {
       margin: 10px 0 0;
@@ -647,7 +629,7 @@
         <section class="panel" data-vista-panel="bandeja" hidden>
           <div class="section-header">
             <h2>Bandeja del comité</h2>
-            <button class="secondary" id="btnActualizarBandeja" type="button">Actualizar</button>
+            <button class="btn btn-secundario secondary" id="btnActualizarBandeja" type="button">Actualizar</button>
           </div>
           <p class="hint">Las apelaciones que le corresponde revisar. Abra una para ver su expediente.</p>
           <div id="listaApelaciones" class="support-list"></div>
@@ -709,9 +691,9 @@
           </div>
 
           <div class="actions">
-            <button class="primary" id="btnCrear" type="button">Enviar apelación</button>
-            <button class="secondary" id="btnGuardar" type="button">Guardar cambios</button>
-            <button class="danger" id="btnCancelar" type="button">Cancelar apelación</button>
+            <button class="btn btn-primario primary" id="btnCrear" type="button">Enviar apelación</button>
+            <button class="btn btn-primario secondary" id="btnGuardar" type="button">Guardar cambios</button>
+            <button class="btn btn-peligro danger" id="btnCancelar" type="button">Cancelar apelación</button>
           </div>
         </section>
 
@@ -741,7 +723,7 @@
           </div>
 
           <div class="actions">
-            <button class="muted-action" id="btnAdjuntar" type="button">Enviar documentos</button>
+            <button class="btn btn-primario muted-action" id="btnAdjuntar" type="button">Enviar documentos</button>
           </div>
 
           <div class="section-header" style="margin-top: 24px;">
@@ -754,7 +736,7 @@
         <section class="panel" data-vista-panel="requerimientos" hidden>
           <div class="section-header">
             <h2>Requerimientos de información</h2>
-            <button class="secondary" id="btnActualizarRequerimientos" type="button">Actualizar</button>
+            <button class="btn btn-secundario secondary" id="btnActualizarRequerimientos" type="button">Actualizar</button>
           </div>
           <p class="hint">Lo que el Comité ha pedido en esta apelación y si ya fue atendido.</p>
           <div id="listaRequerimientos" class="support-list"></div>
@@ -785,7 +767,7 @@
                      placeholder="Por ejemplo: se concede un plazo de 5 días hábiles." />
             </div>
             <div class="actions">
-              <button class="warning" id="btnSolicitarInfo" type="button">Solicitar más información</button>
+              <button class="btn btn-secundario warning" id="btnSolicitarInfo" type="button">Solicitar más información</button>
             </div>
           </article>
 
@@ -793,8 +775,8 @@
             <h3 class="side-title">Respuesta del comité</h3>
             <textarea id="comentariosComite" placeholder="Fundamento de la decisión. Lo verá la empresa."></textarea>
             <div class="actions" style="margin-top: 18px;">
-              <button class="primary" id="btnAprobar" type="button">Aprobar apelación</button>
-              <button class="danger" id="btnRechazar" type="button">Rechazar apelación</button>
+              <button class="btn btn-primario primary" id="btnAprobar" type="button">Aprobar apelación</button>
+              <button class="btn btn-peligro danger" id="btnRechazar" type="button">Rechazar apelación</button>
             </div>
             <p class="hint" id="avisoDecision"></p>
           </article>
@@ -804,7 +786,7 @@
         <section class="panel" data-vista-panel="asignar" hidden>
           <div class="section-header">
             <h2>Asignar el comité de la apelación</h2>
-            <button class="secondary" id="btnActualizarElegibles" type="button">Actualizar</button>
+            <button class="btn btn-secundario secondary" id="btnActualizarElegibles" type="button">Actualizar</button>
           </div>
           <p class="hint">
             Debe ser un comité distinto al que evaluó la solicitud original: quienes
@@ -813,7 +795,7 @@
           </p>
           <div id="listaElegibles" class="support-list"></div>
           <div class="actions">
-            <button class="primary" id="btnAsignarComite" type="button">Asignar comité</button>
+            <button class="btn btn-primario primary" id="btnAsignarComite" type="button">Asignar comité</button>
           </div>
         </section>
 
@@ -835,7 +817,7 @@
             <input id="solicitudId" type="text" placeholder="ID de la solicitud" />
           </div>
           <div class="actions">
-            <button class="primary" id="btnBuscar" type="button">Buscar</button>
+            <button class="btn btn-primario primary" id="btnBuscar" type="button">Buscar</button>
           </div>
         </details>
       </main>
@@ -1003,7 +985,7 @@
             <strong>${escapeHtml(item.radicado || 'Apelación ' + item.id)}</strong>
             <div>Solicitud: ${escapeHtml(item.id_solicitud || '--')} · Estado: ${escapeHtml(item.estado || '--')}</div>
             <small>Fecha: ${formatDate(item.fecha)}</small>
-            <div class="actions"><button class="secondary" type="button" data-appeal-id="${item.id}">Revisar</button></div>
+            <div class="actions"><button class="btn btn-secundario btn-sm secondary" type="button" data-appeal-id="${item.id}">Revisar</button></div>
           </div>
         `).join('');
         container.querySelectorAll('[data-appeal-id]').forEach((button) => {
@@ -1220,7 +1202,7 @@
           <strong>${escapeHtml(item.nombre_archivo || 'Evidencia sin nombre')}</strong>
           <div>${escapeHtml(item.descripcion || 'Sin descripción.')}</div>
           <small>${escapeHtml(item.tipo_evidencia || 'Documento')} · ${escapeHtml(fechaHora(item.fecha_subida))}</small>
-          <div class="actions"><button class="secondary" type="button" data-evidence-id="${escapeHtml(item.id_evidencia)}">Descargar</button></div>
+          <div class="actions"><button class="btn btn-secundario btn-sm secondary" type="button" data-evidence-id="${escapeHtml(item.id_evidencia)}">Descargar</button></div>
         </div>
       `).join('');
       contenedor.querySelectorAll('[data-evidence-id]').forEach((boton) => {
@@ -1548,7 +1530,7 @@
       contenedor.innerHTML = state.archivos.map((archivo, indice) => `
         <div class="archivo-fila">
           <span>${escapeHtml(archivo.name)} <small>${Math.round(archivo.size / 1024)} KB</small></span>
-          <button class="quitar-archivo" type="button" data-quitar="${indice}">Quitar</button>
+          <button class="btn btn-peligro-contorno btn-sm quitar-archivo" type="button" data-quitar="${indice}">Quitar</button>
         </div>
       `).join('');
       contenedor.querySelectorAll('[data-quitar]').forEach((boton) => {
@@ -1635,7 +1617,7 @@
             <strong>${escapeHtml(item.nombre_archivo || 'Evidencia sin nombre')}</strong>
             <div>${escapeHtml(item.descripcion || 'Sin descripción.')}</div>
             <small>Tipo: ${escapeHtml(item.tipo_evidencia || 'Documento')} · ${escapeHtml(formatDate(item.fecha_subida))}</small>
-            <div class="actions"><button class="secondary" type="button" data-evidence-id="${escapeHtml(item.id_evidencia)}">Descargar</button></div>
+            <div class="actions"><button class="btn btn-secundario btn-sm secondary" type="button" data-evidence-id="${escapeHtml(item.id_evidencia)}">Descargar</button></div>
           </div>
         `).join('');
         container.querySelectorAll('[data-evidence-id]').forEach((button) => {

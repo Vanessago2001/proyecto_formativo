@@ -41,6 +41,12 @@ DIAS_EXPIRACION_POR_ROL = {
 DIAS_EXPIRACION_DEFAULT = 120
 # Intentos permitidos para el código MFA antes de invalidarlo.
 MAX_INTENTOS_MFA = 5
+# Ventana (segundos) en la que los intentos fallidos se acumulan.
+VENTANA_INTENTOS_SEGUNDOS = 300
+# Espera mínima entre dos envíos del código de verificación al mismo usuario.
+ESPERA_REENVIO_CODIGO_SEGUNDOS = 60
+# Vigencia del código de verificación enviado por correo.
+VIGENCIA_CODIGO_MINUTOS = 5
 
 
 class AuthService:
@@ -82,6 +88,29 @@ class AuthService:
         Genera un código aleatorio de seis dígitos.
         """
         return str(100000 + secrets.randbelow(900000))
+
+    async def _enviar_codigo_por_correo(self, destinatario: str, codigo: str) -> bool:
+        """
+        Envía el código y devuelve si el servidor de correo lo aceptó.
+
+        Antes el error del SMTP subía sin capturar: el código ya estaba guardado,
+        la respuesta era un 500 y el usuario quedaba en la pantalla del código
+        sin correo y sin forma de pedir otro. Ahora el fallo se registra en el
+        log y el usuario puede usar "Reenviar código".
+        """
+        try:
+            await MailService.enviar_codigo_verificacion(
+                destinatario=destinatario,
+                codigo=codigo,
+            )
+            return True
+        except Exception as exc:  # SMTP, red, credenciales, adjunto...
+            logger.exception(
+                "No se pudo enviar el código de verificación por correo (%s): %s",
+                type(exc).__name__,
+                exc,
+            )
+            return False
 
     async def _log_access(
         self,
@@ -224,16 +253,21 @@ class AuthService:
 
                 await self.db.commit()
 
-                await MailService.enviar_codigo_verificacion(
-                    destinatario=correo,
-                    codigo=nuevo_codigo,
+                enviado = await self._enviar_codigo_por_correo(
+                    usuario["correo"] or correo,
+                    nuevo_codigo,
                 )
 
                 raise HTTPException(
                     status_code=403,
                     detail=(
                         "Ha superado el número máximo de intentos del código. "
-                        "Se generó y envió un nuevo código a su correo."
+                        + (
+                            "Se generó y envió un nuevo código a su correo."
+                            if enviado
+                            else "Se generó un nuevo código, pero no fue posible enviarlo "
+                            "al correo. Use «Reenviar código» en un momento."
+                        )
                     ),
                 )
 
@@ -262,7 +296,7 @@ class AuthService:
                 UPDATE usuario
                 SET
                     intentos_fallidos=0,
-                    ultimo_intento=NULL,
+                    ultimo_intento=:ahora,
                     codigo_verificacion=NULL,
                     codigo_expira=NULL,
                     intentos_codigo=0,
@@ -271,6 +305,9 @@ class AuthService:
                 WHERE id_usuario=:id_usuario
             """),
             {
+                # Marca el inicio de la fase 2: los 5 intentos siguientes cuentan
+                # dentro de la ventana; pasada la ventana se vuelve a la fase 1.
+                "ahora": self._ahora_utc(),
                 "id_usuario": usuario["id_usuario"],
             },
         )
@@ -280,6 +317,93 @@ class AuthService:
         return {
             "mensaje": "Código verificado correctamente. Ya puede volver a iniciar sesión."
         }
+
+    async def reenviar_codigo(self, correo: str) -> dict:
+        """
+        Genera y envía un código nuevo a quien tiene una verificación pendiente
+        (código emitido o 3 intentos fallidos sin verificar).
+
+        Exige `ESPERA_REENVIO_CODIGO_SEGUNDOS` entre envíos. La respuesta es la
+        misma exista o no la cuenta, para no revelar qué correos están
+        registrados.
+        """
+        respuesta = {
+            "mensaje": (
+                "Si la cuenta tiene una verificación pendiente, se envió un código "
+                "nuevo a su correo. Revise también la carpeta de spam."
+            ),
+            "espera_reenvio": ESPERA_REENVIO_CODIGO_SEGUNDOS,
+        }
+
+        resultado = await self.db.execute(
+            text("""
+                SELECT
+                    id_usuario,
+                    correo,
+                    codigo_verificacion,
+                    ultimo_envio_codigo,
+                    COALESCE(codigo_verificado, FALSE) AS codigo_verificado,
+                    COALESCE(intentos_fallidos, 0) AS intentos_fallidos
+                FROM usuario
+                WHERE LOWER(correo) = LOWER(:correo)
+                   OR LOWER(nombre) = LOWER(:correo)
+                LIMIT 1
+            """),
+            {"correo": (correo or "").strip()},
+        )
+        usuario = resultado.mappings().first()
+        if not usuario:
+            return respuesta
+
+        pendiente = bool(usuario["codigo_verificacion"]) or (
+            not usuario["codigo_verificado"]
+            and int(usuario["intentos_fallidos"] or 0) >= INTENTOS_ANTES_DE_CODIGO
+        )
+        if not pendiente:
+            return respuesta
+
+        ultimo_envio = usuario.get("ultimo_envio_codigo")
+        if ultimo_envio is not None:
+            transcurrido = (self._ahora() - self._a_naive_utc(ultimo_envio)).total_seconds()
+            restante = int(ESPERA_REENVIO_CODIGO_SEGUNDOS - transcurrido)
+            if restante > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Espere {restante} segundo(s) antes de pedir otro código.",
+                    headers={"Retry-After": str(restante)},
+                )
+
+        codigo = self._generar_codigo()
+        await self.db.execute(
+            text("""
+                UPDATE usuario
+                SET
+                    codigo_verificacion = :codigo,
+                    codigo_expira = :expira,
+                    intentos_codigo = 0,
+                    ultimo_envio_codigo = :ahora
+                WHERE id_usuario = :id_usuario
+            """),
+            {
+                "codigo": hash_verification_code(codigo),
+                "expira": self._ahora_utc() + timedelta(minutes=VIGENCIA_CODIGO_MINUTOS),
+                "ahora": self._ahora(),
+                "id_usuario": usuario["id_usuario"],
+            },
+        )
+        await self.db.commit()
+
+        if not await self._enviar_codigo_por_correo(usuario["correo"], codigo):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "No fue posible enviar el correo en este momento. "
+                    "Intente de nuevo en unos minutos."
+                ),
+                headers={"Retry-After": str(ESPERA_REENVIO_CODIGO_SEGUNDOS)},
+            )
+
+        return respuesta
 
     async def login(
         self,
@@ -440,6 +564,20 @@ class AuthService:
                 ultimo_intento = self._a_naive_utc(ultimo_intento)
             ya_verifico = bool(user.get("codigo_verificado"))
 
+            ventana_vencida = (
+                ultimo_intento is None
+                or (ahora - ultimo_intento).total_seconds() > VENTANA_INTENTOS_SEGUNDOS
+            )
+            if ventana_vencida:
+                nuevos_intentos = 1
+                # Una verificación antigua ya no cuenta: antes `codigo_verificado`
+                # quedaba en TRUE hasta el siguiente login correcto y, días
+                # después, 3 fallos ya no enviaban el código (se exigían 5 y luego
+                # un enlace de restablecimiento).
+                ya_verifico = False
+            else:
+                nuevos_intentos = int(user["intentos_fallidos"] or 0) + 1
+
             # Fase 1 (sin código verificado): 3 intentos -> se exige un código.
             # Fase 2 (código ya verificado): 5 intentos -> se envía enlace de reset.
             limite = (
@@ -447,14 +585,6 @@ class AuthService:
                 if ya_verifico
                 else INTENTOS_ANTES_DE_CODIGO
             )
-
-            if (
-                ultimo_intento is None
-                or (ahora - ultimo_intento).total_seconds() > 300
-            ):
-                nuevos_intentos = 1
-            else:
-                nuevos_intentos = int(user["intentos_fallidos"] or 0) + 1
 
             # ¿Alcanzó el límite de la fase actual?
             if nuevos_intentos >= limite:
@@ -464,7 +594,7 @@ class AuthService:
                     codigo = self._generar_codigo()
                     codigo_hash = hash_verification_code(codigo)
                     # TIMESTAMPTZ: se guarda con zona horaria para no desplazar la hora.
-                    expira = self._ahora_utc() + timedelta(minutes=5)
+                    expira = self._ahora_utc() + timedelta(minutes=VIGENCIA_CODIGO_MINUTOS)
 
                     await self.db.execute(
                         text("""
@@ -473,7 +603,10 @@ class AuthService:
                                 intentos_fallidos = :intentos,
                                 ultimo_intento = :ultimo_intento,
                                 codigo_verificacion = :codigo,
-                                codigo_expira = :expira
+                                codigo_expira = :expira,
+                                intentos_codigo = 0,
+                                codigo_verificado = FALSE,
+                                ultimo_envio_codigo = :ultimo_envio
                             WHERE id_usuario = :id_usuario
                         """),
                         {
@@ -481,31 +614,39 @@ class AuthService:
                             "ultimo_intento": self._ahora_utc(),
                             "codigo": codigo_hash,
                             "expira": expira,
+                            # TIMESTAMP sin zona: se guarda en UTC naive.
+                            "ultimo_envio": self._ahora(),
                             "id_usuario": user["id_usuario"],
                         },
                     )
                     await self.db.commit()
 
-                    await MailService.enviar_codigo_verificacion(
-                        destinatario=user["correo"],
-                        codigo=codigo,
-                    )
+                    enviado = await self._enviar_codigo_por_correo(user["correo"], codigo)
 
                     await self._log_access(
                         user["id_usuario"],
                         user["correo"],
                         client_ip,
                         False,
-                        "Código de verificación enviado",
+                        "Código de verificación enviado"
+                        if enviado
+                        else "Fallo al enviar código de verificación",
                     )
 
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail={
                             "accion": "codigo",
+                            "enviado": enviado,
+                            "espera_reenvio": ESPERA_REENVIO_CODIGO_SEGUNDOS,
                             "mensaje": (
                                 "Ha superado los 3 intentos permitidos. "
-                                "Se envió un código de verificación a su correo."
+                                + (
+                                    "Se envió un código de verificación a su correo."
+                                    if enviado
+                                    else "No fue posible enviar el código de verificación "
+                                    "a su correo. Use «Reenviar código» en un momento."
+                                )
                             ),
                         },
                     )
@@ -561,12 +702,14 @@ class AuthService:
                     UPDATE usuario
                     SET
                         intentos_fallidos = :intentos,
-                        ultimo_intento = :ultimo_intento
+                        ultimo_intento = :ultimo_intento,
+                        codigo_verificado = :verificado
                     WHERE id_usuario = :id_usuario
                 """),
                 {
                     "intentos": nuevos_intentos,
                     "ultimo_intento": self._ahora_utc(),
+                    "verificado": ya_verifico,
                     "id_usuario": user["id_usuario"],
                 },
             )

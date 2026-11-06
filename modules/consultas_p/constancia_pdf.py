@@ -162,11 +162,17 @@ def generar_pdf_constancia(empresa: dict) -> bytes:
         ("Radicada", "Sí" if radicado else "No"),
         ("Número de radicado", radicado or "Sin radicar"),
         ("Fecha de radicación", fecha_solicitud),
-        ("Código de verificación", certificado.get("codigo_verificacion") or "Sin certificado emitido"),
-        ("Fecha de emisión del certificado", certificado.get("fecha_emision")),
-        ("Vigente hasta", certificado.get("fecha_vencimiento")),
-        ("Fecha de descarga de la constancia", ahora),
     ]
+    if len(certs) > 1:
+        # Con varios certificados, los datos de cada uno van en la tabla de abajo.
+        campos.append(("Certificados vigentes incluidos", len(certs)))
+    else:
+        campos += [
+            ("Código de verificación", certificado.get("codigo_verificacion") or "Sin certificado emitido"),
+            ("Fecha de emisión del certificado", certificado.get("fecha_emision")),
+            ("Vigente hasta", certificado.get("fecha_vencimiento")),
+        ]
+    campos.append(("Fecha de descarga de la constancia", ahora))
 
     filas_datos = [
         [
@@ -225,6 +231,7 @@ def generar_pdf_constancia(empresa: dict) -> bytes:
         chip,
         Spacer(1, 5 * mm),
         tabla_datos,
+        *_tabla_certificados(certs, estilos),
         Spacer(1, 5 * mm),
         bloque_norma,
         Spacer(1, 4 * mm),
@@ -249,6 +256,43 @@ def generar_pdf_constancia(empresa: dict) -> bytes:
     )
     documento.build(historia, onFirstPage=_marco, onLaterPages=_marco)
     return buffer.getvalue()
+
+
+def _tabla_certificados(certs: list[dict], estilos: dict) -> list:
+    """Tabla con cada certificado cuando la constancia incluye más de uno."""
+    if len(certs) <= 1:
+        return []
+    encabezado = ["Código de verificación", "Norma", "Emitido", "Vigente hasta"]
+    filas = [[Paragraph(escape(t), estilos["etiqueta"]) for t in encabezado]]
+    for cert in certs:
+        norma = " ".join(
+            str(p).strip()
+            for p in (cert.get("norma_codigo"), cert.get("norma_nombre"), cert.get("norma_version"))
+            if p
+        ) or "--"
+        filas.append([
+            Paragraph(escape(formatear_valor(v)), estilos["valor"])
+            for v in (
+                cert.get("codigo_verificacion"),
+                norma,
+                cert.get("fecha_emision"),
+                cert.get("fecha_vencimiento"),
+            )
+        ])
+    tabla = Table(filas, colWidths=[48 * mm, 72 * mm, 30 * mm, 30 * mm], repeatRows=1)
+    tabla.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BACKGROUND", (0, 0), (-1, 0), VERDE_SUAVE),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.5, GRIS_LINEA),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.6 * mm),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.6 * mm),
+    ]))
+    return [
+        Spacer(1, 4 * mm),
+        Paragraph("CERTIFICADOS VIGENTES INCLUIDOS", estilos["kicker"]),
+        Spacer(1, 1.5 * mm),
+        tabla,
+    ]
 
 
 def _marco(canvas, documento):

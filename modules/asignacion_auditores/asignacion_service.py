@@ -606,12 +606,22 @@ class AsignacionAuditorService:
     # ------------------------------------------------------------------
     # LISTAR ASIGNACIONES
     # ------------------------------------------------------------------
-    async def listar_asignaciones(self, id_solicitud: UUID | None = None) -> list[dict]:
+    async def listar_asignaciones(
+        self,
+        id_solicitud: UUID | None = None,
+        empresas: list[str] | None = None,
+    ) -> list[dict]:
+        """Lista las asignaciones. Con ``empresas`` solo las de esas empresas."""
         condiciones = []
         parametros: dict = {}
         if id_solicitud:
             condiciones.append("a.id_solicitud = :id_solicitud")
             parametros["id_solicitud"] = str(id_solicitud)
+        if empresas is not None:
+            if not empresas:
+                return []
+            condiciones.append("CAST(s.id_empresa AS TEXT) = ANY(:empresas)")
+            parametros["empresas"] = empresas
         where = "WHERE " + " AND ".join(condiciones) if condiciones else ""
 
         resultado = await self.db.execute(
@@ -653,7 +663,13 @@ class AsignacionAuditorService:
         )
         return [dict(fila) for fila in resultado.mappings().all()]
 
-    async def cancelar_asignacion(self, id_asignacion: UUID) -> dict:
+    async def cancelar_asignacion(
+        self,
+        id_asignacion: UUID,
+        confirmar: bool = True,
+        usuario: dict | None = None,
+        motivo: str | None = None,
+    ) -> dict:
         # Verifica si la solicitud ya tiene una programación de visita.
         solicitud_result = await self.db.execute(
             text(
@@ -688,18 +704,270 @@ class AsignacionAuditorService:
                 detail="No se puede cancelar la asignación porque la solicitud ya tiene una programación de visita.",
             )
 
+        # Usa las columnas que ya existen en auditores_solicitud para dejar
+        # quién canceló, cuándo y por qué.
         result = await self.db.execute(
             text(
                 """
                 UPDATE auditores_solicitud
-                SET estado_asignacion = 'Cancelada'
+                SET estado_asignacion = 'Cancelada',
+                    fecha_cancelacion = CURRENT_TIMESTAMP,
+                    usuario_cancela = COALESCE(:usuario_cancela, usuario_cancela),
+                    motivo_cancelacion = COALESCE(:motivo, motivo_cancelacion)
                 WHERE id = :id
                 RETURNING id
                 """
             ),
-            {"id": str(id_asignacion)},
+            {
+                "id": str(id_asignacion),
+                "usuario_cancela": str(usuario["id_usuario"]) if usuario and usuario.get("id_usuario") else None,
+                "motivo": motivo,
+            },
         )
         if not result.first():
             raise HTTPException(status_code=404, detail="La asignación no existe.")
-        await self.db.commit()
+        if confirmar:
+            await self.db.commit()
         return {"mensaje": "Asignación cancelada correctamente."}
+
+    # ------------------------------------------------------------
+    # Solicitudes de cambio de la empresa
+    #
+    # No usan tabla propia: cada solicitud es un registro de
+    # historial_asignacion_auditor con accion SOLICITUD_CAMBIO_EMPRESA
+    # (la razón va en `motivo`), y la decisión del administrador es otro
+    # registro con accion RESPUESTA_CAMBIO_EMPRESA (estado_nuevo Aprobada o
+    # Rechazada, la respuesta en `motivo`). El historial no se modifica:
+    # una solicitud está pendiente mientras no tenga respuesta posterior.
+    # ------------------------------------------------------------
+
+    ACCION_SOLICITUD_CAMBIO = "SOLICITUD_CAMBIO_EMPRESA"
+    ACCION_RESPUESTA_CAMBIO = "RESPUESTA_CAMBIO_EMPRESA"
+
+    # Respuesta (si la hay) que corresponde a cada solicitud: la primera
+    # posterior sobre la misma asignación. Solo puede haber una pendiente a la vez.
+    _SQL_RESPUESTA = """
+        LEFT JOIN LATERAL (
+            SELECT h.estado_nuevo, h.motivo, h.fecha
+            FROM historial_asignacion_auditor h
+            WHERE h.accion = 'RESPUESTA_CAMBIO_EMPRESA'
+              AND h.id_asignacion = r.id_asignacion
+              AND h.fecha >= r.fecha
+            ORDER BY h.fecha ASC
+            LIMIT 1
+        ) resp ON TRUE
+    """
+
+    async def empresas_del_usuario(self, usuario: dict) -> list[str]:
+        """Empresas activas a las que está vinculado el usuario."""
+        resultado = await self.db.execute(
+            text("""
+                SELECT id_empresa
+                FROM user_empresa
+                WHERE id_usuario = :id_usuario
+                  AND estado = 'Activo'
+            """),
+            {"id_usuario": str(usuario.get("id_usuario"))},
+        )
+        return [str(fila["id_empresa"]) for fila in resultado.mappings().all()]
+
+    async def _hay_solicitud_pendiente(self, id_asignacion) -> bool:
+        fila = (await self.db.execute(
+            text(f"""
+                SELECT 1
+                FROM historial_asignacion_auditor r
+                {self._SQL_RESPUESTA}
+                WHERE r.accion = 'SOLICITUD_CAMBIO_EMPRESA'
+                  AND r.id_asignacion = :id
+                  AND resp.estado_nuevo IS NULL
+                LIMIT 1
+            """),
+            {"id": str(id_asignacion)},
+        )).first()
+        return fila is not None
+
+    async def solicitar_cambio(self, id_asignacion: UUID, motivo: str, usuario: dict) -> dict:
+        """La empresa pide cambiar un auditor asignado a una de sus solicitudes."""
+        motivo = (motivo or "").strip()
+        if len(motivo) < 30:
+            raise HTTPException(
+                status_code=422,
+                detail="Explique la razón del cambio con al menos 30 caracteres.",
+            )
+
+        fila = (await self.db.execute(
+            text("""
+                SELECT a.id, a.id_solicitud, a.id_auditor, a.estado_asignacion, s.id_empresa
+                FROM auditores_solicitud a
+                INNER JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+                WHERE a.id = :id
+                FOR UPDATE OF a
+            """),
+            {"id": str(id_asignacion)},
+        )).mappings().first()
+        empresas = await self.empresas_del_usuario(usuario)
+        # Misma respuesta si no existe o es de otra empresa: no se revela nada.
+        if not fila or str(fila["id_empresa"]) not in empresas:
+            raise HTTPException(status_code=404, detail="La asignación no existe.")
+        if (fila["estado_asignacion"] or "").strip().lower() in ("cancelada", "cancelado"):
+            raise HTTPException(status_code=409, detail="La asignación ya está cancelada.")
+        if await self._hay_solicitud_pendiente(id_asignacion):
+            raise HTTPException(
+                status_code=409,
+                detail="Ya hay una solicitud de cambio pendiente para este auditor.",
+            )
+
+        id_nueva = uuid4()
+        await self.db.execute(
+            text("""
+                INSERT INTO historial_asignacion_auditor (
+                    id_historial, id_solicitud, id_auditor, accion, motivo,
+                    estado_anterior, estado_nuevo, id_usuario_accion, fecha,
+                    id_asignacion, origen
+                ) VALUES (
+                    :id, :id_solicitud, :id_auditor, 'SOLICITUD_CAMBIO_EMPRESA', :motivo,
+                    :estado_anterior, 'Pendiente', :id_usuario, CURRENT_TIMESTAMP,
+                    :id_asignacion, 'Empresa'
+                )
+            """),
+            {
+                "id": str(id_nueva),
+                "id_solicitud": str(fila["id_solicitud"]),
+                "id_auditor": str(fila["id_auditor"]),
+                "motivo": motivo,
+                "estado_anterior": fila["estado_asignacion"],
+                "id_usuario": str(usuario["id_usuario"]),
+                "id_asignacion": str(id_asignacion),
+            },
+        )
+        await self.db.commit()
+        return {
+            "id_solicitud_cambio": id_nueva,
+            "estado": "Pendiente",
+            "mensaje": "Solicitud de cambio enviada. El administrador la revisará.",
+        }
+
+    async def listar_solicitudes_cambio(
+        self,
+        empresas: list[str] | None = None,
+        estado: str | None = None,
+    ) -> list[dict]:
+        """Con ``empresas`` solo las de esas empresas (vista de la empresa)."""
+        condiciones = ["r.accion = 'SOLICITUD_CAMBIO_EMPRESA'"]
+        parametros: dict = {}
+        if empresas is not None:
+            if not empresas:
+                return []
+            condiciones.append("CAST(s.id_empresa AS TEXT) = ANY(:empresas)")
+            parametros["empresas"] = empresas
+        if estado:
+            condiciones.append("COALESCE(resp.estado_nuevo, 'Pendiente') = :estado")
+            parametros["estado"] = estado
+        resultado = await self.db.execute(
+            text(f"""
+                SELECT
+                    r.id_historial AS id_solicitud_cambio,
+                    r.id_asignacion,
+                    r.id_solicitud,
+                    r.motivo,
+                    COALESCE(resp.estado_nuevo, 'Pendiente') AS estado,
+                    resp.motivo AS respuesta,
+                    r.fecha AS fecha_solicitud,
+                    resp.fecha AS fecha_respuesta,
+                    s.numero_radicado,
+                    e.nombre AS empresa_nombre,
+                    u.nombre AS auditor_nombre,
+                    a.especialidad AS rol_auditor,
+                    a.estado_asignacion,
+                    sol.nombre AS solicitado_por_nombre
+                FROM historial_asignacion_auditor r
+                INNER JOIN auditores_solicitud a ON a.id = r.id_asignacion
+                INNER JOIN solicitud s ON s.id_solicitud = r.id_solicitud
+                LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+                LEFT JOIN usuario u ON u.id_usuario = a.id_auditor
+                LEFT JOIN usuario sol ON sol.id_usuario = r.id_usuario_accion
+                {self._SQL_RESPUESTA}
+                WHERE {" AND ".join(condiciones)}
+                ORDER BY (resp.estado_nuevo IS NULL) DESC, r.fecha DESC
+            """),
+            parametros,
+        )
+        return [dict(fila) for fila in resultado.mappings().all()]
+
+    async def resolver_solicitud_cambio(
+        self,
+        id_solicitud_cambio: UUID,
+        aprobar: bool,
+        respuesta: str,
+        usuario: dict,
+    ) -> dict:
+        """El administrador aprueba (cancela la asignación) o rechaza la solicitud."""
+        respuesta = (respuesta or "").strip()
+        if len(respuesta) < 10:
+            raise HTTPException(
+                status_code=422,
+                detail="Escriba una respuesta para la empresa de al menos 10 caracteres.",
+            )
+
+        fila = (await self.db.execute(
+            text(f"""
+                SELECT r.id_asignacion, r.id_solicitud, r.id_auditor, resp.estado_nuevo AS resuelta
+                FROM historial_asignacion_auditor r
+                {self._SQL_RESPUESTA}
+                WHERE r.id_historial = :id
+                  AND r.accion = 'SOLICITUD_CAMBIO_EMPRESA'
+            """),
+            {"id": str(id_solicitud_cambio)},
+        )).mappings().first()
+        if not fila:
+            raise HTTPException(status_code=404, detail="La solicitud de cambio no existe.")
+
+        # Bloquea la asignación para que dos administradores no la resuelvan a la vez.
+        await self.db.execute(
+            text("SELECT 1 FROM auditores_solicitud WHERE id = :id FOR UPDATE"),
+            {"id": str(fila["id_asignacion"])},
+        )
+        if fila["resuelta"] is not None:
+            raise HTTPException(status_code=409, detail="La solicitud de cambio ya fue resuelta.")
+
+        if aprobar:
+            # Si la visita ya está programada, cancelar_asignacion responde 409
+            # y la solicitud queda pendiente hasta que se cancele la programación.
+            await self.cancelar_asignacion(
+                fila["id_asignacion"],
+                confirmar=False,
+                usuario=usuario,
+                motivo="Cambio solicitado por la empresa. " + respuesta,
+            )
+
+        nuevo_estado = "Aprobada" if aprobar else "Rechazada"
+        await self.db.execute(
+            text("""
+                INSERT INTO historial_asignacion_auditor (
+                    id_historial, id_solicitud, id_auditor, accion, motivo,
+                    estado_anterior, estado_nuevo, id_usuario_accion, fecha,
+                    id_asignacion, origen
+                ) VALUES (
+                    gen_random_uuid(), :id_solicitud, :id_auditor, 'RESPUESTA_CAMBIO_EMPRESA', :respuesta,
+                    'Pendiente', :estado, :id_usuario, CURRENT_TIMESTAMP,
+                    :id_asignacion, 'Administrador'
+                )
+            """),
+            {
+                "id_solicitud": str(fila["id_solicitud"]),
+                "id_auditor": str(fila["id_auditor"]) if fila["id_auditor"] else None,
+                "respuesta": respuesta,
+                "estado": nuevo_estado,
+                "id_usuario": str(usuario["id_usuario"]),
+                "id_asignacion": str(fila["id_asignacion"]),
+            },
+        )
+        await self.db.commit()
+        return {
+            "estado": nuevo_estado,
+            "mensaje": (
+                "Solicitud aprobada: la asignación quedó cancelada."
+                if aprobar
+                else "Solicitud rechazada."
+            ),
+        }

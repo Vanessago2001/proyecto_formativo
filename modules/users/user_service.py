@@ -9,7 +9,12 @@ from core.security import hash_password, validar_password_segura
 from modules.auditores_registrados.auditores_registrados_service import (
     AuditoresRegistradosService,
 )
+from modules.roles.roles_service import es_rol_retirado
 from modules.users.user_schema import UserCreate, UserUpdate
+
+MENSAJE_ROL_RETIRADO = (
+    'El rol Super Administrador ya no se usa y no se puede asignar.'
+)
 
 class UserService:
 
@@ -65,6 +70,11 @@ class UserService:
       raise HTTPException(
           status_code=status.HTTP_400_BAD_REQUEST,
           detail='El rol proveído no existe.',
+      )
+    if es_rol_retirado(rol["nombre"]):
+      raise HTTPException(
+          status_code=status.HTTP_400_BAD_REQUEST,
+          detail=MENSAJE_ROL_RETIRADO,
       )
 
     es_empresa = (rol["nombre"] or '').strip().lower() == 'empresa'
@@ -303,13 +313,19 @@ class UserService:
 
     if user_update.rol is not None:
       role_exist = await self.db.execute(
-          text('SELECT id_rol FROM rol WHERE id_rol = :r_id;'),
+          text('SELECT id_rol, nombre FROM rol WHERE id_rol = :r_id;'),
           {'r_id': user_update.rol},
       )
-      if not role_exist.first():
+      rol_destino = role_exist.mappings().first()
+      if not rol_destino:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='El rol asignado no existe.',
+        )
+      if es_rol_retirado(rol_destino.get('nombre')):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=MENSAJE_ROL_RETIRADO,
         )
       update_fields.append('rol_id = :rol')
       params['rol'] = user_update.rol

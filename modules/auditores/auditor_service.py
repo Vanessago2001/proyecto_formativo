@@ -1453,12 +1453,26 @@ class AuditorService:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    "El registro ya no se encuentra disponible "
-                    "para edición."
+                    "Su registro de auditor está en estado "
+                    f"'{usuario['estado_auditor']}' y ya no admite cambios "
+                    "desde el formulario de registro. Si necesita "
+                    "actualizar esta información, inicie una nueva "
+                    "postulación o comuníquese con el administrador."
                 ),
             )
 
         return usuario
+
+    # Estados del auditor en los que el formulario de registro sigue abierto.
+    ESTADOS_REGISTRO_EDITABLE = (
+        "BORRADOR",
+        "Postulante",
+        "Pendiente",
+        "PENDIENTE",
+        "Enviado",
+        "Enviada",
+        "Enviado por Corrección",
+    )
 
     async def _obtener_postulacion_activa(self, id_usuario: UUID):
         result = await self.db.execute(
@@ -2615,9 +2629,15 @@ class AuditorService:
         data: ConflictoInteresCrear,
     ):
 
-        await self._verificar_usuario_borrador(id_usuario)
+        # Un conflicto de interés se puede declarar en cualquier momento:
+        # mientras el registro está abierto (formulario de registro) y
+        # también cuando el auditor ya fue aprobado. Fuera del registro se
+        # agrega a los existentes en lugar de reemplazarlos.
+        usuario = await self._obtener_usuario_para_conflicto(id_usuario)
+        if usuario["estado_auditor"] not in self.ESTADOS_REGISTRO_EDITABLE:
+            return await self.declarar_conflicto(id_usuario, data)
 
-        # La interfaz permite declarar un único conflicto. Eliminamos
+        # El formulario de registro declara un único conflicto. Eliminamos
         # registros anteriores para evitar duplicados históricos.
         await self.db.execute(
             text("""
@@ -2666,6 +2686,96 @@ class AuditorService:
 
         await self.db.commit()
 
+        return {
+            "id_conflicto": conflicto["id_conflicto"],
+            "mensaje": "Conflicto de interés registrado correctamente.",
+        }
+
+    async def _obtener_usuario_para_conflicto(self, id_usuario: UUID):
+        result = await self.db.execute(
+            text("""
+                SELECT id_usuario, estado, estado_auditor
+                FROM usuario
+                WHERE id_usuario = :id_usuario
+                LIMIT 1
+            """),
+            {"id_usuario": id_usuario},
+        )
+        usuario = result.mappings().first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No se encontró el usuario auditor.",
+            )
+        if str(usuario["estado"] or "").strip().upper() != "ACTIVO":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Su cuenta no está activa, por eso no puede declarar "
+                    "conflictos de interés. Comuníquese con el administrador."
+                ),
+            )
+        return usuario
+
+    # ========================================================
+    # CONFLICTO - DECLARAR (pantalla "Conflictos registrados")
+    #
+    # Agrega un conflicto sin borrar los ya declarados y sin depender del
+    # estado de la postulación: un conflicto de interés puede surgir en
+    # cualquier momento, también cuando el auditor ya está aprobado.
+    # ========================================================
+
+    async def declarar_conflicto(
+        self,
+        id_usuario: UUID,
+        data: ConflictoInteresCrear,
+    ):
+        await self._obtener_usuario_para_conflicto(id_usuario)
+
+        result = await self.db.execute(
+            text("""
+                SELECT id_conflicto
+                FROM conflicto_interes
+                WHERE id_usuario = :id_usuario
+                  AND id_empresa = :id_empresa
+                  AND COALESCE(estado, 'Activo') = 'Activo'
+                LIMIT 1
+            """),
+            {"id_usuario": id_usuario, "id_empresa": data.id_empresa},
+        )
+        if result.scalar():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Ya tiene un conflicto de interés activo con esta "
+                    "empresa. Use \"Actualizar conflicto de interés\" en la "
+                    "tabla para modificarlo."
+                ),
+            )
+
+        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
+        result = await self.db.execute(
+            text("""
+                INSERT INTO conflicto_interes (
+                    id_usuario, id_empresa, tipo_conflicto, descripcion,
+                    bloquea_asignacion, fecha_declaracion, estado, id_postulacion
+                ) VALUES (
+                    :id_usuario, :id_empresa, :tipo_conflicto, :descripcion,
+                    :bloquea_asignacion, CURRENT_TIMESTAMP, 'Activo', :id_postulacion
+                )
+                RETURNING id_conflicto
+            """),
+            {
+                "id_usuario": id_usuario,
+                "id_empresa": data.id_empresa,
+                "tipo_conflicto": data.tipo_conflicto,
+                "descripcion": data.descripcion,
+                "bloquea_asignacion": data.bloquea_asignacion,
+                "id_postulacion": id_postulacion,
+            },
+        )
+        conflicto = result.mappings().first()
+        await self.db.commit()
         return {
             "id_conflicto": conflicto["id_conflicto"],
             "mensaje": "Conflicto de interés registrado correctamente.",
@@ -2742,19 +2852,9 @@ class AuditorService:
 
         actualizado = result.mappings().first()
 
-        if actualizado:
-            # Conservamos únicamente el conflicto que acaba de editarse.
-            await self.db.execute(
-                text("""
-                    DELETE FROM conflicto_interes
-                    WHERE id_usuario = :id_usuario
-                      AND id_conflicto <> :id_conflicto
-                """),
-                {
-                    "id_usuario": id_usuario,
-                    "id_conflicto": id_conflicto,
-                },
-            )
+        # Antes se borraban aquí los demás conflictos del auditor; con la
+        # pantalla "Conflictos registrados" un auditor puede tener varios,
+        # así que editar uno no debe eliminar los otros.
 
         if not actualizado:
             raise HTTPException(
@@ -2831,16 +2931,24 @@ class AuditorService:
         await self.db.commit()
         return {"mensaje": "Conflicto eliminado correctamente."}
 
-    async def consultar_empresas_restringidas(self):
+    async def consultar_empresas_restringidas(self, id_usuario: UUID | None = None):
+        """Empresas con conflicto de interés activo que bloquea asignaciones.
+
+        Con ``id_usuario`` solo devuelve los conflictos de ese auditor; sin él
+        (uso administrativo) devuelve los de todos.
+        """
+        filtro_usuario = "AND ci.id_usuario = :id_usuario" if id_usuario else ""
         result = await self.db.execute(
-            text("""
+            text(f"""
                 SELECT DISTINCT e.id_empresa, e.nombre, e.nit,
                        ci.tipo_conflicto, ci.descripcion, ci.estado
                 FROM conflicto_interes ci
                 INNER JOIN empresa e ON e.id_empresa = ci.id_empresa
                 WHERE ci.estado = 'Activo' AND ci.bloquea_asignacion = TRUE
+                  {filtro_usuario}
                 ORDER BY e.nombre ASC
-            """)
+            """),
+            {"id_usuario": str(id_usuario)} if id_usuario else {},
         )
         return [dict(row) for row in result.mappings().all()]
 
@@ -4198,6 +4306,29 @@ class AuditorService:
         await self.db.commit()
         return dict(row)
 
+    async def actualizar_titulo_academico(
+        self, id_usuario: UUID, id_titulo: UUID, data: TituloAcademicoCrear
+    ):
+        # Editar actualiza la misma fila (no crea otra). Una fila devuelta
+        # vuelve a 'Pendiente' para que el administrador la revise de nuevo.
+        await self._verificar_usuario_borrador(id_usuario)
+        result = await self.db.execute(text("""
+            UPDATE titulo_academico
+            SET nivel = :nivel, titulo = :titulo, institucion = :institucion,
+                fecha_grado = :fecha_grado,
+                estado_validacion = 'Pendiente', observacion_validacion = '',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id_titulo = :id_titulo AND id_usuario = :id_usuario
+              AND estado_validacion <> 'Aprobado'
+            RETURNING id_titulo, nivel, titulo, institucion, fecha_grado,
+                      estado_validacion, observacion_validacion
+        """), {"id_titulo": id_titulo, "id_usuario": id_usuario, **data.model_dump()})
+        row = result.mappings().first()
+        if not row:
+            raise HTTPException(409, "El título no existe o ya está aprobado.")
+        await self.db.commit()
+        return {**dict(row), "mensaje": "Título actualizado correctamente."}
+
     async def eliminar_titulo_academico(self, id_usuario: UUID, id_titulo: UUID):
         await self._verificar_usuario_borrador(id_usuario)
         result = await self.db.execute(text("""
@@ -4239,6 +4370,27 @@ class AuditorService:
         row = result.mappings().first()
         await self.db.commit()
         return dict(row)
+
+    async def actualizar_experiencia_laboral(
+        self, id_usuario: UUID, id_experiencia: UUID, data: ExperienciaLaboralCrear
+    ):
+        await self._verificar_usuario_borrador(id_usuario)
+        result = await self.db.execute(text("""
+            UPDATE experiencia_laboral
+            SET empresa = :empresa, cargo = :cargo, fecha_inicio = :fecha_inicio,
+                fecha_fin = :fecha_fin, descripcion = :descripcion,
+                estado_validacion = 'Pendiente', observacion_validacion = '',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id_experiencia = :id_experiencia AND id_usuario = :id_usuario
+              AND estado_validacion <> 'Aprobado'
+            RETURNING id_experiencia, empresa, cargo, fecha_inicio, fecha_fin,
+                      descripcion, estado_validacion, observacion_validacion
+        """), {"id_experiencia": id_experiencia, "id_usuario": id_usuario, **data.model_dump()})
+        row = result.mappings().first()
+        if not row:
+            raise HTTPException(409, "La experiencia no existe o ya está aprobada.")
+        await self.db.commit()
+        return {**dict(row), "mensaje": "Experiencia laboral actualizada correctamente."}
 
     async def eliminar_experiencia_laboral(self, id_usuario: UUID, id_experiencia: UUID):
         await self._verificar_usuario_borrador(id_usuario)
@@ -4284,6 +4436,29 @@ class AuditorService:
         row = result.mappings().first()
         await self.db.commit()
         return dict(row)
+
+    async def actualizar_experiencia_auditoria(
+        self, id_usuario: UUID, id_experiencia: UUID, data: ExperienciaAuditoriaCrear
+    ):
+        await self._verificar_usuario_borrador(id_usuario)
+        result = await self.db.execute(text("""
+            UPDATE experiencia_auditoria
+            SET organizacion = :organizacion, rol_auditoria = :rol_auditoria,
+                tipo_auditoria = :tipo_auditoria, fecha_inicio = :fecha_inicio,
+                fecha_fin = :fecha_fin, descripcion = :descripcion,
+                estado_validacion = 'Pendiente', observacion_validacion = '',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id_experiencia = :id_experiencia AND id_usuario = :id_usuario
+              AND estado_validacion <> 'Aprobado'
+            RETURNING id_experiencia, organizacion, rol_auditoria, tipo_auditoria,
+                      fecha_inicio, fecha_fin, descripcion, estado_validacion,
+                      observacion_validacion
+        """), {"id_experiencia": id_experiencia, "id_usuario": id_usuario, **data.model_dump()})
+        row = result.mappings().first()
+        if not row:
+            raise HTTPException(409, "La experiencia no existe o ya está aprobada.")
+        await self.db.commit()
+        return {**dict(row), "mensaje": "Experiencia en auditoría actualizada correctamente."}
 
     async def eliminar_experiencia_auditoria(self, id_usuario: UUID, id_experiencia: UUID):
         await self._verificar_usuario_borrador(id_usuario)

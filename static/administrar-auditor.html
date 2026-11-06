@@ -5,6 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>CertiSENA · Ver solicitud de auditor</title>
+    <link rel="stylesheet" href="/static/tema.css?v=20261028">
+    <link rel="stylesheet" href="/static/styles.css?v=20261028">
     <style>
         :root {
             --green: #15803d;
@@ -25,24 +27,33 @@
             color: #1e293b
         }
 
-        .top {
-            background: #16324f;
-            color: #fff;
-            padding: 18px 28px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center
-        }
-
-        .top h1 {
-            margin: 0;
-            font-size: 20px
-        }
+        /* Encabezado: el comun verde de 90px (.login-header de styles.css). */
 
         .wrap {
             max-width: var(--ancho-contenido);
-            margin: 28px auto;
-            padding: 0 18px
+            margin: 0 auto;
+            padding: 28px
+        }
+
+        /* styles.css reinicia margenes (* { margin: 0 }): se devuelven los de esta vista. */
+        .hero h2 {
+            margin: 0 0 6px
+        }
+
+        .hero p {
+            margin: 0 0 4px
+        }
+
+        .section-body > p {
+            margin: 0 0 14px
+        }
+
+        .section-body h3 {
+            margin: 0 0 4px
+        }
+
+        .section-body .field + .field {
+            margin-top: 10px
         }
 
         .hero {
@@ -155,24 +166,7 @@
             margin-top: 10px
         }
 
-        .btn {
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer
-        }
-
-        .btn.green {
-            background: var(--green);
-            border-color: var(--green);
-            color: #fff
-        }
-
-        .btn.red {
-            color: #b42318;
-            border-color: #fecaca
-        }
+        /* Botones: sistema comun de tema.css (btn, btn-primario, btn-secundario, btn-peligro). */
 
         .obs {
             margin-top: 10px;
@@ -193,9 +187,7 @@
         .review-box textarea {
             width: 100%;
             min-height: 80px;
-            padding: 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px
+            padding: 8px 10px
         }
 
         .actions {
@@ -210,11 +202,6 @@
             padding: 12px
         }
 
-        .back {
-            color: #fff;
-            text-decoration: none
-        }
-
         @media(max-width:720px) {
             .grid {
                 grid-template-columns: 1fr
@@ -225,12 +212,23 @@
             }
         }
     </style>
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
 </head>
 
 <body>
-    <header class="top">
-        <h1>CertiSENA · Revisión de Auditor</h1><a class="back" href="/banco-auditores">← Banco de auditores</a>
+    <header class="login-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Revisión de Auditor</p>
+                </div>
+            </div>
+            <div class="comite-header-user">
+                <a class="comite-back-button" href="/dashboard">Panel</a>
+                <a class="profile-link back" href="/banco-auditores">← Banco de auditores</a>
+            </div>
+        </div>
     </header>
     <main class="wrap">
         <section class="hero">
@@ -276,10 +274,10 @@
                 <h3>Decisión de la postulación</h3>
                 <div class="review-box"><textarea id="obs"
                         placeholder="Observación general de la postulación"></textarea>
-                    <div class="actions"><button class="btn" onclick="cambiarEstado('En Revisión')">Poner en
-                            revisión</button><button class="btn" onclick="cambiarEstado('Correcciones')">Solicitar
-                            correcciones</button><button class="btn green" onclick="cambiarEstado('Aprobado')">Aprobar
-                            postulación</button><button class="btn red" onclick="cambiarEstado('Rechazado')">Rechazar
+                    <div class="actions"><button class="btn btn-secundario" onclick="cambiarEstado('En Revisión')">Poner en
+                            revisión</button><button class="btn btn-secundario" onclick="cambiarEstado('Correcciones')">Solicitar
+                            correcciones</button><button class="btn btn-primario green" onclick="cambiarEstado('Aprobado')">Aprobar
+                            postulación</button><button class="btn btn-peligro red" onclick="cambiarEstado('Rechazado')">Rechazar
                             postulación</button></div>
                     <div id="msg"></div>
                 </div>
@@ -446,17 +444,17 @@
                         : ''}
 
                     <div class="doc-actions">
-                        <button class="btn" onclick="window.open('${esc(d.url_archivo)}','_blank')">
+                        <button class="btn btn-secundario btn-sm" onclick="window.open('${esc(d.url_archivo)}','_blank')">
                             👁 Ver
                         </button>
 
                         ${locked
                         ? ''
                         : `
-                                <button class="btn green" onclick="revisar('${esc(d.id_documento)}','Aprobado')">
+                                <button class="btn btn-primario btn-sm green" onclick="revisar('${esc(d.id_documento)}','Aprobado')">
                                     ✓ Aprobar
                                 </button>
-                                <button class="btn red" onclick="revisar('${esc(d.id_documento)}','Rechazado')">
+                                <button class="btn btn-peligro-contorno btn-sm red" onclick="revisar('${esc(d.id_documento)}','Rechazado')">
                                     ✕ Rechazar
                                 </button>
                             `}

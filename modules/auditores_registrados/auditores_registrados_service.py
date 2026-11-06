@@ -542,6 +542,11 @@ class AuditoresRegistradosService:
             text("UPDATE usuario SET estado = :estado WHERE id_usuario = :id_usuario"),
             {"estado": nuevo_estado, "id_usuario": id_usuario},
         )
+        # Sin este commit el cambio (y el retiro de asignaciones) se perdia al
+        # cerrar la sesion: get_db no confirma la transaccion por su cuenta.
+        # Afectaba al PATCH de este modulo y a PUT /users/{id} con cuentas de
+        # rol Auditor (p. ej. auditortest@gmail.com en "Control de usuarios").
+        await self.db.commit()
 
         mensaje = (
             "Auditor inactivado correctamente."

@@ -47,7 +47,10 @@ ARCHIVOS_DE_PREPARACION = (
     "modules/empresas/empresas_bootstrap.py",
     "modules/aprobaciones/aprobacion_bootstrap.py",
     "modules/certificados/certificados_bootstrap.py",
+    "modules/permisos_auxiliar/permisos_auxiliar_bootstrap.py",
     "modules/auditores_registrados/auditores_registrados_bootstrap.py",
+    "modules/users/user_bootstrap.py",
+    "modules/pqrs/pqrs_bootstrap.py",
 )
 
 # Piezas que añadieron esos archivos. Si falta una, la base no está al día
@@ -57,7 +60,13 @@ PIEZAS_CLAVE = (
     ("tabla", "observacion_solicitud"),
     ("tabla", "historial_documento_empresa"),
     ("tabla", "aprobacion_pendiente"),
+    ("tabla", "permiso_auxiliar"),
+    ("tabla", "permiso_auxiliar_uso"),
     ("tabla", "contacto_sede"),
+    ("tabla", "pqrs_caso"),
+    ("tabla", "pqrs_caso_historial"),
+    ("tabla", "pqrs_caso_adjunto"),
+    ("tabla", "pqrs_plazo_tipo"),
     ("columna", "documento_empresa.nombre_archivo"),
     ("columna", "calculo_auditoria.desglose"),
     ("columna", "solicitud.fecha_envio_comite"),

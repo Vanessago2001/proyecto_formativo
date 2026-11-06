@@ -38,6 +38,8 @@ typing_extensions==4.16.0
 tzdata==2026.3
 uvicorn==0.51.0
 reportlab==5.0.1
+openpyxl==3.1.5
+et-xmlfile==2.0.0
 
 # Dependencias de desarrollo (para ejecutar los tests)
 pytest==9.1.1

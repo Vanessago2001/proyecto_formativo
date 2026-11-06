@@ -21,6 +21,8 @@ from modules.consultas_p.consultas_router import router as consultas_publicas_ro
 from modules.consultas_p.paginas_router import router as consultas_publicas_paginas
 from modules.aprobaciones.aprobacion_router import router as aprobaciones_router
 from modules.aprobaciones.aprobacion_bootstrap import preparar_aprobaciones
+from modules.permisos_auxiliar.permisos_auxiliar_router import router as permisos_auxiliar_router
+from modules.permisos_auxiliar.permisos_auxiliar_bootstrap import preparar_permisos_auxiliar
 from modules.comite.comite_router import router as comite_router
 from modules.comite.comite_bootstrap import preparar_modulo_comite
 from modules.apelaciones.apelaciones_router import router as apelaciones_router
@@ -78,6 +80,11 @@ from modules.auditorias.auditoria_bootstrap import preparar_modulo_auditorias
 from modules.reportes.reportes_router import router as reportes_router
 from modules.solicitudes.solicitud_bootstrap import preparar_modulo_solicitudes
 from modules.empresas.empresas_bootstrap import preparar_modulo_empresas
+from modules.users.user_bootstrap import preparar_modulo_usuarios
+
+# PQRS (peticiones, quejas, reclamos y sugerencias)
+from modules.pqrs.pqrs_router import router as pqrs_router
+from modules.pqrs.pqrs_bootstrap import preparar_modulo_pqrs
 
 
 
@@ -306,8 +313,11 @@ async def lifespan(app: FastAPI):
         await preparar_modulo_auditorias()
         await preparar_modulo_comite()
         await preparar_modulo_empresas()
+        await preparar_modulo_usuarios()
         await preparar_aprobaciones()
+        await preparar_permisos_auxiliar()
         await preparar_modulo_certificados()
+        await preparar_modulo_pqrs()
 
         guardar_huella(huella())
         logger.info("Base preparada en %.1f s.", perf_counter() - comenzo)
@@ -346,6 +356,8 @@ app.include_router(empresas_router)
 app.include_router(consultas_publicas_router)
 app.include_router(consultas_publicas_paginas)
 app.include_router(aprobaciones_router)
+app.include_router(permisos_auxiliar_router)
+app.include_router(pqrs_router)
 app.include_router(comite_router)
 app.include_router(certificados_router)
 app.include_router(apelaciones_router)
@@ -443,6 +455,23 @@ async def gestion_certificados_page(request: Request):
 @app.get("/verificar-certificado", response_class=HTMLResponse)
 async def verificar_certificado_page(request: Request):
     return FileResponse("static/certificados.html")
+
+
+@app.get("/pqrs", response_class=HTMLResponse)
+async def pqrs_page(request: Request):
+    """PQRS: radicar y consultar las propias (público y empresa)."""
+    return FileResponse("static/pqrs.html")
+
+
+@app.get("/pqrs-gestion", response_class=HTMLResponse)
+async def pqrs_gestion_page(request: Request):
+    """PQRS: bandeja de gestión, tiempos de atención y reportes."""
+    return FileResponse("static/pqrs_gestion.html")
+
+
+@app.get("/permisos-auxiliar", response_class=HTMLResponse)
+async def permisos_auxiliar_page(request: Request):
+    return FileResponse("static/permisos_auxiliar.html")
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

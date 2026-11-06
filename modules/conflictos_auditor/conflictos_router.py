@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user
-from modules.auth.dependencies import require_self_or_admin
+from modules.auth.dependencies import es_rol_administrativo, require_self_or_admin
 from modules.conflictos_auditor.conflictos_service import ConflictoAuditorService
 from modules.auditores.auditor_schema import ConflictoInteresCrear
 from modules.auditores.auditor_service import AuditorService
@@ -23,6 +23,17 @@ async def listar(
     return {"conflictos": await ConflictoAuditorService(db).listar_por_usuario(id_usuario)}
 
 
+@router.post("/usuario/{id_usuario}")
+async def declarar(
+    id_usuario: UUID,
+    data: ConflictoInteresCrear,
+    usuario: dict = Depends(require_self_or_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Declara un conflicto de interés nuevo sin importar el estado de la postulación."""
+    return await AuditorService(db).declarar_conflicto(id_usuario, data)
+
+
 @router.delete("/{id_conflicto}")
 async def eliminar_conflicto_administrador(
     id_conflicto: UUID,
@@ -38,7 +49,9 @@ async def empresas_restringidas(
     usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return {"empresas": await ConflictoAuditorService(db).empresas_restringidas()}
+    # El auditor solo ve sus propios conflictos; los roles administrativos ven todos.
+    propio = None if es_rol_administrativo(usuario) else usuario["id_usuario"]
+    return {"empresas": await ConflictoAuditorService(db).empresas_restringidas(propio)}
 
 
 @router.post("/administrador/usuario/{id_usuario}")

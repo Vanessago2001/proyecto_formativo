@@ -98,44 +98,13 @@ BOTONES
     gap: 15px;
     margin-left: auto;
 }
-.btn-login{
 
-    padding:12px 25px;
 
-    background:#f1f5f9;
-    color:#256d00;
 
-    border-radius:30px;
-    border:2px solid white;
 
-    text-decoration:none;
-    font-weight:600;
 
-    transition:.3s;
 
-}
 
-.btn-login:hover{
-
-    background:#2f8f00;
-    color:white;
-
-}
-
-/* Botón mientras procesa una petición: atenuado y sin interacción */
-.btn-login:disabled{
-
-    opacity:.6;
-    cursor:not-allowed;
-
-}
-
-.btn-login:disabled:hover{
-
-    background:#f1f5f9;
-    color:#256d00;
-
-}
 
 /*=========================
 MENU HAMBURGUESA
@@ -279,15 +248,11 @@ FORMULARIO
 
 }
 
-.form-group input{
+/* Alto, borde, radio y padding de los campos: sistema comun de tema.css */
+.form-group input,
+.form-group select{
 
     width:100%;
-
-    padding:14px;
-
-    border:1px solid #ccc;
-
-    border-radius:10px;
 
 }
 
@@ -369,14 +334,6 @@ RESPONSIVE
 
 }
 
-.form-group select{
-    width:100%;
-    padding:14px;
-    border:1px solid #ccc;
-    border-radius:8px;
-    background:#fff;
-    font:inherit;
-}
 
 .profile-icon{
     width:40px;
@@ -390,15 +347,7 @@ RESPONSIVE
     font-weight:700;
 }
 
-.primary-action{
-    padding:11px 14px;
-    border:0;
-    border-radius:4px;
-    background:#3baa01;
-    color:#fff;
-    font:inherit;
-    font-weight:700;
-}
+
 
 /*=========================
 ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
@@ -449,25 +398,9 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     line-height:1.5;
 }
 
-/* Botón secundario (Volver a iniciar sesión) */
-.btn-secondary{
-    display:block;
-    width:100%;
-    padding:12px 25px;
-    background:#fff;
-    color:#256d00;
-    border-radius:30px;
-    border:2px solid #3baa01;
-    text-decoration:none;
-    font-weight:600;
-    transition:.3s;
-    margin-top:10px;
-}
 
-.btn-secondary:hover{
-    background:#3baa01;
-    color:#fff;
-}
+
+
 /* ==========================================
    MODAL MFA
 ========================================== */
@@ -510,7 +443,8 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
   margin-bottom: 20px;
 }
 
-.form-group input {
+/* Solo el campo del codigo de verificacion de 6 digitos va centrado y espaciado. */
+.form-group input[maxlength="6"] {
   width: 100%;
   padding: 12px;
   font-size: 18px;
@@ -526,31 +460,13 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
   gap: 12px;
 }
 
-.btn-secondary {
-  padding: 10px 18px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  border-radius: 6px;
-  cursor: pointer;
-}
 
-.btn-secondary:hover {
-  background: #f8fafc;
-}
 
-.btn-login {
-  padding: 10px 18px;
-  border: none;
-  border-radius: 6px;
-  background: #3baa01;
-  color: white;
-  cursor: pointer;
-  font-weight: 600;
-}
 
-.btn-login:hover {
-  background: #2f8f00;
-}
+
+
+
+
 
 @keyframes aparecer {
   from {
@@ -576,11 +492,9 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     --comite-danger: #b42318;
 }
 
-.comite-page button,
-.comite-page input,
-.comite-page select,
-.comite-page textarea {
-    font: inherit;
+/* Sin especificidad de clase: no debe pisar el peso/tamano de .btn ni de .campo. */
+:where(.comite-page) :is(button, input, select, textarea) {
+    font-family: inherit;
 }
 
 .comite-header-user {
@@ -748,50 +662,19 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     line-height: 1.5;
 }
 
-.comite-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 38px;
-    padding: 9px 14px;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 700;
-    white-space: nowrap;
-    transition: background .2s ease, border-color .2s ease, color .2s ease;
-}
 
-.comite-button.primary {
-    background: var(--comite-green);
-    color: #fff;
-}
 
-.comite-button.primary:hover {
-    background: var(--comite-green-dark);
-}
 
-.comite-button.secondary {
-    border-color: #cbd5e1;
-    background: #fff;
-    color: #334155;
-}
 
-.comite-button.secondary:hover {
-    border-color: var(--comite-green);
-    background: var(--comite-green-soft);
-    color: var(--comite-green-dark);
-}
 
-.comite-button.danger {
-    background: var(--comite-danger);
-    color: #fff;
-}
 
-.comite-button.danger:hover {
-    background: #8f1d15;
-}
+
+
+
+
+
+
+
 
 .comite-button:focus-visible,
 .comite-back-button:focus-visible,
@@ -802,10 +685,7 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     outline-offset: 2px;
 }
 
-.comite-button:disabled {
-    cursor: not-allowed;
-    opacity: .55;
-}
+
 
 .comite-feedback {
     min-height: 0;
@@ -963,22 +843,9 @@ ELEMENTOS NUEVOS - VERIFICACIÓN DE CÓDIGO
     background: #f8fafc;
 }
 
-.comite-table-action {
-    min-height: 32px;
-    padding: 6px 9px;
-    border: 1px solid #3baa01;
-    border-radius: 5px;
-    background: #fff;
-    color: #256d00;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 700;
-    transition: background .2s ease, color .2s ease;
-}
 
-.comite-table-action:hover {
-    background: #f1f5f9;
-}
+
+
 
 .comite-pagination {
     display: flex;
@@ -1763,28 +1630,11 @@ DROPDOWN DE CONSULTA PÚBLICA
     display: block;
 }
 
-.nav-dropdown-panel {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-}
 
-.nav-dropdown-panel a {
-    color: #3baa01;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 14px;
-    padding: 11px 14px;
-    border-radius: 8px;
-    transition: .2s;
-}
 
-.nav-dropdown-panel a:hover {
-    background: #f1f5f9;
-}
+
+
+
 
 /* Grupo de consulta pública dentro del menú hamburguesa */
 .mobile-menu-group {

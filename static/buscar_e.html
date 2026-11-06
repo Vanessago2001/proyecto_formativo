@@ -13,18 +13,14 @@
 
     <link rel="stylesheet" href="/static/styles.css?v=20261028">
     <style>
-        .cp-wrap { max-width: var(--ancho-contenido); margin: 0 auto; padding: 26px 18px 40px; }
+        .cp-wrap { max-width: var(--ancho-contenido); margin: 0 auto; padding: 28px 28px 40px; }
         .cp-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 26px 28px; }
         .cp-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
         .cp-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
         .cp-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
         .cp-field { flex: 1 1 280px; min-width: 220px; }
         .cp-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-        .cp-field input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
-        .cp-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
-        .cp-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-        .cp-btn:hover { background: #388e3c; }
-        .cp-btn:disabled { opacity: .6; cursor: wait; }
+        .cp-field input { width: 100%; }
         #conteo { color: #6b7280; font-size: 13px; margin: 16px 2px 10px; }
         .cp-card { background: #fff; border: 1px solid #e2e8f0; border-top: 4px solid #f9a825; border-radius: 3px; padding: 20px 22px; max-width: 620px; margin-bottom: 16px; }
         .cp-badge { display: inline-block; background: #fffbeb; color: #8d6e00; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px; }
@@ -36,8 +32,11 @@
         .cp-rows { display: grid; grid-template-columns: 130px 1fr; row-gap: 6px; font-size: 13px; margin-bottom: 14px; }
         .cp-rows dt { color: #2f7d32; font-weight: 700; }
         .cp-rows dd { margin: 0; color: #374151; word-break: break-word; }
-        .cp-constancia { background: #fff; color: #2f7d32; border: 1px solid #2f7d32; border-radius: 6px; padding: 8px 16px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .cp-constancia:hover { background: #f1f5f9; }
+        .cp-card.inactiva { border-top-color: #b42318; }
+        .cp-badge.inactiva { background: #fdecea; color: #b42318; }
+        .cp-constancia-ctrl { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .cp-constancia-ctrl select { max-width: 100%; }
+        .cp-constancia-nota { margin: 8px 0 0; color: #6b7280; font-size: 12px; }
         .cp-error { background: #fffbeb; color: #b42318; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; max-width: 620px; }
         #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
         @media (max-width: 700px) {
@@ -157,7 +156,7 @@
                     <input type="text" id="nitBuscar" name="nit" placeholder="900123456-7">
                 </div>
 
-                <button type="submit" class="cp-btn" id="btnConsultar">
+                <button type="submit" class="btn btn-primario cp-btn" id="btnConsultar">
                     Consultar
                 </button>
 
@@ -229,16 +228,42 @@
             conteo.textContent = "";
         }
 
+        // Botón de constancia: deshabilitado sin certificados vigentes; con
+        // varios, se elige uno o "todos".
+        function controlConstancia(emp) {
+            const certs = Array.isArray(emp.certificados) ? emp.certificados : [];
+            if (!certs.length) {
+                return `<button type="button" class="btn btn-secundario cp-constancia" disabled>Descargar constancia</button>
+                    <p class="cp-constancia-nota">${esc(emp.empresa_activa === false
+                        ? "La empresa no está activa: no hay constancia para descargar."
+                        : "La empresa no tiene certificados vigentes: no hay constancia para descargar.")}</p>`;
+            }
+            const selector = certs.length > 1
+                ? `<select class="cp-cert" aria-label="Certificado a incluir">
+                        <option value="">Todos los certificados vigentes (${certs.length})</option>
+                        ${certs.map(c => `<option value="${esc(c.codigo_verificacion)}">${esc(c.codigo_verificacion)}${c.norma_codigo ? " - " + esc(c.norma_codigo) : ""}</option>`).join("")}
+                   </select>`
+                : "";
+            return `<div class="cp-constancia-ctrl">${selector}
+                <button type="button" class="btn btn-secundario cp-constancia" data-nit="${esc(emp.nit)}">Descargar constancia</button></div>`;
+        }
+
         function tarjeta(emp) {
             const sol = emp.ultima_solicitud || null;
             const radicado = sol && sol.numero_radicado ? sol.numero_radicado : null;
             const certificada = !!emp.certificada;
-            const estado = certificada ? "Verificada" : (radicado ? "En proceso" : "No radicada");
-            const badge = radicado
-                ? `<span class="cp-badge ok">RADICADO</span>`
-                : `<span class="cp-badge no">NO RADICADO</span>`;
+            const activa = emp.empresa_activa !== false;
+            const estadoEmpresa = String(emp.estado_empresa || "inactiva");
+            const estado = !activa
+                ? "Empresa " + estadoEmpresa.toLowerCase() + " - sin certificación vigente"
+                : (certificada ? "Verificada" : (radicado ? "En proceso" : "No radicada"));
+            const badge = !activa
+                ? `<span class="cp-badge inactiva">EMPRESA ${esc(estadoEmpresa.toUpperCase())}</span>`
+                : radicado
+                    ? `<span class="cp-badge ok">RADICADO</span>`
+                    : `<span class="cp-badge no">NO RADICADO</span>`;
 
-            return `<article class="cp-card">
+            return `<article class="cp-card ${activa ? "" : "inactiva"}">
                 ${badge}
                 <p class="cp-nombre">${esc(emp.nombre)}</p>
                 <p class="cp-sub">NIT ${esc(emp.nit)}${emp.ciudad ? " - " + esc(emp.ciudad) : ""}</p>
@@ -248,7 +273,7 @@
                     <dt>Fecha de solicitud</dt><dd>${esc(sol && (sol.fecha_radicacion || sol.fecha))}</dd>
                     <dt>Estado</dt><dd>${esc(estado)}</dd>
                 </dl>
-                <button type="button" class="cp-constancia" data-nit="${esc(emp.nit)}">Descargar constancia</button>
+                ${controlConstancia(emp)}
             </article>`;
         }
 
@@ -270,7 +295,7 @@
                     let detalle = "No se pudo completar la consulta.";
                     try {
                         const data = await response.json();
-                        detalle = data.detail || detalle;
+                        detalle = mensajeErrorApi(data, detalle);
                     } catch (e) { /* respuesta no JSON */ }
                     mostrarError(detalle);
                     return;
@@ -287,8 +312,10 @@
                 conteo.classList.remove("hidden-section");
                 resultados.innerHTML = empresas.map(tarjeta).join("");
 
-                resultados.querySelectorAll("[data-nit]").forEach(b =>
-                    b.onclick = () => descargarConstancia(b.dataset.nit, b));
+                resultados.querySelectorAll("button[data-nit]").forEach(b => {
+                    const selector = b.parentElement.querySelector(".cp-cert");
+                    b.onclick = () => descargarConstancia(b.dataset.nit, b, selector ? selector.value : "");
+                });
 
             } catch (error) {
                 console.error("Error en consulta:", error);
@@ -298,25 +325,29 @@
             }
         }
 
-        async function descargarConstancia(nit, btn) {
+        async function descargarConstancia(nit, btn, codigo) {
             const texto = btn.textContent;
             btn.disabled = true;
             btn.textContent = "Generando PDF...";
             try {
-                const r = await fetch(`/api/consultas-publicas/constancia/${encodeURIComponent(nit)}/pdf`);
-                if (!r.ok) throw new Error("No se pudo generar el PDF (" + r.status + ")");
+                const consulta = codigo ? `?codigo=${encodeURIComponent(codigo)}` : "";
+                const r = await fetch(`/api/consultas-publicas/constancia/${encodeURIComponent(nit)}/pdf${consulta}`);
+                if (!r.ok) {
+                    const datos = await r.json().catch(() => ({}));
+                    throw new Error(mensajeErrorApi(datos, "No se pudo generar el PDF (" + r.status + ")."));
+                }
                 const blob = await r.blob();
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = "constancia-" + nit + ".pdf";
+                a.download = "constancia-" + nit + (codigo ? "-" + codigo : "") + ".pdf";
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
                 URL.revokeObjectURL(url);
             } catch (error) {
                 console.error("Error descargando constancia:", error);
-                mostrarError("No se pudo descargar la constancia en PDF.");
+                mostrarError(error.message || "No se pudo descargar la constancia en PDF.");
             } finally {
                 btn.disabled = false;
                 btn.textContent = texto;
@@ -326,8 +357,10 @@
         searchForm.addEventListener("submit", function (e) {
             e.preventDefault();
             const nit = nitInput.value.trim();
-            if (!nit) {
-                mostrarError("Ingrese el NIT de la empresa para consultar.");
+            limpiar();
+            const errorNit = validarNit(nit);
+            if (errorNit) {
+                mostrarError(errorNit);
                 return;
             }
             buscarEmpresaPorNit(nit);
@@ -337,6 +370,7 @@
 
     </script>
 
+<script src="/static/errores-api.js?v=20261104"></script>
 <script src="/static/session.js?v=20261029"></script>
 </body>
 

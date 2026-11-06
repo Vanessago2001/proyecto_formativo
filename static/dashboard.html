@@ -8,6 +8,9 @@
   <link rel="stylesheet" href="/static/tema.css?v=20261028">
   <link rel="stylesheet" href="/static/styles.css?v=20261028" />
   <style>
+    .acceso-form { display: grid; gap: 10px; text-align: left; }
+    .acceso-form label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .acceso-form input, .acceso-form textarea { width: 100%; }
     .app-shell {
       max-width: var(--ancho-contenido);
       margin: 0 auto;
@@ -155,29 +158,14 @@
     input,
     select {
       width: 100%;
-      padding: 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      font: inherit;
     }
 
     .form-action {
       align-self: end;
     }
 
-    .primary-action {
+    .form-action .primary-action {
       width: 100%;
-      padding: 11px 14px;
-      border: 0;
-      border-radius: 4px;
-      background: #3baa01;
-      color: #fff;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .primary-action:hover {
-      background: #2f8f00;
     }
 
     .table-wrap {
@@ -203,21 +191,31 @@
       background: #f8fafc;
     }
 
-    .status {
-      border: 0;
-      padding: 6px 8px;
-      border-radius: 4px;
-      font: inherit;
+    /* Estado de la fila: lista desplegable pequena con el color del estado. */
+    select.status {
+      width: auto;
+      min-width: 112px;
+      min-height: 32px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
     }
 
-    .status.active {
-      background: #e4f1dc;
+    select.status.active {
+      background-color: #e4f1dc;
+      border-color: #b7dca0;
       color: #256d00;
     }
 
-    .status.inactive {
-      background: #fffbeb;
+    select.status.inactive {
+      background-color: #fffbeb;
+      border-color: #f3c6c1;
       color: #b42318;
+    }
+
+    td select {
+      min-height: 32px;
     }
 
     .message {
@@ -353,9 +351,14 @@
                 minlength="6" />
             </div>
             <div>
-              <label for="tipoDoc">Tipo de documento</label><select id="tipoDoc">
-                <option>Documento de identidad</option>
-                <option>Pasaporte</option>
+              <label for="tipoDoc">Tipo de documento</label><select id="tipoDoc" required>
+                <!-- Mismos valores que el registro publico (register.html). La
+                     columna usuario.tipo_doc admite 20 caracteres como maximo. -->
+                <option value="" disabled selected>Selecciona un tipo</option>
+                <option value="Cédula de Ciudadanía">Cédula de Ciudadanía</option>
+                <option value="Tarjeta de Identidad">Tarjeta de Identidad</option>
+                <option value="Pasaporte">Pasaporte</option>
+                <option value="NIT">NIT</option>
               </select>
             </div>
             <div>
@@ -367,7 +370,7 @@
               </select>
             </div>
             <div class="form-action">
-              <button class="primary-action" type="submit">
+              <button class="primary-action btn btn-primario" type="submit">
                 Crear cuenta
               </button>
             </div>
@@ -391,6 +394,7 @@
                   <th>Rol</th>
                   <th>Estado</th>
                   <th>Permiso</th>
+                  <th>Acceso</th>
                 </tr>
               </thead>
               <tbody id="usersBody"></tbody>
@@ -406,10 +410,37 @@
         consultar los datos de tu sesion.
       </p>
       <p style="margin-top: 18px">
-        <a id="companyLink" class="primary-action" style="display: inline-block; width: auto; text-decoration: none"
+        <a id="companyLink" class="primary-action btn btn-primario"
           href="/profile">Ir a mi perfil</a>
       </p>
     </section>
+
+    <!-- ===================================== -->
+    <!-- Modal gestion de acceso (cambiar correo / restablecer contraseña) -->
+    <!-- ===================================== -->
+
+    <div id="accesoModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="accesoTitulo">
+      <div class="modal-card">
+        <h3 id="accesoTitulo">Gestionar acceso</h3>
+        <p id="accesoTexto"></p>
+        <form id="accesoForm" class="acceso-form">
+          <div id="accesoCorreoGrupo">
+            <label for="accesoCorreo">Correo nuevo</label>
+            <input id="accesoCorreo" type="email" maxlength="100" autocomplete="off" />
+          </div>
+          <div>
+            <label for="accesoMotivo">Motivo (obligatorio)</label>
+            <textarea id="accesoMotivo" rows="3" minlength="5" maxlength="500" required
+              placeholder="Ej.: la empresa perdió acceso a su correo y lo solicitó por oficio."></textarea>
+          </div>
+          <p class="message" id="accesoMensaje"></p>
+          <div class="modal-buttons">
+            <button type="button" id="accesoCancelar" class="btn-secondary btn btn-secundario">Cancelar</button>
+            <button type="submit" id="accesoConfirmar" class="btn-login btn btn-primario">Confirmar</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- ===================================== -->
     <!-- Modal Confirmación Sneider-->
@@ -425,13 +456,13 @@
 
         <div class="modal-buttons">
 
-          <button id="btnCancelar" class="btn-secondary">
+          <button id="btnCancelar" class="btn-secondary btn btn-secundario">
 
             Cancelar
 
           </button>
 
-          <button id="btnAceptar" class="btn-login">
+          <button id="btnAceptar" class="btn-login btn btn-primario">
 
             Aceptar
 
@@ -476,13 +507,13 @@
 
         <div class="modal-buttons">
 
-          <button id="btnCancelarCodigo" class="btn-secondary">
+          <button id="btnCancelarCodigo" class="btn-secondary btn btn-secundario">
 
             Cancelar
 
           </button>
 
-          <button id="btnVerificarCodigo" class="btn-login">
+          <button id="btnVerificarCodigo" class="btn-login btn btn-primario">
 
             Verificar
 
@@ -893,8 +924,14 @@
       const roles = await res.json();
       const select = document.getElementById("rol");
       const displayed = new Set();
+      // El rol Super Administrador ya no se usa: no se ofrece para asignar
+      // (el backend tambien lo excluye y rechaza asignarlo).
+      const esRolRetirado = (nombre) =>
+        String(nombre || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+          .toLowerCase().replace(/[\s_-]+/g, "") === "superadministrador";
       availableRoles = roles.filter((role) => {
         if (!role.nombre || displayed.has(role.nombre)) return false;
+        if (esRolRetirado(role.nombre)) return false;
         displayed.add(role.nombre);
         return true;
       });
@@ -957,15 +994,102 @@
         state.addEventListener("change", () =>
           updateUser(u.id, { estado: state.value }),
         );
-        tr.innerHTML = "<td></td><td></td><td></td><td></td><td></td>";
+        tr.innerHTML = "<td></td><td></td><td></td><td></td><td></td><td></td>";
         tr.children[0].textContent = u.nombre;
         tr.children[1].textContent = u.correo;
         tr.children[2].textContent = u.rol_nombre || "Rol " + u.rol_id;
         tr.children[3].appendChild(state);
         tr.children[4].appendChild(roleSelect);
+        // Cambiar correo / restablecer contraseña: solo cuentas Empresa o
+        // Auditor (el backend lo vuelve a validar).
+        if (esCuentaGestionable(u.rol_nombre)) {
+          const acciones = document.createElement("div");
+          acciones.className = "acceso-actions acciones-tabla";
+          const btnCorreo = document.createElement("button");
+          btnCorreo.type = "button";
+          btnCorreo.className = "btn btn-secundario btn-sm";
+          btnCorreo.textContent = "Cambiar correo";
+          btnCorreo.addEventListener("click", () => abrirAcceso("correo", u));
+          const btnClave = document.createElement("button");
+          btnClave.type = "button";
+          btnClave.className = "btn btn-secundario btn-sm";
+          btnClave.textContent = "Restablecer contraseña";
+          btnClave.addEventListener("click", () => abrirAcceso("clave", u));
+          acciones.append(btnCorreo, btnClave);
+          tr.children[5].appendChild(acciones);
+        } else {
+          tr.children[5].textContent = "-";
+        }
         body.appendChild(tr);
       });
     }
+    function esCuentaGestionable(rolNombre) {
+      const rol = String(rolNombre || "").trim().toLowerCase();
+      return rol === "empresa" || rol === "auditor";
+    }
+    let accesoActual = null;
+    function abrirAcceso(tipo, usuario) {
+      accesoActual = { tipo, usuario };
+      const esCorreo = tipo === "correo";
+      document.getElementById("accesoTitulo").textContent = esCorreo
+        ? "Cambiar correo de la cuenta"
+        : "Restablecer contraseña";
+      document.getElementById("accesoTexto").textContent = esCorreo
+        ? "Cuenta: " + usuario.nombre + " (" + usuario.correo + "). Se avisará al correo anterior del cambio."
+        : "Cuenta: " + usuario.nombre + ". Se enviará al correo " + usuario.correo +
+          " un enlace para crear una nueva contraseña; la actual quedará vencida. Usted no verá ni escribirá la contraseña.";
+      document.getElementById("accesoCorreoGrupo").style.display = esCorreo ? "" : "none";
+      const correo = document.getElementById("accesoCorreo");
+      correo.required = esCorreo;
+      correo.value = "";
+      document.getElementById("accesoMotivo").value = "";
+      show("accesoMensaje", "", false);
+      document.getElementById("accesoModal").classList.remove("hidden");
+      (esCorreo ? correo : document.getElementById("accesoMotivo")).focus();
+    }
+    function cerrarAcceso() {
+      accesoActual = null;
+      document.getElementById("accesoModal").classList.add("hidden");
+    }
+    document.getElementById("accesoCancelar").addEventListener("click", cerrarAcceso);
+    document.getElementById("accesoForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!accesoActual) return;
+      const motivo = document.getElementById("accesoMotivo").value.trim();
+      if (motivo.length < 5) {
+        show("accesoMensaje", "Escriba el motivo (mínimo 5 caracteres).", false);
+        return;
+      }
+      const { tipo, usuario } = accesoActual;
+      const esCorreo = tipo === "correo";
+      const cuerpo = { motivo };
+      if (esCorreo) cuerpo.correo = document.getElementById("accesoCorreo").value.trim();
+      const confirmacion = esCorreo
+        ? "¿Cambiar el correo de " + usuario.nombre + " a " + cuerpo.correo + "?"
+        : "¿Enviar a " + usuario.nombre + " un enlace para restablecer su contraseña?";
+      if (!confirm(confirmacion)) return;
+      const boton = document.getElementById("accesoConfirmar");
+      boton.disabled = true;
+      try {
+        const res = await fetch(
+          "/users/" + encodeURIComponent(usuario.id) + (esCorreo ? "/correo" : "/restablecer-password"),
+          { method: esCorreo ? "PUT" : "POST", headers: headers(), body: JSON.stringify(cuerpo) },
+        );
+        const result = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detalle = Array.isArray(result.detail)
+            ? result.detail.map((d) => d.msg).join(" · ")
+            : result.detail;
+          show("accesoMensaje", detalle || "No fue posible completar la acción.", false);
+          return;
+        }
+        cerrarAcceso();
+        show("tableMessage", result.mensaje || "Acción realizada.", true);
+        if (esCorreo) loadUsers();
+      } finally {
+        boton.disabled = false;
+      }
+    });
     async function updateUser(id, data) {
       const res = await fetch("/users/" + id, {
         method: "PUT",

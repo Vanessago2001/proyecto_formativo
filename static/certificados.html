@@ -10,6 +10,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css?v=20261028">
   <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <style>
+    /* Buscar y Estado en una fila; las exportaciones (secundarias) debajo, juntas. */
+    .certificados-page .cert-toolbar { grid-template-columns: minmax(220px, 1fr) minmax(155px, .6fr); }
+    .cert-exportes { grid-column: 1 / -1; }
+    /* styles.css pone "* { margin: 0 }" y el dialogo nativo pierde su centrado. */
+    .cert-dialog { margin: auto; }
+    .cert-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  </style>
 </head>
 
 <body class="comite-page certificados-page">
@@ -55,7 +63,7 @@
             <span class="comite-kicker">Registro oficial</span>
             <h2 id="viewTitle">Certificados</h2>
           </div>
-          <button id="refreshButton" class="comite-button secondary" type="button" aria-label="Actualizar certificados" title="Actualizar">Actualizar</button>
+          <button id="refreshButton" class="comite-button secondary btn btn-secundario" type="button" aria-label="Actualizar certificados" title="Actualizar">Actualizar</button>
         </div>
 
         <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
@@ -75,7 +83,7 @@
                   <option value="">Cargando usuarios Comité...</option>
                 </select>
               </div>
-              <button id="leaderAssignButton" class="comite-button secondary" type="submit">Asignar líder</button>
+              <button id="leaderAssignButton" class="comite-button primary btn btn-primario" type="submit">Asignar líder</button>
             </form>
           </section>
 
@@ -111,7 +119,7 @@
                 <input id="fechaVencimiento" type="date" required>
               </div>
               <div class="cert-form-action">
-                <button id="createButton" class="comite-button primary" type="submit">Generar borrador</button>
+                <button id="createButton" class="comite-button primary btn btn-primario" type="submit">Generar borrador</button>
               </div>
             </form>
           </section>
@@ -139,8 +147,12 @@
                     <option value="CANCELADO">Cancelado</option>
                   </select>
                 </div>
-                <button id="exportButton" class="comite-button secondary" type="button">Exportar certificados</button>
-                <button id="exportCompaniesButton" class="comite-button secondary" type="button">Empresas certificadas</button>
+                <div class="grupo-botones cert-exportes">
+                <button id="exportButton" class="comite-button secondary btn btn-secundario" type="button" data-export="/certificados/exportar" data-nombre="certificados" data-formato="xlsx">Exportar certificados (Excel)</button>
+                <button id="exportPdfButton" class="comite-button secondary btn btn-secundario" type="button" data-export="/certificados/exportar" data-nombre="certificados" data-formato="pdf">Exportar certificados (PDF)</button>
+                <button id="exportCompaniesButton" class="comite-button secondary btn btn-secundario" type="button" data-export="/certificados/empresas-oficiales" data-nombre="empresas-certificadas" data-formato="xlsx">Empresas certificadas (Excel)</button>
+                <button id="exportCompaniesPdfButton" class="comite-button secondary btn btn-secundario" type="button" data-export="/certificados/empresas-oficiales" data-nombre="empresas-certificadas" data-formato="pdf">Empresas certificadas (PDF)</button>
+                </div>
               </div>
               <div class="comite-table-wrap">
                 <table class="cert-table">
@@ -184,7 +196,7 @@
                 <option value="90">90</option>
                 <option value="180">180</option>
               </select>
-              <button id="loadAlertsButton" class="comite-button secondary" type="button">Consultar</button>
+              <button id="loadAlertsButton" class="comite-button primary btn btn-primario" type="button">Consultar</button>
             </div>
           </div>
           <div class="comite-table-wrap">
@@ -206,7 +218,7 @@
               <label for="publicCode">Código de verificación</label>
               <input id="publicCode" type="search" required autocomplete="off">
             </div>
-            <button class="comite-button primary" type="submit">Consultar</button>
+            <button class="comite-button primary btn btn-primario" type="submit">Consultar</button>
           </form>
           <div id="publicResult" class="cert-public-result" aria-live="polite"></div>
         </section>
@@ -247,8 +259,8 @@
       </div>
       <div id="signQrBox" hidden></div>
       <div class="cert-dialog-actions">
-        <button id="cancelDialog" class="comite-button secondary" type="button">Cancelar</button>
-        <button id="confirmDialog" class="comite-button primary" type="submit">Confirmar</button>
+        <button id="cancelDialog" class="comite-button secondary btn btn-secundario" type="button">Cancelar</button>
+        <button id="confirmDialog" class="comite-button primary btn btn-primario" type="submit">Confirmar</button>
       </div>
     </form>
   </dialog>
@@ -360,9 +372,37 @@
         if (viewName === "vencimientos") loadAlerts();
       }
 
+      // Las métricas públicas solo cuentan certificados vigentes, publicados y
+      // firmados; dentro de la gestión el total debe cuadrar con el registro,
+      // así que con sesión se usan las métricas internas (CER-024) y, si el
+      // rol no las tiene, se calculan sobre los certificados que puede ver.
+      function metricsFromList(items) {
+        const today = localDateValue(new Date());
+        const limit = new Date();
+        limit.setDate(limit.getDate() + 30);
+        const limitValue = localDateValue(limit);
+        const vigente = (item) => String(item.estado_certificado || "").trim().toUpperCase() === "VIGENTE" &&
+          String(item.fecha_vencimiento || "").slice(0, 10) >= today;
+        return {
+          total: items.length,
+          vigentes: items.filter(vigente).length,
+          publicados: items.filter((item) => vigente(item) && item.publico_certificado === true).length,
+          proximos_a_vencer: items.filter((item) => vigente(item) && String(item.fecha_vencimiento || "").slice(0, 10) <= limitValue).length
+        };
+      }
+
       async function loadMetrics() {
         try {
-          const metrics = await api("/certificados/metricas-publicas");
+          let metrics;
+          if (publicOnly || publicMode) {
+            metrics = await api("/certificados/metricas-publicas");
+          } else {
+            try {
+              metrics = await api("/certificados/metricas");
+            } catch (_) {
+              metrics = metricsFromList(state.certificados || []);
+            }
+          }
           $("#metricTotal").textContent = metrics.total ?? 0;
           $("#metricVigentes").textContent = metrics.vigentes ?? 0;
           $("#metricPublicados").textContent = metrics.publicados ?? 0;
@@ -414,7 +454,7 @@
           '<td>' + escapeHtml(item.norma_codigo || "—") + '</td>' +
           '<td><span class="comite-status ' + statusClass(item.estado_certificado) + '">' + escapeHtml(item.estado_certificado || "Sin estado") + '</span></td>' +
           '<td>' + escapeHtml(formatDate(item.fecha_vencimiento)) + '</td>' +
-          '<td><button class="comite-table-action" type="button" data-open-cert="' + escapeHtml(item.id_certificado) + '">Ver</button></td>' +
+          '<td><button class="comite-table-action btn btn-secundario btn-sm" type="button" data-open-cert="' + escapeHtml(item.id_certificado) + '">Ver</button></td>' +
           '</tr>').join("");
       }
 
@@ -443,8 +483,8 @@
         const actions = [];
         if (status === "PENDIENTE_FIRMA") {
           if (puedeFirmar(certificate)) {
-            actions.push('<button class="comite-button secondary" type="button" data-action="preview">Vista previa PDF</button>');
-            actions.push('<button class="comite-button primary" type="button" data-action="sign">Firmar certificado</button>');
+            actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="preview">Vista previa PDF</button>');
+            actions.push('<button class="comite-button primary btn btn-primario" type="button" data-action="sign">Firmar certificado</button>');
           } else {
             const leader = state.liderazgo && state.liderazgo.lider;
             actions.push('<p class="cert-signature-note">' + (leader ? "Firma asignada a " + escapeHtml(leader.nombre) + ". Solo esa persona puede firmar." : "Pendiente de asignar líder firmante del Comité.") + '</p>');
@@ -452,31 +492,31 @@
         }
         if (status === "VIGENTE") {
           if (certificate.id_firmante) {
-            actions.push('<button class="comite-button primary" type="button" data-action="download">Descargar PDF firmado</button>');
-            if (canEmail) actions.push('<button class="comite-button secondary" type="button" data-action="email">Reenviar PDF firmado</button>');
+            actions.push('<button class="comite-button primary btn btn-primario" type="button" data-action="download">Descargar PDF firmado</button>');
+            if (canEmail) actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="email">Reenviar PDF firmado</button>');
           } else {
             actions.push('<p class="cert-signature-note">Este registro vigente no tiene una firma PAdES registrada; no puede descargarse como certificado oficial.</p>');
           }
-          if (canRenew) actions.push('<button class="comite-button secondary" type="button" data-action="renew">Renovar</button>');
-          if (canManage) actions.push('<button class="comite-button danger" type="button" data-action="suspend">Suspender</button>');
-          if (role === "comite") actions.push('<button class="comite-button secondary" type="button" data-action="reason-suspend">Registrar motivo de suspensión</button>');
-          if (role === "auxiliar") actions.push('<button class="comite-button secondary" type="button" data-action="reason-cancel">Registrar motivo de cancelación</button>');
+          if (canRenew) actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="renew">Renovar</button>');
+          if (canManage) actions.push('<button class="comite-button danger btn btn-peligro" type="button" data-action="suspend">Suspender</button>');
+          if (role === "comite") actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="reason-suspend">Registrar motivo de suspensión</button>');
+          if (role === "auxiliar") actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="reason-cancel">Registrar motivo de cancelación</button>');
         }
         if (status === "SUSPENDIDO" && canDecide) {
-          actions.push('<button class="comite-button primary" type="button" data-action="reactivate">Reactivar</button>');
-          actions.push('<button class="comite-button danger" type="button" data-action="cancel">Cancelar certificado</button>');
+          actions.push('<button class="comite-button primary btn btn-primario" type="button" data-action="reactivate">Reactivar</button>');
+          actions.push('<button class="comite-button danger btn btn-peligro" type="button" data-action="cancel">Cancelar certificado</button>');
         }
         if (canDecide && status === "VIGENTE") {
-          actions.push('<button class="comite-button danger" type="button" data-action="cancel">Cancelar certificado</button>');
+          actions.push('<button class="comite-button danger btn btn-peligro" type="button" data-action="cancel">Cancelar certificado</button>');
         }
         if (canManage && status === "VIGENTE" && !certificate.publico_certificado) {
-          actions.push('<button class="comite-button secondary" type="button" data-action="publish">Publicar en portal</button>');
+          actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="publish">Publicar en portal</button>');
         }
         if (canWithdrawPublic && status === "VIGENTE" && certificate.publico_certificado) {
-          actions.push('<button class="comite-button secondary" type="button" data-action="unpublish">Retirar del portal</button>');
+          actions.push('<button class="comite-button danger btn btn-peligro" type="button" data-action="unpublish">Retirar del portal</button>');
         }
         if (role === "superadmin" && status === "VIGENTE") {
-          actions.push('<button class="comite-button secondary" type="button" data-action="change-scope">Cambiar alcance</button>');
+          actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="change-scope">Cambiar alcance</button>');
         }
         if (canSeeHistory) {
           actions.push('<button class="comite-resource" type="button" data-action="history">Consultar historial de estados <span>CER-020</span></button>');
@@ -784,7 +824,7 @@
             '<td><strong>' + escapeHtml(item.codigo_verificacion) + '</strong></td>' +
             '<td>' + escapeHtml(item.empresa) + '</td><td>' + escapeHtml(item.nit) + '</td>' +
             '<td>' + escapeHtml(formatDate(item.fecha_vencimiento)) + '</td>' +
-            '<td><button class="comite-table-action" type="button" data-notify="' + escapeHtml(item.id_certificado) + '">Notificar</button></td>' +
+            '<td><button class="comite-table-action btn btn-secundario btn-sm" type="button" data-notify="' + escapeHtml(item.id_certificado) + '">Notificar</button></td>' +
             '</tr>').join("");
         } catch (error) {
           body.innerHTML = '<tr><td colspan="5"><div class="comite-table-empty">' + escapeHtml(error.message) + '</div></td></tr>';
@@ -812,16 +852,23 @@
           const response = await fetch("/certificados/publico/" + encodeURIComponent(code));
           const certificate = await response.json().catch(() => null);
           if (!response.ok) throw new Error(certificate && certificate.detail || "No se encontró un certificado público vigente.");
-          result.innerHTML = '<p class="cert-signature-note">Firma PAdES registrada. Comprueba la identidad del firmante y las huellas antes de aceptarlo.</p><dl class="comite-facts cert-public-facts">' +
+          // Sin firma PAdES no hay PDF firmado que descargar: se informa y no se ofrece el botón.
+          const signed = certificate.firmado === true;
+          result.innerHTML = '<p class="cert-signature-note">' + (signed
+              ? "Firma PAdES registrada. Comprueba la identidad del firmante y las huellas antes de aceptarlo."
+              : "Certificado vigente registrado en CertiSENA. Aún no tiene firma digital PAdES, por eso no hay PDF firmado para descargar.") +
+            '</p><dl class="comite-facts cert-public-facts">' +
             fact("Empresa", certificate.empresa) + fact("NIT", certificate.nit) +
             fact("Norma", [certificate.norma_codigo, certificate.norma, certificate.norma_version].filter(Boolean).join(" ")) +
             fact("Alcance", certificate.alcance) + fact("Código", certificate.codigo_verificacion) +
-            fact("Firmante", certificate.firmante) +
-            fact("Huella SHA-256 del certificado", certificate.huella_certificado) +
-            fact("Huella SHA-256 del PDF", certificate.huella_pdf) +
+            (signed
+              ? fact("Firmante", certificate.firmante) +
+                fact("Huella SHA-256 del certificado", certificate.huella_certificado) +
+                fact("Huella SHA-256 del PDF", certificate.huella_pdf)
+              : "") +
             fact("Vigencia", formatDate(certificate.fecha_emision) + " – " + formatDate(certificate.fecha_vencimiento)) +
-            '</dl><button class="comite-button primary" type="button" id="publicPdfButton">Descargar PDF firmado</button>';
-          $("#publicPdfButton").addEventListener("click", () => downloadPublicPdf(code));
+            '</dl>' + (signed ? '<button class="comite-button primary btn btn-primario" type="button" id="publicPdfButton">Descargar PDF firmado</button>' : "");
+          if (signed) $("#publicPdfButton").addEventListener("click", () => downloadPublicPdf(code));
         } catch (error) {
           result.innerHTML = '<div class="comite-feedback error">' + escapeHtml(error.message) + '</div>';
         }
@@ -865,16 +912,17 @@
         }
       }
 
-      function exportCsv() {
-        return exportData("/certificados/exportar", "certificados.csv", $("#exportButton"));
-      }
-
-      function exportCompanies() {
-        return exportData("/certificados/empresas-oficiales", "empresas-certificadas.csv", $("#exportCompaniesButton"));
+      // Excel (.xlsx) o PDF generados en el backend con los mismos permisos
+      // (CER-025 / CER-026) que tenía la exportación .csv.
+      function exportFile(event) {
+        const button = event.currentTarget;
+        const formato = button.dataset.formato || "xlsx";
+        return exportData(button.dataset.export + "?formato=" + encodeURIComponent(formato), button.dataset.nombre + "." + formato, button);
       }
 
       async function refreshAll() {
-        await Promise.all([loadCertificates(), loadMetrics()]);
+        await loadCertificates();
+        await loadMetrics();
       }
 
       $("#roleLabel").textContent = publicMode ? "Consulta sin autenticación" : "Rol: " + roleLabel;
@@ -882,8 +930,9 @@
       $("#createPanel").hidden = !canCreate;
       $("#alertsNav").hidden = !canSeeAlerts || publicMode;
       $("#catalogNav").hidden = publicOnly;
-      $("#exportButton").hidden = !canExport || publicOnly;
-      $("#exportCompaniesButton").hidden = !canExport || publicOnly;
+      ["#exportButton", "#exportPdfButton", "#exportCompaniesButton", "#exportCompaniesPdfButton"].forEach((selector) => {
+        $(selector).hidden = !canExport || publicOnly;
+      });
       $("#committeeNav").hidden = publicOnly;
       $("#authControls").hidden = publicMode;
       $("#roleNote").hidden = publicMode;
@@ -933,8 +982,9 @@
       $("#searchInput").addEventListener("input", renderCertificates);
       $("#statusFilter").addEventListener("change", renderCertificates);
       $("#refreshButton").addEventListener("click", refreshAll);
-      $("#exportButton").addEventListener("click", exportCsv);
-      $("#exportCompaniesButton").addEventListener("click", exportCompanies);
+      ["#exportButton", "#exportPdfButton", "#exportCompaniesButton", "#exportCompaniesPdfButton"].forEach((selector) => {
+        $(selector).addEventListener("click", exportFile);
+      });
       $("#loadAlertsButton").addEventListener("click", loadAlerts);
       $("#alertDays").addEventListener("change", loadAlerts);
       $("#publicSearchForm").addEventListener("submit", publicSearch);

@@ -46,63 +46,45 @@
         /* =========================================================
            HEADER
         ========================================================= */
+        /* Igual que la cabecera comun de styles.css (90px); esta pantalla no
+           carga styles.css. Las acciones (Panel, Reportes, Mi perfil, Cerrar
+           sesion) toman su estilo de tema.css. */
         .login-header {
             background: #3baa01;
             color: #fff;
-            padding: 20px clamp(18px, 4vw, 42px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, .15);
+            position: relative;
+            height: 90px;
         }
 
         .login-header .header-content {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 18px;
             max-width: var(--ancho-contenido);
-            margin: 0 auto;
+            height: 100%;
+            margin: auto;
+            padding: 15px 40px;
         }
 
         .login-header .header-left {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 18px;
         }
 
         .login-header .sena-blanco {
-            width: 72px;
+            width: 70px;
             height: auto;
-            object-fit: contain;
-            flex-shrink: 0;
         }
 
         .login-header h1 {
             margin: 0;
-            font-size: 26px;
-            line-height: 1.15;
-            letter-spacing: -.02em;
         }
 
         .login-header .subtitle {
-            margin: 4px 0 0;
-            font-size: 13px;
-            line-height: 1.5;
-            opacity: .92;
-        }
-
-        .login-header .profile-link {
-            color: #fff;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 13.5px;
-            padding: 9px 15px;
-            border: 1px solid rgba(255, 255, 255, .35);
-            border-radius: 999px;
-            background: rgba(255, 255, 255, .08);
-            transition: .18s ease;
-        }
-
-        .login-header .profile-link:hover {
-            background: rgba(255, 255, 255, .18);
-            border-color: rgba(255, 255, 255, .55);
+            margin: 3px 0 0;
+            font-size: 14px;
         }
 
         /* =========================================================
@@ -112,7 +94,7 @@
             width: 100%;
             max-width: var(--ancho-contenido);
             margin: 0 auto;
-            padding: 24px 24px 48px;
+            padding: 28px 28px 48px;
         }
 
         .portal-grid {
@@ -284,34 +266,11 @@
             letter-spacing: .005em;
         }
 
-        input,
+        /* Alto, borde, radio, foco y flecha de las listas: tema.css */
+        input:not([type="checkbox"]):not([type="radio"]),
         select,
         textarea {
             width: 100%;
-            min-height: 42px;
-            border: 1px solid #cbd5e1;
-            border-radius: var(--radius-control);
-            padding: 10px 12px;
-            font: inherit;
-            font-size: 13.5px;
-            color: var(--ink);
-            background: #fff;
-            outline: none;
-            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-        }
-
-        input:hover:not(:disabled):not([readonly]),
-        select:hover:not(:disabled),
-        textarea:hover:not(:disabled) {
-            border-color: #a9c59d;
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: 3px solid rgba(59, 170, 1, .14);
-            border-color: var(--sena-green-bright);
-            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
         }
 
         input[readonly],
@@ -324,7 +283,6 @@
         }
 
         textarea {
-            min-height: 82px;
             resize: vertical;
         }
 
@@ -350,48 +308,11 @@
             margin-top: 18px;
         }
 
+        /* Botones de accion: clases btn de tema.css. Aqui solo la base de
+           los botones especiales (paginacion, cierre de modal, quitar filtro). */
         button {
-            border: 0;
-            border-radius: var(--radius-control);
-            padding: 10px 16px;
             font: inherit;
-            font-size: 13px;
-            font-weight: 700;
             cursor: pointer;
-            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
-        }
-
-        button.primary {
-            background: linear-gradient(135deg, #256d00, #256d00);
-            color: #fff;
-            box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
-        }
-
-        button.primary:hover:not(:disabled) {
-            background: linear-gradient(135deg, #2f8f00, #256d00);
-            transform: translateY(-1px);
-            box-shadow: 0 8px 18px rgba(37, 109, 0, .22);
-        }
-
-        button.secondary {
-            background: #f1f5f9;
-            color: var(--sena-green-dark);
-            border: 1px solid #cbd5e1;
-        }
-
-        button.secondary:hover:not(:disabled) {
-            background: #e2e8f0;
-            transform: translateY(-1px);
-        }
-
-        button.danger {
-            background: #f1f5f9;
-            color: var(--danger);
-            border: 1px solid #e7bfbb;
-        }
-
-        button.danger:hover:not(:disabled) {
-            background: #ffe2e2;
         }
 
         button:disabled {
@@ -709,30 +630,6 @@
             color: #b42318;
         }
 
-        .mini-block {
-            padding: 6px 11px;
-            border: 1px solid #b42318;
-            border-radius: 6px;
-            background: #fff;
-            color: #b42318;
-            font-size: 11.5px;
-            font-weight: 700;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: background-color .18s ease, color .18s ease;
-        }
-
-        .mini-block:hover:not(:disabled) {
-            background: #b42318;
-            color: #fff;
-        }
-
-        .mini-block:disabled {
-            border-color: var(--line);
-            color: #94a3b8;
-            cursor: not-allowed;
-        }
-
         .auditor-bloqueos-lista {
             display: flex;
             flex-direction: column;
@@ -775,8 +672,6 @@
 
         .bloqueo-dia .mini-block {
             grid-area: boton;
-            padding: 3px 8px;
-            font-size: 10.5px;
             align-self: center;
         }
 
@@ -959,9 +854,19 @@
         }
 
         .row-actions button {
-            padding: 7px 11px;
-            font-size: 12px;
             white-space: nowrap;
+        }
+
+        /* Tabla "Solicitudes con auditores asignados": solo tiene 5 columnas,
+           asi que no necesita el ancho minimo de 1120px de las demas tablas.
+           Antes el contenedor no tenia desplazamiento y .panel recorta con
+           overflow:hidden, por lo que el boton de la columna Accion salia cortado. */
+        .record-table {
+            min-width: 760px;
+        }
+
+        .record-table .row-actions {
+            min-width: 0;
         }
 
         /* Listas que solo se ven al pulsar su boton de "Ver". */
@@ -1213,20 +1118,6 @@
 
         .team-role select {
             width: 100%;
-            min-height: 36px;
-            padding: 6px 8px;
-            border: 1px solid #cbd5e1;
-            border-radius: 7px;
-            background: #fff;
-            color: var(--ink);
-            font: inherit;
-            font-size: 12.5px;
-        }
-
-        .team-role select:focus {
-            border-color: var(--sena-green-bright);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(59, 170, 1, .1);
         }
 
         .team-toolbar {
@@ -1525,6 +1416,20 @@
             }
         }
 
+        @media (max-width: 770px) {
+            .login-header .header-content {
+                padding: 15px 20px;
+            }
+
+            .login-header .sena-blanco {
+                width: 50px;
+            }
+
+            .login-header .subtitle {
+                font-size: 12px;
+            }
+        }
+
         @media (max-width: 620px) {
             .portal-shell {
                 padding: 16px 12px 32px;
@@ -1552,22 +1457,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .login-header .sena-blanco {
-                width: 58px;
-            }
-
-            .login-header h1 {
-                font-size: 21px;
-            }
-
-            .login-header .subtitle {
-                font-size: 12px;
-            }
-
-            .login-header .profile-link {
-                font-size: 12px;
-                padding: 7px 12px;
-            }
 
             .detail-grid,
             .detail-grid.three {
@@ -1740,7 +1629,6 @@
 .modal-box { background:#fff; border-radius:12px; padding:24px; max-width:400px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center; }
 .modal-box h3 { margin-top:0; color:#256d00; }
 .modal-box p { color:#334155; margin-bottom:20px; }
-.modal-box .btn-close { background:#3baa01; color:#fff; border:none; padding:8px 20px; border-radius:6px; cursor:pointer; font-weight:bold; }
 .modal-box.error h3 { color:#dc2626; }
 .modal-box.success h3 { color:#256d00; }
 </style>
@@ -1870,7 +1758,7 @@
                                             programando. Las sedes ya programadas y sus asignaciones no se modifican.
                                         </p>
                                         <div class="actions">
-                                            <button type="button" class="secondary" id="scheduleMoreAuditors">Mostrar más
+                                            <button type="button" class="btn btn-secundario secondary" id="scheduleMoreAuditors">Mostrar más
                                                 auditores disponibles</button>
                                         </div>
                                     </div>
@@ -1885,8 +1773,8 @@
                                         <div class="team-toolbar">
                                             <span class="hint" id="scheduleCandidatesInfo">-</span>
                                             <div class="actions">
-                                                <button type="button" class="secondary" id="scheduleCandidatesPrev">Anterior</button>
-                                                <button type="button" class="secondary" id="scheduleCandidatesNext">Siguiente</button>
+                                                <button type="button" class="btn btn-secundario secondary" id="scheduleCandidatesPrev">Anterior</button>
+                                                <button type="button" class="btn btn-secundario secondary" id="scheduleCandidatesNext">Siguiente</button>
                                             </div>
                                         </div>
                                     </div>
@@ -1929,11 +1817,11 @@
                             <p id="schedulePeriodSummary" class="hint" aria-live="polite" style="margin-top:12px;">
                                 Selecciona una solicitud para consultar si ya tiene un periodo programado.</p>
                             <div class="actions">
-                                <button type="button" class="secondary" id="checkScheduleAvailability">Comprobar
+                                <button type="button" class="btn btn-secundario secondary" id="checkScheduleAvailability">Comprobar
                                     disponibilidad</button>
-                                <button type="submit" class="primary" id="scheduleSave">Programar auditoría (equipo de la
+                                <button type="submit" class="btn btn-primario primary" id="scheduleSave">Programar auditoría (equipo de la
                                     sede)</button>
-                                <button type="button" class="secondary hidden" id="scheduleCancelEdit">Salir de
+                                <button type="button" class="btn btn-secundario secondary hidden" id="scheduleCancelEdit">Salir de
                                     edición</button>
                             </div>
                         </form>
@@ -1967,7 +1855,7 @@
                                 </select>
                             </div>
                             <div class="filtro-campo">
-                                <button type="button" class="secondary" id="filtroAuditorLimpiar">Limpiar filtro</button>
+                                <button type="button" class="btn btn-secundario secondary" id="filtroAuditorLimpiar">Limpiar filtro</button>
                             </div>
                         </div>
                         <div id="scheduleList" class="table-wrap">
@@ -1986,7 +1874,7 @@
                     </div>
                     <div class="panel-body">
                         <div id="assignmentsNotice" class="notice" role="status" aria-live="polite"></div>
-                        <div class="record-table-wrap">
+                        <div class="table-wrap record-table-wrap">
                             <table class="record-table">
                                 <thead>
                                     <tr>
@@ -2144,7 +2032,7 @@
                                 </div>
                             </div>
                             <div class="actions">
-                                <button class="primary" id="weeklySave" type="submit">Guardar disponibilidad
+                                <button class="btn btn-primario primary" id="weeklySave" type="submit">Guardar disponibilidad
                                     semanal</button>
                             </div>
                         </form>
@@ -2253,9 +2141,9 @@
                                     </span>
                                 </label>
                                 <div class="actions">
-                                    <button class="primary" type="submit" id="blockedSave">Registrar fecha no
+                                    <button class="btn btn-primario primary" type="submit" id="blockedSave">Registrar fecha no
                                         disponible</button>
-                                    <button class="secondary" type="button" id="blockedReset">Limpiar selección</button>
+                                    <button class="btn btn-secundario secondary" type="button" id="blockedReset">Limpiar selección</button>
                                 </div>
                             </form>
                         </div>
@@ -2326,8 +2214,8 @@
                             </div>
                         </div>
                         <div class="actions">
-                            <button type="button" class="primary" id="loadMonth">Ver mes</button>
-                            <button type="button" class="secondary" id="clearMonthFilters">Limpiar filtros</button>
+                            <button type="button" class="btn btn-primario primary" id="loadMonth">Ver mes</button>
+                            <button type="button" class="btn btn-secundario secondary" id="clearMonthFilters">Limpiar filtros</button>
                         </div>
                         <div id="monthlyCalendar" class="calendar-wrap"
                             style="margin-top:16px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;">
@@ -2347,7 +2235,7 @@
                 <section class="panel panel-section" data-seccion="history">
                     <div class="panel-head">
                         <h2>6. Historial de disponibilidad</h2>
-                        <button type="button" id="loadHistory" class="secondary" onclick="loadHistory()">Consultar historial</button>
+                        <button type="button" id="loadHistory" class="btn btn-primario primary" onclick="loadHistory()">Consultar historial</button>
                     </div>
                     <div class="panel-body">
                         <div class="section-note">
@@ -2373,7 +2261,7 @@
                 <section class="panel panel-section" data-seccion="bitacora">
                     <div class="panel-head">
                         <h2>7. Bitácora de validación</h2>
-                        <button type="button" id="loadBitacora" class="secondary" onclick="loadBitacora()">Consultar bitácora</button>
+                        <button type="button" id="loadBitacora" class="btn btn-primario primary" onclick="loadBitacora()">Consultar bitácora</button>
                     </div>
                     <div class="panel-body">
                         <div class="table-wrap" id="bitacoraTable">
@@ -2402,7 +2290,7 @@
             </div>
             <div class="programacion-modal-body" id="programacionModalBody"></div>
             <div class="programacion-modal-foot">
-                <button type="button" class="secondary" onclick="cerrarProgramacionModal()">Cerrar</button>
+                <button type="button" class="btn btn-secundario secondary" onclick="cerrarProgramacionModal()">Cerrar</button>
             </div>
         </div>
     </div>
@@ -2423,7 +2311,7 @@
             </div>
             <div class="programacion-modal-body" id="auditorFichaBody"></div>
             <div class="programacion-modal-foot">
-                <button type="button" class="secondary" onclick="cerrarFichaAuditorSede()">Cerrar</button>
+                <button type="button" class="btn btn-secundario secondary" onclick="cerrarFichaAuditorSede()">Cerrar</button>
             </div>
         </div>
     </div>
@@ -2433,7 +2321,7 @@
     <div id="modalBox" class="modal-box">
         <h3 id="modalTitle">Mensaje</h3>
         <p id="modalMessage"></p>
-        <button class="btn-close" onclick="closeModal()">Cerrar</button>
+        <button class="btn btn-primario btn-close" onclick="closeModal()">Cerrar</button>
     </div>
 </div>
 
@@ -3117,7 +3005,7 @@
                         <select onchange="establecerRolEquipo('${esc(id)}', this.value, 'candidatos')">${opcionesRol(rolActual)}</select>
                     </div>` : ""}
                     <div class="team-toolbar" style="margin-top:8px;">
-                        <button type="button" class="secondary" style="padding:6px 11px;font-size:11.5px;"
+                        <button type="button" class="btn btn-secundario btn-sm secondary"
                             onclick="event.stopPropagation();abrirFichaAuditorSede('${esc(id)}')">Ver ficha del auditor</button>
                     </div>`;
 
@@ -3500,7 +3388,7 @@
         <td>${esc(asDateInput(row.fecha_inicio))}</td><td>${esc(asDateInput(row.fecha_fin) || "Sin fecha final")}</td>
         <td>${esc(asTimeInput(row.hora_inicio) || "Todo el día")}–${esc(asTimeInput(row.hora_fin) || "Todo el día")}</td>
         <td>${esc(row.motivo || "—")}</td><td><span class="pill ${blocked ? "blocked" : ""}">${esc(row.estado || "—")}</span></td>
-        <td>${canEdit ? `<button class="secondary" type="button" data-edit-id="${esc(row.id_disponibilidad)}">Editar</button>` : "—"}</td>
+        <td>${canEdit ? `<button class="btn btn-secundario btn-sm secondary" type="button" data-edit-id="${esc(row.id_disponibilidad)}">Editar</button>` : "—"}</td>
       </tr>`;
             }).join("");
             $("availabilityTable").innerHTML = `<table><thead><tr><th>Tipo</th><th>Día</th><th>Desde</th><th>Hasta</th><th>Horario</th><th>Motivo</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${body}</tbody></table>`;
@@ -3768,7 +3656,7 @@
                         </div>
                     </div>
                     <div class="auditor-bloqueos-lista"></div>
-                    <button type="button" class="mini-block btn-desbloquear" disabled
+                    <button type="button" class="btn btn-peligro-contorno btn-sm mini-block btn-desbloquear" disabled
                         onclick="desbloquearTodos('${esc(a.id_usuario || "")}', '${esc(a.nombre || "Auditor")}')">
                         Desbloquear todos
                     </button>
@@ -3814,7 +3702,7 @@
                                 return `<div class="bloqueo-dia">
                                     <span class="bloqueo-fecha">${esc(dia)}</span>
                                     <span class="bloqueo-motivo">${esc(b.motivo || "sin motivo")}</span>
-                                    <button type="button" class="mini-block"
+                                    <button type="button" class="btn btn-peligro-contorno btn-sm mini-block"
                                         onclick="desbloquearAuditor('${esc(uid)}', '${esc(fila.dataset.nombre || "Auditor")}', '${esc(dia)}')">Desbloquear</button>
                                 </div>`;
                             }).join("");
@@ -3869,7 +3757,7 @@
                             return `<div class="bloqueo-dia">
                                 <span class="bloqueo-fecha">${esc(rango)}</span>
                                 <span class="bloqueo-motivo">${esc(b.motivo || "sin motivo")}</span>
-                                <button type="button" class="mini-block"
+                                <button type="button" class="btn btn-peligro-contorno btn-sm mini-block"
                                     onclick="desbloquearVigente('${esc(g.id_usuario || "")}', '${esc(g.nombre || "Auditor")}', '${esc(desde)}')">
                                     Desbloquear
                                 </button>
@@ -4501,7 +4389,7 @@
                         <td><span class="cell-strong">${esc(row.numero_radicado || row.id_solicitud || group.numero_radicado || "—")}</span></td>
                         <td><span class="cell-line">${esc(row.empresa_nombre || group.empresa_nombre || "—")}</span></td>
                         <td>
-                            <button class="secondary" type="button" data-program-action="auditores" aria-expanded="false" title="Ver los auditores de esta programación">Ver</button>
+                            <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="auditores" aria-expanded="false" title="Ver los auditores de esta programación">Ver</button>
                             <div class="auditores-lista" hidden>${auditoresLista}</div>
                         </td>
                         <td><span class="cell-line">${esc(row.direccion_servicio || group.empresa_direccion || "—")}</span><span class="cell-meta">${esc(row.ciudad_servicio || group.empresa_ciudad || "")}</span></td>
@@ -4511,11 +4399,11 @@
                         <td><span class="pill ${terminal ? "blocked" : "audit"}">${esc(row.estado || "—")}</span></td>
                         <td><span class="cell-line">${esc(row.motivo_cancelacion || row.motivo_reprogramacion || "—")}</span></td>
                         <td class="row-actions">
-                            <button class="secondary" type="button" data-program-action="toggle" aria-expanded="false">Ver acciones</button>
+                            <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="toggle" aria-expanded="false">Ver acciones</button>
                             <div class="acciones-lista" hidden>
-                                <button class="secondary" type="button" data-program-action="view" data-program-index="${idx}" title="Ver detalle completo">Ver</button>
-                                <button class="secondary" type="button" data-program-action="edit" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Editar programación">Editar</button>
-                                <button class="danger" type="button" data-program-action="cancel" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Cancelar programación">Cancelar</button>
+                                <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="view" data-program-index="${idx}" title="Ver detalle completo">Ver</button>
+                                <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="edit" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Editar programación">Editar</button>
+                                <button class="btn btn-peligro-contorno btn-sm danger" type="button" data-program-action="cancel" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Cancelar programación">Cancelar</button>
                             </div>
                         </td>
                     </tr>`;
@@ -4848,7 +4736,7 @@
                 }
                 tbody.innerHTML = groups.map((group, index) => {
                     const auditores = (group.auditores || [])
-                        .map((auditor) => `${auditor.auditor_nombre || auditor.nombre || "Auditor"} (${auditor.rol_auditor || "Auditor"})${auditor.auditor_tipo_doc || auditor.auditor_num_doc ? ` · Doc: ${auditor.auditor_tipo_doc || ""} ${auditor.auditor_num_doc || ""}`.trim() : ""}`)
+                        .map((auditor) => esc(`${auditor.auditor_nombre || auditor.nombre || "Auditor"} (${auditor.rol_auditor || "Auditor"})${auditor.auditor_tipo_doc || auditor.auditor_num_doc ? ` · Doc: ${auditor.auditor_tipo_doc || ""} ${auditor.auditor_num_doc || ""}`.trim() : ""}`))
                         .join("<br>");
                     const yaProgramada = programadas.has(String(group.id_solicitud));
                     const estado = yaProgramada ? "Programada" : (group.auditores?.[0]?.estado_asignacion || "Agendada");
@@ -4860,8 +4748,10 @@
                         <td>${esc(group.empresa_nombre || "-")}</td>
                         <td>${auditores || "Sin auditores"}</td>
                         <td>${esc(estado)}</td>
-                        <td class="row-actions">
-                            <button class="mini-btn" type="button" onclick="programarSolicitud(${index})" title="${yaProgramada ? "Elige otra sede de la empresa para programar una visita adicional" : "Programar la auditoría de esta solicitud"}">${accion}</button>
+                        <td>
+                            <div class="row-actions">
+                                <button class="btn btn-primario btn-sm mini-btn" type="button" onclick="programarSolicitud(${index})" title="${yaProgramada ? "Elige otra sede de la empresa para programar una visita adicional" : "Programar la auditoría de esta solicitud"}">${accion}</button>
+                            </div>
                         </td>
                     </tr>`;
                 }).join("");

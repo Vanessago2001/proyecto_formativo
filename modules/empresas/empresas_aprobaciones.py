@@ -6,7 +6,7 @@ necesita que las apruebe un rol con el permiso concedido:
 
     EMP-006  Cambiar estado de la empresa   -> aprueba ADM o SUPERADM
     EMP-007  Inactivar empresa              -> aprueba ADM o SUPERADM
-    EMP-008  Reactivar empresa (SA)         -> aprueba solo SUPERADM
+    EMP-008  Reactivar empresa              -> aprueba ADM (el rol SUPERADM ya no se usa)
     EMP-023  Eliminar sede                  -> aprueba ADM o SUPERADM
     EMP-029  Eliminar contacto              -> aprueba ADM o SUPERADM
 
@@ -49,6 +49,6 @@ async def _eliminar_contacto(db, aprobacion: dict) -> dict:
 
 registrar_accion("EMP-006", "Cambiar estado de la empresa", APROBADORES, _cambiar_estado)
 registrar_accion("EMP-007", "Inactivar empresa", APROBADORES, _inactivar)
-registrar_accion("EMP-008", "Reactivar empresa", ["superadmin"], _reactivar)
+registrar_accion("EMP-008", "Reactivar empresa", APROBADORES, _reactivar)
 registrar_accion("EMP-023", "Eliminar sede", APROBADORES, _eliminar_sede)
 registrar_accion("EMP-029", "Eliminar contacto", APROBADORES, _eliminar_contacto)

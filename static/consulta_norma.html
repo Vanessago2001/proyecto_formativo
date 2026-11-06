@@ -13,18 +13,14 @@
 
     <link rel="stylesheet" href="/static/styles.css?v=20261028">
     <style>
-        .cn-wrap { max-width: var(--ancho-contenido); margin: 0 auto; padding: 26px 18px 40px; }
+        .cn-wrap { max-width: var(--ancho-contenido); margin: 0 auto; padding: 28px 28px 40px; }
         .cn-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 26px 28px; }
         .cn-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
         .cn-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
         .cn-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
         .cn-field { flex: 1 1 240px; min-width: 200px; }
         .cn-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-        .cn-field input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
-        .cn-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
-        .cn-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-        .cn-btn:hover { background: #388e3c; }
-        .cn-btn:disabled { opacity: .6; cursor: wait; }
+        .cn-field input { width: 100%; }
         #conteo { color: #6b7280; font-size: 13px; margin: 16px 2px 10px; }
         #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
         .cn-card { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #9aa5b1; border-radius: 3px; padding: 20px 22px; margin-bottom: 16px; }
@@ -33,6 +29,8 @@
         .cn-estado { display: inline-block; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px; background: #f1f5f9; color: #4b5563; }
         .cn-card.vigente .cn-estado { background: #e2e8f0; color: #1a7f37; }
         .cn-card.tramite .cn-estado { background: #fffbeb; color: #8d6e00; }
+        .cn-card.inactiva { border-left-color: #b42318; }
+        .cn-card.inactiva .cn-estado { background: #fdecea; color: #b42318; }
         .cn-norma { margin: 0 0 4px; color: #2f7d32; font-size: 22px; font-weight: 700; }
         .cn-norma-label { margin: 0; color: #6b7280; font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
         .cn-empresa { margin: 12px 0 0; color: #374151; font-size: 15px; font-weight: 600; }
@@ -151,7 +149,7 @@
                     <input type="text" id="nit" name="nit" placeholder="900123456-7">
                 </div>
 
-                <button type="submit" class="cn-btn" id="btnConsultar">Consultar</button>
+                <button type="submit" class="btn btn-primario cn-btn" id="btnConsultar">Consultar</button>
 
             </form>
 
@@ -221,6 +219,7 @@
         function claseEstado(estado) {
             if (estado === "CERTIFICADA") return "vigente";
             if (estado && estado.startsWith("EN TRAMITE")) return "tramite";
+            if (estado && (estado.startsWith("EMPRESA ") || estado.startsWith("CERTIFICADO "))) return "inactiva";
             return "";
         }
 
@@ -257,6 +256,12 @@
                 return;
             }
 
+            const errorNit = nit ? validarNit(nit) : null;
+            if (errorNit) {
+                mostrarError(errorNit);
+                return;
+            }
+
             loader.classList.remove("hidden-section");
             btnConsultar.disabled = true;
 
@@ -274,7 +279,7 @@
                     let detalle = "No se pudo completar la consulta.";
                     try {
                         const datos = await respuesta.json();
-                        detalle = datos.detail || detalle;
+                        detalle = mensajeErrorApi(datos, detalle);
                     } catch (e) { /* respuesta no JSON */ }
                     mostrarError(detalle);
                     return;
@@ -313,6 +318,7 @@
 
     </script>
 
+<script src="/static/errores-api.js?v=20261104"></script>
 <script src="/static/session.js?v=20261029"></script>
 </body>
 

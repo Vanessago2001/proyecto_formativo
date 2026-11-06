@@ -54,3 +54,16 @@ class UserUpdate(BaseModel):
     estado: Optional[Literal["Activo", "Inactivo", "Bloqueado"]] = None
     tipo_doc: Optional[str] = Field(None, max_length=20)
     num_doc: Optional[str] = Field(None, max_length=30)
+
+
+class CambioCorreoCuenta(BaseModel):
+    """USR-CORREO: el administrador cambia el correo de una cuenta Empresa/Auditor."""
+
+    correo: EmailStr = Field(..., max_length=100)
+    motivo: str = Field(..., min_length=5, max_length=500)
+
+
+class RestablecerPasswordCuenta(BaseModel):
+    """USR-CLAVE: solo el motivo; la contrasena nunca la escribe el administrador."""
+
+    motivo: str = Field(..., min_length=5, max_length=500)

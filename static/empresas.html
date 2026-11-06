@@ -52,7 +52,7 @@
             <h2 id="viewTitle">Empresas</h2>
             <p id="viewDescription"></p>
           </div>
-          <button id="refreshButton" class="comite-button secondary" type="button">Actualizar</button>
+          <button id="refreshButton" class="comite-button secondary btn btn-secundario" type="button">Actualizar</button>
         </div>
 
         <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
@@ -91,8 +91,8 @@
                 <input id="regDireccion" type="text" maxlength="140" required>
               </div>
               <div class="full comite-decision-actions">
-                <button class="comite-button primary" type="submit">Registrar empresa</button>
-                <button class="comite-button secondary" type="reset">Limpiar</button>
+                <button class="comite-button primary btn btn-primario" type="submit">Registrar empresa</button>
+                <button class="comite-button secondary btn btn-secundario" type="reset">Limpiar</button>
               </div>
             </form>
           </div>
@@ -133,7 +133,8 @@
         gestionar: ["superadmin", "admin", "auxiliar", "empresa"],
         eliminar: ["superadmin", "admin", "empresa"],
         estado: ["superadmin", "admin"],
-        reactivar: ["superadmin"],
+        // El rol Super Administrador ya no se usa: reactiva el Administrador.
+        reactivar: ["superadmin", "admin"],
         // REQ: el Auxiliar pide estas acciones y un superior las aprueba.
         solicitar: ["auxiliar"],
         aprobar: ["superadmin", "admin"],
@@ -233,8 +234,11 @@
       const cargando = (texto) => panel('<div class="comite-loading">' + esc(texto) + "</div>");
       const fact = (etiqueta, valor) => "<div><dt>" + esc(etiqueta) + "</dt><dd>" + esc(valor) + "</dd></div>";
       const vacioTabla = (columnas, texto) => '<tr><td colspan="' + columnas + '"><div class="comite-table-empty">' + esc(texto) + "</div></td></tr>";
-      const accion = (nombre, texto, id) => '<button class="comite-table-action" type="button" data-accion="' + nombre + '" data-id="' + esc(id) + '">' + texto + "</button>";
-      const boton = (nombre, texto, tipo) => '<button class="comite-button ' + tipo + '" type="button" data-accion="' + nombre + '">' + texto + "</button>";
+      // Clases del sistema de botones (tema.css): acciones de fila pequenas; eliminar/rechazar en rojo de contorno.
+      const claseAccion = (nombre) => /^(eliminar|rechazar)/.test(nombre) ? "btn-peligro-contorno" : nombre === "aprobar" ? "btn-primario" : "btn-secundario";
+      const claseBoton = (tipo) => ({ primary: "btn-primario", secondary: "btn-secundario", danger: "btn-peligro" })[tipo] || "btn-secundario";
+      const accion = (nombre, texto, id) => '<button class="btn btn-sm ' + claseAccion(nombre) + '" type="button" data-accion="' + nombre + '" data-id="' + esc(id) + '">' + texto + "</button>";
+      const boton = (nombre, texto, tipo) => '<button class="comite-button ' + tipo + ' btn ' + claseBoton(tipo) + '" type="button" data-accion="' + nombre + '">' + texto + "</button>";
 
       const paginador = (pagina, totalPaginas, etiqueta) => totalPaginas > 1 ?
         '<nav class="comite-pagination" aria-label="' + esc(etiqueta) + '">' +
@@ -332,13 +336,13 @@
           '<div class="comite-toolbar">' +
           '<form id="formBuscar" class="comite-search-form"><label for="buscarTexto">Buscar empresa</label><div class="comite-search-row">' +
           '<input id="buscarTexto" type="search" placeholder="Nombre, NIT, ciudad o correo" value="' + esc(estado.texto) + '">' +
-          '<button class="comite-button primary" type="submit">Buscar</button></div></form>' +
+          '<button class="comite-button primary btn btn-primario" type="submit">Buscar</button></div></form>' +
           '<div class="comite-search-form" style="flex:0 1 220px">' +
           selector("filtroEstado", "Estado", [["", "Todos"], ["Activa", "Activa"], ["Suspendida", "Suspendida"], ["Inactiva", "Inactiva"]], estado.filtroEstado) +
           "</div></div>" +
           panel(
             encabezado("Empresas", totalPaginas > 1 ? (desde + 1) + "-" + (desde + enPagina.length) + " de " + conteo : conteo,
-              puede("gestionar") ? '<button class="comite-button primary" type="button" data-ir="registrar">Registrar empresa</button>' : "") +
+              puede("gestionar") ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="registrar">Registrar empresa</button>' : "") +
             '<div class="comite-table-wrap"><table><thead><tr><th>Empresa</th><th>NIT</th><th>Ciudad</th><th>Correo</th><th>Estado</th><th>Acción</th></tr></thead><tbody>' +
             (enPagina.map((e) => "<tr><td><strong>" + esc(e.nombre) + "</strong></td><td>" + esc(e.nit) + "</td><td>" + esc(e.ciudad) + "</td>" +
               "<td>" + esc(e.correo) + "</td><td>" + chip(e.estado || "Activa") + "</td><td>" + accion("ver", "Ver detalle", e.id_empresa) + "</td></tr>").join("") ||
@@ -374,8 +378,8 @@
             "<h3>" + (esEmpresa ? "Su cuenta todavía no tiene una empresa asociada" : "Seleccione una empresa") + "</h3>" +
             "<p>" + (esEmpresa ? "Regístrela para poder agregar sus sedes y contactos." : "Elíjala en el listado de empresas.") + "</p>" +
             '<div class="comite-decision-actions" style="justify-content:center">' +
-            (esEmpresa ? '<button class="comite-button primary" type="button" data-ir="registrar">Registrar empresa</button>' : "") +
-            (puede("listar") ? '<button class="comite-button primary" type="button" data-ir="listado">Ir al listado</button>' : "") +
+            (esEmpresa ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="registrar">Registrar empresa</button>' : "") +
+            (puede("listar") ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="listado">Ir al listado</button>' : "") +
             "</div></div>"
           );
           return;
@@ -432,7 +436,7 @@
 
         let nota = "";
         if (actual === "Inactiva" && !puede("reactivar") && !conAprobacion) {
-          nota = '<p class="comite-readonly-note">La empresa está inactiva. Solo el Super Administrador puede reactivarla.</p>';
+          nota = '<p class="comite-readonly-note">La empresa está inactiva. Solo un Administrador puede reactivarla.</p>';
         }
         if (conAprobacion) {
           nota += '<p class="comite-readonly-note">Los cambios de estado y las eliminaciones que usted pida quedan pendientes hasta que un administrador los apruebe.</p>';
@@ -461,7 +465,7 @@
 
         const filas = sedes.map((s) => "<tr><td><strong>" + esc(s.nombre_sede) + "</strong></td><td>" + esc(s.direccion) + "</td>" +
           "<td>" + esc(s.ciudad) + "</td><td>" + esc(s.departamento || "-") + "</td><td>" + (s.es_principal ? "Sí" : "No") + "</td><td>" + chip(s.estado) + "</td>" +
-          '<td><div class="comite-decision-actions" style="margin-top:0">' + accion("contactos", "Contactos", s.id_sede) +
+          '<td><div class="acciones-tabla">' + accion("contactos", "Contactos", s.id_sede) +
           (gestionar ? accion("editar-sede", "Editar", s.id_sede) : "") +
           (puede("eliminar") ? accion("eliminar-sede", "Eliminar", s.id_sede) : "") +
           (puede("solicitar") ? accion("eliminar-sede", "Solicitar eliminación", s.id_sede) : "") +
@@ -507,7 +511,7 @@
 
         const filas = lista.map((c) => "<tr><td><strong>" + esc(c.nombre) + "</strong></td><td>" + esc(c.cargo || "-") + "</td>" +
           "<td>" + esc(c.telefono || "-") + "</td><td>" + esc(c.correo || "-") + "</td>" +
-          '<td><div class="comite-decision-actions" style="margin-top:0">' +
+          '<td><div class="acciones-tabla">' +
           (puede("gestionar") ? accion("editar-contacto", "Editar", c.id_contacto) : "") +
           (puede("eliminar") ? accion("eliminar-contacto", "Eliminar", c.id_contacto) : "") +
           (puede("solicitar") ? accion("eliminar-contacto", "Solicitar eliminación", c.id_contacto) : "") +
@@ -574,7 +578,7 @@
 
       function puedeAprobar(aprobacion) {
         if (aprobacion.estado !== "Pendiente") return false;
-        return aprobacion.codigo_permiso === "EMP-008" ? rol === "superadmin" : puede("aprobar");
+        return puede("aprobar");
       }
 
       function renderizarAprobaciones() {
@@ -592,14 +596,14 @@
           if (puedeAprobar(a)) {
             acciones = accion("aprobar", "Aprobar", a.id_aprobacion) + accion("rechazar", "Rechazar", a.id_aprobacion);
           } else if (a.estado === "Pendiente" && puede("aprobar")) {
-            acciones = '<span class="comite-muted">Solo el Super Administrador</span>';
+            acciones = '<span class="comite-muted">Solo un Administrador</span>';
           }
           return "<tr><td>" + fecha(a.fecha_solicitud) + "</td>" +
             "<td><strong>" + esc(a.detalle || a.descripcion) + '</strong><br><span class="comite-muted">' + esc(a.codigo_permiso + " · " + a.descripcion) + "</span></td>" +
             "<td>" + esc(a.empresa_nombre || "-") + "</td>" +
             "<td>" + esc(a.solicitante_nombre || "-") + "</td>" +
             "<td>" + chip(a.estado) + (a.observacion_revision ? '<br><span class="comite-muted">' + esc(a.observacion_revision) + "</span>" : "") + "</td>" +
-            '<td><div class="comite-decision-actions" style="margin-top:0">' + acciones + "</div></td></tr>";
+            '<td><div class="acciones-tabla">' + acciones + "</div></td></tr>";
         }).join("");
 
         const rechazo = enRechazo
@@ -715,7 +719,7 @@
           case "inactivar":
             if (!confirm(puede("solicitar")
               ? "¿Solicitar la inactivación de la empresa? Un administrador deberá aprobarla."
-              : "¿Inactivar la empresa? Solo el Super Administrador podrá reactivarla.")) return;
+              : "¿Inactivar la empresa? Solo un Administrador podrá reactivarla.")) return;
             return resolver(enviar(base + "/inactivar", "POST"), "Empresa inactivada.");
           case "reactivar":
             return resolver(enviar(base + "/reactivar", "POST"), "Empresa reactivada.");

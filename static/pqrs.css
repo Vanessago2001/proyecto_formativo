@@ -1,0 +1,125 @@
+/* ==========================================================
+   PQRS · estilos compartidos por /pqrs y /pqrs-gestion.
+   Parte de tema.css (variables) y styles.css (cabecera común).
+   ========================================================== */
+
+.pq-shell { max-width: var(--ancho-contenido); margin: 0 auto; padding: 28px; }
+.pq-shell * { box-sizing: border-box; }
+
+/* Columna lateral (mismo diseño que el panel de administración) */
+.admin-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; }
+.admin-nav { background: #fff; border: 1px solid var(--borde); padding: 12px; height: max-content; }
+.admin-nav-heading { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px 14px;
+  margin-bottom: 6px; border-bottom: 1px solid var(--borde); color: var(--gris-900); font-weight: 700; }
+.admin-nav-heading span { color: var(--gris-500); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.admin-nav a, .admin-nav button.pq-vista { all: unset; box-sizing: border-box; display: block; width: 100%;
+  color: var(--gris-800); padding: 11px 12px; font-size: 13px; line-height: 1.35; cursor: pointer;
+  border-left: 3px solid transparent; }
+.admin-nav a:hover, .admin-nav button.pq-vista:hover, .admin-nav button.pq-vista.active {
+  background: var(--gris-100); color: var(--verde-800); border-left-color: var(--verde-600); font-weight: 700; }
+.admin-nav button.pq-vista:focus-visible { outline: 2px solid var(--verde-600); outline-offset: -2px; }
+.content { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+/* Encabezados y paneles */
+.pq-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.pq-heading h2 { margin: 2px 0 0; color: var(--verde-800); font-size: var(--txt-xl); }
+.pq-heading p { margin: 6px 0 0; color: var(--gris-500); font-size: var(--txt-sm); max-width: 70ch; }
+.pq-kicker { color: var(--gris-500); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.pq-panel { background: var(--fondo-panel); border: 1px solid var(--borde); border-radius: var(--radio-md);
+  padding: 22px; box-shadow: var(--sombra-1); }
+.pq-panel h3 { margin: 0 0 4px; color: var(--gris-900); font-size: var(--txt-lg); }
+.pq-panel > p.pq-ayuda { margin: 0 0 16px; color: var(--gris-500); font-size: var(--txt-sm); }
+
+/* Pestañas (página pública) */
+.pq-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--borde); margin-bottom: 18px; flex-wrap: wrap; }
+.pq-tabs button { all: unset; cursor: pointer; padding: 10px 16px; font-size: var(--txt-sm); font-weight: 600;
+  color: var(--gris-700); border-bottom: 3px solid transparent; }
+.pq-tabs button.active, .pq-tabs button:hover { color: var(--verde-800); border-bottom-color: var(--verde-600); }
+.pq-tabs button:focus-visible { outline: 2px solid var(--verde-600); }
+
+/* Formularios */
+.pq-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+.pq-form .pq-full { grid-column: 1 / -1; }
+.pq-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pq-field label { font-size: var(--txt-xs); font-weight: 700; color: var(--gris-700); }
+/* Campos: alto, borde, radio, foco y flecha de las listas vienen de tema.css. */
+/* padding explicito: el reset "* { padding: 0 }" de styles.css se carga despues de tema.css. */
+.pq-field input, .pq-field select, .pq-field textarea { width: 100%; padding: 8px 10px; }
+.pq-field textarea { min-height: 110px; resize: vertical; }
+.pq-field input[type="file"] { padding: 7px 10px; border: 1px solid var(--campo-borde); border-radius: var(--campo-radio);
+  background: #fff; font: inherit; font-size: var(--txt-sm); }
+.pq-field small { color: var(--gris-500); font-size: var(--txt-xs); }
+.pq-check { display: flex; gap: 10px; align-items: flex-start; font-size: var(--txt-sm); color: var(--gris-800); }
+.pq-check input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--verde-600); }
+.pq-trampa { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.pq-acciones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* Botones: btn + btn-primario / btn-secundario / btn-peligro(-contorno) / btn-sm
+   del sistema de tema.css. .pq-btn (y sec, chico, peligro) se conservan en el
+   HTML solo como marca; ya no fijan colores ni tamanos. */
+
+/* Mensajes */
+.pq-msg { display: none; padding: 12px 14px; border-radius: var(--radio-sm); font-size: var(--txt-sm); }
+.pq-msg.ok { display: block; background: var(--verde-100); color: var(--verde-900); border: 1px solid var(--verde-200); }
+.pq-msg.error { display: block; background: var(--rojo-50); color: var(--rojo-700); border: 1px solid var(--rojo-100); }
+.pq-msg.info { display: block; background: var(--azul-50); color: var(--azul-700); border: 1px solid var(--azul-100); }
+.pq-radicado { font-size: 22px; font-weight: 700; letter-spacing: .04em; color: var(--verde-800); }
+
+/* Tablas */
+.pq-table-wrap { overflow-x: auto; border: 1px solid var(--borde); border-radius: var(--radio-sm); }
+.pq-table { width: 100%; border-collapse: collapse; font-size: var(--txt-sm); }
+.pq-table th { text-align: left; background: var(--gris-50); color: var(--gris-700); font-size: var(--txt-xs);
+  text-transform: uppercase; letter-spacing: .04em; padding: 10px 12px; border-bottom: 1px solid var(--borde); white-space: nowrap; }
+.pq-table td { padding: 10px 12px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+.pq-table tr:last-child td { border-bottom: 0; }
+.pq-table tbody tr:hover { background: var(--fondo-suave); }
+.pq-table input { min-height: var(--boton-alto-sm); padding: 5px 8px; }
+.pq-vacio { padding: 26px; text-align: center; color: var(--gris-500); }
+
+/* Etiquetas de estado y semáforo */
+.pq-chip { display: inline-block; padding: 3px 10px; border-radius: var(--radio-pill); font-size: 11.5px;
+  font-weight: 700; white-space: nowrap; background: var(--gris-100); color: var(--gris-700); }
+.pq-chip.vencida, .pq-chip.atendida_tarde { background: var(--rojo-100); color: var(--rojo-700); }
+.pq-chip.proxima, .pq-chip.en_espera { background: var(--ambar-100); color: var(--ambar-700); }
+.pq-chip.en_termino, .pq-chip.atendida_a_tiempo { background: var(--verde-100); color: var(--verde-900); }
+.pq-chip.estado { background: var(--azul-50); color: var(--azul-700); }
+
+/* Filtros y métricas */
+.pq-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end; margin-bottom: 16px; }
+.pq-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.pq-metrica { background: #fff; border: 1px solid var(--borde); border-radius: var(--radio-md); padding: 14px 16px; }
+.pq-metrica b { display: block; font-size: 26px; color: var(--gris-900); }
+.pq-metrica span { color: var(--gris-500); font-size: var(--txt-xs); font-weight: 600; }
+.pq-metrica.alerta b { color: var(--rojo-700); }
+.pq-metrica.aviso b { color: var(--ambar-600); }
+
+/* Detalle */
+.pq-detalle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 18px; margin: 14px 0; }
+.pq-dato span { display: block; color: var(--gris-500); font-size: var(--txt-xs); font-weight: 700; }
+.pq-dato b { font-weight: 600; color: var(--gris-900); font-size: var(--txt-sm); word-break: break-word; }
+.pq-texto { white-space: pre-wrap; background: var(--fondo-suave); border: 1px solid var(--borde);
+  border-radius: var(--radio-sm); padding: 12px 14px; font-size: var(--txt-sm); color: var(--gris-800); }
+.pq-linea { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--verde-200); }
+.pq-linea li { position: relative; padding: 0 0 14px 18px; font-size: var(--txt-sm); }
+.pq-linea li::before { content: ""; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px;
+  border-radius: 50%; background: var(--verde-600); }
+.pq-linea time { color: var(--gris-500); font-size: var(--txt-xs); }
+.pq-linea p { margin: 4px 0 0; white-space: pre-wrap; color: var(--gris-800); }
+.pq-adjuntos { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.pq-adjuntos button { all: unset; cursor: pointer; color: var(--azul-700); text-decoration: underline; font-size: var(--txt-sm); }
+.pq-seccion { margin-top: 18px; }
+.pq-seccion h4 { margin: 0 0 10px; font-size: var(--txt-base); color: var(--gris-900); }
+
+dialog.pq-dialogo { border: 0; border-radius: var(--radio-lg); padding: 0; width: min(860px, 96vw);
+  max-height: 92vh; box-shadow: var(--sombra-2); }
+dialog.pq-dialogo::backdrop { background: rgba(15, 35, 22, .45); }
+.pq-dialogo-cuerpo { padding: 24px; overflow-y: auto; max-height: 92vh; }
+.pq-dialogo-cierre { float: right; }
+
+[hidden] { display: none !important; }
+
+@media (max-width: 800px) {
+  .pq-shell { padding: 16px; }
+  .admin-grid { grid-template-columns: 1fr; }
+  .pq-form { grid-template-columns: 1fr; }
+}

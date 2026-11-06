@@ -32,6 +32,7 @@ from modules.certificados.certificados_service import (
 )
 from modules.certificados.firma_service import FirmaService
 from modules.consultas_p.rate_limit import limitar_consultas
+from modules.reportes.exportacion_tabular import Columna, estado_legible, respuesta_exportacion
 
 router = APIRouter(prefix="/certificados", tags=["M9 - Certificados"])
 
@@ -213,18 +214,64 @@ async def notificar_vencimiento(
     return await CertificadosService(db).notificar_vencimiento(id_certificado, dias, usuario)
 
 
+_NOMBRES_ESTADO_CERTIFICADO = {
+    "PENDIENTE_FIRMA": "Pendiente de firma",
+    "VIGENTE": "Vigente",
+    "SUSPENDIDO": "Suspendido",
+    "CANCELADO": "Cancelado",
+    "VENCIDO": "Vencido",
+}
+
+
+def _estado_certificado_legible(valor) -> str:
+    clave = str(valor or "").strip().upper()
+    return _NOMBRES_ESTADO_CERTIFICADO.get(clave, estado_legible(valor))
+
+
+COLUMNAS_EXPORTACION_CERTIFICADOS = [
+    Columna("codigo_verificacion", "Código de verificación", 22),
+    Columna("numero_radicado", "Radicado", 18),
+    Columna("empresa", "Empresa titular", 30),
+    Columna("nit", "NIT", 15),
+    Columna("norma_codigo", "Norma", 12),
+    Columna("alcance", "Alcance", 40),
+    Columna("fecha_emision", "Fecha de emisión", 15),
+    Columna("fecha_vencimiento", "Fecha de vencimiento", 15),
+    Columna("estado_certificado", "Estado", 16, _estado_certificado_legible),
+    Columna("publico_certificado", "Publicado", 12),
+]
+
+COLUMNAS_EMPRESAS_CERTIFICADAS = [
+    Columna("empresa", "Empresa", 32),
+    Columna("nit", "NIT", 15),
+    Columna("ciudad", "Ciudad", 18),
+    Columna("norma_codigo", "Norma", 12),
+    Columna("fecha_emision", "Fecha de emisión", 15),
+    Columna("fecha_vencimiento", "Fecha de vencimiento", 15),
+    Columna("codigo_verificacion", "Código de verificación", 22),
+]
+
+
 @router.get("/exportar", summary="CER-025 · Exportar base de certificados")
 async def exportar_certificados(
+    formato: str = Query(default="xlsx", description="xlsx (Excel), pdf o csv"),
     usuario: dict = Depends(requiere_permiso("CER-025")),
     db: AsyncSession = Depends(get_db),
 ):
     filas = await CertificadosService(db).registros_exportacion()
-    columnas = (
-        "codigo_verificacion", "numero_radicado", "empresa", "nit",
-        "norma_codigo", "alcance", "fecha_emision", "fecha_vencimiento",
-        "estado_certificado", "publico_certificado",
-    )
-    respuesta = _csv_response(filas, columnas, "certificados.csv")
+    if str(formato).strip().lower() == "csv":
+        respuesta = _csv_response(
+            filas, tuple(c.clave for c in COLUMNAS_EXPORTACION_CERTIFICADOS), "certificados.csv"
+        )
+    else:
+        respuesta = respuesta_exportacion(
+            formato,
+            titulo="Base de certificados",
+            columnas=COLUMNAS_EXPORTACION_CERTIFICADOS,
+            filas=filas,
+            nombre_base="certificados",
+            hoja="Certificados",
+        )
     if usuario.get("requiere_aprobacion"):
         respuesta.headers["X-Requiere-Aprobacion"] = "true"
     return respuesta
@@ -232,15 +279,24 @@ async def exportar_certificados(
 
 @router.get("/empresas-oficiales", summary="CER-026 · Listado oficial de empresas")
 async def exportar_empresas_certificadas(
+    formato: str = Query(default="xlsx", description="xlsx (Excel), pdf o csv"),
     usuario: dict = Depends(requiere_permiso("CER-026")),
     db: AsyncSession = Depends(get_db),
 ):
     filas = await CertificadosService(db).empresas_oficiales()
-    columnas = (
-        "empresa", "nit", "ciudad", "norma_codigo", "fecha_emision",
-        "fecha_vencimiento", "codigo_verificacion",
+    if str(formato).strip().lower() == "csv":
+        return _csv_response(
+            filas, tuple(c.clave for c in COLUMNAS_EMPRESAS_CERTIFICADAS), "empresas-certificadas.csv"
+        )
+    return respuesta_exportacion(
+        formato,
+        titulo="Listado oficial de empresas certificadas",
+        subtitulo="Empresas con al menos un certificado vigente.",
+        columnas=COLUMNAS_EMPRESAS_CERTIFICADAS,
+        filas=filas,
+        nombre_base="empresas-certificadas",
+        hoja="Empresas certificadas",
     )
-    return _csv_response(filas, columnas, "empresas-certificadas.csv")
 
 
 @router.get("/{id_certificado}", summary="CER-011 · Consultar certificado")

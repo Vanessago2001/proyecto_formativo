@@ -12,6 +12,12 @@ class CodigoRequest(BaseModel):
     codigo: str = Field(..., min_length=6, max_length=6)
 
 
+class ReenviarCodigoRequest(BaseModel):
+    """Pide un nuevo código de verificación (bloqueo por intentos fallidos)."""
+
+    correo: str = Field(..., min_length=3, max_length=255)
+
+
 class CambiarPasswordRequest(BaseModel):
     password_actual: str = Field(..., min_length=8)
     password_nueva: str = Field(..., min_length=8)

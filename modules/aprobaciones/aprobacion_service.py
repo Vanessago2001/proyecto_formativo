@@ -23,6 +23,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import _normalize_role_name
+from modules.permisos_auxiliar.permisos_auxiliar_service import (
+    auxiliar_tiene_permiso,
+    registrar_uso,
+)
 
 ESTADO_PENDIENTE = "Pendiente"
 ESTADO_APROBADA = "Aprobada"
@@ -53,6 +57,24 @@ def obtener_accion(codigo: str) -> AccionAprobable:
             detail=f"La acción {codigo} no admite aprobación.",
         )
     return _ACCIONES[codigo]
+
+
+def respuesta_permiso_delegado(aprobacion: dict):
+    """
+    Si `solicitar` ejecutó la acción por permiso delegado, devuelve la
+    respuesta 200 con el resultado (igual que la ejecución directa) y la
+    cabecera X-Permiso-Delegado. Si quedó pendiente, devuelve None.
+    """
+    if not aprobacion.get("permiso_delegado"):
+        return None
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=jsonable_encoder(aprobacion.get("resultado")),
+        headers={"X-Permiso-Delegado": str(aprobacion.get("codigo_permiso") or "")},
+    )
 
 
 COLUMNAS = """
@@ -89,9 +111,22 @@ class AprobacionService:
         detalle: str,
         usuario: dict,
     ) -> dict:
-        """Registra la acción como pendiente. No la ejecuta."""
+        """Registra la acción como pendiente. No la ejecuta.
+
+        Excepción: si el Administrador le delegó a este auxiliar el permiso
+        `codigo` (modules/permisos_auxiliar), la acción se ejecuta de
+        inmediato y queda registrada como 'Aprobada' por permiso delegado.
+        La respuesta trae `permiso_delegado: True` y `resultado`.
+        """
         definicion = obtener_accion(codigo)
         datos_json = json.dumps(datos, sort_keys=True)
+
+        if _normalize_role_name(usuario.get("role_name")) == "auxiliar" and await auxiliar_tiene_permiso(
+            self.db, usuario.get("id_usuario"), codigo
+        ):
+            return await self._ejecutar_con_permiso_delegado(
+                definicion, id_empresa, datos_json, detalle, usuario
+            )
 
         repetida = await self.db.execute(
             text("""
@@ -134,6 +169,58 @@ class AprobacionService:
         aprobacion = _fila(resultado.mappings().first())
         await self.db.commit()
         return aprobacion
+
+    async def _ejecutar_con_permiso_delegado(
+        self,
+        definicion: AccionAprobable,
+        id_empresa: str | None,
+        datos_json: str,
+        detalle: str,
+        usuario: dict,
+    ) -> dict:
+        """Ejecuta la acción REQ sin esperar aprobación y deja el rastro."""
+        id_usuario = str(usuario.get("id_usuario"))
+        try:
+            resultado = await self.db.execute(
+                text("""
+                    INSERT INTO aprobacion_pendiente (
+                        codigo_permiso, descripcion, detalle, id_empresa, datos, estado, id_solicitante
+                    )
+                    VALUES (
+                        :codigo, :descripcion, :detalle, :id_empresa,
+                        CAST(CAST(:datos AS TEXT) AS JSONB), :pendiente, :id_solicitante
+                    )
+                    RETURNING id_aprobacion, codigo_permiso, descripcion, detalle, id_empresa,
+                              CAST(datos AS TEXT) AS datos, estado, id_solicitante, fecha_solicitud;
+                """),
+                {
+                    "codigo": definicion.codigo,
+                    "descripcion": definicion.descripcion,
+                    "detalle": detalle[:255],
+                    "id_empresa": id_empresa,
+                    "datos": datos_json,
+                    "pendiente": ESTADO_PENDIENTE,
+                    "id_solicitante": id_usuario,
+                },
+            )
+            aprobacion = _fila(resultado.mappings().first())
+
+            # Mismas validaciones que cuando un superior aprueba.
+            ejecutado = await definicion.ejecutar(self.db, aprobacion)
+
+            await registrar_uso(
+                self.db, id_usuario, definicion.codigo, detalle, aprobacion["id_aprobacion"]
+            )
+            cerrada = await self._cerrar(
+                aprobacion["id_aprobacion"],
+                ESTADO_APROBADA,
+                usuario,
+                "Ejecutada directamente por el Auxiliar con permiso delegado por el Administrador.",
+            )
+        except Exception:
+            await self.db.rollback()
+            raise
+        return {**cerrada, "permiso_delegado": True, "resultado": ejecutado}
 
     async def listar(self, usuario: dict, estado: str | None = None) -> list[dict]:
         """Quien aprueba ve todas; el Auxiliar solo las que él pidió."""

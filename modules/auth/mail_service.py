@@ -1070,3 +1070,39 @@ class MailService:
 
         await fm.send_message(mensaje)
 
+
+    # ============================================================
+    # AVISOS DE GESTION DE CUENTA (cambio de correo por el administrador)
+    # ============================================================
+
+    @staticmethod
+    async def enviar_aviso_cuenta(
+        destinatario: str,
+        asunto: str,
+        titulo: str,
+        mensaje: str,
+    ):
+        """Aviso informativo sin codigo, con la plantilla general."""
+        html = MailService._crear_html(titulo=titulo, mensaje=mensaje)
+
+        correo = MessageSchema(
+            subject=asunto,
+            recipients=[destinatario],
+            body=html,
+            subtype=MessageType.html,
+            attachments=[
+                {
+                    "file": str(MailService.LOGO_PATH),
+                    "headers": {
+                        "Content-ID": "<sena_logo>",
+                        "Content-Disposition": 'inline; filename="sena_blanco.png"',
+                    },
+                    "mime_type": "image",
+                    "mime_subtype": "png",
+                }
+            ],
+        )
+
+        fm = FastMail(conf)
+
+        await fm.send_message(correo)

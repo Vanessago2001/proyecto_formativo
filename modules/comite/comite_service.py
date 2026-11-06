@@ -1,6 +1,7 @@
 """Persistencia y transiciones del ciclo de vida de decisiones del comité."""
 
 import json
+from datetime import date
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -22,6 +23,94 @@ CAMBIOS_ESTADO = {
     "cerrar-expediente": estados.CERRADA,
     "reabrir-dictamen": estados.EN_REVISION,
 }
+
+
+# Cola del Comité (COM-001). El estado lo decide SIEMPRE el filtro de estado;
+# el buscador (NIT, radicado o empresa), la norma y las fechas solo restringen.
+# Antes la lista inicial traía solo Radicada/En revisión y la búsqueda por NIT
+# traía todos los estados, así que el mismo expediente aparecía o no según se
+# hubiera escrito algo en el buscador.
+FILTRO_ESTADO_PENDIENTES = "pendientes"
+FILTRO_ESTADO_TODOS = "todos"
+ESTADOS_PENDIENTES_COMITE = (estados.RADICADA, estados.EN_REVISION)
+
+
+def _sin_separadores(valor: str) -> str:
+    return "".join(c for c in str(valor or "").upper() if c.isalnum())
+
+
+def construir_filtro_expedientes(
+    estado: str | None = None,
+    q: str | None = None,
+    norma: str | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
+) -> tuple[str, dict]:
+    """
+    Devuelve (condiciones SQL adicionales, parámetros) para la cola del Comité.
+
+    `estado`: 'pendientes' (por defecto: Radicada y En revision), 'todos' o
+    cualquier estado del catálogo de M5 escrito como sea ('APROBADO' vale
+    por 'Aprobada'). Se compara contra el valor canónico de la columna, así
+    que también entran filas viejas con otra grafía.
+    """
+    condiciones: list[str] = []
+    params: dict = {}
+
+    valor_estado = str(estado or FILTRO_ESTADO_PENDIENTES).strip().lower()
+    if valor_estado == FILTRO_ESTADO_PENDIENTES:
+        lista = ESTADOS_PENDIENTES_COMITE
+    elif valor_estado == FILTRO_ESTADO_TODOS:
+        lista = ()
+    else:
+        canonico = estados.normalizar(estado)
+        if canonico is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=(
+                    f"Estado de expediente desconocido: {estado!r}. Usa 'pendientes', "
+                    f"'todos' o uno de: {', '.join(estados.ESTADOS)}."
+                ),
+            )
+        lista = (canonico,)
+    if lista:
+        nombres = []
+        for i, valor in enumerate(lista):
+            params[f"estado_{i}"] = valor
+            nombres.append(f":estado_{i}")
+        condiciones.append(f"({estados.sql_canonico('s.estado')}) IN ({', '.join(nombres)})")
+
+    texto = str(q or "").strip()
+    if texto:
+        params["q"] = f"%{texto}%"
+        compacto = _sin_separadores(texto)
+        params["q_compacto"] = f"%{compacto}%" if compacto else params["q"]
+        condiciones.append(
+            "(s.numero_radicado ILIKE :q OR e.nit ILIKE :q OR e.nombre ILIKE :q"
+            " OR REGEXP_REPLACE(UPPER(COALESCE(e.nit, '')), '[^A-Z0-9]', '', 'g') LIKE :q_compacto)"
+        )
+
+    valor_norma = _sin_separadores(norma or "")
+    if valor_norma:
+        params["norma"] = valor_norma
+        condiciones.append(
+            "REGEXP_REPLACE(UPPER(COALESCE(n.codigo, '')), '[^A-Z0-9]', '', 'g') = :norma"
+        )
+
+    if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="La fecha inicial no puede ser posterior a la fecha final.",
+        )
+    if fecha_desde:
+        params["fecha_desde"] = fecha_desde
+        condiciones.append("CAST(COALESCE(s.fecha_radicacion, s.fecha_creacion) AS DATE) >= :fecha_desde")
+    if fecha_hasta:
+        params["fecha_hasta"] = fecha_hasta
+        condiciones.append("CAST(COALESCE(s.fecha_radicacion, s.fecha_creacion) AS DATE) <= :fecha_hasta")
+
+    sql = "".join(f"\n          AND {c}" for c in condiciones)
+    return sql, params
 
 
 class ComiteService:

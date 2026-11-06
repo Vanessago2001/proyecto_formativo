@@ -5,6 +5,7 @@ from modules.auth.auth_service import AuthService
 from modules.auth.auth_schema import (
     LoginRequest,
     CodigoRequest,
+    ReenviarCodigoRequest,
     CambiarPasswordRequest,
     CambiarPasswordExpiradaRequest,
     LoginMFARequest,
@@ -119,6 +120,16 @@ async def verificar_codigo(
         datos.correo,
         datos.codigo
     )
+
+@router.post("/reenviar-codigo")
+async def reenviar_codigo(
+    datos: ReenviarCodigoRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Envía un código de verificación nuevo (espera mínima entre envíos)."""
+    service = AuthService(db)
+
+    return await service.reenviar_codigo(datos.correo)
 
 @router.post("/reset-password")
 async def reset_password(

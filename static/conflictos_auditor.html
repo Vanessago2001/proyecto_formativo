@@ -61,36 +61,6 @@
             min-width: 0;
         }
 
-        /* ENCABEZADO */
-
-        .login-header {
-            position: relative;
-            z-index: 1;
-        }
-
-        .login-header .header-content {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-        }
-
-        .login-header .sena-blanco {
-            width: 72px;
-            height: auto;
-            object-fit: contain;
-            flex-shrink: 0;
-        }
-
-        .login-header h1 {
-            margin: 0;
-            line-height: 1.2;
-        }
-
-        .login-header .subtitle {
-            margin: 6px 0 0;
-            line-height: 1.5;
-        }
-
         /* BARRA SUPERIOR Y REGRESO */
 
         .top-navigation {
@@ -98,7 +68,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 22px;
+            margin-bottom: 0;
             min-width: 0;
         }
 
@@ -197,38 +167,28 @@
             line-height: 1.5;
         }
 
-        .form-control {
+        /* Alto, borde, radio y foco: tema.css. styles.css centra y espacia los
+           input dentro de .form-group (pantallas de acceso): aqui se devuelven
+           a la alineacion normal. */
+        .form-control,
+        .form-group input.form-control,
+        .form-group select.form-control {
             display: block;
+            border-radius: var(--campo-radio);
             width: 100%;
             min-width: 0;
-            min-height: 44px;
-            padding: 11px 13px;
-            color: var(--text-primary);
-            background: #fff;
-            border: 1px solid #cbd5e1;
-            border-radius: var(--radius-control);
-            outline: none;
-            font: inherit;
-            font-size: 14px;
-            line-height: 1.5;
-            transition: border-color 0.2s ease,
-                box-shadow 0.2s ease,
-                background-color 0.2s ease;
+            padding: 8px 10px;
+            font-size: var(--txt-base);
+            text-align: left;
+            letter-spacing: normal;
+        }
+
+        .form-group select.form-control:not(:focus) {
+            border-color: var(--campo-borde);
         }
 
         .form-control::placeholder {
-            color: #929d95;
-            opacity: 1;
-        }
-
-        .form-control:hover {
-            border-color: #a9c59d;
-        }
-
-        .form-control:focus {
-            border-color: var(--sena-green);
-            box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.13);
-            background-color: #fff;
+            letter-spacing: normal;
         }
 
         textarea.form-control {
@@ -240,55 +200,11 @@
             margin: 0;
         }
 
-        /* BOTONES PRINCIPALES */
-
-        .btn-save-section,
-        .btn-main {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            min-height: 43px;
-            padding: 11px 20px;
-            color: #fff;
-            background: var(--sena-green);
-            border: 1px solid var(--sena-green);
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            line-height: 1.4;
-            text-align: center;
-            text-decoration: none;
-            cursor: pointer;
-            transition: background-color 0.2s ease,
-                border-color 0.2s ease,
-                box-shadow 0.2s ease,
-                transform 0.2s ease;
-        }
+        /* BOTONES: colores, tamanos y estados en tema.css (sistema .btn).
+           Aqui solo queda la separacion. */
 
         .btn-save-section {
             margin-top: 20px;
-        }
-
-        .btn-main:hover,
-        .btn-save-section:hover {
-            color: #fff;
-            background: var(--sena-green-hover);
-            border-color: var(--sena-green-hover);
-            box-shadow: 0 4px 12px rgba(57, 169, 0, 0.20);
-            transform: translateY(-1px);
-        }
-
-        .btn-main:active,
-        .btn-save-section:active {
-            transform: translateY(0);
-        }
-
-        .btn-main:focus-visible,
-        .btn-save-section:focus-visible,
-        .btn-review:focus-visible {
-            outline: 3px solid rgba(57, 169, 0, 0.30);
-            outline-offset: 3px;
         }
 
         /* ALINEACIÓN DEL FORMULARIO DE VALIDACIÓN */
@@ -311,7 +227,6 @@
         .validation-grid .btn-save-section {
             min-width: 190px;
             margin-top: 0;
-            white-space: nowrap;
         }
 
         /* TABLA */
@@ -364,7 +279,7 @@
             color: #45534a;
             line-height: 1.6;
             vertical-align: middle;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             border-bottom: 1px solid #e2e8f0;
         }
 
@@ -391,63 +306,19 @@
             min-width: 230px;
         }
 
-        /* --- BOTONES DE ACCIÓN: AHORA EN FILA Y MÁS PEQUEÑOS --- */
-
-        .action-group {
-            display: flex;
-            flex-direction: row;          /* uno al lado del otro */
-            align-items: center;
-            justify-content: center;
-            gap: 6px;                     /* separación reducida */
-            min-width: 0;                 /* ya no fuerza ancho grande */
-            flex-wrap: nowrap;
+        /* Acciones de cada fila: .acciones-tabla + .btn-sm (tema.css). */
+        .record-table td.action-group {
+            white-space: nowrap;
         }
 
-        .btn-review {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: auto;                  /* ancho según contenido */
-            min-height: 30px;             /* más pequeño */
-            padding: 5px 9px;             /* más compacto */
-            border: 1px solid transparent;
-            border-radius: 6px;
-            font-size: 11px;              /* letra un poco menor */
-            font-weight: 600;
-            line-height: 1.35;
-            text-align: center;
-            white-space: nowrap;          /* no partir el texto */
-            cursor: pointer;
-            transition: background-color 0.2s ease,
-                border-color 0.2s ease,
-                box-shadow 0.2s ease,
-                transform 0.2s ease;
+        /* Los dos textos son largos: se apilan en la celda para no cortarse. */
+        .record-table td.action-group .acciones-tabla {
+            flex-direction: column;
+            align-items: stretch;
         }
 
-        .btn-approve {
-            color: #256d00;
-            background: #f1f5f9;
-            border-color: #cfe3c5;
-        }
-
-        .btn-approve:hover {
-            background: #e4f1dc;
-            border-color: #b7dda5;
-            box-shadow: 0 2px 6px rgba(37, 109, 0, 0.08);
-            transform: translateY(-1px);
-        }
-
-        .btn-reject {
-            color: #b42318;
-            background: #f1f5f9;
-            border-color: #f2d1d1;
-        }
-
-        .btn-reject:hover {
-            background: #ffe2e2;
-            border-color: #eab7b7;
-            box-shadow: 0 2px 6px rgba(165, 44, 44, 0.08);
-            transform: translateY(-1px);
+        .record-table td:nth-child(2) {
+            white-space: nowrap;
         }
 
         /* RESULTADO DE VALIDACIÓN */
@@ -509,10 +380,6 @@
                 min-width: 850px;
             }
 
-            .login-header .header-content {
-                gap: 14px;
-            }
-
             .top-navigation {
                 align-items: flex-start;
                 flex-direction: column;
@@ -527,28 +394,8 @@
                 padding: 18px 14px;
             }
 
-            .login-header .header-content {
-                gap: 10px;
-            }
-
-            .login-header .sena-blanco {
-                width: 58px !important;
-            }
-
-            .login-header h1 {
-                font-size: 22px;
-            }
-
-            .login-header .subtitle {
-                font-size: 12px;
-            }
-
             .section-title {
                 font-size: 19px;
-            }
-
-            .form-control {
-                font-size: 14px;
             }
 
             .record-table {
@@ -635,11 +482,7 @@
         .modal-field select,
         .modal-field textarea {
             width: 100%;
-            padding: 9px 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: inherit;
+            padding: 8px 10px;
         }
 
         .modal-field textarea {
@@ -650,7 +493,7 @@
         .modal-readonly {
             padding: 9px 10px;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: var(--campo-radio);
             background: #f8fafc;
             color: #334155;
             font-size: 14px;
@@ -671,28 +514,6 @@
             margin-top: 20px;
         }
 
-        .modal-btn {
-            padding: 9px 14px;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #334155;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .modal-btn.primary {
-            background: #3baa01;
-            border-color: #3baa01;
-            color: #fff;
-        }
-
-        .modal-btn.danger {
-            background: #b42318;
-            border-color: #b42318;
-            color: #fff;
-        }
-
         /* =====================================================
            MENU LATERAL: mismo tamaño, diseño, posición y distancia
            que el menú de static/auditor.html.
@@ -700,7 +521,7 @@
         .portal-shell {
             max-width: var(--ancho-contenido);
             margin: 0 auto;
-            padding: 18px 22px 28px;
+            padding: 28px;
             display: grid;
             grid-template-columns: 218px minmax(0, 1fr);
             align-items: start;
@@ -969,17 +790,6 @@
             }
         }
 
-        /* El boton "Panel" del encabezado, sin el fondo blanco por defecto. */
-        .header-content .comite-header-user .comite-back-button {
-            background: transparent;
-            color: #fff;
-        }
-
-        .header-content .comite-header-user .comite-back-button:hover {
-            background: rgba(255, 255, 255, 0.12);
-            color: #fff;
-        }
-
         /* MOVIMIENTO REDUCIDO */
 
         @media (prefers-reduced-motion: reduce) {
@@ -1006,9 +816,10 @@
                 </div>
             </div>
             <div class="comite-header-user">
-                <a class="comite-back-button" href="/dashboard">Panel</a>
-                <a class="profile-link" href="/perfil-auditor">Mi perfil</a>
-                <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+              <a class="comite-back-button" href="/dashboard">Panel</a>
+              <a class="profile-link" href="/reportes">Reportes</a>
+              <a class="profile-link" href="/perfil-auditor" title="Mi perfil" aria-label="Mi perfil"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
+              <button id="logoutButton" class="comite-logout js-salir" type="button">Cerrar sesión</button>
             </div>
         </div>
     </header>
@@ -1099,7 +910,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-save-section btn-main">
+                    <button type="submit" class="btn btn-primario btn-save-section btn-main">
                         Guardar conflicto
                     </button>
                 </form>
@@ -1140,7 +951,7 @@
                     </div>
 
                     <div class="form-group">
-                        <button type="button" class="btn-save-section btn-main" onclick="validarConflicto()">
+                        <button type="button" class="btn btn-primario btn-save-section btn-main" onclick="validarConflicto()">
                             Validar conflicto
                         </button>
                     </div>
@@ -1204,10 +1015,10 @@
                         <td>${item.bloquea_asignacion ? 'Sí' : 'No'}</td>
                         <td>${item.estado || '-'}</td>
                         <td><span class="descripcion-conflicto" title="Clic para ver la descripci\u00f3n completa" onclick="this.classList.toggle('expandido')">${escapeHtml(item.descripcion || '-')}</span></td>
-                        <td class="action-group">
-                            <button type="button" class="btn-review btn-approve" onclick="actualizarConflicto('${item.id_conflicto}')">Actualizar conflicto de interés</button>
-                            <button type="button" class="btn-review btn-reject" onclick="eliminarConflicto('${item.id_conflicto}')">Eliminar conflicto antes de asignación</button>
-                        </td>
+                        <td class="action-group"><div class="acciones-tabla">
+                            <button type="button" class="btn btn-secundario btn-sm btn-review btn-approve" onclick="actualizarConflicto('${item.id_conflicto}')">Actualizar conflicto de interés</button>
+                            <button type="button" class="btn btn-peligro-contorno btn-sm btn-review btn-reject" onclick="eliminarConflicto('${item.id_conflicto}')">Eliminar conflicto antes de asignación</button>
+                        </div></td>
                     </tr>`;
                 }).join('');
             } catch (e) {
@@ -1226,7 +1037,9 @@
                 bloquea_asignacion: true
             };
             try {
-                const res = await fetch('/auditores/registro/' + uid + '/conflictos', {
+                // Endpoint propio de esta pantalla: agrega el conflicto aunque la
+                // postulación ya esté enviada o aprobada, sin borrar los demás.
+                const res = await fetch('/conflictos-auditor/usuario/' + encodeURIComponent(uid), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1235,7 +1048,12 @@
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.detail || 'No fue posible guardar el conflicto.');
+                if (!res.ok) {
+                    const detalle = typeof data.detail === 'string'
+                        ? data.detail
+                        : (Array.isArray(data.detail) ? 'Revise los datos: seleccione la empresa, el tipo y escriba la descripción.' : '');
+                    throw new Error(detalle || 'No fue posible guardar el conflicto.');
+                }
                 alert(data.mensaje || 'Conflicto guardado correctamente.');
                 await cargarConflictos();
                 document.getElementById('formConflicto').reset();
@@ -1433,8 +1251,8 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="modal-btn" onclick="cerrarModalConflicto()">Cancelar</button>
-                <button type="button" class="modal-btn primary" onclick="guardarModalConflicto()">Guardar cambios</button>
+                <button type="button" class="btn btn-secundario modal-btn" onclick="cerrarModalConflicto()">Cancelar</button>
+                <button type="button" class="btn btn-primario modal-btn primary" onclick="guardarModalConflicto()">Guardar cambios</button>
             </div>
         </div>
     </div>

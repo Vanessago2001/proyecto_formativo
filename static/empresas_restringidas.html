@@ -7,22 +7,20 @@
   <link rel="stylesheet" href="/static/tema.css?v=20261028">
   <link rel="stylesheet" href="/static/styles.css?v=20261028">
   <style>
-    .surface { min-width: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 22px; box-shadow: 0 5px 20px rgba(32,74,25,.07); }
+    .surface { min-width: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; }
     .surface h2 { color: #256d00; margin: 0 0 8px; }
     .help-text { color: #5f6f69; font-size: 13px; margin-bottom: 16px; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: 13px; }
     th { background: #f8fafc; color: #256d00; }
-    .btn-ver { padding: 6px 12px; border: 1px solid #3baa01; border-radius: 6px; background: #fff; color: #256d00; cursor: pointer; font-weight: 600; font-size: 12px; }
-    .btn-ver:hover { background: #f1f5f9; }
     .modal-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(15,23,42,.55); z-index: 1000; padding: 20px; }
     .modal-overlay.active { display: flex; }
-    .modal-box { background: #fff; border-radius: 12px; padding: 24px; max-width: 620px; width: 100%; box-shadow: 0 20px 50px rgba(15,23,42,.25); }
-    .modal-box h3 { margin-top: 0; color: #256d00; }
+    .modal-box { background: #fff; border-radius: 8px; padding: 24px; max-width: 620px; width: 100%; box-shadow: 0 20px 50px rgba(15,23,42,.25); }
+    .modal-box h3 { margin: 0 0 14px; color: #256d00; }
     .modal-field { margin-bottom: 10px; }
     .modal-field strong { display: block; color: #5f6f69; font-size: 11px; text-transform: uppercase; margin-bottom: 2px; }
-    .modal-close { margin-top: 16px; padding: 8px 16px; border: none; border-radius: 6px; background: #3baa01; color: #fff; cursor: pointer; font-weight: 600; }
+    .modal-close { margin-top: 16px; }
     .empty { text-align: center; color: #64748b; padding: 24px; }
     /* =====================================================
        MENU LATERAL: el mismo de static/dashboard.html, con su
@@ -38,6 +36,7 @@
         display: grid;
         grid-template-columns: 260px minmax(0, 1fr);
         gap: 24px;
+        align-items: start;
     }
 
     .admin-nav {
@@ -92,17 +91,6 @@
         .admin-grid {
             grid-template-columns: 1fr;
         }
-    }
-
-    /* El boton "Panel" del encabezado, sin el fondo blanco por defecto. */
-    .header-content .comite-header-user .comite-back-button {
-        background: transparent;
-        color: #fff;
-    }
-
-    .header-content .comite-header-user .comite-back-button:hover {
-        background: rgba(255, 255, 255, 0.12);
-        color: #fff;
     }
   </style>
 </head>
@@ -178,7 +166,7 @@
     <div class="modal-box">
       <h3>Detalle de la empresa restringida</h3>
       <div id="detalleEmpresa"></div>
-      <button class="modal-close" onclick="cerrarModal()">Cerrar</button>
+      <button class="modal-close btn btn-secundario" type="button" onclick="cerrarModal()">Cerrar</button>
     </div>
   </div>
 
@@ -218,7 +206,7 @@
             <td>${escapeHtml(empresa.nit || "-")}</td>
             <td>${escapeHtml(empresa.tipo_conflicto || "-")}</td>
             <td>${escapeHtml(empresa.estado || "-")}</td>
-            <td><button class="btn-ver" type="button" onclick="verEmpresa(${JSON.stringify(empresa).replace(/</g, "&lt;")})">Ver</button></td>
+            <td><button class="btn-ver btn btn-secundario btn-sm" type="button" onclick="verEmpresa(${JSON.stringify(empresa).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;")})">Ver</button></td>
           </tr>
         `).join("");
       } catch (error) {

@@ -28,20 +28,12 @@
     .app-shell {
       max-width: var(--ancho-contenido);
       margin: 0 auto;
-      padding: 18px 16px 40px;
+      padding: 28px 28px 40px;
     }
 
     /* =========================================================
        HEADER
     ========================================================= */
-
-    .login-header {
-      padding: 20px 16px;
-    }
-
-    .login-header .header-content {
-      max-width: var(--ancho-contenido);
-    }
 
     .admin-header {
       display: flex;
@@ -287,11 +279,13 @@
     .form-group select,
     .form-control {
       width: 100%;
-      height: 42px;
-      min-height: 42px;
-      padding: 0 12px;
+      height: 38px;
+      min-height: 38px;
+      padding: 8px 10px;
       border: 1px solid #cbd5e1;
-      border-radius: 7px;
+      border-radius: 6px;
+      letter-spacing: 0;
+      text-align: left;
       background: #fff;
       color: #263238;
       font: inherit;
@@ -335,88 +329,7 @@
       margin-top: 12px;
     }
 
-    /* Botones principales/secundarios (altura 42px unificada) */
-    .primary-action,
-    .secondary-action {
-      height: 42px;
-      min-height: 42px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: 0;
-      border-radius: 7px;
-      padding: 0 16px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      box-sizing: border-box;
-      transition: .2s ease;
-      white-space: nowrap;
-      text-decoration: none;
-    }
-
-    .primary-action {
-      background: #3baa01;
-      color: #fff;
-      box-shadow: 0 3px 8px rgba(59, 170, 1, .20);
-    }
-
-    .primary-action:hover {
-      background: #2f8f00;
-      box-shadow: 0 4px 12px rgba(59, 170, 1, .28);
-    }
-
-    .primary-action:disabled {
-      background: #a9c59d;
-      box-shadow: none;
-      cursor: not-allowed;
-    }
-
-    .secondary-action {
-      background: #e2e8f0;
-      color: #334155;
-    }
-
-    .secondary-action:hover {
-      background: #e2e8f0;
-    }
-
-    /* Botones tipo .btn usados en el filtro de solicitudes */
-    .btn {
-      height: 42px;
-      min-height: 42px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: 0;
-      border-radius: 7px;
-      padding: 0 14px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      box-sizing: border-box;
-      transition: .2s ease;
-      white-space: nowrap;
-    }
-
-    .btn-primary {
-      background: #3baa01;
-      color: #fff;
-      box-shadow: 0 3px 8px rgba(59, 170, 1, .20);
-    }
-
-    .btn-primary:hover {
-      background: #2f8f00;
-    }
-
-    .btn-secondary {
-      background: #e2e8f0;
-      color: #334155;
-    }
-
-    .btn-secondary:hover {
-      background: #e2e8f0;
-    }
+    /* Botones: usan el sistema comun de tema.css (btn, btn-primario, btn-secundario). */
 
     /* =========================================================
        SOLICITUD INFO
@@ -621,27 +534,33 @@
 
     .actions {
       display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
     }
 
-    .action-btn {
-      border: 0;
-      border-radius: 6px;
-      padding: 6px 9px;
+    /* La columna de accion es angosta: el texto largo baja de linea sin cortarse */
+    td .actions .btn {
+      white-space: normal;
+    }
+
+    /* El estado largo ("Asignado · pendiente de programacion") puede usar dos lineas
+       para que la columna de acciones quepa sin desplazamiento horizontal */
+    #assignmentsTableBody .status {
+      white-space: normal;
+    }
+
+    /* Botones del filtro de solicitudes: alineados con los campos, sin estirarse */
+    #solicitudesContainer .btn {
+      align-self: end;
+    }
+
+    .action-hint {
+      display: block;
+      margin-top: 4px;
       font-size: 11px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: .15s ease;
-    }
-
-    .action-view {
-      background: #e2e8f0;
-      color: #256d00;
-    }
-
-    .action-view:hover {
-      background: #e4f1dc;
+      color: #64748b;
+      max-width: 220px;
     }
 
     /* =========================================================
@@ -738,11 +657,13 @@
     .auditor-filters select {
       width: 100%;
       min-width: 0;
-      height: 42px;
-      min-height: 42px;
-      padding: 0 12px;
+      height: 38px;
+      min-height: 38px;
+      padding: 8px 10px;
       border: 1px solid #cbd5e1;
-      border-radius: 7px;
+      border-radius: 6px;
+      letter-spacing: 0;
+      text-align: left;
       background: #fff;
       color: #263238;
       font: inherit;
@@ -774,7 +695,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      height: 42px;
+      height: 38px;
       padding: 0 12px;
       border: 1px solid #cbd5e1;
       border-radius: 7px;
@@ -1381,8 +1302,8 @@
         flex-direction: column;
       }
 
-      .primary-action,
-      .secondary-action {
+      .form-actions .btn,
+      .auditor-filter-actions .btn {
         width: 100%;
       }
 
@@ -1508,11 +1429,17 @@
                         <input id="solSector" class="form-control" placeholder="Sector IAF" autocomplete="off">
                       </div>
                       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
-                        <input id="solDesde" type="date" class="form-control">
-                        <input id="solHasta" type="date" class="form-control">
-                        <button type="button" class="btn btn-secondary"
+                        <label for="solDesde" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
+                          Fecha inicio
+                          <input id="solDesde" type="date" class="form-control" title="Muestra solicitudes con fecha (columna Fecha) desde este día">
+                        </label>
+                        <label for="solHasta" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
+                          Fecha fin
+                          <input id="solHasta" type="date" class="form-control" title="Muestra solicitudes con fecha (columna Fecha) hasta este día">
+                        </label>
+                        <button type="button" class="btn btn-secundario"
                           onclick="limpiarFiltrosSolicitudes()">Limpiar</button>
-                        <button type="button" class="btn btn-primary" onclick="cargarSolicitudes(1)">Aplicar</button>
+                        <button type="button" class="btn btn-primario" onclick="cargarSolicitudes(1)">Aplicar</button>
                       </div>
                     </div>
 
@@ -1542,9 +1469,9 @@
                       style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;background:#f8fafc;gap:8px;flex-wrap:wrap;">
                       <span id="solicitudesSummary" class="pagination-info">Cargando solicitudes...</span>
                       <div class="pagination-actions">
-                        <button type="button" id="solPrevPage" class="btn btn-secondary"
+                        <button type="button" id="solPrevPage" class="btn btn-secundario"
                           onclick="cargarSolicitudes(paginaSolicitudes - 1)" disabled>Anterior</button>
-                        <button type="button" id="solNextPage" class="btn btn-secondary"
+                        <button type="button" id="solNextPage" class="btn btn-secundario"
                           onclick="cargarSolicitudes(paginaSolicitudes + 1)" disabled>Siguiente</button>
                       </div>
                     </div>
@@ -1631,8 +1558,8 @@
                     </label>
                   </div>
                   <div class="auditor-filter-actions">
-                    <button type="button" id="applyAuditorFilters" class="primary-action">Filtrar</button>
-                    <button type="button" id="clearAuditorFilters" class="secondary-action">Limpiar filtros</button>
+                    <button type="button" id="applyAuditorFilters" class="btn btn-primario primary-action">Filtrar</button>
+                    <button type="button" id="clearAuditorFilters" class="btn btn-secundario secondary-action">Limpiar filtros</button>
                   </div>
                 </div>
 
@@ -1642,8 +1569,8 @@
                   <span id="auditorPageInfo" class="pagination-info">Selecciona una solicitud para consultar
                     auditores.</span>
                   <div class="pagination-actions">
-                    <button type="button" id="auditorPrevPage" class="secondary-action" disabled>Anterior</button>
-                    <button type="button" id="auditorNextPage" class="secondary-action" disabled>Siguiente</button>
+                    <button type="button" id="auditorPrevPage" class="btn btn-secundario secondary-action" disabled>Anterior</button>
+                    <button type="button" id="auditorNextPage" class="btn btn-secundario secondary-action" disabled>Siguiente</button>
                   </div>
                 </div>
               </div>
@@ -1667,8 +1594,8 @@
 
               <!-- ACCIONES -->
               <div class="form-actions">
-                <button type="button" id="clearBtn" class="secondary-action">Limpiar</button>
-                <button type="submit" id="assignBtn" class="primary-action" disabled>Asignar auditores</button>
+                <button type="button" id="clearBtn" class="btn btn-secundario secondary-action">Limpiar</button>
+                <button type="submit" id="assignBtn" class="btn btn-primario primary-action" disabled>Asignar auditores</button>
               </div>
             </form>
 
@@ -1708,6 +1635,39 @@
               <div id="tableLoading" class="loading">Cargando asignaciones...</div>
             </div>
 
+
+            <!-- =================================================
+                 SOLICITUDES DE CAMBIO ENVIADAS POR LAS EMPRESAS
+            ================================================== -->
+            <div class="table-header" style="margin-top: 28px;">
+              <div>
+                <h3>Solicitudes de cambio de auditor</h3>
+                <p class="table-subtitle">La empresa explica por qué pide el cambio. Al aprobar, la asignación queda cancelada.</p>
+              </div>
+              <span id="changeCounter" class="table-counter">0 pendientes</span>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Solicitud</th>
+                    <th>Empresa</th>
+                    <th>Auditor</th>
+                    <th>Razón de la empresa</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="changeTableBody"></tbody>
+              </table>
+              <div id="changeEmpty" class="empty-state" style="display:none;">
+                <strong>No hay solicitudes de cambio</strong>
+                <span>Cuando una empresa pida cambiar un auditor aparecerá aquí.</span>
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -1731,7 +1691,7 @@
 
               <button
                 type="button"
-                class="primary-action"
+                class="btn btn-primario primary-action"
                 onclick="cerrarResultadoAsignacion()"
               >
                 Aceptar
@@ -1756,7 +1716,7 @@
       <h3>Acceso no autorizado</h3>
       <p>Tu cuenta no tiene permisos de administración para acceder al módulo de asignación de auditores.</p>
       <p style="margin-top:18px;">
-        <a href="/profile" class="primary-action" style="display:inline-block;width:auto;text-decoration:none;">
+        <a href="/profile" class="btn btn-primario primary-action">
           Ir a mi perfil
         </a>
       </p>
@@ -1771,8 +1731,8 @@
         <h4 style="color:#256d00;margin:18px 0 8px;">Competencia del auditor</h4>
         <div id="advertenciaCompetencias" class="audit-empty">Cargando competencias...</div>
         <div class="modal-actions">
-          <button type="button" class="secondary-action" onclick="cerrarModalAdvertencia()">Cancelar</button>
-          <button type="button" class="primary-action" onclick="confirmarAsignacionNoElegible()">Asignar de todas
+          <button type="button" class="btn btn-secundario secondary-action" onclick="cerrarModalAdvertencia()">Cancelar</button>
+          <button type="button" class="btn btn-primario primary-action" onclick="confirmarAsignacionNoElegible()">Asignar de todas
             formas</button>
         </div>
       </div>
@@ -1793,7 +1753,7 @@
           <div class="modal-detail"><span>Estado</span><span id="detailEstado">-</span></div>
         </div>
         <div class="modal-actions">
-          <button id="closeDetailsBtn" class="secondary-action">Cerrar</button>
+          <button id="closeDetailsBtn" class="btn btn-secundario secondary-action">Cerrar</button>
         </div>
       </div>
     </div>
@@ -2415,8 +2375,17 @@
     document.getElementById('solCiudad')?.addEventListener('input', buscarSolicitudesDebounced);
     document.getElementById('solNorma')?.addEventListener('change', () => cargarSolicitudes(1));
     document.getElementById('solSector')?.addEventListener('change', () => cargarSolicitudes(1));
-    document.getElementById('solDesde')?.addEventListener('change', () => cargarSolicitudes(1));
-    document.getElementById('solHasta')?.addEventListener('change', () => cargarSolicitudes(1));
+    // Fecha inicio <= Fecha fin: cada selector limita al otro.
+    document.getElementById('solDesde')?.addEventListener('change', (e) => {
+      const fin = document.getElementById('solHasta');
+      if (fin) fin.min = e.target.value || '';
+      cargarSolicitudes(1);
+    });
+    document.getElementById('solHasta')?.addEventListener('change', (e) => {
+      const inicio = document.getElementById('solDesde');
+      if (inicio) inicio.max = e.target.value || '';
+      cargarSolicitudes(1);
+    });
 
     function debounce(fn, delay = 350) {
       let timer = null;
@@ -2624,9 +2593,10 @@
           <td><span class="status ${statusClass}">${escapeHTML(estadoVisible)}</span></td>
           <td>
             <div class="actions">
-              <button type="button" class="action-btn action-view">Ver</button>
-              <button type="button" class="action-btn action-cancel" ${asignacion.tiene_programacion ? 'disabled' : ''}>Cancelar asignación</button>
+              <button type="button" class="btn btn-secundario btn-sm action-btn action-view">Ver</button>
+              <button type="button" class="btn btn-peligro-contorno btn-sm action-btn action-cancel" ${asignacion.tiene_programacion ? 'disabled title="La visita ya está programada: cancélela o reprográmela desde Agenda antes de cancelar la asignación."' : ''}>Cancelar asignación</button>
             </div>
+            ${asignacion.tiene_programacion ? '<span class="action-hint">Tiene visita programada: para cancelarla use Agenda (cancelar o reprogramar la visita).</span>' : ''}
           </td>`;
 
         const viewButton = row.querySelector(".action-view");
@@ -2634,7 +2604,7 @@
 
         const cancelButton = row.querySelector(".action-cancel");
         cancelButton.addEventListener("click", async () => {
-          if (!confirm("¿Desea cancelar esta asignación?")) return;
+          if (!confirm(`¿Desea cancelar la asignación de ${asignacion.auditor_nombre || "este auditor"} en la solicitud ${asignacion.numero_radicado || asignacion.id_solicitud}? Esta acción no se puede deshacer.`)) return;
           try {
             const response = await fetch(`/asignacion-auditores/${encodeURIComponent(asignacion.id)}`, {
               method: "DELETE",
@@ -2745,7 +2715,7 @@
           <td class="row-actions">
             ${solicitud.tiene_programacion
               ? '<span class="status assigned">Programada</span>'
-              : `<button class="mini-btn" type="button" onclick="seleccionarSolicitud('${escapeHTML(solicitud.id_solicitud)}')">Seleccionar</button>`}
+              : `<button class="btn btn-primario btn-sm mini-btn" type="button" onclick="seleccionarSolicitud('${escapeHTML(solicitud.id_solicitud)}')">Seleccionar</button>`}
           </td>
         </tr>`;
       }).join('');
@@ -2761,6 +2731,10 @@
       const hasta = document.getElementById('solHasta')?.value;
       const norma = document.getElementById('solNorma')?.value.trim();
       const sector = document.getElementById('solSector')?.value.trim();
+      if (desde && hasta && desde > hasta) {
+        showMessage('La fecha inicio no puede ser posterior a la fecha fin.', 'error');
+        return;
+      }
       if (buscar) params.set('buscar', buscar);
       if (ciudad) params.set('ciudad', ciudad);
       if (desde) params.set('desde', desde);
@@ -2787,7 +2761,7 @@
 
     function limpiarFiltrosSolicitudes() {
       ['solBuscar', 'solCiudad', 'solNorma', 'solSector'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-      ['solDesde', 'solHasta'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      ['solDesde', 'solHasta'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = ''; el.min = ''; el.max = ''; } });
       cargarSolicitudes(1);
     }
 
@@ -2812,11 +2786,81 @@
       document.getElementById('auditorsSection')?.classList.add('show');
     }
 
+    /* =========================================================
+       SOLICITUDES DE CAMBIO DE LA EMPRESA
+    ========================================================= */
+
+    async function loadSolicitudesCambio() {
+      const cuerpo = document.getElementById("changeTableBody");
+      const vacio = document.getElementById("changeEmpty");
+      try {
+        const response = await fetch("/asignacion-auditores/solicitudes-cambio", { headers: headers() });
+        const data = await response.json().catch(() => []);
+        if (!response.ok) {
+          throw new Error(typeof data.detail === "string" ? data.detail : "No se pudieron cargar las solicitudes de cambio.");
+        }
+        const lista = Array.isArray(data) ? data : [];
+        const pendientes = lista.filter(item => item.estado === "Pendiente").length;
+        document.getElementById("changeCounter").textContent =
+          `${pendientes} ${pendientes === 1 ? "pendiente" : "pendientes"}`;
+        vacio.style.display = lista.length ? "none" : "block";
+        cuerpo.innerHTML = lista.map(item => `
+          <tr>
+            <td>${escapeHTML(item.numero_radicado || item.id_solicitud)}</td>
+            <td>${escapeHTML(item.empresa_nombre || "-")}</td>
+            <td>${escapeHTML(item.auditor_nombre || "-")}<br><small>${escapeHTML(item.rol_auditor || "")}</small></td>
+            <td style="max-width:320px;white-space:normal">${escapeHTML(item.motivo || "")}</td>
+            <td>${escapeHTML(item.fecha_solicitud ? formatDateTime(item.fecha_solicitud) : "-")}</td>
+            <td><span class="status ${item.estado === "Pendiente" ? "pending" : (item.estado === "Aprobada" ? "assigned" : "inactive")}">${escapeHTML(item.estado)}</span>
+              ${item.respuesta ? `<br><small>${escapeHTML(item.respuesta)}</small>` : ""}</td>
+            <td>${item.estado === "Pendiente" ? `
+              <div class="actions">
+                <button type="button" class="btn btn-primario btn-sm action-btn" data-resolver="1" data-id="${escapeHTML(item.id_solicitud_cambio)}">Aprobar</button>
+                <button type="button" class="btn btn-peligro-contorno btn-sm action-btn" data-resolver="0" data-id="${escapeHTML(item.id_solicitud_cambio)}">Rechazar</button>
+              </div>` : "-"}</td>
+          </tr>`).join("");
+      } catch (error) {
+        console.error(error);
+        showMessage(error.message, "error");
+      }
+    }
+
+    document.getElementById("changeTableBody").addEventListener("click", async (evento) => {
+      const boton = evento.target.closest("[data-resolver]");
+      if (!boton) return;
+      const aprobar = boton.dataset.resolver === "1";
+      const respuesta = prompt(aprobar
+        ? "Aprobar: la asignación del auditor quedará cancelada. Escriba la respuesta para la empresa (mínimo 10 caracteres):"
+        : "Rechazar: escriba a la empresa por qué no procede el cambio (mínimo 10 caracteres):");
+      if (respuesta === null) return;
+      if (respuesta.trim().length < 10) {
+        showMessage("La respuesta debe tener al menos 10 caracteres.", "error");
+        return;
+      }
+      try {
+        const response = await fetch(`/asignacion-auditores/solicitudes-cambio/${encodeURIComponent(boton.dataset.id)}/resolver`, {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify({ aprobar, respuesta: respuesta.trim() })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(typeof data.detail === "string" ? data.detail : "No fue posible resolver la solicitud.");
+        }
+        showMessage(data.mensaje || "Solicitud resuelta.", "success");
+        await Promise.all([loadSolicitudesCambio(), loadAsignaciones()]);
+      } catch (error) {
+        console.error(error);
+        showMessage(error.message, "error");
+      }
+    });
+
     async function initialize() {
       if (!isAdmin) return;
       await Promise.all([
         cargarSolicitudes(1),
-        loadAsignaciones()
+        loadAsignaciones(),
+        loadSolicitudesCambio()
       ]);
     }
 
@@ -2829,8 +2873,7 @@
     <div class="auditor-modal-card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
         <h2 id="auditorModalTitle" style="color:#256d00;margin:0;">Auditor</h2>
-        <button type="button" onclick="cerrarModalAuditor()"
-          style="border:none;background:#94a3b8;color:#fff;border-radius:6px;padding:8px 14px;cursor:pointer;">Cerrar</button>
+        <button type="button" class="btn btn-secundario" onclick="cerrarModalAuditor()">Cerrar</button>
       </div>
       <div id="auditorModalBody" style="margin-top:16px;">Cargando...</div>
     </div>

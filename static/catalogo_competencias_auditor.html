@@ -26,7 +26,7 @@
         .portal-shell {
             max-width: var(--ancho-contenido);
             margin: 0 auto;
-            padding: 18px 22px 28px;
+            padding: 28px;
             display: grid;
             grid-template-columns: 218px minmax(0, 1fr);
             align-items: start;
@@ -108,16 +108,6 @@
             }
         }
 
-        /* El boton "Panel" del encabezado, sin el fondo blanco por defecto. */
-        .header-content .comite-header-user .comite-back-button {
-            background: transparent;
-            color: #fff;
-        }
-
-        .header-content .comite-header-user .comite-back-button:hover {
-            background: rgba(255, 255, 255, 0.12);
-            color: #fff;
-        }
 
 
         .card {
@@ -158,35 +148,7 @@
         .badge.info { background:#e8f1ff; color:#0369a1; }
         .badge.danger { background:#fee2e2; color:#b42318; }
 
-        .btn {
-            width:auto;
-            display:inline-flex;
-            align-items:center;
-            justify-content:center;
-            margin:0;
-            border:0;
-            border-radius:8px;
-            padding:10px 14px;
-            font-weight:700;
-            cursor:pointer;
-            font-size:13px;
-            transition:.2s ease;
-        }
-        .btn:disabled { opacity:.55; cursor:not-allowed; box-shadow:none; }
-        .btn-primary { background:#3baa01; color:#fff; box-shadow:0 3px 8px rgba(59,170,1,.20); }
-        .btn-primary:hover:not(:disabled) { background:#2f8f00; }
-        .btn-secondary { background:#e2e8f0; color:#334155; }
-        .btn-secondary:hover:not(:disabled) { background:#e2e8f0; }
-        .btn-danger { background:#ef4444; color:#fff; }
-        .btn-danger:hover:not(:disabled) { background:#dc2626; }
-        .btn-sm { padding:6px 11px; font-size:12px; }
-        .acciones-tabla {
-            display:flex;
-            gap:8px;
-            flex-wrap:nowrap;
-            align-items:center;
-        }
-        .acciones-tabla .btn { white-space:nowrap; }
+        /* Botones: sistema comun de tema.css (btn btn-primario/secundario/peligro, btn-sm, acciones-tabla). */
         .record-table th:last-child,
         .record-table td:last-child { min-width:150px; }
 
@@ -250,6 +212,16 @@
         .form-group.full-width { grid-column:1/-1; }
         .form-group label { font-size:13px; font-weight:600; color:#334155; }
         .form-group textarea { min-height:74px; resize:vertical; }
+        .form-group .form-control {
+            min-height: var(--campo-alto);
+            padding: 8px 10px;
+            border: 1px solid var(--campo-borde);
+            border-radius: var(--campo-radio);
+            font-size: var(--txt-base);
+            text-align: left;
+            letter-spacing: 0;
+        }
+        .form-grid .form-group { margin-bottom: 0; }
 
         .preview-panel {
             margin-top:16px;
@@ -337,9 +309,10 @@
                 </div>
             </div>
             <div class="comite-header-user">
-                <a class="comite-back-button" href="/dashboard">Panel</a>
-                <a class="profile-link" href="/perfil-auditor">Mi perfil</a>
-                <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+              <a class="comite-back-button" href="/dashboard">Panel</a>
+              <a class="profile-link" href="/reportes">Reportes</a>
+              <a class="profile-link" href="/perfil-auditor" title="Mi perfil" aria-label="Mi perfil"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
+              <button id="logoutButton" class="comite-logout js-salir" type="button">Cerrar sesión</button>
             </div>
         </div>
     </header>
@@ -362,7 +335,7 @@
                         <div>
                             <h2 class="card-title">Competencias registradas por este auditor</h2>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="cargarCompetencias()">Actualizar listado</button>
+                        <button type="button" class="btn btn-secundario" onclick="cargarCompetencias()">Actualizar listado</button>
                     </div>
                     <p class="help-text">Presione actualizar para cargar sus competencias registradas.</p>
                 </section>
@@ -410,19 +383,19 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="certTipo">Tipo de certificación</label>
-                                <select id="certTipo" class="form-control" required>
+                                <select id="certTipo" class="form-control campo" required>
                                     <option value="">Seleccione un tipo de certificación</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label for="certArchivo">Archivo de la certificación</label>
-                                <input id="certArchivo" class="form-control" type="file"
+                                <input id="certArchivo" class="form-control campo" type="file"
                                        accept=".pdf,.jpg,.jpeg,.png" required>
                                 <small class="help-text" style="margin:0;">Formatos permitidos: PDF, JPG, JPEG y PNG.</small>
                             </div>
                             <div class="form-group full-width">
                                 <label for="certDescripcion">Descripción (opcional)</label>
-                                <textarea id="certDescripcion" class="form-control" maxlength="500"
+                                <textarea id="certDescripcion" class="form-control campo" maxlength="500"
                                           placeholder="Entidad emisora, número del certificado o cualquier dato relevante."></textarea>
                             </div>
                         </div>
@@ -431,7 +404,7 @@
                             <div class="preview-head">
                                 <strong>Vista previa del documento</strong>
                                 <div>
-                                    <button type="button" class="btn btn-secondary btn-sm" id="btnQuitarArchivo">Quitar archivo</button>
+                                    <button type="button" class="btn btn-secundario btn-sm" id="btnQuitarArchivo">Quitar archivo</button>
                                 </div>
                             </div>
                             <div class="preview-body" id="certPreviewContenido"></div>
@@ -439,11 +412,11 @@
 
                         <div id="certEstado" role="status" aria-live="polite"></div>
 
-                        <div class="modal-actions" style="justify-content:flex-start;">
-                            <button type="submit" class="btn btn-primary" id="btnRegistrarCertificacion" disabled>
+                        <div class="modal-actions grupo-botones" style="justify-content:flex-start;">
+                            <button type="submit" class="btn btn-primario" id="btnRegistrarCertificacion" disabled>
                                 Registrar certificación
                             </button>
-                            <button type="button" class="btn btn-secondary" id="btnLimpiarCertificacion">
+                            <button type="button" class="btn btn-secundario" id="btnLimpiarCertificacion">
                                 Limpiar
                             </button>
                         </div>
@@ -455,7 +428,7 @@
                         <div>
                             <h2 class="card-title">Certificaciones registradas</h2>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="cargarCertificaciones()">Actualizar listado</button>
+                        <button type="button" class="btn btn-secundario" onclick="cargarCertificaciones()">Actualizar listado</button>
                     </div>
                     <div class="record-table-wrap">
                         <table class="record-table">
@@ -488,11 +461,11 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label for="edit_norma">Norma</label>
-                    <select id="edit_norma" class="form-control" required></select>
+                    <select id="edit_norma" class="form-control campo" required></select>
                 </div>
                 <div class="form-group">
                     <label for="edit_tipo">Tipo de competencia</label>
-                    <select id="edit_tipo" class="form-control">
+                    <select id="edit_tipo" class="form-control campo">
                         <option value="Norma ISO">Norma ISO</option>
                         <option value="Sector IAF">Sector IAF</option>
                         <option value="Experiencia Laboral">Experiencia Laboral</option>
@@ -502,35 +475,35 @@
                 </div>
                 <div class="form-group">
                     <label for="edit_sector">Sector IAF</label>
-                    <input id="edit_sector" class="form-control" required>
+                    <input id="edit_sector" class="form-control campo" required>
                 </div>
                 <div class="form-group">
                     <label for="edit_titulo">Título / institución</label>
-                    <input id="edit_titulo" class="form-control" required>
+                    <input id="edit_titulo" class="form-control campo" required>
                 </div>
                 <div class="form-group">
                     <label for="edit_inicio">Fecha inicio</label>
-                    <input id="edit_inicio" class="form-control" type="date" required>
+                    <input id="edit_inicio" class="form-control campo" type="date" required>
                 </div>
                 <div class="form-group">
                     <label for="edit_fin">Fecha fin</label>
-                    <input id="edit_fin" class="form-control" type="date" required>
+                    <input id="edit_fin" class="form-control campo" type="date" required>
                 </div>
                 <div class="form-group">
                     <label for="edit_vigente">¿Vigente?</label>
-                    <select id="edit_vigente" class="form-control">
+                    <select id="edit_vigente" class="form-control campo">
                         <option value="false">No</option>
                         <option value="true">Sí</option>
                     </select>
                 </div>
                 <div class="form-group full-width">
                     <label for="edit_descripcion">Descripción</label>
-                    <textarea id="edit_descripcion" class="form-control" required></textarea>
+                    <textarea id="edit_descripcion" class="form-control campo" required></textarea>
                 </div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="guardarActualizacion()">Guardar actualización</button>
+                <button type="button" class="btn btn-secundario" onclick="cerrarModal()">Cancelar</button>
+                <button type="button" class="btn btn-primario" onclick="guardarActualizacion()">Guardar actualización</button>
             </div>
         </div>
     </div>
@@ -558,7 +531,7 @@
             <div class="preview-panel" style="margin-top:0;">
                 <div class="preview-head">
                     <strong>Vista previa del archivo</strong>
-                    <a id="verAbrirArchivo" class="btn btn-secondary btn-sm" href="#" target="_blank" rel="noopener">
+                    <a id="verAbrirArchivo" class="btn btn-secundario btn-sm" href="#" target="_blank" rel="noopener">
                         Abrir en nueva pestaña
                     </a>
                 </div>
@@ -566,7 +539,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="cerrarModalVer()">Cerrar</button>
+                <button type="button" class="btn btn-secundario" onclick="cerrarModalVer()">Cerrar</button>
             </div>
         </div>
     </div>
@@ -591,8 +564,8 @@
             </p>
             <p class="confirm-aviso">Se eliminará también el archivo asociado. Esta acción no se puede deshacer.</p>
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="btnCancelarEliminacion">Cancelar</button>
-                <button type="button" class="btn btn-danger" id="btnConfirmarEliminacion">Sí, eliminar</button>
+                <button type="button" class="btn btn-secundario" id="btnCancelarEliminacion">Cancelar</button>
+                <button type="button" class="btn btn-peligro" id="btnConfirmarEliminacion">Sí, eliminar</button>
             </div>
         </div>
     </div>
@@ -612,6 +585,14 @@
         function escapeHtml(value) {
             if (value === null || value === undefined) return '';
             return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        // Las consultas de competencias y certificaciones exigen sesión: sin
+        // este encabezado respondían 401 y las tablas quedaban "vacías".
+        function encabezadosAuth() {
+            return token
+                ? { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                : { 'Accept': 'application/json' };
         }
 
         async function resolverUsuario() {
@@ -683,10 +664,32 @@
             if (!uid) return;
             const tbody = document.getElementById('rows');
             try {
-                const res = await fetch('/competencias-auditor/usuario/' + uid);
+                const [res, resCert] = await Promise.all([
+                    fetch('/competencias-auditor/usuario/' + encodeURIComponent(uid), { headers: encabezadosAuth() }),
+                    fetch('/auditores/registro/' + encodeURIComponent(uid) + '/certificaciones', { headers: encabezadosAuth() })
+                ]);
                 const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'No se pudo cargar la información.');
                 competencias = Array.isArray(data.competencias) ? data.competencias : [];
-                if (!competencias.length) {
+                // Las certificaciones vigentes se guardan en otra tabla; se muestran
+                // también aquí para que una recién registrada aparezca en el listado.
+                const dataCert = resCert.ok ? await resCert.json().catch(() => ({})) : {};
+                certificaciones = Array.isArray(dataCert.certificaciones) ? dataCert.certificaciones : certificaciones;
+                const filasCert = certificaciones.map(item => `
+                    <tr>
+                        <td>Certificación vigente</td>
+                        <td>${escapeHtml(item.tipo_certificacion || item.norma_nombre || '-')}</td>
+                        <td>-</td>
+                        <td><a href="${escapeHtml(item.url_archivo)}" target="_blank" rel="noopener">${escapeHtml(item.nombre_archivo || 'Ver archivo')}</a></td>
+                        <td>${escapeHtml(item.descripcion || '-')}</td>
+                        <td>${formatearFecha(item.fecha_registro)}</td>
+                        <td>-</td>
+                        <td><span class="badge ${String(item.estado || 'Vigente').toLowerCase() === 'vigente' ? 'ok' : 'danger'}">${String(item.estado || 'Vigente').toLowerCase() === 'vigente' ? 'Sí' : 'No'}</span></td>
+                        <td>${escapeHtml(item.estado || 'Vigente')}</td>
+                        <td><button type="button" class="btn btn-secundario btn-sm" onclick="verCertificacion('${escapeHtml(item.id_certificacion)}')">Ver</button></td>
+                    </tr>
+                `).join('');
+                if (!competencias.length && !certificaciones.length) {
                     tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay competencias registradas.</td></tr>';
                     document.getElementById('resumen').textContent = '';
                     return;
@@ -702,12 +705,14 @@
                         <td>${escapeHtml(item.fecha_fin || '-')}</td>
                         <td><span class="badge ${item.es_vigente ? 'ok' : 'danger'}">${item.es_vigente ? 'Sí' : 'No'}</span></td>
                         <td>${escapeHtml(item.estado_validacion || '-')}</td>
-                        <td><button type="button" class="btn btn-primary btn-sm" onclick="abrirEditar('${escapeHtml(item.id_competencia)}')">Actualizar</button></td>
+                        <td><button type="button" class="btn btn-secundario btn-sm" onclick="abrirEditar('${escapeHtml(item.id_competencia)}')">Actualizar</button></td>
                     </tr>
-                `).join('');
-                document.getElementById('resumen').textContent = 'Total de competencias registradas: ' + competencias.length;
-            } catch {
-                tbody.innerHTML = '<tr><td colspan="10" class="empty">No se pudo cargar la información.</td></tr>';
+                `).join('') + filasCert;
+                document.getElementById('resumen').textContent =
+                    'Total de competencias registradas: ' + competencias.length +
+                    ' · Certificaciones vigentes: ' + certificaciones.length;
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">' + escapeHtml(error.message || 'No se pudo cargar la información.') + '</td></tr>';
             }
         }
 
@@ -716,8 +721,9 @@
             if (!uid) return;
             const tbody = document.getElementById('rowsCertificaciones');
             try {
-                const res = await fetch('/auditores/registro/' + uid + '/certificaciones');
+                const res = await fetch('/auditores/registro/' + encodeURIComponent(uid) + '/certificaciones', { headers: encabezadosAuth() });
                 const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'No se pudo cargar la información.');
                 certificaciones = Array.isArray(data.certificaciones) ? data.certificaciones : [];
                 if (!certificaciones.length) {
                     tbody.innerHTML = '<tr><td colspan="6" class="empty">Aún no tiene certificaciones registradas.</td></tr>';
@@ -733,16 +739,16 @@
                         <td><span class="badge ok">${escapeHtml(item.estado || 'Vigente')}</span></td>
                         <td>
                             <div class="acciones-tabla">
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="verCertificacion('${escapeHtml(item.id_certificacion)}')">Ver</button>
-                                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarCertificacion('${escapeHtml(item.id_certificacion)}', this)">Eliminar</button>
+                                <button type="button" class="btn btn-secundario btn-sm" onclick="verCertificacion('${escapeHtml(item.id_certificacion)}')">Ver</button>
+                                <button type="button" class="btn btn-peligro-contorno btn-sm" onclick="eliminarCertificacion('${escapeHtml(item.id_certificacion)}', this)">Eliminar</button>
                             </div>
                         </td>
                     </tr>
                 `).join('');
                 document.getElementById('resumenCertificaciones').textContent =
                     'Total de certificaciones registradas: ' + certificaciones.length;
-            } catch {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty">No se pudo cargar la información.</td></tr>';
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty">' + escapeHtml((error && error.message) || 'No se pudo cargar la información.') + '</td></tr>';
             }
         }
 
@@ -908,7 +914,7 @@
 
                 limpiarFormularioCertificacion();
                 mostrarEstado('ok', data.mensaje || 'Certificación registrada correctamente.');
-                await cargarCertificaciones();
+                await Promise.all([cargarCertificaciones(), cargarCompetencias()]);
             } catch (error) {
                 mostrarEstado('error', error.message || 'No fue posible registrar la certificación.');
             } finally {
@@ -1003,7 +1009,7 @@
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.detail || 'No fue posible eliminar la certificación.');
                 mostrarEstado('ok', data.mensaje || 'Certificación eliminada correctamente.');
-                await cargarCertificaciones();
+                await Promise.all([cargarCertificaciones(), cargarCompetencias()]);
             } catch (error) {
                 mostrarEstado('error', error.message || 'No fue posible eliminar la certificación.');
                 if (boton && boton.isConnected) {

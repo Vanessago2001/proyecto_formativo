@@ -138,12 +138,7 @@
         .field select,
         .modal-textarea {
             width: 100%;
-            box-sizing: border-box;
-            padding: 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            font: inherit;
-            background: #fff;
+            padding: 8px 10px;
         }
 
         .modal-textarea {
@@ -151,37 +146,7 @@
             resize: vertical;
         }
 
-        .primary-action,
-        .secondary-action {
-            padding: 10px 16px;
-            border-radius: 4px;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            text-decoration: none;
-            text-align: center;
-            display: inline-block;
-        }
-
-        .primary-action {
-            border: 0;
-            background: #3baa01;
-            color: #fff;
-        }
-
-        .primary-action:hover {
-            background: #2f8f00;
-        }
-
-        .secondary-action {
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #334155;
-        }
-
-        .secondary-action:hover {
-            background: #f8fafc;
-        }
+        /* Botones: sistema comun de tema.css (btn, btn-primario, btn-secundario...). */
 
         .table-wrap {
             overflow-x: auto;
@@ -190,7 +155,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1100px;
+            min-width: 900px;
         }
 
         th,
@@ -271,47 +236,6 @@
             min-width: 155px;
         }
 
-        .action-button {
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #334155;
-            border-radius: 4px;
-            padding: 7px 9px;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            text-align: left;
-        }
-
-        .action-button:hover {
-            background: #f8fafc;
-        }
-
-        .action-button.revision {
-            color: #1d4ed8;
-            border-color: #bfdbfe;
-        }
-
-        .action-button.correcciones {
-            color: #b45309;
-            border-color: #fed7aa;
-        }
-
-        .action-button.aprobar {
-            color: #256d00;
-            border-color: #bbf7d0;
-        }
-
-        .action-button.rechazar {
-            color: #b42318;
-            border-color: #fecaca;
-        }
-
-        .action-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
         .actions-list {
             display: flex;
             flex-direction: column;
@@ -321,10 +245,6 @@
         .actions-list[hidden],
         #paginacionBanco[hidden] {
             display: none;
-        }
-
-        .acciones-toggle {
-            background: #f8fafc;
         }
 
         .message {
@@ -408,39 +328,6 @@
             display: flex;
             justify-content: flex-end;
             gap: 10px;
-        }
-
-        .modal-cancel {
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #334155;
-            border-radius: 4px;
-            padding: 10px 16px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .modal-confirm {
-            border: 0;
-            background: #3baa01;
-            color: #fff;
-            border-radius: 4px;
-            padding: 10px 16px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .modal-confirm.danger {
-            background: #b42318;
-        }
-
-        .modal-confirm.warning {
-            background: #b45309;
-        }
-
-        .modal-confirm:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
         }
 
         .modal-label {
@@ -672,12 +559,12 @@
                         </div>
 
 
-                        <button id="buscarBtn" type="button" class="primary-action">
+                        <button id="buscarBtn" type="button" class="btn btn-primario primary-action">
                             Buscar
                         </button>
 
 
-                        <button id="limpiarBtn" type="button" class="secondary-action">
+                        <button id="limpiarBtn" type="button" class="btn btn-secundario secondary-action">
                             Limpiar
                         </button>
 
@@ -772,7 +659,7 @@
 
             <p style="margin-top: 18px;">
 
-                <a class="primary-action" href="/profile" style="text-decoration:none;">
+                <a class="btn btn-primario primary-action" href="/profile">
                     Ir a mi perfil
                 </a>
 
@@ -820,11 +707,11 @@
 
             <div class="modal-footer">
 
-                <button type="button" class="modal-cancel" id="modalCancelBtn">
+                <button type="button" class="btn btn-secundario modal-cancel" id="modalCancelBtn">
                     Cancelar
                 </button>
 
-                <button type="button" class="modal-confirm" id="modalConfirmBtn">
+                <button type="button" class="btn btn-primario modal-confirm" id="modalConfirmBtn">
                     Confirmar
                 </button>
 
@@ -1218,22 +1105,22 @@
             const botones = [];
 
             if (accionDisponible(estado, "revision")) {
-                botones.push(`<button type="button" class="action-button revision" data-action="revision" data-id="${id}">Pasar a En Revisión</button>`);
+                botones.push(`<button type="button" class="btn btn-secundario btn-sm action-button revision" data-action="revision" data-id="${id}">Pasar a En Revisión</button>`);
             }
 
             if (accionDisponible(estado, "correcciones")) {
-                botones.push(`<button type="button" class="action-button correcciones" data-action="correcciones" data-id="${id}">Solicitar correcciones</button>`);
+                botones.push(`<button type="button" class="btn btn-secundario btn-sm action-button correcciones" data-action="correcciones" data-id="${id}">Solicitar correcciones</button>`);
             }
 
             if (accionDisponible(estado, "aprobar")) {
-                botones.push(`<button type="button" class="action-button aprobar" data-action="aprobar" data-id="${id}">Aprobar</button>`);
+                botones.push(`<button type="button" class="btn btn-primario btn-sm action-button aprobar" data-action="aprobar" data-id="${id}">Aprobar</button>`);
             }
 
             if (accionDisponible(estado, "rechazar")) {
-                botones.push(`<button type="button" class="action-button rechazar" data-action="rechazar" data-id="${id}">Rechazar</button>`);
+                botones.push(`<button type="button" class="btn btn-peligro-contorno btn-sm action-button rechazar" data-action="rechazar" data-id="${id}">Rechazar</button>`);
             }
 
-            botones.push(`<button type="button" class="action-button" data-action="ver" data-id="${id}">Ver solicitud</button>`);
+            botones.push(`<button type="button" class="btn btn-secundario btn-sm action-button" data-action="ver" data-id="${id}">Ver solicitud</button>`);
 
             if (botones.length === 1) {
                 return `<div class="actions-container">${botones[0]}</div>`;
@@ -1241,7 +1128,7 @@
 
             return `
                 <div class="actions-container">
-                    <button type="button" class="action-button acciones-toggle" data-action="toggle" data-id="${id}" aria-expanded="false">Ver acciones</button>
+                    <button type="button" class="btn btn-secundario btn-sm action-button acciones-toggle" data-action="toggle" data-id="${id}" aria-expanded="false">Ver acciones</button>
                     <div class="actions-list" hidden>
                         ${botones.join("")}
                     </div>
@@ -1794,7 +1681,7 @@
                     "correcciones",
 
                 clase:
-                    "warning"
+                    ""
 
             },
 
@@ -1828,7 +1715,7 @@
                     "rechazar",
 
                 clase:
-                    "danger"
+                    "btn-peligro"
 
             }
 
@@ -1920,7 +1807,7 @@
                 configuracion.titulo;
 
             modalConfirmBtn.className =
-                "modal-confirm";
+                "btn btn-primario modal-confirm";
 
             if (configuracion.clase) {
                 modalConfirmBtn.classList.add(

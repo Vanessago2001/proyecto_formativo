@@ -5,12 +5,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import _normalize_role_name, get_current_user, require_role
-from modules.aprobaciones.aprobacion_service import AprobacionService
+from modules.aprobaciones.aprobacion_service import AprobacionService, respuesta_permiso_delegado
 from modules.empresas import empresas_aprobaciones  # noqa: F401  (registra las acciones REQ)
 from modules.empresas.documento_empresa_service import (
     ESTADO_APROBADO,
@@ -40,8 +40,10 @@ ROLES_GESTION = ["superadmin", "admin", "auxiliar", "empresa"]
 ROLES_ELIMINACION = ["superadmin", "admin", "empresa"]
 # EMP-006 cambiar estado, EMP-007 inactivar
 ROLES_ESTADO = ["superadmin", "admin"]
-# EMP-008 reactivar: exclusivo del SuperAdministrador
-ROLES_REACTIVACION = ["superadmin"]
+# EMP-008 reactivar: el rol Super Administrador ya no se usa, asi que la
+# reactivacion la hace el Administrador (se conserva "superadmin" solo para no
+# dejar sin acceso a cuentas antiguas que aun tengan ese rol).
+ROLES_REACTIVACION = ["superadmin", "admin"]
 # EMP-016 validar, EMP-017 rechazar, EMP-018 aprobar, EMP-019 pedir corrección:
 # la revisión la hace la administración, nunca la propia empresa.
 ROLES_REVISION_DOC = ["superadmin", "admin", "auxiliar"]
@@ -57,6 +59,10 @@ async def _solicitar_aprobacion(db, usuario: dict, codigo: str, id_empresa: str,
     """Registra la acción como pendiente (REQ) y responde 202 sin ejecutarla."""
     detalle = await EmpresasService(db).validar_accion(codigo, id_empresa, datos)
     aprobacion = await AprobacionService(db).solicitar(codigo, id_empresa, datos, detalle, usuario)
+    # Auxiliar con permiso delegado: la acción ya se ejecutó.
+    delegada = respuesta_permiso_delegado(aprobacion)
+    if delegada is not None:
+        return delegada
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
         content=jsonable_encoder({
@@ -67,19 +73,19 @@ async def _solicitar_aprobacion(db, usuario: dict, codigo: str, id_empresa: str,
 
 
 class EmpresaCreate(BaseModel):
-    nombre: str
-    nit: str
-    ciudad: str
-    direccion: str
-    correo: EmailStr
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    # Los limites son los de las columnas de la tabla `empresa`: sin ellos un
+    # valor mas largo llegaba al INSERT y la base respondia con un 500.
+    nombre: str = Field(..., min_length=1, max_length=70)
+    nit: str = Field(..., min_length=1, max_length=40)
+    ciudad: str = Field(..., min_length=1, max_length=30)
+    direccion: str = Field(..., min_length=1, max_length=140)
+    correo: EmailStr = Field(..., max_length=100)
 
 
-class EmpresaUpdate(BaseModel):
-    nombre: str
-    nit: str
-    ciudad: str
-    direccion: str
-    correo: EmailStr
+class EmpresaUpdate(EmpresaCreate):
+    """Mismos campos y limites que el registro."""
 
 
 class EstadoEmpresaUpdate(BaseModel):

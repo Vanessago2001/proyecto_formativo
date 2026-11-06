@@ -56,7 +56,7 @@
             <h2 id="viewTitle">Solicitudes radicadas</h2>
             <p id="viewDescription"></p>
           </div>
-          <button id="refreshButton" class="comite-button secondary" type="button">Actualizar</button>
+          <button id="refreshButton" class="comite-button secondary btn btn-secundario" type="button">Actualizar</button>
         </div>
 
         <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
@@ -66,7 +66,7 @@
             <label for="searchInput">Buscar solicitud</label>
             <div class="comite-search-row">
               <input id="searchInput" type="search" placeholder="Radicado, empresa o NIT">
-              <button class="comite-button primary" type="submit">Buscar</button>
+              <button class="comite-button primary btn btn-primario" type="submit">Buscar</button>
             </div>
           </form>
         </div>
@@ -260,7 +260,7 @@
             "<td>" + esc(nombreEmpresa(s)) + "</td>" +
             "<td>" + esc(codigoNorma(s)) + "</td>" +
             "<td>" + chip(s.estado) + "</td>" +
-            '<td><button class="comite-table-action" type="button" data-revisar="' + esc(s.id_solicitud) + '">Revisar</button></td>' +
+            '<td><button class="btn btn-secundario btn-sm" type="button" data-revisar="' + esc(s.id_solicitud) + '">Revisar</button></td>' +
             "</tr>").join("")
           : '<tr><td colspan="5"><div class="comite-table-empty">No hay solicitudes para mostrar con los filtros actuales.</div></td></tr>';
       }
@@ -317,9 +317,9 @@
           '<div class="comite-detail-section"><h4>Acciones</h4>' +
           (validable ? "" : '<p class="comite-readonly-note">Solo se validan las sedes de solicitudes radicadas.</p>') +
           '<div class="comite-decision-actions">' +
-          '<button id="validarButton" class="comite-button primary" type="button"' + (validable ? "" : " disabled") + ">Validar sedes</button>" +
-          '<button class="comite-button secondary" type="button" data-descargar="excel">Exportar sedes a Excel</button>' +
-          '<button class="comite-button secondary" type="button" data-descargar="pdf">Descargar PDF</button>' +
+          '<button id="validarButton" class="comite-button primary btn btn-primario" type="button"' + (validable ? "" : " disabled") + ">Validar sedes</button>" +
+          '<button class="comite-button secondary btn btn-secundario" type="button" data-descargar="excel">Exportar sedes a Excel</button>' +
+          '<button class="comite-button secondary btn btn-secundario" type="button" data-descargar="pdf">Descargar PDF</button>' +
           "</div></div>";
       }
 

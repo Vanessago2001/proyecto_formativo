@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from modules.aprobaciones.aprobacion_service import AprobacionService
+from modules.aprobaciones.aprobacion_service import AprobacionService, respuesta_permiso_delegado
 from modules.solicitudes import auditor_aprobaciones  # noqa: F401  (registra las acciones REQ)
 from modules.solicitudes.auditor_schema import (
     AsignacionRespuesta,
@@ -53,6 +53,10 @@ async def _dejar_pendiente(
     aprobacion = await AprobacionService(db).solicitar(
         codigo, str(solicitud["id_empresa"]), datos, detalle, usuario
     )
+    # Auxiliar con permiso delegado: la acción ya se ejecutó.
+    delegada = respuesta_permiso_delegado(aprobacion)
+    if delegada is not None:
+        return delegada
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
         content=jsonable_encoder({

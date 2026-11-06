@@ -258,7 +258,7 @@ async def test_un_tramite_sin_certificado_se_reporta_en_tramite(db, cliente):
 # ============================================================
 
 async def test_la_constancia_se_descarga_como_pdf(db, cliente):
-    _cargar_busqueda_por_nit(db, [dict(EMPRESA)])
+    _cargar_empresa_certificada(db, [dict(CERTIFICADO_CON_NORMA)], dict(ULTIMA_SOLICITUD))
 
     async with cliente as ac:
         respuesta = await ac.get(f"{BASE}/constancia/900123456-7/pdf")
@@ -290,7 +290,7 @@ async def test_el_portal_bloquea_quien_consulta_demasiado(db, cliente, monkeypat
 
     async with cliente as ac:
         codigos = [
-            (await ac.get(f"{BASE}/documentos", params={"nit": "9001"})).status_code
+            (await ac.get(f"{BASE}/documentos", params={"nit": "900123456"})).status_code
             for _ in range(7)
         ]
 
@@ -298,18 +298,33 @@ async def test_el_portal_bloquea_quien_consulta_demasiado(db, cliente, monkeypat
     assert codigos[5:] == [status.HTTP_429_TOO_MANY_REQUESTS] * 2
 
 
-async def test_un_nit_con_comodines_no_se_vuelve_consulta_universal(db, cliente):
+@pytest.mark.parametrize("nit", ["%25", "1", "900", "abc123456", "900123456-78"])
+async def test_un_nit_incompleto_o_con_comodines_se_rechaza_sin_consultar(db, cliente, nit):
     """
-    `%` y `_` deben buscarse como texto literal. Sin escaparlos, un `%` hace
-    que el ILIKE coincida con toda la tabla empresa.
+    El NIT se busca completo: antes un solo dígito (o `%`) coincidía por
+    subcadena con cualquier NIT que lo contuviera, y siempre salía 900123456-7.
+    Ahora un NIT mal formado responde 422 con un mensaje claro y ni siquiera
+    llega a la base de datos.
     """
+    async with cliente as ac:
+        empresa = await ac.get(f"{BASE}/empresa/{nit}")
+        documentos = await ac.get(f"{BASE}/documentos", params={"nit": nit.replace("%25", "%")})
+
+    assert empresa.status_code == 422
+    assert documentos.status_code == 422
+    assert "NIT no válido" in empresa.json()["detail"]
+    db.execute.assert_not_called()
+
+
+async def test_la_busqueda_de_nit_es_exacta_y_no_por_subcadena(db, cliente):
     _cargar_busqueda_por_nit(db, [])
 
     async with cliente as ac:
-        await ac.get(f"{BASE}/empresa/%25")
+        await ac.get(f"{BASE}/empresa/900.123.456-7")
 
-    parametros = db.execute.call_args_list[0].args[1]
-    assert "\\%" in parametros["nit_parcial"]
+    sql, parametros = db.execute.call_args_list[0].args
+    assert "ILIKE" not in str(sql).upper()
+    assert parametros == {"nit_completo": "9001234567", "nit_base": "900123456"}
 
 
 # ============================================================
@@ -560,7 +575,7 @@ async def test_la_validacion_compara_exacto_y_no_por_prefijo(db, cliente):
 
     sql = _sql_ejecutados(db)[0]
     assert "ILIKE" not in sql.upper()
-    assert "UPPER(TRIM(c.codigo_verificacion)) = UPPER(TRIM(:codigo))" in sql
+    assert "regexp_replace(UPPER(COALESCE(c.codigo_verificacion, '')), '[^A-Z0-9]', '', 'g') = :codigo" in sql
 
 
 async def test_validar_sin_codigo_no_toca_la_base_de_datos(db, cliente):
@@ -674,23 +689,29 @@ async def test_la_constancia_indica_la_norma_evaluada(db, cliente):
     assert "Verificada" in texto
 
 
-async def test_sin_certificado_la_norma_sale_de_la_ultima_solicitud(db, cliente):
-    _cargar_empresa_certificada(db, [], dict(ULTIMA_SOLICITUD, norma_codigo="NTC", norma_version="2015"))
+def test_sin_certificado_la_norma_sale_de_la_ultima_solicitud():
+    """
+    El endpoint ya no emite constancias sin certificados vigentes (ver
+    test_sin_certificados_vigentes_no_hay_constancia), pero el generador del
+    PDF conserva el respaldo de la norma de la última solicitud.
+    """
+    from modules.consultas_p.constancia_pdf import generar_pdf_constancia
 
-    async with cliente as ac:
-        respuesta = await ac.get(f"{BASE}/constancia/900123456-7/pdf")
+    pdf = generar_pdf_constancia({
+        **EMPRESA, "certificados": [],
+        "ultima_solicitud": dict(ULTIMA_SOLICITUD, norma_codigo="NTC", norma_version="2015"),
+    })
 
-    texto = _texto_del_pdf(respuesta.content)
+    texto = _texto_del_pdf(pdf)
     assert "NTC ISO 9001 2015" in texto
     assert "En proceso" in texto
 
 
-async def test_sin_norma_registrada_la_constancia_lo_dice(db, cliente):
+def test_sin_norma_registrada_la_constancia_lo_dice():
+    from modules.consultas_p.constancia_pdf import generar_pdf_constancia
+
     sin_norma = {k: v for k, v in ULTIMA_SOLICITUD.items() if not k.startswith("norma")}
-    _cargar_empresa_certificada(db, [], sin_norma)
+    pdf = generar_pdf_constancia({**EMPRESA, "certificados": [], "ultima_solicitud": sin_norma})
 
-    async with cliente as ac:
-        respuesta = await ac.get(f"{BASE}/constancia/900123456-7/pdf")
-
-    texto = _texto_del_pdf(respuesta.content)
+    texto = _texto_del_pdf(pdf)
     assert "Sin norma registrada" in texto

@@ -848,9 +848,15 @@ class AgendaAuditorService(AuditorService):
         hasta: date | None = None,
         ciudad: str | None = None,
         modalidad: str | None = None,
+        estado: str | None = None,
     ):
         filtros = ["d.id_usuario = :id_usuario"]
         params: dict = {"id_usuario": str(id_usuario)}
+        # Sin estado se devuelven todas (también Cancelada y Finalizada); con
+        # estado se compara sin distinguir mayúsculas ni espacios.
+        if estado and estado.strip():
+            filtros.append("UPPER(TRIM(COALESCE(p.estado, ''))) = UPPER(:estado)")
+            params["estado"] = estado.strip()
         if desde:
             filtros.append("p.fecha_fin >= :desde")
             params["desde"] = datetime.combine(desde, time.min)
@@ -1970,6 +1976,32 @@ class AgendaAuditorService(AuditorService):
             fecha_fin = data.fecha_fin or data.fecha_inicio
             inicio_dt = datetime.combine(data.fecha_inicio, time.min)
             fin_dt = datetime.combine(fecha_fin, time.max)
+            # Un doble clic en "Registrar" creaba dos filas idénticas; al
+            # editar una, la otra seguía en el historial y parecía que editar
+            # había creado un registro nuevo. El mismo periodo activo no se
+            # registra dos veces.
+            existente = await self.db.execute(text("""
+                SELECT id_disponibilidad
+                FROM disponibilidad_auditor
+                WHERE id_usuario = :id_usuario
+                  AND tipo_registro = 'Disponibilidad Extra'
+                  AND UPPER(TRIM(COALESCE(estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                  AND CAST(fecha_inicio AS DATE) = :desde
+                  AND CAST(fecha_fin AS DATE) = :hasta
+                LIMIT 1
+            """), {
+                "id_usuario": str(id_usuario),
+                "desde": data.fecha_inicio,
+                "hasta": fecha_fin,
+            })
+            if existente.first():
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Ya tiene una disponibilidad extraordinaria activa para ese mismo "
+                        "periodo. Si necesita cambiarla, use \"Editar\" en el historial."
+                    ),
+                )
             id_disp = uuid4()
             result = await self.db.execute(text("""
                 INSERT INTO disponibilidad_auditor (

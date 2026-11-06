@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CertiSENA | PQRS</title>
+  <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
+  <link rel="stylesheet" href="/static/pqrs.css?v=20261104" />
+</head>
+
+<body>
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco" />
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Peticiones, quejas, reclamos y sugerencias</p>
+        </div>
+      </div>
+      <div class="comite-header-user" id="cabeceraSesion" hidden>
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/reportes">Reportes</a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
+      </div>
+      <div class="comite-header-user" id="cabeceraPublica">
+        <a class="comite-back-button" href="/">Inicio</a>
+        <a class="comite-back-button" href="/login">Iniciar sesión</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="pq-shell">
+    <div class="content">
+      <div class="pq-heading">
+        <div>
+          <span class="pq-kicker">Atención al ciudadano</span>
+          <h2>PQRS</h2>
+          <p>Radica una petición, queja, reclamo, sugerencia o felicitación sobre el proceso de certificación.
+            Recibirás un número de radicado en pantalla y en tu correo; con él consultas el estado.</p>
+        </div>
+        <a id="enlaceGestion" class="btn btn-secundario pq-btn sec" href="/pqrs-gestion" hidden>Ir a la bandeja de gestión</a>
+      </div>
+
+      <nav class="pq-tabs" aria-label="Opciones de PQRS">
+        <button type="button" data-tab="radicar" class="active">Radicar PQRS</button>
+        <button type="button" data-tab="consultar" id="tabConsultar">Consultar con radicado</button>
+        <button type="button" data-tab="mis-pqrs" id="tabMias" hidden>Mis PQRS</button>
+      </nav>
+
+      <!-- ============ RADICAR ============ -->
+      <section id="vista-radicar" class="pq-panel">
+        <h3>Nueva PQRS</h3>
+        <p class="pq-ayuda">Los campos con * son obligatorios. Plazo de respuesta: <span id="textoPlazo">15 días hábiles</span>.</p>
+        <div id="msgRadicar" class="pq-msg" role="status" aria-live="polite"></div>
+        <form id="formRadicar" class="pq-form" novalidate>
+          <div class="pq-field">
+            <label for="tipo">Tipo *</label>
+            <select id="tipo" name="tipo" required></select>
+          </div>
+          <div class="pq-field" id="campoCanal" hidden>
+            <label for="canal">Canal de recepción *</label>
+            <select id="canal" name="canal">
+              <option value="Presencial">Presencial</option>
+              <option value="Telefónico">Telefónico</option>
+              <option value="Correo electrónico">Correo electrónico</option>
+            </select>
+          </div>
+          <div class="pq-field">
+            <label for="nombre">Nombre completo *</label>
+            <input id="nombre" name="nombre_peticionario" required minlength="3" maxlength="150" autocomplete="name">
+          </div>
+          <div class="pq-field">
+            <label for="tipoDoc">Tipo de documento *</label>
+            <select id="tipoDoc" name="tipo_documento" required></select>
+          </div>
+          <div class="pq-field">
+            <label for="numDoc">Número de documento *</label>
+            <input id="numDoc" name="numero_documento" required minlength="4" maxlength="20" pattern="[A-Za-z0-9\-]{4,20}">
+          </div>
+          <div class="pq-field">
+            <label for="correo">Correo electrónico *</label>
+            <input id="correo" name="correo" type="email" required maxlength="150" autocomplete="email">
+            <small>Aquí te enviaremos el radicado y la respuesta.</small>
+          </div>
+          <div class="pq-field">
+            <label for="telefono">Teléfono</label>
+            <input id="telefono" name="telefono" maxlength="20" pattern="[0-9+\-() ]{7,20}" autocomplete="tel">
+          </div>
+          <div class="pq-field" id="campoEmpresaSelect" hidden>
+            <label for="idEmpresa">Empresa</label>
+            <select id="idEmpresa" name="id_empresa"></select>
+          </div>
+          <div class="pq-field">
+            <label for="empresa">Empresa (opcional)</label>
+            <input id="empresa" name="empresa_nombre" maxlength="200">
+          </div>
+          <div class="pq-field">
+            <label for="nit">NIT (opcional)</label>
+            <input id="nit" name="nit" maxlength="20" pattern="[0-9\-.]{5,20}">
+          </div>
+          <div class="pq-field pq-full">
+            <label for="asunto">Asunto *</label>
+            <input id="asunto" name="asunto" required minlength="5" maxlength="200">
+          </div>
+          <div class="pq-field pq-full">
+            <label for="descripcion">Descripción *</label>
+            <textarea id="descripcion" name="descripcion" required minlength="20" maxlength="5000"></textarea>
+            <small><span id="contador">0</span>/5000 caracteres (mínimo 20).</small>
+          </div>
+          <div class="pq-field pq-full">
+            <label for="archivosRadicar">Adjuntos (opcional)</label>
+            <input id="archivosRadicar" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.docx">
+            <small>PDF, JPG, PNG o DOCX · máximo 5 MB por archivo · hasta 5 archivos.</small>
+          </div>
+          <div class="pq-trampa" aria-hidden="true">
+            <label for="sitioWeb">No llenar</label>
+            <input id="sitioWeb" name="sitio_web" tabindex="-1" autocomplete="off">
+          </div>
+          <label class="pq-check pq-full">
+            <input id="acepta" type="checkbox" required>
+            <span>Autorizo el tratamiento de mis datos personales conforme a la Ley 1581 de 2012 y la política de
+              tratamiento de datos del SENA, para atender esta PQRS. *</span>
+          </label>
+          <div class="pq-acciones pq-full">
+            <button class="btn btn-primario pq-btn" type="submit" id="btnRadicar">Radicar PQRS</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ============ CONSULTAR (público) ============ -->
+      <section id="vista-consultar" class="pq-panel" hidden>
+        <h3>Consultar una PQRS</h3>
+        <p class="pq-ayuda">Escribe el número de radicado y el correo con el que la radicaste.</p>
+        <form id="formConsultar" class="pq-form">
+          <div class="pq-field">
+            <label for="cRadicado">Número de radicado</label>
+            <input id="cRadicado" required placeholder="PQRS-2026-000001" maxlength="30" pattern="[Pp][Qq][Rr][Ss]-\d{4}-\d{6,}">
+          </div>
+          <div class="pq-field">
+            <label for="cCorreo">Correo</label>
+            <input id="cCorreo" type="email" required maxlength="150" autocomplete="email">
+          </div>
+          <div class="pq-acciones pq-full"><button class="btn btn-primario pq-btn" type="submit">Consultar</button></div>
+        </form>
+        <div id="msgConsultar" class="pq-msg" role="status" aria-live="polite" style="margin-top:14px"></div>
+        <div id="resultadoPublico" style="margin-top:18px"></div>
+      </section>
+
+      <!-- ============ MIS PQRS (empresa) ============ -->
+      <section id="vista-mis-pqrs" class="pq-panel" hidden>
+        <h3>Mis PQRS</h3>
+        <p class="pq-ayuda">Las que radicaste con tu usuario y las radicadas a nombre de tus empresas.</p>
+        <div id="msgMias" class="pq-msg" role="status" aria-live="polite"></div>
+        <div class="pq-table-wrap">
+          <table class="pq-table">
+            <thead><tr><th>Radicado</th><th>Tipo</th><th>Asunto</th><th>Estado</th><th>Fecha límite</th><th>Tiempo</th><th></th></tr></thead>
+            <tbody id="tablaMias"><tr><td colspan="7" class="pq-vacio">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Detalle de una PQRS propia (empresa) -->
+  <dialog id="dialogo" class="pq-dialogo">
+    <div class="pq-dialogo-cuerpo">
+      <button type="button" class="btn btn-secundario btn-sm pq-btn sec chico pq-dialogo-cierre" id="cerrarDialogo">Cerrar</button>
+      <div id="dialogoContenido"></div>
+    </div>
+  </dialog>
+
+  <footer class="login-footer">
+    <p>&copy; 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
+  </footer>
+
+  <script src="/static/pqrs-comun.js?v=20261104"></script>
+  <script>
+    (function () {
+      "use strict";
+      var P = window.PQRS;
+      var $ = function (s) { return document.querySelector(s); };
+      var rol = P.rolSesion();
+      var esEmpresa = /empresa/.test(rol);
+      var esInterno = /admin|auxiliar/.test(rol);       // radica en nombre de un ciudadano
+      var esGestor = /admin|auxiliar|auditor/.test(rol);
+      // Comité, aprendiz u otros: usan el formulario como cualquier ciudadano.
+      var modoPublico = !esEmpresa && !esInterno;
+      var catalogos = null;
+      var consultaActual = null;     // {radicado, correo} de la consulta pública
+      var abierta = null;            // PQRS en el diálogo (empresa)
+
+      if (rol) { $("#cabeceraSesion").hidden = false; $("#cabeceraPublica").hidden = true; }
+      if (esGestor) $("#enlaceGestion").hidden = false;
+      if (esEmpresa) { $("#tabMias").hidden = false; }
+      if (esInterno) { $("#campoCanal").hidden = false; }
+
+      // ---------------- pestañas ----------------
+      function abrir(tab) {
+        if (tab === "mis-pqrs" && !esEmpresa) tab = "radicar";
+        if (["radicar", "consultar", "mis-pqrs"].indexOf(tab) < 0) tab = "radicar";
+        document.querySelectorAll("[data-tab]").forEach(function (b) {
+          b.classList.toggle("active", b.dataset.tab === tab);
+          b.setAttribute("aria-selected", b.dataset.tab === tab ? "true" : "false");
+        });
+        ["radicar", "consultar", "mis-pqrs"].forEach(function (v) { $("#vista-" + v).hidden = v !== tab; });
+        if (tab === "mis-pqrs") cargarMias();
+      }
+      document.querySelectorAll("[data-tab]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          history.replaceState(null, "", "#" + b.dataset.tab);
+          abrir(b.dataset.tab);
+        });
+      });
+      window.addEventListener("hashchange", function () { abrir(location.hash.slice(1)); });
+
+      // ---------------- catálogos ----------------
+      async function cargarCatalogos() {
+        try {
+          catalogos = await P.api("/api/pqrs/catalogos", { sinSesion: true });
+          $("#tipo").innerHTML = catalogos.tipos.map(function (t) {
+            return '<option value="' + P.esc(t) + '">' + P.esc(t) + "</option>";
+          }).join("");
+          $("#tipoDoc").innerHTML = catalogos.tipos_documento.map(function (t) {
+            return '<option value="' + P.esc(t) + '">' + P.esc(t) + "</option>";
+          }).join("");
+          actualizarPlazo();
+        } catch (e) {
+          P.mostrar($("#msgRadicar"), "error", "No se pudieron cargar las opciones del formulario. " + e.message);
+        }
+      }
+      function actualizarPlazo() {
+        if (!catalogos) return;
+        var p = catalogos.plazos.filter(function (x) { return x.tipo === $("#tipo").value; })[0];
+        if (p) $("#textoPlazo").textContent = p.dias_habiles + " días hábiles";
+      }
+      $("#tipo").addEventListener("change", actualizarPlazo);
+      $("#descripcion").addEventListener("input", function () { $("#contador").textContent = this.value.length; });
+
+      // ---------------- radicar ----------------
+      function validarArchivos(lista) {
+        if (lista.length > 5) return "Máximo 5 archivos por envío.";
+        for (var i = 0; i < lista.length; i++) {
+          if (!/\.(pdf|jpe?g|png|docx)$/i.test(lista[i].name)) return "«" + lista[i].name + "» no es PDF, JPG, PNG ni DOCX.";
+          if (lista[i].size > 5 * 1024 * 1024) return "«" + lista[i].name + "» supera 5 MB.";
+        }
+        return "";
+      }
+
+      $("#formRadicar").addEventListener("submit", async function (ev) {
+        ev.preventDefault();
+        var caja = $("#msgRadicar");
+        var form = ev.target;
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+        if (!$("#acepta").checked) { P.mostrar(caja, "error", "Debes aceptar el tratamiento de datos personales."); return; }
+        var archivos = Array.prototype.slice.call($("#archivosRadicar").files || []);
+        var errorArchivos = validarArchivos(archivos);
+        if (errorArchivos) { P.mostrar(caja, "error", errorArchivos); return; }
+
+        var datos = {
+          tipo: $("#tipo").value,
+          asunto: $("#asunto").value.trim(),
+          descripcion: $("#descripcion").value.trim(),
+          nombre_peticionario: $("#nombre").value.trim(),
+          tipo_documento: $("#tipoDoc").value,
+          numero_documento: $("#numDoc").value.trim(),
+          correo: $("#correo").value.trim(),
+          telefono: $("#telefono").value.trim() || null,
+          empresa_nombre: $("#empresa").value.trim() || null,
+          nit: $("#nit").value.trim() || null,
+          acepta_tratamiento_datos: true,
+          sitio_web: $("#sitioWeb").value || null
+        };
+        if (esInterno) datos.canal = $("#canal").value;
+        if (esEmpresa && $("#idEmpresa").value) datos.id_empresa = $("#idEmpresa").value;
+
+        var boton = $("#btnRadicar");
+        boton.disabled = true;
+        P.mostrar(caja, "info", "Radicando...");
+        try {
+          var creada = modoPublico
+            ? await P.api("/api/pqrs/publica/radicar", { json: datos, sinSesion: true })
+            : await P.api("/api/pqrs", { json: datos });
+          var avisoAdjuntos = "";
+          if (archivos.length) {
+            var fd = new FormData();
+            archivos.forEach(function (a) { fd.append("archivos", a); });
+            try {
+              if (modoPublico) {
+                fd.append("radicado", creada.radicado);
+                fd.append("correo", datos.correo);
+                await P.api("/api/pqrs/publica/adjuntos", { body: fd, sinSesion: true });
+              } else {
+                await P.api("/api/pqrs/" + encodeURIComponent(creada.id_pqrs) + "/adjuntos", { body: fd });
+              }
+            } catch (e) {
+              avisoAdjuntos = " Los adjuntos no se pudieron cargar (" + e.message + "); puedes agregarlos desde la consulta.";
+            }
+          }
+          caja.className = "pq-msg ok";
+          caja.innerHTML = "Tu PQRS quedó radicada con el número<br><span class=\"pq-radicado\">" + P.esc(creada.radicado) +
+            "</span><br>Fecha límite de respuesta: " + P.esc(P.fecha(creada.fecha_limite)) +
+            ". Te enviamos la confirmación a " + P.esc(datos.correo) + "." + P.esc(avisoAdjuntos);
+          form.reset();
+          $("#contador").textContent = "0";
+          actualizarPlazo();
+          caja.scrollIntoView({ behavior: "smooth", block: "center" });
+        } catch (e) {
+          P.mostrar(caja, "error", e.message);
+        } finally {
+          boton.disabled = false;
+        }
+      });
+
+      // ---------------- consulta pública ----------------
+      function accionesPublicas(p) {
+        var html = "";
+        if ((p.acciones || []).indexOf("adjuntar") >= 0) {
+          html += '<div class="pq-seccion pq-panel"><h4>' + (p.estado === "Información solicitada" ? "Responder a la solicitud de información" : "Agregar información o adjuntos") + "</h4>" +
+            '<form id="formAportar" class="pq-form">' +
+            '<div class="pq-field pq-full"><label for="aComentario">Comentario</label><textarea id="aComentario" maxlength="2000"></textarea></div>' +
+            '<div class="pq-field pq-full"><label for="aArchivos">Archivos</label><input id="aArchivos" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.docx"><small>PDF, JPG, PNG o DOCX · máx. 5 MB.</small></div>' +
+            '<div class="pq-acciones pq-full"><button class="btn btn-primario pq-btn" type="submit">Enviar</button></div></form></div>';
+        }
+        if ((p.acciones || []).indexOf("reabrir") >= 0) {
+          html += '<div class="pq-seccion pq-panel"><h4>¿La respuesta no resolvió tu caso?</h4>' +
+            '<p class="pq-ayuda" style="font-size:13px;color:var(--gris-500)">Puedes reabrirla una sola vez dentro de los 15 días calendario siguientes al cierre.</p>' +
+            '<form id="formReabrir" class="pq-form"><div class="pq-field pq-full"><label for="rMotivo">Motivo</label>' +
+            '<textarea id="rMotivo" required minlength="10" maxlength="2000"></textarea></div>' +
+            '<div class="pq-acciones pq-full"><button class="btn btn-peligro-contorno pq-btn peligro" type="submit">Reabrir PQRS</button></div></form></div>';
+        }
+        return html;
+      }
+
+      async function consultarPublica() {
+        var caja = $("#msgConsultar");
+        try {
+          var p = await P.api("/api/pqrs/publica/consultar", { json: consultaActual, sinSesion: true });
+          P.mostrar(caja, "", "");
+          $("#resultadoPublico").innerHTML = '<div class="pq-panel">' + P.fichaHTML(p) + "</div>" + accionesPublicas(p);
+          enlazarAccionesPublicas();
+        } catch (e) {
+          $("#resultadoPublico").innerHTML = "";
+          P.mostrar(caja, "error", e.message);
+        }
+      }
+
+      $("#formConsultar").addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        if (!ev.target.checkValidity()) { ev.target.reportValidity(); return; }
+        consultaActual = { radicado: $("#cRadicado").value.trim().toUpperCase(), correo: $("#cCorreo").value.trim() };
+        consultarPublica();
+      });
+
+      function enlazarAccionesPublicas() {
+        var contenedor = $("#resultadoPublico");
+        contenedor.querySelectorAll("[data-adjunto]").forEach(function (b) {
+          b.addEventListener("click", async function () {
+            try {
+              var r = await P.api("/api/pqrs/publica/adjuntos/" + encodeURIComponent(b.dataset.adjunto),
+                { json: consultaActual, sinSesion: true, archivo: true });
+              await P.descargar(r, b.dataset.nombre);
+            } catch (e) { P.mostrar($("#msgConsultar"), "error", e.message); }
+          });
+        });
+        var aportar = $("#formAportar");
+        if (aportar) aportar.addEventListener("submit", async function (ev) {
+          ev.preventDefault();
+          var archivos = Array.prototype.slice.call($("#aArchivos").files || []);
+          var err = validarArchivos(archivos);
+          var comentario = $("#aComentario").value.trim();
+          if (err) { P.mostrar($("#msgConsultar"), "error", err); return; }
+          if (!archivos.length && !comentario) { P.mostrar($("#msgConsultar"), "error", "Escribe un comentario o adjunta un archivo."); return; }
+          var fd = new FormData();
+          fd.append("radicado", consultaActual.radicado);
+          fd.append("correo", consultaActual.correo);
+          if (comentario) fd.append("comentario", comentario);
+          archivos.forEach(function (a) { fd.append("archivos", a); });
+          try {
+            await P.api("/api/pqrs/publica/adjuntos", { body: fd, sinSesion: true });
+            await consultarPublica();
+            P.mostrar($("#msgConsultar"), "ok", "Recibimos tu información.");
+          } catch (e) { P.mostrar($("#msgConsultar"), "error", e.message); }
+        });
+        var reabrir = $("#formReabrir");
+        if (reabrir) reabrir.addEventListener("submit", async function (ev) {
+          ev.preventDefault();
+          if (!ev.target.checkValidity()) { ev.target.reportValidity(); return; }
+          if (!confirm("¿Reabrir la PQRS? Solo se puede hacer una vez.")) return;
+          try {
+            await P.api("/api/pqrs/publica/reabrir", { json: Object.assign({ motivo: $("#rMotivo").value.trim() }, consultaActual), sinSesion: true });
+            await consultarPublica();
+            P.mostrar($("#msgConsultar"), "ok", "La PQRS fue reabierta.");
+          } catch (e) { P.mostrar($("#msgConsultar"), "error", e.message); }
+        });
+      }
+
+      // ---------------- empresa: mis PQRS ----------------
+      async function cargarMias() {
+        var cuerpo = $("#tablaMias");
+        try {
+          var filas = await P.api("/api/pqrs");
+          P.mostrar($("#msgMias"), "", "");
+          cuerpo.innerHTML = filas.length ? filas.map(function (f) {
+            return "<tr><td><strong>" + P.esc(f.radicado) + "</strong></td><td>" + P.esc(f.tipo) + "</td><td>" + P.esc(f.asunto) +
+              "</td><td>" + P.chipEstado(f.estado) + "</td><td>" + P.esc(P.fecha(f.fecha_limite)) + "</td><td>" + P.chipSemaforo(f.semaforo) +
+              '</td><td><button class="btn btn-secundario btn-sm pq-btn sec chico" type="button" data-ver="' + P.esc(f.id_pqrs) + '">Ver</button></td></tr>';
+          }).join("") : '<tr><td colspan="7" class="pq-vacio">Aún no tienes PQRS radicadas.</td></tr>';
+        } catch (e) {
+          cuerpo.innerHTML = '<tr><td colspan="7" class="pq-vacio">—</td></tr>';
+          P.mostrar($("#msgMias"), "error", e.message);
+        }
+      }
+      $("#tablaMias").addEventListener("click", function (ev) {
+        var b = ev.target.closest("[data-ver]");
+        if (b) verPropia(b.dataset.ver);
+      });
+
+      async function verPropia(id) {
+        try {
+          abierta = await P.api("/api/pqrs/" + encodeURIComponent(id));
+          $("#dialogoContenido").innerHTML = '<div id="msgDialogo" class="pq-msg" role="status"></div>' + P.fichaHTML(abierta) + accionesPublicas(abierta);
+          enlazarAccionesPropias();
+          if (!$("#dialogo").open) $("#dialogo").showModal();
+        } catch (e) { P.mostrar($("#msgMias"), "error", e.message); }
+      }
+
+      function enlazarAccionesPropias() {
+        var d = $("#dialogoContenido");
+        var caja = function () { return $("#msgDialogo"); };
+        d.querySelectorAll("[data-adjunto]").forEach(function (b) {
+          b.addEventListener("click", async function () {
+            try {
+              var r = await P.api("/api/pqrs/" + encodeURIComponent(abierta.id_pqrs) + "/adjuntos/" + encodeURIComponent(b.dataset.adjunto), { archivo: true });
+              await P.descargar(r, b.dataset.nombre);
+            } catch (e) { P.mostrar(caja(), "error", e.message); }
+          });
+        });
+        var aportar = d.querySelector("#formAportar");
+        if (aportar) aportar.addEventListener("submit", async function (ev) {
+          ev.preventDefault();
+          var archivos = Array.prototype.slice.call(d.querySelector("#aArchivos").files || []);
+          var comentario = d.querySelector("#aComentario").value.trim();
+          var err = validarArchivos(archivos);
+          if (err) { P.mostrar(caja(), "error", err); return; }
+          if (!archivos.length && !comentario) { P.mostrar(caja(), "error", "Escribe un comentario o adjunta un archivo."); return; }
+          var fd = new FormData();
+          if (comentario) fd.append("comentario", comentario);
+          archivos.forEach(function (a) { fd.append("archivos", a); });
+          try {
+            await P.api("/api/pqrs/" + encodeURIComponent(abierta.id_pqrs) + "/adjuntos", { body: fd });
+            await verPropia(abierta.id_pqrs);
+            P.mostrar($("#msgDialogo"), "ok", "Recibimos tu información.");
+            cargarMias();
+          } catch (e) { P.mostrar(caja(), "error", e.message); }
+        });
+        var reabrir = d.querySelector("#formReabrir");
+        if (reabrir) reabrir.addEventListener("submit", async function (ev) {
+          ev.preventDefault();
+          if (!ev.target.checkValidity()) { ev.target.reportValidity(); return; }
+          if (!confirm("¿Reabrir la PQRS? Solo se puede hacer una vez.")) return;
+          try {
+            await P.api("/api/pqrs/" + encodeURIComponent(abierta.id_pqrs) + "/reabrir", { json: { motivo: d.querySelector("#rMotivo").value.trim() } });
+            await verPropia(abierta.id_pqrs);
+            P.mostrar($("#msgDialogo"), "ok", "La PQRS fue reabierta.");
+            cargarMias();
+          } catch (e) { P.mostrar(caja(), "error", e.message); }
+        });
+      }
+      $("#cerrarDialogo").addEventListener("click", function () { $("#dialogo").close(); });
+
+      // ---------------- empresa: sus empresas ----------------
+      async function cargarEmpresas() {
+        if (!esEmpresa) return;
+        try {
+          var lista = await P.api("/api/empresas/mias", { redirigir: false });
+          if (Array.isArray(lista) && lista.length) {
+            $("#campoEmpresaSelect").hidden = false;
+            $("#idEmpresa").innerHTML = '<option value="">— Ninguna —</option>' + lista.map(function (e) {
+              return '<option value="' + P.esc(e.id_empresa) + '">' + P.esc(e.nombre || e.razon_social || e.nit) + "</option>";
+            }).join("");
+          }
+        } catch (_) { /* opcional: si no hay listado se radica sin vincular */ }
+      }
+
+      cargarCatalogos();
+      cargarEmpresas();
+      abrir(location.hash.slice(1) || (esEmpresa ? "mis-pqrs" : "radicar"));
+    })();
+  </script>
+  <script src="/static/session.js?v=20261029"></script>
+  <script src="/static/nav.js"></script>
+</body>
+
+</html>

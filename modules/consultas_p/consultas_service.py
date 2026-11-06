@@ -6,39 +6,138 @@ persona sin autenticar. Por eso las columnas de contacto de la empresa
 (`correo`, `direccion`) quedan fuera de los SELECT — siguen disponibles para
 los usuarios autenticados a través de `modules/empresas/`.
 
+Reglas comunes a todos los submódulos del portal:
+
+* El NIT se busca **completo** (nunca por coincidencia parcial). Se ignoran
+  puntos, espacios y guiones, y el dígito de verificación es opcional en el
+  lado que no lo tenga (ver `normalizar_nit`).
+* Los códigos (radicado y código de verificación) se comparan exactos, sin
+  distinguir mayúsculas y sin tener en cuenta guiones ni espacios: así el
+  código copiado de un PDF se encuentra aunque el visor cambie el guion.
+* Una empresa que no está 'Activa' (Inactiva o Suspendida) se muestra como tal
+  y nunca como certificada, aunque tenga certificados con fecha vigente.
+
 Las consultas leen la tabla `certificado` y la columna `solicitud.id_certificado`,
 que existen en la base de datos real pero no crea ningún bootstrap de la app.
 """
 
+import re
 from datetime import date, datetime
 
+from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Columnas de empresa que sí se publican. `correo` y `direccion` se excluyen a
 # propósito: agregarlas aquí expone datos de contacto en un endpoint sin login.
-COLUMNAS_PUBLICAS_EMPRESA = "id_empresa, nombre, nit, ciudad"
-COLUMNAS_PUBLICAS_EMPRESA_ALIAS = "id_empresa, nombre AS empresa, nit, ciudad"
+COLUMNAS_PUBLICAS_EMPRESA = "id_empresa, nombre, nit, ciudad, estado AS estado_empresa"
+COLUMNAS_PUBLICAS_EMPRESA_ALIAS = (
+    "id_empresa, nombre AS empresa, nit, ciudad, estado AS estado_empresa"
+)
 
-# Tope de empresas por búsqueda. Sin él, un NIT corto que coincida con muchas
-# filas dispara las 6 consultas por empresa del detalle (N+1) sin límite.
-# Es una constante del módulo, nunca entrada del usuario, por eso se interpola.
+# Tope de empresas por búsqueda. Con NIT exacto lo normal es una sola, pero el
+# NIT sin dígito de verificación puede coincidir con varias.
 MAX_EMPRESAS_POR_BUSQUEDA = 20
 
 # Días que faltan para el vencimiento a partir de los cuales un certificado se
 # reporta "POR VENCER": es el margen típico para gestionar la renovación.
 DIAS_ALERTA_VENCIMIENTO = 90
 
+ESTADO_EMPRESA_ACTIVA = "activa"
+ESTADO_CERTIFICADO_VIGENTE = "VIGENTE"
+ESTADO_CERTIFICADO_PENDIENTE = "PENDIENTE_FIRMA"
 
-def _escapar_comodines(valor: str) -> str:
-    """
-    Neutraliza `%` y `_` para que se busquen como texto literal.
+MENSAJE_NIT_INVALIDO = (
+    "NIT no válido. Escriba el NIT completo, solo con números (6 a 12 dígitos) "
+    "y, si quiere, el dígito de verificación separado por guion. Ejemplo: 900123456-7."
+)
 
-    Sin esto, consultar `%` hace que el `ILIKE '%' || :x || '%'` coincida con
-    toda la tabla. PostgreSQL ya usa la barra invertida como carácter de
-    escape por defecto en LIKE, así que no hace falta una cláusula ESCAPE.
+# Tras quitar puntos y espacios: el número completo y, opcional, `-DV`.
+_PATRON_NIT = re.compile(r"^\d{6,12}(-\d)?$")
+# Guiones tipográficos que un visor de PDF o Word puede poner en lugar de "-".
+_GUIONES = re.compile(r"[‐‑‒–—−­]")
+
+# --- Fragmentos SQL compartidos ------------------------------------------------
+# Solo dígitos del NIT guardado, con y sin el dígito de verificación (lo que va
+# después del último guion).
+_NIT_DIGITOS = "regexp_replace(COALESCE({col}, ''), '[^0-9]', '', 'g')"
+_NIT_BASE = (
+    "regexp_replace(regexp_replace(COALESCE({col}, ''), '-[^-]*$', ''), '[^0-9]', '', 'g')"
+)
+
+
+def condicion_nit(columna: str) -> str:
     """
-    return valor.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    Condición SQL de NIT exacto sobre `columna`, con los parámetros
+    `:nit_completo` y `:nit_base` que devuelve `normalizar_nit`.
+
+    Coincide si:
+      1. los dígitos son iguales (con o sin guion, con o sin puntos);
+      2. el usuario escribió el NIT sin DV y coincide con la base guardada;
+      3. el NIT guardado no tiene DV y coincide con la base escrita.
+    Nunca coincide por subcadena: "1" no encuentra "900123456-7".
+    """
+    digitos = _NIT_DIGITOS.format(col=columna)
+    base = _NIT_BASE.format(col=columna)
+    return (
+        f"({digitos} = :nit_completo"
+        f" OR {base} = :nit_completo"
+        f" OR {digitos} = :nit_base)"
+    )
+
+
+def condicion_codigo(columna: str, parametro: str = "codigo") -> str:
+    """Igualdad de códigos ignorando mayúsculas, espacios, guiones y signos."""
+    return (
+        f"regexp_replace(UPPER(COALESCE({columna}, '')), '[^A-Z0-9]', '', 'g') = :{parametro}"
+    )
+
+
+def normalizar_nit(nit: str | None) -> dict | None:
+    """
+    Devuelve `{"nit_completo", "nit_base"}` o `None` si el NIT no es válido.
+
+    `nit_completo` son todos los dígitos (incluido el DV si se escribió) y
+    `nit_base` los dígitos sin el DV. Puntos, espacios y guiones tipográficos
+    se ignoran: "900.123.456-7", "900123456 - 7" y "9001234567" equivalen.
+    """
+    limpio = _GUIONES.sub("-", nit or "")
+    limpio = re.sub(r"[\s.,]", "", limpio)
+    if not _PATRON_NIT.match(limpio):
+        return None
+    base = limpio.split("-")[0]
+    return {"nit_completo": limpio.replace("-", ""), "nit_base": base}
+
+
+def normalizar_codigo(codigo: str | None) -> str:
+    """Código en mayúsculas y solo con letras y números ("cert 2026‐0001" → "CERT20260001")."""
+    return re.sub(r"[^A-Z0-9]", "", (codigo or "").upper())
+
+
+def _nit_o_422(nit: str) -> dict:
+    parametros = normalizar_nit(nit)
+    if parametros is None:
+        raise HTTPException(
+            status_code=422,
+            detail=MENSAJE_NIT_INVALIDO,
+        )
+    return parametros
+
+
+def empresa_activa(estado: str | None) -> bool:
+    """Sin estado se asume 'Activa' (es el valor por defecto de la columna)."""
+    return (estado or "Activa").strip().lower() == ESTADO_EMPRESA_ACTIVA
+
+
+def _texto_estado_empresa(estado: str | None) -> str:
+    return f"EMPRESA {(estado or 'inactiva').strip().upper()}"
+
+
+def _mensaje_empresa_no_activa(estado: str | None) -> str:
+    return (
+        f"La empresa figura como {(estado or 'inactiva').strip().lower()} en CertiSENA: "
+        "no cuenta con certificación vigente."
+    )
 
 
 def _a_fecha(valor):
@@ -65,27 +164,59 @@ def _estado_vigencia(fecha_vencimiento, hoy: date) -> tuple[str, int | None]:
     return "VIGENTE", dias
 
 
+def _estado_certificado(valor) -> str:
+    return str(valor or "").strip().upper()
+
+
+def _fila_sin_tramite(empresa: dict, estado_general: str, estado_vigencia: str, mensaje: str) -> dict:
+    """Fila de `/documentos` para una empresa sin trámite que mostrar."""
+    fila = {
+        "id_empresa": empresa.get("id_empresa"),
+        "empresa": empresa.get("empresa"),
+        "nit": empresa.get("nit"),
+        "ciudad": empresa.get("ciudad"),
+        "estado_empresa": empresa.get("estado_empresa"),
+        "empresa_activa": empresa_activa(empresa.get("estado_empresa")),
+        "id_solicitud": None,
+        "numero_radicado": None,
+        "estado_tramite": None,
+        "fecha_tramite": None,
+        "alcance_certificacion": None,
+        "norma_codigo": None,
+        "norma_nombre": None,
+        "norma_version": None,
+        "norma_completa": "--",
+        "codigo_verificacion": None,
+        "cert_estado": None,
+        "cert_emision": None,
+        "cert_vence": None,
+        "url_certificado": None,
+        "fecha_radicacion": None,
+        "vigente": False,
+        "estado_general": estado_general,
+        "estado_vigencia": estado_vigencia,
+        "dias_restantes": None,
+        "dias_desde_radicacion": None,
+        "mensaje": mensaje,
+    }
+    return fila
+
+
 class ConsultasPublicasService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
     async def buscar_por_nit(self, nit: str) -> list[dict]:
-        nit_limpio = (nit or "").strip()
-        if not nit_limpio:
+        if not (nit or "").strip():
             return []
+        parametros = _nit_o_422(nit)
         result = await self.db.execute(text(f"""
             SELECT {COLUMNAS_PUBLICAS_EMPRESA}
             FROM empresa
-            WHERE
-                REPLACE(REPLACE(REPLACE(TRIM(nit), '.', ''), '-', ''), ' ', '')
-                    = REPLACE(REPLACE(REPLACE(TRIM(:nit), '.', ''), '-', ''), ' ', '')
-                OR TRIM(nit) ILIKE '%' || :nit_parcial || '%'
+            WHERE {condicion_nit("nit")}
             ORDER BY nombre ASC
             LIMIT {MAX_EMPRESAS_POR_BUSQUEDA};
-        """), {
-            "nit": nit_limpio,
-            "nit_parcial": _escapar_comodines(nit_limpio),
-        })
+        """), parametros)
         empresas = [dict(row) for row in result.mappings().all()]
 
         for emp in empresas:
@@ -107,6 +238,7 @@ class ConsultasPublicasService:
                   OR s.id_certificado = c.id_certificado
                 LEFT JOIN norma n ON n.id_norma = s.id_norma
                 WHERE s.id_empresa = :eid
+                  AND TRIM(UPPER(c.estado_certificado)) = 'VIGENTE'
                   AND (c.fecha_vencimiento IS NULL OR c.fecha_vencimiento >= CURRENT_DATE)
                 ORDER BY c.fecha_emision DESC NULLS LAST;
             """), {"eid": eid})
@@ -180,6 +312,13 @@ class ConsultasPublicasService:
             """), {"eid": eid})
             solicitudes = [dict(r) for r in sols.mappings().all()]
 
+            activa = empresa_activa(emp.get("estado_empresa"))
+            if not activa:
+                # Una empresa inactiva o suspendida no ampara ningún certificado.
+                certificados = []
+
+            emp["empresa_activa"] = activa
+            emp["mensaje"] = None if activa else _mensaje_empresa_no_activa(emp.get("estado_empresa"))
             emp["certificada"] = len(certificados) > 0
             emp["total_certificados"] = total_certificados
             emp["certificados_vigentes"] = len(certificados)
@@ -194,7 +333,7 @@ class ConsultasPublicasService:
         return empresas
 
     async def consulta_publica(self, codigo: str = "", nit: str = "") -> list[dict]:
-        codigo = (codigo or "").strip()
+        codigo = normalizar_codigo(codigo)
         nit = (nit or "").strip()
         if not codigo and not nit:
             return []
@@ -203,19 +342,13 @@ class ConsultasPublicasService:
         params: dict = {}
         if codigo:
             condiciones.append(
-                "(s.numero_radicado ILIKE '%' || :codigo_parcial || '%'"
-                " OR c.codigo_verificacion ILIKE '%' || :codigo_parcial || '%')"
+                f"({condicion_codigo('s.numero_radicado')}"
+                f" OR {condicion_codigo('c.codigo_verificacion')})"
             )
-            params["codigo_parcial"] = _escapar_comodines(codigo)
+            params["codigo"] = codigo
         if nit:
-            condiciones.append(
-                "(REPLACE(REPLACE(REPLACE(TRIM(e.nit), '.', ''), '-', ''), ' ', '')"
-                " = REPLACE(REPLACE(REPLACE(TRIM(:nit), '.', ''), '-', ''), ' ', '')"
-                " OR TRIM(e.nit) ILIKE '%' || :nit_parcial || '%'"
-                " OR TRIM(e.nombre) ILIKE '%' || :nit_parcial || '%')"
-            )
-            params["nit"] = nit
-            params["nit_parcial"] = _escapar_comodines(nit)
+            condiciones.append(condicion_nit("e.nit"))
+            params.update(_nit_o_422(nit))
 
         where = " AND ".join(condiciones)
         result = await self.db.execute(text(f"""
@@ -230,6 +363,7 @@ class ConsultasPublicasService:
                 e.nombre AS empresa,
                 e.nit,
                 e.ciudad,
+                e.estado AS estado_empresa,
                 n.codigo AS norma_codigo,
                 n.nombre AS norma_nombre,
                 n.version AS norma_version,
@@ -252,15 +386,41 @@ class ConsultasPublicasService:
 
         hoy = date.today()
         resultados: list[dict] = []
+        empresas_no_activas: set = set()
         for f in filas:
+            if not empresa_activa(f.get("estado_empresa")):
+                # Una sola fila por empresa inactiva, sin trámites ni códigos:
+                # no debe leerse como una empresa activa normal.
+                clave = f.get("id_empresa") or f.get("nit")
+                if clave in empresas_no_activas:
+                    continue
+                empresas_no_activas.add(clave)
+                resultados.append(_fila_sin_tramite(
+                    f,
+                    _texto_estado_empresa(f.get("estado_empresa")),
+                    "SIN CERTIFICACIÓN VIGENTE",
+                    _mensaje_empresa_no_activa(f.get("estado_empresa")),
+                ))
+                continue
+
+            f["empresa_activa"] = True
             vence = _a_fecha(f.get("cert_vence"))
-            vigente = bool(f.get("codigo_verificacion")) and vence is not None and vence >= hoy
+            estado_cert = _estado_certificado(f.get("cert_estado"))
+            tiene_cert = bool(f.get("codigo_verificacion"))
+            estado_ok = estado_cert in ("", ESTADO_CERTIFICADO_VIGENTE)
+            vigente = tiene_cert and estado_ok and vence is not None and vence >= hoy
             estado_tramite = (f.get("estado_tramite") or "").strip()
             if vigente:
                 estado_general = "CERTIFICADA"
                 mensaje = (
                     f"Certificado vigente (código: {f.get('codigo_verificacion')}). "
                     f"Vence el {vence}."
+                )
+            elif tiene_cert and not estado_ok and estado_cert != ESTADO_CERTIFICADO_PENDIENTE:
+                estado_general = f"CERTIFICADO {estado_cert}"
+                mensaje = (
+                    f"El certificado {f.get('codigo_verificacion')} está en estado "
+                    f"{estado_cert.lower()}: no está vigente."
                 )
             else:
                 estado_general = f"EN TRAMITE - {estado_tramite}" if estado_tramite else "EN TRAMITE"
@@ -273,7 +433,9 @@ class ConsultasPublicasService:
             f["vigente"] = vigente
             f["estado_general"] = estado_general
             f["mensaje"] = mensaje
-            if f.get("codigo_verificacion"):
+            if tiene_cert and not estado_ok:
+                f["estado_vigencia"], f["dias_restantes"] = estado_cert.replace("_", " "), None
+            elif tiene_cert:
                 f["estado_vigencia"], f["dias_restantes"] = _estado_vigencia(vence, hoy)
             else:
                 f["estado_vigencia"], f["dias_restantes"] = "SIN CERTIFICADO", None
@@ -285,51 +447,37 @@ class ConsultasPublicasService:
             emp = await self.db.execute(text(f"""
                 SELECT {COLUMNAS_PUBLICAS_EMPRESA_ALIAS}
                 FROM empresa
-                WHERE
-                    REPLACE(REPLACE(REPLACE(TRIM(nit), '.', ''), '-', ''), ' ', '')
-                        = REPLACE(REPLACE(REPLACE(TRIM(:nit), '.', ''), '-', ''), ' ', '')
-                    OR TRIM(nit) ILIKE '%' || :nit_parcial || '%'
-                    OR TRIM(nombre) ILIKE '%' || :nit_parcial || '%'
+                WHERE {condicion_nit("nit")}
                 ORDER BY nombre ASC
                 LIMIT 5;
-            """), {"nit": nit, "nit_parcial": _escapar_comodines(nit)})
+            """), {k: params[k] for k in ("nit_completo", "nit_base")})
             for row in emp.mappings().all():
                 e = dict(row)
-                e.update({
-                    "id_solicitud": None,
-                    "numero_radicado": None,
-                    "estado_tramite": None,
-                    "fecha_tramite": None,
-                    "alcance_certificacion": None,
-                    "norma_codigo": None,
-                    "norma_nombre": None,
-                    "norma_version": None,
-                    "norma_completa": "--",
-                    "codigo_verificacion": None,
-                    "cert_estado": None,
-                    "cert_emision": None,
-                    "cert_vence": None,
-                    "url_certificado": None,
-                    "fecha_radicacion": None,
-                    "vigente": False,
-                    "estado_general": "REGISTRADA",
-                    "estado_vigencia": "SIN CERTIFICADO",
-                    "dias_restantes": None,
-                    "dias_desde_radicacion": None,
-                    "mensaje": "Empresa registrada. Aun no tiene trámites radicados.",
-                })
-                resultados.append(e)
+                if empresa_activa(e.get("estado_empresa")):
+                    resultados.append(_fila_sin_tramite(
+                        e,
+                        "REGISTRADA",
+                        "SIN CERTIFICADO",
+                        "Empresa registrada. Aun no tiene trámites radicados.",
+                    ))
+                else:
+                    resultados.append(_fila_sin_tramite(
+                        e,
+                        _texto_estado_empresa(e.get("estado_empresa")),
+                        "SIN CERTIFICACIÓN VIGENTE",
+                        _mensaje_empresa_no_activa(e.get("estado_empresa")),
+                    ))
 
         return resultados
 
     async def validar_autenticidad(self, codigo: str) -> dict:
         """
         Confirma que un código de verificación existe y a qué certificado
-        corresponde. La coincidencia es exacta (ignorando mayúsculas y espacios
-        de más): una búsqueda parcial dejaría que cualquiera enumere códigos
-        válidos probando prefijos.
+        corresponde. La coincidencia es exacta (sin distinguir mayúsculas ni
+        guiones/espacios): una búsqueda parcial dejaría que cualquiera enumere
+        códigos válidos probando prefijos.
         """
-        codigo_limpio = (codigo or "").strip()
+        codigo_limpio = normalizar_codigo(codigo)
         if not codigo_limpio:
             return {
                 "autentico": False,
@@ -337,7 +485,7 @@ class ConsultasPublicasService:
                 "documento": None,
             }
 
-        result = await self.db.execute(text("""
+        result = await self.db.execute(text(f"""
             SELECT
                 c.codigo_verificacion,
                 TRIM(c.estado_certificado) AS cert_estado,
@@ -350,6 +498,7 @@ class ConsultasPublicasService:
                 e.nombre AS empresa,
                 e.nit,
                 e.ciudad,
+                e.estado AS estado_empresa,
                 n.codigo AS norma_codigo,
                 n.nombre AS norma_nombre,
                 n.version AS norma_version
@@ -359,7 +508,7 @@ class ConsultasPublicasService:
               OR s.id_certificado = c.id_certificado
             JOIN empresa e ON e.id_empresa = s.id_empresa
             LEFT JOIN norma n ON n.id_norma = s.id_norma
-            WHERE UPPER(TRIM(c.codigo_verificacion)) = UPPER(TRIM(:codigo))
+            WHERE {condicion_codigo("c.codigo_verificacion")}
             ORDER BY c.fecha_emision DESC NULLS LAST
             LIMIT 1;
         """), {"codigo": codigo_limpio})
@@ -379,9 +528,19 @@ class ConsultasPublicasService:
         doc["estado_vigencia"], doc["dias_restantes"] = _estado_vigencia(_a_fecha(doc.get("cert_vence")), hoy)
         radicacion = _a_fecha(doc.get("fecha_radicacion"))
         doc["dias_desde_radicacion"] = (hoy - radicacion).days if radicacion else None
+        doc["empresa_activa"] = empresa_activa(doc.get("estado_empresa"))
+
+        detalle = "Código válido: corresponde a un certificado emitido por CertiSENA."
+        estado_cert = _estado_certificado(doc.get("cert_estado"))
+        if not doc["empresa_activa"]:
+            doc["estado_vigencia"], doc["dias_restantes"] = _texto_estado_empresa(doc.get("estado_empresa")), None
+            detalle += " " + _mensaje_empresa_no_activa(doc.get("estado_empresa"))
+        elif estado_cert and estado_cert != ESTADO_CERTIFICADO_VIGENTE:
+            doc["estado_vigencia"], doc["dias_restantes"] = estado_cert.replace("_", " "), None
+            detalle += f" El certificado está en estado {estado_cert.lower().replace('_', ' ')}: no está vigente."
 
         return {
             "autentico": True,
-            "detalle": "Código válido: corresponde a un certificado emitido por CertiSENA.",
+            "detalle": detalle,
             "documento": doc,
         }

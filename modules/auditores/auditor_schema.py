@@ -284,6 +284,12 @@ class ExperienciaLaboralCrear(BaseModel):
     fecha_fin: date | None = None
     descripcion: str = ""
 
+    @field_validator("descripcion", mode="before")
+    @classmethod
+    def descripcion_vacia(cls, value):
+        # El formulario envía null cuando la descripción (opcional) va vacía.
+        return "" if value is None else value
+
     @field_validator(
         "empresa",
         "cargo",
@@ -338,6 +344,12 @@ class ExperienciaAuditoriaCrear(BaseModel):
     fecha_inicio: date
     fecha_fin: date | None = None
     descripcion: str = ""
+
+    @field_validator("tipo_auditoria", "descripcion", mode="before")
+    @classmethod
+    def opcionales_vacios(cls, value):
+        # El formulario envía null cuando estos campos opcionales van vacíos.
+        return "" if value is None else value
 
     @field_validator(
         "organizacion",

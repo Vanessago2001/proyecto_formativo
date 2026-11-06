@@ -3,7 +3,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from core.database import get_db
 from core.security import get_current_user
-from modules.users.user_schema import UserCreate, UserResponse, UserUpdate
+from uuid import UUID
+
+from modules.users.gestion_cuenta_service import GestionCuentaService
+from modules.users.user_schema import (
+    CambioCorreoCuenta,
+    RestablecerPasswordCuenta,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+)
 from modules.users.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["Usuarios"])
@@ -63,3 +72,42 @@ async def edit_user(user_id: str, user_in: UserUpdate, db: AsyncSession = Depend
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo un administrador puede modificar cuentas.")
     return await UserService(db).update_user(user_id, user_in, current_user)
 
+
+
+# ============================================================
+# GESTION DE ACCESO DE CUENTAS EMPRESA / AUDITOR (USR-CORREO, USR-CLAVE)
+# ============================================================
+# Los permisos (Administrador siempre; Auxiliar solo con el permiso delegado)
+# se validan en GestionCuentaService, no solo ocultando el boton.
+
+@router.put("/{user_id}/correo", status_code=status.HTTP_200_OK)
+async def cambiar_correo_cuenta(
+    user_id: UUID,
+    data: CambioCorreoCuenta,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    return await GestionCuentaService(db).cambiar_correo(
+        current_user, user_id, str(data.correo), data.motivo.strip()
+    )
+
+
+@router.post("/{user_id}/restablecer-password", status_code=status.HTTP_200_OK)
+async def restablecer_password_cuenta(
+    user_id: UUID,
+    data: RestablecerPasswordCuenta,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    return await GestionCuentaService(db).restablecer_password(
+        current_user, user_id, data.motivo.strip()
+    )
+
+
+@router.get("/{user_id}/historial-gestion", status_code=status.HTTP_200_OK)
+async def historial_gestion_cuenta(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    return await GestionCuentaService(db).historial(current_user, user_id)

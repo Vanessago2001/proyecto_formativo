@@ -75,3 +75,26 @@ class AsignacionAuditorRespuesta(BaseModel):
     fecha_inicio_planificada: datetime | None = None
     fecha_fin_planificada: datetime | None = None
     estado_asignacion: str
+
+
+class SolicitudCambioAsignacionCrear(BaseModel):
+    """La empresa pide cambiar o cancelar un auditor asignado, con una razón justificada."""
+
+    motivo: str = Field(
+        ...,
+        max_length=1000,
+        # El mínimo de 30 caracteres se valida en el servicio, con mensaje en español.
+        description="Razón justificada del cambio (mínimo 30 caracteres).",
+    )
+
+
+class SolicitudCambioAsignacionResolver(BaseModel):
+    """El administrador aprueba (cancela la asignación) o rechaza la solicitud."""
+
+    aprobar: bool
+    respuesta: str = Field(
+        ...,
+        max_length=1000,
+        # El mínimo de 10 caracteres se valida en el servicio, con mensaje en español.
+        description="Respuesta del administrador a la empresa (mínimo 10 caracteres).",
+    )

@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CertiSENA | Gestión de PQRS</title>
+  <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
+  <link rel="stylesheet" href="/static/pqrs.css?v=20261104" />
+</head>
+
+<body>
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco" />
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Gestión de PQRS</p>
+        </div>
+      </div>
+      <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/reportes">Reportes</a>
+        <a class="profile-link" href="/profile">Mi perfil</a>
+        <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-shell pq-shell">
+    <div class="admin-grid">
+      <nav class="admin-nav" aria-label="Vistas de PQRS">
+        <div class="admin-nav-heading">
+          <span>PQRS</span>
+          Gestión de PQRS
+        </div>
+        <button type="button" class="pq-vista" data-view="bandeja">Bandeja de PQRS</button>
+        <button type="button" class="pq-vista" data-view="tiempos">Tiempos de atención</button>
+        <button type="button" class="pq-vista" data-view="reportes">Reportes</button>
+      </nav>
+
+      <section class="content">
+        <div class="pq-heading">
+          <div>
+            <span class="pq-kicker">PQRS</span>
+            <h2 id="tituloVista">Bandeja de PQRS</h2>
+            <p id="descripcionVista"></p>
+          </div>
+          <div class="pq-acciones">
+            <a class="btn btn-primario pq-btn" href="/pqrs#radicar" id="enlaceRadicar" hidden>Radicar en nombre de un ciudadano</a>
+            <button type="button" class="btn btn-secundario pq-btn sec" id="btnActualizar">Actualizar</button>
+          </div>
+        </div>
+        <div id="msgGeneral" class="pq-msg" role="status" aria-live="polite"></div>
+
+        <!-- ============ BANDEJA ============ -->
+        <section id="vista-bandeja" class="pq-panel" hidden>
+          <form id="filtrosBandeja" class="pq-filtros">
+            <div class="pq-field"><label for="fQ">Buscar</label><input id="fQ" type="search" maxlength="100" placeholder="Radicado, asunto, nombre o documento"></div>
+            <div class="pq-field"><label for="fEstado">Estado</label><select id="fEstado"><option value="">Todos</option></select></div>
+            <div class="pq-field"><label for="fTipo">Tipo</label><select id="fTipo"><option value="">Todos</option></select></div>
+            <div class="pq-field"><label for="fSemaforo">Tiempo</label>
+              <select id="fSemaforo">
+                <option value="">Todos</option>
+                <option value="vencida">Vencidas</option>
+                <option value="proxima">Próximas a vencer</option>
+                <option value="en_termino">En término</option>
+                <option value="en_espera">Esperando al peticionario</option>
+              </select></div>
+            <div class="pq-field"><label for="fDesde">Desde</label><input id="fDesde" type="date"></div>
+            <div class="pq-field"><label for="fHasta">Hasta</label><input id="fHasta" type="date"></div>
+            <div class="pq-acciones"><button class="btn btn-primario pq-btn" type="submit">Filtrar</button></div>
+          </form>
+          <p id="conteoBandeja" style="margin:0 0 10px;color:var(--gris-500);font-size:13px"></p>
+          <div class="pq-table-wrap">
+            <table class="pq-table">
+              <thead><tr><th>Radicado</th><th>Tipo</th><th>Asunto</th><th>Peticionario</th><th>Estado</th><th>Responsable</th><th>Límite</th><th>Tiempo</th><th></th></tr></thead>
+              <tbody id="tablaBandeja"><tr><td colspan="9" class="pq-vacio">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ============ TIEMPOS ============ -->
+        <section id="vista-tiempos" hidden>
+          <div class="pq-metricas" id="metricasTiempos"></div>
+          <div class="pq-panel" style="margin-top:20px">
+            <h3>PQRS abiertas por fecha límite</h3>
+            <p class="pq-ayuda">Días hábiles: lunes a viernes sin festivos nacionales. «Esperando al peticionario» = información solicitada.</p>
+            <div class="pq-table-wrap">
+              <table class="pq-table">
+                <thead><tr><th>Radicado</th><th>Tipo</th><th>Estado</th><th>Radicada</th><th>Límite</th><th>Días hábiles</th><th>Restantes</th><th>Tiempo</th></tr></thead>
+                <tbody id="tablaTiempos"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="pq-panel" style="margin-top:20px">
+            <h3>Por tipo</h3>
+            <div class="pq-table-wrap">
+              <table class="pq-table">
+                <thead><tr><th>Tipo</th><th>Total</th><th>Abiertas</th><th>Vencidas</th></tr></thead>
+                <tbody id="tablaPorTipo"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="pq-panel" id="panelPlazos" style="margin-top:20px" hidden>
+            <h3>Plazos de respuesta por tipo</h3>
+            <p class="pq-ayuda">Solo el administrador los cambia. Aplican a las PQRS que se radiquen desde ahora.</p>
+            <div class="pq-table-wrap">
+              <table class="pq-table">
+                <thead><tr><th>Tipo</th><th>Días hábiles</th><th>Alerta (días antes)</th><th></th></tr></thead>
+                <tbody id="tablaPlazos"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ REPORTES ============ -->
+        <section id="vista-reportes" class="pq-panel" hidden>
+          <h3>Reporte de PQRS</h3>
+          <p class="pq-ayuda">Filtra y descarga el listado. Incluye solo las PQRS de tu alcance.</p>
+          <form id="filtrosReporte" class="pq-filtros">
+            <div class="pq-field"><label for="rDesde">Desde</label><input id="rDesde" type="date"></div>
+            <div class="pq-field"><label for="rHasta">Hasta</label><input id="rHasta" type="date"></div>
+            <div class="pq-field"><label for="rTipo">Tipo</label><select id="rTipo"><option value="">Todos</option></select></div>
+            <div class="pq-field"><label for="rEstado">Estado</label><select id="rEstado"><option value="">Todos</option></select></div>
+            <div class="pq-acciones"><button class="btn btn-primario pq-btn" type="submit">Ver</button></div>
+          </form>
+          <div class="pq-acciones" id="botonesExportar" style="margin-bottom:14px"></div>
+          <p id="conteoReporte" style="margin:0 0 10px;color:var(--gris-500);font-size:13px"></p>
+          <div class="pq-table-wrap">
+            <table class="pq-table">
+              <thead><tr><th>Radicado</th><th>Tipo</th><th>Estado</th><th>Asunto</th><th>Radicada</th><th>Límite</th><th>Respondida</th><th>Tiempo</th></tr></thead>
+              <tbody id="tablaReporte"><tr><td colspan="8" class="pq-vacio">Elige filtros y pulsa «Ver».</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="vista-sin-acceso" class="pq-panel" hidden>
+          <h3>Sin acceso</h3>
+          <p class="pq-ayuda">Tu cuenta no tiene permisos sobre las PQRS. Si eres auxiliar, pide al administrador que te los otorgue.</p>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="dialogo" class="pq-dialogo" aria-label="Detalle de la PQRS">
+    <div class="pq-dialogo-cuerpo">
+      <button type="button" class="btn btn-secundario btn-sm pq-btn sec chico pq-dialogo-cierre" id="cerrarDialogo">Cerrar</button>
+      <div id="msgDialogo" class="pq-msg" role="status" aria-live="polite"></div>
+      <div id="dialogoContenido"></div>
+      <div id="dialogoAcciones"></div>
+    </div>
+  </dialog>
+
+  <script src="/static/pqrs-comun.js?v=20261104"></script>
+  <script>
+    (function () {
+      "use strict";
+      var P = window.PQRS;
+      var $ = function (s) { return document.querySelector(s); };
+      if (!P.token()) { window.location.href = "/login"; return; }
+
+      var VISTAS = {
+        bandeja: { codigo: "PQR-003", titulo: "Bandeja de PQRS", texto: "PQRS radicadas, su responsable y el tiempo que les queda." },
+        tiempos: { codigo: "PQR-014", titulo: "Tiempos de atención", texto: "Semáforo de vencimientos y promedio de respuesta en días hábiles." },
+        reportes: { codigo: "PQR-015", titulo: "Reportes", texto: "Listado filtrable con descarga en CSV, PDF o Excel." }
+      };
+      var permisos = {};
+      var formatos = [];
+      var rol = "";
+      var catalogos = null;
+      var vista = null;
+      var abierta = null;
+
+      function permitida(nombre) { return Boolean(permisos[VISTAS[nombre].codigo]); }
+
+      function abrirVista(nombre) {
+        if (!VISTAS[nombre] || !permitida(nombre)) {
+          nombre = Object.keys(VISTAS).filter(permitida)[0];
+        }
+        document.querySelectorAll("button[data-view]").forEach(function (b) {
+          var activa = b.dataset.view === nombre;
+          b.classList.toggle("active", activa);
+          if (activa) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+        });
+        ["bandeja", "tiempos", "reportes", "sin-acceso"].forEach(function (v) { $("#vista-" + v).hidden = v !== (nombre || "sin-acceso"); });
+        if (!nombre) {
+          $("#tituloVista").textContent = "PQRS";
+          $("#descripcionVista").textContent = "";
+          $("#btnActualizar").hidden = true;
+          return;
+        }
+        vista = nombre;
+        $("#tituloVista").textContent = VISTAS[nombre].titulo;
+        $("#descripcionVista").textContent = VISTAS[nombre].texto;
+        if (location.hash.slice(1) !== nombre) history.replaceState(null, "", "#" + nombre);
+        cargarVista();
+      }
+
+      function cargarVista() {
+        P.mostrar($("#msgGeneral"), "", "");
+        if (vista === "bandeja") return cargarBandeja();
+        if (vista === "tiempos") return cargarTiempos();
+        if (vista === "reportes") return cargarReporte();
+      }
+
+      document.querySelectorAll("button[data-view]").forEach(function (b) {
+        b.addEventListener("click", function () { abrirVista(b.dataset.view); });
+      });
+      window.addEventListener("hashchange", function () {
+        var h = location.hash.slice(1);
+        if (VISTAS[h] && h !== vista) abrirVista(h);
+      });
+      $("#btnActualizar").addEventListener("click", cargarVista);
+
+      function opciones(lista) {
+        return lista.map(function (v) { return '<option value="' + P.esc(v) + '">' + P.esc(v) + "</option>"; }).join("");
+      }
+
+      function parametros(obj) {
+        var u = new URLSearchParams();
+        Object.keys(obj).forEach(function (k) { if (obj[k]) u.set(k, obj[k]); });
+        var s = u.toString();
+        return s ? "?" + s : "";
+      }
+
+      // ---------------- bandeja ----------------
+      async function cargarBandeja() {
+        var cuerpo = $("#tablaBandeja");
+        cuerpo.innerHTML = '<tr><td colspan="9" class="pq-vacio">Cargando...</td></tr>';
+        try {
+          var filas = await P.api("/api/pqrs" + parametros({
+            q: $("#fQ").value.trim(), estado: $("#fEstado").value, tipo: $("#fTipo").value,
+            semaforo: $("#fSemaforo").value, desde: $("#fDesde").value, hasta: $("#fHasta").value
+          }));
+          $("#conteoBandeja").textContent = filas.length + " PQRS" + (filas.length >= 500 ? " (se muestran las 500 más recientes)" : "");
+          cuerpo.innerHTML = filas.length ? filas.map(function (f) {
+            return "<tr><td><strong>" + P.esc(f.radicado) + "</strong></td><td>" + P.esc(f.tipo) + "</td><td>" + P.esc(f.asunto) +
+              "</td><td>" + P.esc(f.nombre_peticionario) + "</td><td>" + P.chipEstado(f.estado) + "</td><td>" +
+              P.esc(f.responsable || "Sin asignar") + "</td><td>" + P.esc(P.fecha(f.fecha_limite)) + "</td><td>" + P.chipSemaforo(f.semaforo) +
+              '</td><td><button class="btn btn-secundario btn-sm pq-btn sec chico" type="button" data-ver="' + P.esc(f.id_pqrs) + '">Gestionar</button></td></tr>';
+          }).join("") : '<tr><td colspan="9" class="pq-vacio">No hay PQRS con esos filtros.</td></tr>';
+        } catch (e) {
+          cuerpo.innerHTML = '<tr><td colspan="9" class="pq-vacio">—</td></tr>';
+          P.mostrar($("#msgGeneral"), "error", e.message);
+        }
+      }
+      $("#filtrosBandeja").addEventListener("submit", function (ev) { ev.preventDefault(); cargarBandeja(); });
+      $("#tablaBandeja").addEventListener("click", function (ev) {
+        var b = ev.target.closest("[data-ver]");
+        if (b) abrirDetalle(b.dataset.ver);
+      });
+
+      // ---------------- detalle y acciones ----------------
+      var FORMULARIOS = {
+        asignar: { titulo: "Asignar responsable", boton: "Asignar" },
+        cambiar_estado: { titulo: "Pasar a «En trámite»", boton: "Cambiar estado" },
+        solicitar_informacion: { titulo: "Solicitar información al peticionario", boton: "Solicitar (se enviará por correo)" },
+        responder: { titulo: "Registrar respuesta", boton: "Responder y notificar por correo" },
+        cerrar: { titulo: "Cerrar PQRS", boton: "Cerrar" },
+        reabrir: { titulo: "Reabrir PQRS", boton: "Reabrir" },
+        adjuntar: { titulo: "Adjuntar evidencia", boton: "Adjuntar" }
+      };
+
+      function formularioHTML(accion, p) {
+        var f = FORMULARIOS[accion];
+        var cuerpo = "";
+        if (accion === "asignar") {
+          cuerpo = '<div class="pq-field"><label>Responsable</label><select name="id_responsable" required><option value="">Cargando...</option></select></div>' +
+            '<div class="pq-field pq-full"><label>Nota interna (opcional)</label><textarea name="comentario" maxlength="2000"></textarea></div>';
+        } else if (accion === "responder") {
+          cuerpo = '<div class="pq-field pq-full"><label>Respuesta al peticionario</label><textarea name="respuesta" required minlength="20" maxlength="10000"></textarea></div>';
+        } else if (accion === "solicitar_informacion") {
+          cuerpo = '<div class="pq-field pq-full"><label>¿Qué información necesitas?</label><textarea name="comentario" required minlength="10" maxlength="2000"></textarea></div>';
+        } else if (accion === "reabrir") {
+          cuerpo = '<div class="pq-field pq-full"><label>Motivo</label><textarea name="motivo" required minlength="10" maxlength="2000"></textarea></div>';
+        } else if (accion === "adjuntar") {
+          cuerpo = '<div class="pq-field pq-full"><label>Archivos (PDF, JPG, PNG o DOCX · máx. 5 MB)</label><input name="archivos" type="file" multiple required accept=".pdf,.jpg,.jpeg,.png,.docx"></div>' +
+            '<div class="pq-field pq-full"><label>Comentario (opcional)</label><textarea name="comentario" maxlength="2000"></textarea></div>';
+        } else {
+          var obligatorio = accion === "cerrar" && p.estado === "Información solicitada";
+          cuerpo = '<div class="pq-field pq-full"><label>Comentario' + (obligatorio ? " (motivo del cierre sin respuesta)" : " (opcional)") + "</label>" +
+            '<textarea name="comentario" maxlength="2000"' + (obligatorio ? " required minlength=\"10\"" : "") + "></textarea></div>";
+        }
+        return '<details class="pq-seccion pq-panel" data-accion="' + accion + '"><summary style="cursor:pointer;font-weight:700">' + P.esc(f.titulo) +
+          '</summary><form class="pq-form" style="margin-top:14px">' + cuerpo +
+          '<div class="pq-acciones pq-full"><button class="btn pq-btn' + (accion === "cerrar" ? " btn-peligro peligro" : " btn-primario") + '" type="submit">' + P.esc(f.boton) + "</button></div></form></details>";
+      }
+
+      async function abrirDetalle(id) {
+        try {
+          abierta = await P.api("/api/pqrs/" + encodeURIComponent(id));
+          P.mostrar($("#msgDialogo"), "", "");
+          pintarDetalle();
+          if (!$("#dialogo").open) $("#dialogo").showModal();
+        } catch (e) { P.mostrar($("#msgGeneral"), "error", e.message); }
+      }
+
+      function pintarDetalle() {
+        $("#dialogoContenido").innerHTML = P.fichaHTML(abierta, { interno: true });
+        var acciones = abierta.acciones || [];
+        $("#dialogoAcciones").innerHTML = acciones.length
+          ? '<div class="pq-seccion"><h4>Acciones</h4>' + acciones.map(function (a) { return formularioHTML(a, abierta); }).join("") + "</div>"
+          : '<p style="margin-top:16px;color:var(--gris-500);font-size:13px">No tienes acciones disponibles sobre esta PQRS en su estado actual.</p>';
+        var asignar = $("#dialogoAcciones [data-accion=asignar] select");
+        if (asignar) cargarResponsables(asignar);
+      }
+
+      async function cargarResponsables(select) {
+        try {
+          var lista = await P.api("/api/pqrs/responsables");
+          select.innerHTML = '<option value="">Selecciona...</option>' + lista.map(function (u) {
+            return '<option value="' + P.esc(u.id_usuario) + '">' + P.esc(u.nombre) + " · " + P.esc(u.rol) + "</option>";
+          }).join("");
+        } catch (e) { select.innerHTML = '<option value="">' + P.esc(e.message) + "</option>"; }
+      }
+
+      $("#dialogoContenido").addEventListener("click", async function (ev) {
+        var b = ev.target.closest("[data-adjunto]");
+        if (!b) return;
+        try {
+          var r = await P.api("/api/pqrs/" + encodeURIComponent(abierta.id_pqrs) + "/adjuntos/" + encodeURIComponent(b.dataset.adjunto), { archivo: true });
+          await P.descargar(r, b.dataset.nombre);
+        } catch (e) { P.mostrar($("#msgDialogo"), "error", e.message); }
+      });
+
+      $("#dialogoAcciones").addEventListener("submit", async function (ev) {
+        ev.preventDefault();
+        var form = ev.target;
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+        var accion = form.closest("[data-accion]").dataset.accion;
+        var base = "/api/pqrs/" + encodeURIComponent(abierta.id_pqrs);
+        var valor = function (n) { var c = form.elements[n]; return c ? c.value.trim() : ""; };
+        var boton = form.querySelector("button[type=submit]");
+        if (accion === "cerrar" && !confirm("¿Cerrar la PQRS " + abierta.radicado + "?")) return;
+        boton.disabled = true;
+        try {
+          if (accion === "asignar") {
+            await P.api(base + "/asignar", { json: { id_responsable: valor("id_responsable"), comentario: valor("comentario") || null } });
+          } else if (accion === "cambiar_estado") {
+            await P.api(base + "/estado", { json: { estado: "En trámite", comentario: valor("comentario") || null } });
+          } else if (accion === "solicitar_informacion") {
+            await P.api(base + "/solicitar-informacion", { json: { comentario: valor("comentario") } });
+          } else if (accion === "responder") {
+            await P.api(base + "/responder", { json: { respuesta: valor("respuesta") } });
+          } else if (accion === "cerrar") {
+            await P.api(base + "/cerrar", { json: { comentario: valor("comentario") || null } });
+          } else if (accion === "reabrir") {
+            await P.api(base + "/reabrir", { json: { motivo: valor("motivo") } });
+          } else if (accion === "adjuntar") {
+            var archivos = Array.prototype.slice.call(form.elements.archivos.files || []);
+            if (archivos.length > 5) throw new Error("Máximo 5 archivos por envío.");
+            archivos.forEach(function (a) { if (a.size > 5 * 1024 * 1024) throw new Error("«" + a.name + "» supera 5 MB."); });
+            var fd = new FormData();
+            archivos.forEach(function (a) { fd.append("archivos", a); });
+            if (valor("comentario")) fd.append("comentario", valor("comentario"));
+            await P.api(base + "/adjuntos", { body: fd });
+          }
+          abierta = await P.api(base);
+          pintarDetalle();
+          P.mostrar($("#msgDialogo"), "ok", "Listo: " + FORMULARIOS[accion].titulo.toLowerCase() + ".");
+          if (vista === "bandeja") cargarBandeja();
+        } catch (e) {
+          P.mostrar($("#msgDialogo"), "error", e.message);
+          boton.disabled = false;
+        }
+      });
+      $("#cerrarDialogo").addEventListener("click", function () { $("#dialogo").close(); });
+
+      // ---------------- tiempos ----------------
+      async function cargarTiempos() {
+        try {
+          var t = await P.api("/api/pqrs/tiempos");
+          var r = t.resumen;
+          var m = function (valor, texto, clase) {
+            return '<div class="pq-metrica ' + (clase || "") + '"><b>' + P.esc(valor == null ? "—" : valor) + "</b><span>" + P.esc(texto) + "</span></div>";
+          };
+          $("#metricasTiempos").innerHTML = m(r.total, "PQRS en tu alcance") + m(r.abiertas, "Abiertas") +
+            m(r.vencida, "Vencidas", "alerta") + m(r.proxima, "Próximas a vencer", "aviso") + m(r.en_espera, "Esperando al peticionario") +
+            m(r.atendida_tarde, "Atendidas fuera de término", "alerta") +
+            m(r.promedio_dias_habiles_respuesta, "Promedio de respuesta (días hábiles)");
+          $("#tablaTiempos").innerHTML = t.abiertas.length ? t.abiertas.map(function (f) {
+            return "<tr><td><strong>" + P.esc(f.radicado) + "</strong></td><td>" + P.esc(f.tipo) + "</td><td>" + P.chipEstado(f.estado) +
+              "</td><td>" + P.esc(P.fecha(f.fecha_radicacion, false)) + "</td><td>" + P.esc(P.fecha(f.fecha_limite)) + "</td><td>" +
+              P.esc(f.dias_habiles_transcurridos) + "</td><td>" + P.esc(f.dias_habiles_restantes == null ? "—" : f.dias_habiles_restantes) +
+              "</td><td>" + P.chipSemaforo(f.semaforo) + "</td></tr>";
+          }).join("") : '<tr><td colspan="8" class="pq-vacio">No hay PQRS abiertas.</td></tr>';
+          $("#tablaPorTipo").innerHTML = t.por_tipo.length ? t.por_tipo.map(function (g) {
+            return "<tr><td>" + P.esc(g.tipo) + "</td><td>" + g.total + "</td><td>" + g.abiertas + "</td><td>" + g.vencidas + "</td></tr>";
+          }).join("") : '<tr><td colspan="4" class="pq-vacio">Sin datos.</td></tr>';
+          if (/admin/.test(rol)) cargarPlazos();
+        } catch (e) { P.mostrar($("#msgGeneral"), "error", e.message); }
+      }
+
+      function cargarPlazos() {
+        if (!catalogos) return;
+        $("#panelPlazos").hidden = false;
+        $("#tablaPlazos").innerHTML = catalogos.plazos.map(function (p) {
+          return '<tr data-tipo="' + P.esc(p.tipo) + '"><td>' + P.esc(p.tipo) + '</td><td><input type="number" min="1" max="90" value="' + p.dias_habiles +
+            '" style="width:90px" aria-label="Días hábiles ' + P.esc(p.tipo) + '"></td><td><input type="number" min="0" max="30" value="' + p.dias_alerta +
+            '" style="width:90px" aria-label="Alerta ' + P.esc(p.tipo) + '"></td><td><button class="btn btn-secundario btn-sm pq-btn sec chico" type="button" data-guardar>Guardar</button></td></tr>';
+        }).join("");
+      }
+      $("#tablaPlazos").addEventListener("click", async function (ev) {
+        var b = ev.target.closest("[data-guardar]");
+        if (!b) return;
+        var fila = b.closest("tr");
+        var entradas = fila.querySelectorAll("input");
+        try {
+          await P.api("/api/pqrs/plazos/" + encodeURIComponent(fila.dataset.tipo), {
+            method: "PUT", json: { dias_habiles: Number(entradas[0].value), dias_alerta: Number(entradas[1].value) }
+          });
+          catalogos = await P.api("/api/pqrs/catalogos");
+          P.mostrar($("#msgGeneral"), "ok", "Plazo de " + fila.dataset.tipo + " actualizado.");
+        } catch (e) { P.mostrar($("#msgGeneral"), "error", e.message); }
+      });
+
+      // ---------------- reportes ----------------
+      function filtrosReporte() {
+        return { desde: $("#rDesde").value, hasta: $("#rHasta").value, tipo: $("#rTipo").value, estado: $("#rEstado").value };
+      }
+      async function cargarReporte() {
+        var cuerpo = $("#tablaReporte");
+        try {
+          var datos = await P.api("/api/pqrs/reporte" + parametros(Object.assign({ formato: "json" }, filtrosReporte())));
+          $("#conteoReporte").textContent = datos.total + " registro(s)";
+          cuerpo.innerHTML = datos.filas.length ? datos.filas.map(function (f) {
+            return "<tr><td>" + P.esc(f.radicado) + "</td><td>" + P.esc(f.tipo) + "</td><td>" + P.esc(f.estado) + "</td><td>" + P.esc(f.asunto) +
+              "</td><td>" + P.esc(P.fecha(f.fecha_radicacion, false)) + "</td><td>" + P.esc(P.fecha(f.fecha_limite)) + "</td><td>" +
+              P.esc(P.fecha(f.fecha_respuesta, false)) + "</td><td>" + P.chipSemaforo(f.semaforo) + "</td></tr>";
+          }).join("") : '<tr><td colspan="8" class="pq-vacio">Sin registros con esos filtros.</td></tr>';
+        } catch (e) {
+          cuerpo.innerHTML = '<tr><td colspan="8" class="pq-vacio">—</td></tr>';
+          P.mostrar($("#msgGeneral"), "error", e.message);
+        }
+      }
+      $("#filtrosReporte").addEventListener("submit", function (ev) { ev.preventDefault(); cargarReporte(); });
+      function pintarExportar() {
+        var nombres = { csv: "Descargar CSV", pdf: "Descargar PDF", xlsx: "Descargar Excel" };
+        $("#botonesExportar").innerHTML = formatos.map(function (f) {
+          return '<button type="button" class="btn btn-secundario pq-btn sec" data-formato="' + f + '">' + nombres[f] + "</button>";
+        }).join("");
+      }
+      $("#botonesExportar").addEventListener("click", async function (ev) {
+        var b = ev.target.closest("[data-formato]");
+        if (!b) return;
+        b.disabled = true;
+        try {
+          var r = await P.api("/api/pqrs/reporte" + parametros(Object.assign({ formato: b.dataset.formato }, filtrosReporte())), { archivo: true });
+          await P.descargar(r, "reporte_pqrs." + b.dataset.formato);
+        } catch (e) { P.mostrar($("#msgGeneral"), "error", e.message); }
+        finally { b.disabled = false; }
+      });
+
+      // ---------------- arranque ----------------
+      async function iniciar() {
+        try {
+          var sesion = await P.api("/api/pqrs/mis-permisos");
+          permisos = sesion.permisos || {};
+          formatos = sesion.formatos_reporte || [];
+          rol = sesion.rol || "";
+        } catch (e) {
+          P.mostrar($("#msgGeneral"), "error", e.message);
+        }
+        document.querySelectorAll("button[data-view]").forEach(function (b) { b.hidden = !permitida(b.dataset.view); });
+        $("#enlaceRadicar").hidden = !permisos["PQR-001"] || !/admin|auxiliar/.test(rol);
+        try {
+          catalogos = await P.api("/api/pqrs/catalogos");
+          $("#fEstado").innerHTML += opciones(catalogos.estados);
+          $("#rEstado").innerHTML += opciones(catalogos.estados);
+          $("#fTipo").innerHTML += opciones(catalogos.tipos);
+          $("#rTipo").innerHTML += opciones(catalogos.tipos);
+        } catch (_) { /* los filtros quedan con «Todos» */ }
+        pintarExportar();
+        abrirVista(location.hash.slice(1) || "bandeja");
+      }
+      iniciar();
+    })();
+  </script>
+  <script src="/static/session.js?v=20261029"></script>
+  <script src="/static/nav.js"></script>
+</body>
+
+</html>

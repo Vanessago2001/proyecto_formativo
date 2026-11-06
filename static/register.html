@@ -11,6 +11,29 @@
 
     <link rel="stylesheet" href="/static/tema.css?v=20261028">
     <link rel="stylesheet" href="/static/styles.css?v=20261028">
+    <style>
+        /* Formulario angosto: arranca a 28px del encabezado y usa los campos y
+           botones del sistema (tema.css). styles.css da a .form-group input
+           padding 14px, radio 10px, texto centrado y letter-spacing 4px. */
+        .login-container { padding: 28px 20px; }
+        .login-form .form-group input,
+        .login-form .form-group select {
+            min-height: var(--campo-alto);
+            padding: 8px 10px;
+            border: 1px solid var(--campo-borde);
+            border-radius: var(--campo-radio);
+            background-color: #fff;
+            font-family: var(--tipografia);
+            font-size: var(--txt-base);
+            text-align: left;
+            letter-spacing: 0;
+        }
+        .login-form .form-group input:focus,
+        .login-form .form-group select:focus { border-color: var(--verde-600); }
+        .login-form .form-group input[readonly] { background-color: var(--gris-100); color: var(--gris-700); }
+        .login-form .btn-bloque { margin-top: 10px; }
+        .btn.hidden-section { display: none; }
+    </style>
 </head>
 <body>
 
@@ -187,7 +210,7 @@
 
         </div>
 
-        <button type="submit" id="btnRegister" class="btn-login">
+        <button type="submit" id="btnRegister" class="btn btn-primario btn-bloque btn-login">
             Registrarse
         </button>
 
@@ -249,6 +272,23 @@ document.getElementById("btnRegister").addEventListener("click", async function(
 
     }
 
+    // Las mismas reglas que valida el servidor (UserCreate), con mensaje claro.
+    const etiquetaNombre = tipo_doc === "NIT" ? "La razón social" : "El nombre completo";
+    if(nombre.length < 4 || nombre.length > 50){
+        errorMsg.textContent = `${etiquetaNombre} debe tener entre 4 y 50 caracteres.`;
+        return;
+    }
+
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)){
+        errorMsg.textContent = "Ingrese un correo electrónico válido (por ejemplo, nombre@dominio.com).";
+        return;
+    }
+
+    if(password.length < 6){
+        errorMsg.textContent = "La contraseña debe tener al menos 6 caracteres.";
+        return;
+    }
+
     const btnRegister = this;
     const textoOriginalRegister = btnRegister.textContent;
     btnRegister.disabled = true;
@@ -275,11 +315,12 @@ document.getElementById("btnRegister").addEventListener("click", async function(
 
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
         if(!response.ok){
 
-            errorMsg.textContent = data.detail || "Error al registrarse. Inténtalo de nuevo.";
+            // Los 422 de FastAPI traen `detail` como lista de objetos.
+            errorMsg.textContent = mensajeErrorApi(data, "Error al registrarse. Inténtalo de nuevo.");
 
             return;
 
@@ -339,6 +380,7 @@ document.querySelectorAll(".mobile-menu a").forEach(link => {
 
 </script>
 
+<script src="/static/errores-api.js?v=20261104"></script>
 <script src="/static/session.js?v=20261029"></script>
 </body>
 </html>

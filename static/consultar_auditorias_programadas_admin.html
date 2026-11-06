@@ -37,75 +37,13 @@
         }
 
         /* =========================================================
-           HEADER
-        ========================================================= */
-        .login-header {
-            background: #3baa01;
-            color: #fff;
-            padding: 20px clamp(18px, 4vw, 42px);
-        }
-
-        .login-header .header-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 18px;
-            max-width: var(--ancho-contenido);
-            margin: 0 auto;
-        }
-
-        .login-header .header-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .login-header .sena-blanco {
-            width: 72px;
-            height: auto;
-            object-fit: contain;
-            flex-shrink: 0;
-        }
-
-        .login-header h1 {
-            margin: 0;
-            font-size: 26px;
-            line-height: 1.15;
-            letter-spacing: -.02em;
-        }
-
-        .login-header .subtitle {
-            margin: 4px 0 0;
-            font-size: 13px;
-            line-height: 1.5;
-            opacity: .92;
-        }
-
-        .login-header .profile-link {
-            color: #fff;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 13.5px;
-            padding: 9px 15px;
-            border: 1px solid rgba(255, 255, 255, .35);
-            border-radius: 999px;
-            background: rgba(255, 255, 255, .08);
-            transition: .18s ease;
-        }
-
-        .login-header .profile-link:hover {
-            background: rgba(255, 255, 255, .18);
-            border-color: rgba(255, 255, 255, .55);
-        }
-
-        /* =========================================================
            LAYOUT
         ========================================================= */
         .portal-shell {
             width: 100%;
             max-width: var(--ancho-contenido);
             margin: 0 auto;
-            padding: 24px 24px 48px;
+            padding: 28px;
         }
 
         .portal-grid {
@@ -348,42 +286,10 @@
 
         .form-control {
             width: 100%;
-            height: 42px;
-            min-height: 42px;
-            padding: 0 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: var(--radius-control);
-            font: inherit;
-            font-size: 13.5px;
-            color: var(--ink);
-            background: #fff;
-            outline: none;
-            box-sizing: border-box;
-            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-        }
-
-        .form-control:hover:not(:disabled) {
-            border-color: #a9c59d;
-        }
-
-        .form-control:focus {
-            outline: 3px solid rgba(59, 170, 1, .14);
-            border-color: var(--sena-green-bright);
-            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
         }
 
         input[type="date"].form-control {
             cursor: pointer;
-        }
-
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            cursor: pointer;
-            opacity: .65;
-            transition: opacity .15s ease;
-        }
-
-        input[type="date"]::-webkit-calendar-picker-indicator:hover {
-            opacity: 1;
         }
 
         /* =========================================================
@@ -396,71 +302,8 @@
             flex-wrap: wrap;
         }
 
-        button,
-        .mini-btn {
-            height: 42px;
-            min-height: 42px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 18px;
-            border: 0;
-            border-radius: var(--radius-control);
-            font-family: inherit;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            box-sizing: border-box;
-            white-space: nowrap;
-            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
-        }
-
-        button.mini-btn,
-        .mini-btn {
-            background: linear-gradient(135deg, #256d00, #256d00);
-            color: #fff;
-            box-shadow: 0 6px 14px rgba(37, 109, 0, .18);
-        }
-
-        button.mini-btn:hover,
-        .mini-btn:hover {
-            background: linear-gradient(135deg, #2f8f00, #256d00);
-            transform: translateY(-1px);
-            box-shadow: 0 8px 18px rgba(37, 109, 0, .22);
-        }
-
-        button.mini-btn:disabled,
-        .mini-btn:disabled {
-            opacity: .55;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        /* Botón "Limpiar" gris */
-        button.mini-btn[style*="94a3b8"] {
-            background: #94a3b8 !important;
-            box-shadow: 0 3px 8px rgba(100, 116, 139, .18);
-        }
-
-        button.mini-btn[style*="94a3b8"]:hover {
-            background: #7d8ea3 !important;
-        }
-
-        /* Botón "Ver" de la tabla */
-        .mini-btn.view {
-            height: 32px;
-            min-height: 32px;
-            padding: 0 14px;
-            font-size: 11.5px;
-            background: var(--sena-green-bright);
-            box-shadow: 0 3px 8px rgba(59, 170, 1, .20);
-        }
-
-        .mini-btn.view:hover {
-            background: var(--sena-green-dark);
-            box-shadow: 0 4px 12px rgba(37, 109, 0, .24);
-        }
+        /* Los botones usan el sistema comun de tema.css; aqui solo maquetacion. */
+        .panel-head .btn { margin-left: auto; }
 
         /* =========================================================
            TABLA
@@ -545,14 +388,15 @@
         .badge.programada { background: #e8f1ff; color: #0369a1; }
         .badge.confirmada { background: #e4f1dc; color: #166534; }
 
-        .mini-btn.repro { background: #b45309; border-color: #b45309; color: #fff; }
-        .mini-btn.repro:hover { background: #92400e; }
-        .mini-btn.rechazar { background: #b42318; border-color: #b42318; color: #fff; }
-        .mini-btn.rechazar:hover { background: #b42318; }
-        .mini-btn.retirar { background: #7c3aed; border-color: #7c3aed; color: #fff; }
-        .mini-btn.retirar:hover { background: #6d28d9; }
-
-        .acciones-celda { display: flex; flex-direction: row; align-items: center; gap: 6px; flex-wrap: nowrap; }
+        /* Acciones de una fila: un solo renglon (estilo de botones en tema.css) */
+        .row-actions, .acciones-celda {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+        .row-actions .badge { flex: 0 0 auto; }
 
         .lista-dias-admin {
             display: grid;
@@ -933,28 +777,6 @@
         /* Select de exportación */
         .modal-export-select {
             width: 100%;
-            height: 42px;
-            min-height: 42px;
-            padding: 0 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: var(--radius-control);
-            font: inherit;
-            font-size: 13.5px;
-            color: var(--ink);
-            background: #fff;
-            cursor: pointer;
-            outline: none;
-            box-sizing: border-box;
-            transition: border-color .15s, box-shadow .15s;
-        }
-
-        .modal-export-select:hover {
-            border-color: #a9c59d;
-        }
-
-        .modal-export-select:focus {
-            border-color: var(--sena-green-bright);
-            box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
         }
 
         /* Botones del modal */
@@ -967,71 +789,14 @@
             border-top: 1px solid #e2e8f0;
         }
 
+        .modal-card > .modal-actions {
+            margin-top: 0;
+            padding: 16px 22px 20px;
+        }
+
         .badge.confirmada { background: #e4f1dc; color: #166534; }
 
-        .mini-btn.confirm {
-            background: #15803d;
-            border-color: #15803d;
-            color: #fff;
-        }
-        .mini-btn.confirm:hover { background: #166534; }
-
-        .mini-btn.reprogramar {
-            background: #b45309;
-            border-color: #b45309;
-            color: #fff;
-        }
-        .mini-btn.reprogramar:hover { background: #92400e; }
-
-        .btn-small {
-            height: 38px;
-            min-height: 38px;
-            padding: 0 16px;
-            border: 0;
-            border-radius: var(--radius-control);
-            font-family: inherit;
-            font-size: 12.5px;
-            font-weight: 700;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            color: #fff;
-            white-space: nowrap;
-            transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
-        }
-
-        .btn-small:hover {
-            transform: translateY(-1px);
-        }
-
-        .btn-ver {
-            background: linear-gradient(135deg, #256d00, #256d00);
-            box-shadow: 0 4px 10px rgba(37, 109, 0, .20);
-        }
-
-        .btn-ver:hover {
-            box-shadow: 0 6px 14px rgba(37, 109, 0, .28);
-        }
-
-        .btn-editar {
-            background: linear-gradient(135deg, #2563eb, #1e4db8);
-            box-shadow: 0 4px 10px rgba(37, 99, 235, .20);
-        }
-
-        .btn-editar:hover {
-            box-shadow: 0 6px 14px rgba(37, 99, 235, .28);
-        }
-
-        .btn-cancelar {
-            background: linear-gradient(135deg, #dc2626, #b42318);
-            box-shadow: 0 4px 10px rgba(220, 38, 38, .20);
-        }
-
-        .btn-cancelar:hover {
-            box-shadow: 0 6px 14px rgba(220, 38, 38, .28);
-        }
+        /* Botones: sistema comun de tema.css (btn, btn-primario, btn-secundario, btn-peligro...). */
 
         /* =========================================================
            FOOTER
@@ -1057,15 +822,11 @@
             .filters { grid-template-columns: 1fr; }
             .panel-body { padding: 16px; }
             .panel-head { padding: 14px 16px; }
-            .login-header .sena-blanco { width: 58px; }
-            .login-header h1 { font-size: 21px; }
-            .login-header .subtitle { font-size: 12px; }
-            .login-header .profile-link { font-size: 12px; padding: 7px 12px; }
             .filter-actions button { width: 100%; }
             .modal-body { padding: 16px; }
             .modal-head { padding: 14px 16px; }
             .modal-fields-grid { grid-template-columns: 1fr; }
-            .btn-small { width: 100%; }
+            .modal-actions .btn { width: 100%; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1105,11 +866,6 @@
             <section class="content">
 
                 <div class="page-head">
-                    <div class="page-head-top">
-                        <a href="/dashboard" class="back-link" id="btnRegresar">
-                            <span aria-hidden="true">←</span> Volver al Dashboard
-                        </a>
-                    </div>
                     <h1>Consultar auditorías programadas</h1>
                     <p>Consulta las auditorías que te han asignado o, si eres administrador, todas las programaciones
                         registradas en el sistema.</p>
@@ -1139,7 +895,7 @@
                         <div class="filters">
                             <div class="filter-item">
                                 <label for="filtroEstado">Estado</label>
-                                <select id="filtroEstado" class="form-control">
+                                <select id="filtroEstado" class="form-control campo">
                                     <option value="">Todos</option>
                                     <option value="Programada">Programada</option>
                                     <option value="Confirmada">Confirmada</option>
@@ -1150,7 +906,7 @@
                             </div>
                             <div class="filter-item">
                                 <label for="filtroModalidad">Modalidad</label>
-                                <select id="filtroModalidad" class="form-control">
+                                <select id="filtroModalidad" class="form-control campo">
                                     <option value="">Todas</option>
                                     <option value="Presencial">Presencial</option>
                                     <option value="Remota">Remota</option>
@@ -1159,20 +915,20 @@
                             </div>
                             <div class="filter-item">
                                 <label for="filtroCiudad">Ciudad</label>
-                                <input id="filtroCiudad" class="form-control" placeholder="Filtrar por ciudad">
+                                <input id="filtroCiudad" class="form-control campo" placeholder="Filtrar por ciudad">
                             </div>
                             <div class="filter-item">
                                 <label for="filtroDesde">Desde</label>
-                                <input id="filtroDesde" type="date" class="form-control">
+                                <input id="filtroDesde" type="date" class="form-control campo">
                             </div>
                             <div class="filter-item">
                                 <label for="filtroHasta">Hasta</label>
-                                <input id="filtroHasta" type="date" class="form-control">
+                                <input id="filtroHasta" type="date" class="form-control campo">
                             </div>
                         </div>
-                        <div class="filter-actions">
-                            <button type="button" class="mini-btn" onclick="cargarDatos()">Aplicar ahora</button>
-                            <button type="button" class="mini-btn" style="background:#94a3b8;" onclick="limpiarFiltros()">Limpiar</button>
+                        <div class="filter-actions grupo-botones">
+                            <button type="button" class="btn btn-primario mini-btn" onclick="cargarDatos()">Aplicar ahora</button>
+                            <button type="button" class="btn btn-secundario mini-btn" onclick="limpiarFiltros()">Limpiar</button>
                         </div>
                     </div>
                 </section>
@@ -1218,7 +974,7 @@
                     <div class="panel-head">
                         <h2 id="tituloReprogramaciones">Solicitudes de reprogramación</h2>
                         <span class="pill" id="pillReprogramaciones">Todas las solicitudes</span>
-                        <button type="button" class="mini-btn" style="margin-left:auto;" onclick="cargarReprogramaciones()">Actualizar</button>
+                        <button type="button" class="btn btn-secundario mini-btn" onclick="cargarReprogramaciones()">Actualizar</button>
                     </div>
                     <div class="panel-body">
                         <p class="help-text">
@@ -1254,7 +1010,7 @@
                     <div class="panel-head">
                         <h2 id="tituloFuturas">Programaciones futuras</h2>
                         <span class="pill" id="pillFuturas">A partir de 7 días</span>
-                        <button type="button" class="mini-btn" style="margin-left:auto;" onclick="cargarProgramacionesFuturas()">Actualizar</button>
+                        <button type="button" class="btn btn-secundario mini-btn" onclick="cargarProgramacionesFuturas()">Actualizar</button>
                     </div>
                     <div class="panel-body">
                         <p class="help-text">
@@ -1296,14 +1052,14 @@
             <div class="modal-body">
                 <p class="help-text" id="reproResumen">Indique el motivo de la reprogramaci&oacute;n solicitada.</p>
                 <label for="reproMotivo" style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Motivo de la reprogramaci&oacute;n</label>
-                <textarea id="reproMotivo" rows="4" minlength="10" maxlength="1000"
-                    style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;font-size:13.5px;"
+                <textarea class="campo" id="reproMotivo" rows="4" minlength="10" maxlength="1000"
+                    style="width:100%;"
                     placeholder="Ej. Tengo un compromiso institucional previo en esa fecha."></textarea>
                 <p class="help-text" style="margin-top:8px;">M&iacute;nimo 10 caracteres. La solicitud quedar&aacute; registrada y notificada al equipo.</p>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn-small btn-ver" onclick="enviarSolicitudReprogramacion()">Enviar solicitud</button>
-                <button type="button" class="btn-small btn-cancelar" onclick="cerrarModalReprogramacion()">Cancelar</button>
+                <button type="button" class="btn btn-primario btn-small btn-ver" onclick="enviarSolicitudReprogramacion()">Enviar solicitud</button>
+                <button type="button" class="btn btn-secundario btn-small btn-cancelar" onclick="cerrarModalReprogramacion()">Cancelar</button>
             </div>
         </div>
     </div>
@@ -1317,16 +1073,16 @@
             <div class="modal-body">
                 <p class="help-text" id="adminReproResumen"></p>
                 <label for="adminReproMotivo" style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Motivo de la decisión</label>
-                <textarea id="adminReproMotivo" rows="3" maxlength="1000"
-                    style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;font-size:13.5px;"
+                <textarea class="campo" id="adminReproMotivo" rows="3" maxlength="1000"
+                    style="width:100%;"
                     placeholder="Ej. Se bloquea el día 20/10 por festivo"></textarea>
                 <h4 style="margin:18px 0 8px;font-size:14px;color:var(--sena-green-dark);">Días asignados al auditor</h4>
                 <div id="adminReproDias" class="lista-dias-admin"></div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="mini-btn repro" onclick="resolverSolicitud('bloquear_dia')">Bloquear el día seleccionado</button>
-                <button type="button" class="mini-btn retirar" onclick="resolverSolicitud('retirar_auditor')">Retirar auditor de la programación</button>
-                <button type="button" class="mini-btn" style="background:#94a3b8;" onclick="cerrarModalAdminRepro()">Cancelar</button>
+                <button type="button" class="btn btn-primario mini-btn repro" onclick="resolverSolicitud('bloquear_dia')">Bloquear el día seleccionado</button>
+                <button type="button" class="btn btn-peligro mini-btn retirar" onclick="resolverSolicitud('retirar_auditor')">Retirar auditor de la programación</button>
+                <button type="button" class="btn btn-secundario mini-btn" onclick="cerrarModalAdminRepro()">Cancelar</button>
             </div>
         </div>
     </div>
@@ -1340,14 +1096,14 @@
             <div class="modal-body">
                 <p class="help-text" id="adminRechazoResumen"></p>
                 <label for="adminRechazoMotivo" style="font-weight:700;font-size:13px;display:block;margin-bottom:6px;">Motivo del rechazo</label>
-                <textarea id="adminRechazoMotivo" rows="3" minlength="5" maxlength="1000"
-                    style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;font-size:13.5px;"
+                <textarea class="campo" id="adminRechazoMotivo" rows="3" minlength="5" maxlength="1000"
+                    style="width:100%;"
                     placeholder="Ej. La visita se mantiene en la fecha original por cohérence operativa."></textarea>
                 <p class="help-text" style="margin-top:8px;">El auditor que solicitó la reprogramación será notificado con este motivo.</p>
             </div>
             <div class="modal-actions">
-                <button type="button" class="mini-btn rechazar" onclick="confirmarRechazo()">Rechazar solicitud</button>
-                <button type="button" class="mini-btn" style="background:#94a3b8;" onclick="cerrarModalRechazo()">Cancelar</button>
+                <button type="button" class="btn btn-peligro mini-btn rechazar" onclick="confirmarRechazo()">Rechazar solicitud</button>
+                <button type="button" class="btn btn-secundario mini-btn" onclick="cerrarModalRechazo()">Cancelar</button>
             </div>
         </div>
     </div>
@@ -1501,13 +1257,8 @@
                     if (!isProgA && isProdB) return 1;
                     return 0;
                 });
-                // Por defecto no se muestran las canceladas; solo aparecen
-                // si el usuario las busca explicitamente con el filtro de estado.
-                if (estado !== 'Cancelada') {
-                    items = items.filter(function (r) {
-                        return String(r.estado || '').trim().toLowerCase() !== 'cancelada';
-                    });
-                }
+                // "Todos" muestra todos los estados, incluidas las canceladas;
+                // con un estado elegido, el backend ya devuelve solo ese estado.
 
                 // Confirmadas primero y luego Programadas, para que las visitas
                 // ya confirmadas por todo el equipo aparezcan arriba.
@@ -1684,9 +1435,9 @@
                         </td>
                         <td>${escapeHtml(roles.length ? roles.join(', ') : (r.rol_auditor || 'Auditor'))}</td>
                         <td><span class="badge ${claseEstadoFuturas(r.estado)}">${escapeHtml(r.estado || 'No disponible')}</span></td>
-                        <td class="row-actions">
-                            <button class="mini-btn view" type="button" onclick="verDetalleFuturas('${escapeHtml(r.id_programacion || '')}')">Ver detalles</button>
-                        </td>
+                        <td><div class="row-actions acciones-tabla">
+                            <button class="btn btn-secundario btn-sm mini-btn view" type="button" onclick="verDetalleFuturas('${escapeHtml(r.id_programacion || '')}')">Ver detalles</button>
+                        </div></td>
                     </tr>`;
                 }).join('');
             }
@@ -1906,11 +1657,11 @@
                                 <span class="cell-meta">${escapeHtml(r.solicitante_correo || '')}</span>
                                 <span class="cell-meta">Motivo: ${escapeHtml(r.motivo_reprogramacion || '-')}</span>
                             </td>
-                            <td class="acciones-celda">
-                                <button class="mini-btn repro" type="button" onclick="abrirModalAdminRepro(${idx})">Reprogramar</button>
-                                <button class="mini-btn rechazar" type="button" onclick="abrirModalRechazo(${idx})">Rechazar reprogramación</button>
-                                <button class="mini-btn view" type="button" onclick="verDetalleReprogramacion(${idx})">Ver</button>
-                            </td>
+                            <td><div class="acciones-celda acciones-tabla">
+                                <button class="btn btn-primario btn-sm mini-btn repro" type="button" onclick="abrirModalAdminRepro(${idx})">Reprogramar</button>
+                                <button class="btn btn-peligro-contorno btn-sm mini-btn rechazar" type="button" onclick="abrirModalRechazo(${idx})">Rechazar reprogramación</button>
+                                <button class="btn btn-secundario btn-sm mini-btn view" type="button" onclick="verDetalleReprogramacion(${idx})">Ver</button>
+                            </div></td>
                         </tr>`;
                     }).join('');
                 }
@@ -2106,11 +1857,11 @@
                             ? '<span class="badge no-disponible">No disponible</span>' + (r.bloqueo_motivo ? '<span class="motivo-bloqueo">Motivo: ' + escapeHtml(r.bloqueo_motivo) + '</span>' : '')
                             : '<span class="badge disponible">Disponible</span>'}</td>
                         <td>${escapeHtml(r.observacion_auditor || r.motivo_cancelacion || '-')}</td>
-                        <td class="row-actions">
-                            <button class="mini-btn view" type="button" onclick="verDetalle(${inicio + idx})">Ver</button>
-                            ${estadoAcciones(r).yaConfirmo ? `<span class="badge confirmada">Confirmado</span>` : (estadoAcciones(r).puedeConfirmar ? `<button class="mini-btn confirm" type="button" onclick="confirmarProgramacion(${inicio + idx})">Confirmar programación</button>` : "")}
-                            ${estadoAcciones(r).puedeSolicitar ? `<button class="mini-btn reprogramar" type="button" onclick="abrirModalReprogramacion(${inicio + idx})">Solicitar reprogramación</button>` : ""}
-                        </td>
+                        <td><div class="row-actions acciones-tabla">
+                            <button class="btn btn-secundario btn-sm mini-btn view" type="button" onclick="verDetalle(${inicio + idx})">Ver</button>
+                            ${estadoAcciones(r).yaConfirmo ? `<span class="badge confirmada">Confirmado</span>` : (estadoAcciones(r).puedeConfirmar ? `<button class="btn btn-primario btn-sm mini-btn confirm" type="button" onclick="confirmarProgramacion(${inicio + idx})">Confirmar programación</button>` : "")}
+                            ${estadoAcciones(r).puedeSolicitar ? `<button class="btn btn-secundario btn-sm mini-btn reprogramar" type="button" onclick="abrirModalReprogramacion(${inicio + idx})">Solicitar reprogramación</button>` : ""}
+                        </div></td>
                     </tr>
                 `).join('');
             }
@@ -2326,16 +2077,16 @@
 
                 <div class="modal-section">
                     <div class="modal-section-head"><h4>Seleccionar auditor para exportar</h4></div>
-                    <select id="selectAuditorExport" class="modal-export-select">
+                    <select id="selectAuditorExport" class="modal-export-select campo">
                         <option value="all">Todos los auditores</option>
                         ${(r.auditores || []).map((a, i) => `<option value="${i}">${escapeHtml(a.nombre || 'Auditor ' + (i+1))}</option>`).join('')}
                     </select>
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn-small btn-ver" onclick="imprimirProgramacion(${idx})">Imprimir programación de visitas</button>
-                    <button type="button" class="btn-small btn-editar" onclick="exportarAgendaIndividual(${idx})">Exportar agenda individual</button>
-                    <button type="button" class="btn-small btn-cancelar" onclick="exportarProgramacionAgenda(${idx})">Exportar programación de agenda</button>
+                    <button type="button" class="btn btn-secundario btn-small btn-ver" onclick="imprimirProgramacion(${idx})">Imprimir programación de visitas</button>
+                    <button type="button" class="btn btn-secundario btn-small btn-editar" onclick="exportarAgendaIndividual(${idx})">Exportar agenda individual</button>
+                    <button type="button" class="btn btn-secundario btn-small btn-cancelar" onclick="exportarProgramacionAgenda(${idx})">Exportar programación de agenda</button>
                 </div>
             `;
             modal.classList.add('show');

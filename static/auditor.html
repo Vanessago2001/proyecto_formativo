@@ -139,74 +139,16 @@
 
         .btn-save-section {
             margin-top: 14px;
-            background: #0284c7;
-            color: #fff;
-            border: none;
-            padding: 9px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .btn-save-section:hover {
-            background: #0369a1;
-        }
-
-        .btn-save-section:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
         }
 
         .btn-edit-section {
             margin-top: 14px;
             margin-left: 8px;
-            background: #64748b;
-            color: #fff;
-            border: none;
-            padding: 9px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .btn-edit-section:hover {
-            background: #475569;
-        }
-
-        .btn-edit-section:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
         }
 
         .btn-submit {
             margin-top: 28px;
-            background: #256d00;
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
-            font-size: 15px;
-            font-weight: 600;
-            border-radius: 4px;
-            cursor: pointer;
             width: 100%;
-        }
-
-        .btn-submit:hover {
-            background: #1b4b12;
-        }
-
-        .btn-submit:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
-        }
-
-        .profile-link {
-            margin-left: auto;
-            color: #fff;
-            text-decoration: none;
-            font-weight: 600;
         }
 
         .help-text {
@@ -247,7 +189,6 @@
                 grid-column: span 1;
             }
         }
-
 
         /* =====================================================
        NUEVAS SECCIONES: FORMACIÓN Y EXPERIENCIAS
@@ -312,30 +253,6 @@
             white-space: pre-line;
         }
 
-        .btn-mini {
-            border: 0;
-            padding: 7px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .btn-mini-ver {
-            background: #0284c7;
-            color: #fff;
-        }
-
-        .btn-mini-eliminar {
-            background: #dc2626;
-            color: #fff;
-        }
-
-        .btn-mini:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
-        }
-
         .upload-relacionado {
             margin-top: 12px;
             padding-top: 12px;
@@ -385,7 +302,6 @@
         .separador-seccion {
             margin-top: 28px;
         }
-
 
         /* =====================================================
            ESTILO PROFESIONAL Y NAVEGACIÓN POR SECCIONES
@@ -530,32 +446,6 @@
             margin-top: 13px;
         }
 
-        .btn-repostular {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            height: 38px;
-            padding: 0 16px;
-            border: 0;
-            border-radius: 8px;
-            background: var(--sena-green-bright);
-            color: #fff;
-            font: inherit;
-            font-size: 12.5px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background .18s ease, opacity .18s ease;
-        }
-
-        .btn-repostular:hover:not(:disabled) {
-            background: var(--sena-green-hover);
-        }
-
-        .btn-repostular:disabled {
-            background: #a9c59d;
-            cursor: not-allowed;
-        }
-
         .aviso-repostulacion .aviso-repostulacion-pista {
             color: #8a5a3b;
             font-size: 12.5px;
@@ -651,35 +541,6 @@
             background: #f1f5f9;
             border-color: #e2e8f0;
             color: #64748b;
-        }
-
-        .btn-save-section,
-        .btn-edit-section,
-        .btn-submit,
-        .btn-mini {
-            border-radius: 9px;
-            transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
-        }
-
-        .btn-save-section,
-        .btn-edit-section {
-            padding: 10px 16px;
-            font-size: 12.5px;
-            box-shadow: 0 3px 8px rgba(15, 23, 42, .08);
-        }
-
-        .btn-save-section:hover:not(:disabled),
-        .btn-edit-section:hover:not(:disabled),
-        .btn-submit:hover:not(:disabled),
-        .btn-mini:hover:not(:disabled) {
-            transform: translateY(-1px);
-        }
-
-        .btn-submit {
-            padding: 14px 20px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #256d00, #256d00);
-            box-shadow: 0 7px 16px rgba(37, 109, 0, .16);
         }
 
         .help-text {
@@ -831,44 +692,6 @@
             background: #fee2e2;
             border-color: #fca5a5;
             transform: scale(1.04);
-        }
-
-        /* Botón X para retirar documentos/registros: circular y diferenciado. */
-        .btn-mini {
-            min-width: 32px;
-            min-height: 32px;
-            padding: 7px 10px;
-            font-size: 12px;
-        }
-
-        .btn-mini-eliminar {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            /* width: 34px; */
-            height: 34px;
-            min-width: 34px;
-            min-height: 34px;
-            padding: 0;
-            border: 1px solid #fecaca;
-            border-radius: 50%;
-            background: #f1f5f9;
-            color: #b42318;
-            font-size: 16px;
-            font-weight: 800;
-            line-height: 1;
-            box-shadow: none;
-        }
-
-        .btn-mini-eliminar:hover:not(:disabled) {
-            background: #dc2626;
-            border-color: #dc2626;
-            color: #fff;
-            box-shadow: 0 4px 10px rgba(220, 38, 38, .18);
-        }
-
-        .btn-mini-ver {
-            padding: 8px 12px;
         }
 
         /* Panel de inicio: no muestra ningún formulario hasta elegir el menú. */
@@ -1060,8 +883,6 @@
                 transition: none !important;
             }
         }
-
-
 
         /* Declaración condicional de conflictos y miniaturas de archivos */
         .conflicto-opcion-card {
@@ -1577,10 +1398,6 @@
             flex-wrap: wrap;
         }
 
-        .documento-soporte-acciones .btn-mini {
-            min-width: unset;
-        }
-
         .documento-observacion-global {
             display: block;
             margin-top: 9px;
@@ -1690,16 +1507,6 @@
             gap: 6px;
         }
 
-        .btn-mini-reemplazar {
-            border: 1px solid #bae6fd;
-            background: #f1f5f9;
-            color: #075985;
-        }
-
-        .btn-mini-reemplazar:hover:not(:disabled) {
-            background: #e8f1ff;
-        }
-
         .documento-relacionado-miniatura {
             display: flex;
             align-items: center;
@@ -1746,14 +1553,13 @@
             }
         }
 
-
         /* =====================================================
            AJUSTE COMPACTO GENERAL: menos espacios, mismas funciones
            y mismo verde del encabezado.
         ====================================================== */
         .portal {
             max-width: var(--ancho-contenido);
-            padding: 18px 22px 28px;
+            padding: 28px;
             grid-template-columns: 218px minmax(0, 1fr);
             gap: 16px;
         }
@@ -1810,11 +1616,28 @@
             font-size: 12px;
         }
 
-        .form-control {
-            min-height: 38px;
+        /* Campos con las medidas comunes de tema.css. styles.css centra y
+           espacia los input dentro de .form-group (pantallas de acceso):
+           aqui se devuelven a la alineacion normal. */
+        .form-control,
+        .form-group input.form-control:not([type="file"]),
+        .form-group select.form-control {
+            min-height: var(--campo-alto);
             padding: 8px 10px;
-            border-radius: 8px;
-            font-size: 13px;
+            border-radius: var(--campo-radio);
+            font-size: var(--txt-base);
+            text-align: left;
+            letter-spacing: normal;
+        }
+
+        .form-group select.form-control:not(:focus) {
+            border-color: var(--campo-borde);
+        }
+
+        .form-group input[type="file"].form-control {
+            text-align: left;
+            letter-spacing: normal;
+            font-size: 12px;
         }
 
         textarea.form-control {
@@ -1829,14 +1652,10 @@
         .btn-save-section,
         .btn-edit-section {
             margin-top: 10px;
-            padding: 8px 13px;
-            font-size: 12px;
         }
 
         .btn-submit {
             margin-top: 18px;
-            padding: 11px 16px;
-            font-size: 13.5px;
         }
 
         .registro-lista {
@@ -1994,13 +1813,6 @@
             gap: 5px;
         }
 
-        .documento-soporte-acciones .btn-mini {
-            min-height: 29px;
-            padding: 6px 8px;
-            font-size: 10.5px;
-            border-radius: 7px;
-        }
-
         .documento-observacion-global,
         .documento-observacion {
             margin-top: 7px;
@@ -2105,7 +1917,6 @@
             margin-left: 8px;
             vertical-align: middle;
         }
-
 
         /* =====================================================
        DROPDOWN "MI REGISTRO" (Diseño profesional y z-index)
@@ -2293,6 +2104,33 @@
                 padding: 8px 10px;
             }
         }
+
+        /* Colores, tamanos y estados de los botones: sistema comun de
+           static/tema.css (btn btn-primario / btn-secundario / btn-peligro-contorno).
+           Aqui solo queda la separacion. */
+        .btn-cancelar-edicion {
+            margin-top: 10px;
+            margin-left: 8px;
+        }
+
+        .btn-cancelar-edicion[hidden] {
+            display: none;
+        }
+
+        .registro-card-acciones {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            flex: 0 0 auto;
+        }
+
+        /* La X que limpia el archivo elegido: cuadrada como el resto. */
+        .archivo-limpiar {
+            border-radius: 6px;
+            background: #fff;
+            border-color: #b42318;
+        }
     </style>
 
 </head>
@@ -2300,28 +2138,22 @@
 <body>
 
     <header class="login-header">
-        <div class="header-content">
-
-
-            <div class="header-left">
-
-                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
-
-                <div>
-                    <h1>CertiSENA</h1>
-                    <p class="subtitle">Portal de auditoría</p>
-                </div>
-
-            </div>
-
-            <a class="profile-link" href="/perfil-auditor">
-                Mi perfil
-            </a>
-
+    <div class="header-content">
+      <div class="header-left">
+        <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Portal de auditoría</p>
         </div>
-
-
-    </header>
+      </div>
+      <div class="comite-header-user">
+        <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/reportes">Reportes</a>
+        <a class="profile-link" href="/perfil-auditor" title="Mi perfil" aria-label="Mi perfil"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
+        <button id="logoutButton" class="comite-logout js-salir" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
 
     <main class="portal">
 
@@ -2436,7 +2268,7 @@
                 </span>
                 <span class="aviso-repostulacion-observacion" id="avisoRepostulacionObservacion" hidden></span>
                 <div class="aviso-repostulacion-acciones">
-                    <button type="button" class="btn-repostular" id="btnNuevaPostulacionRegistro">
+                    <button type="button" class="btn btn-primario btn-repostular" id="btnNuevaPostulacionRegistro">
                         Diligenciar de nuevo el formulario
                     </button>
                     <span class="aviso-repostulacion-pista" id="avisoRepostulacionPista"></span>
@@ -2634,11 +2466,11 @@
                 </div>
 
 
-                <button type="submit" id="btnGuardarPerfil" class="btn-save-section">
+                <button type="submit" id="btnGuardarPerfil" class="btn btn-primario btn-save-section">
                     Guardar Perfil
                 </button>
 
-                <button type="button" id="btnEditarPerfil" class="btn-edit-section" style="display:none;">
+                <button type="button" id="btnEditarPerfil" class="btn btn-secundario btn-edit-section" style="display:none;">
                     Editar borrador
                 </button>
 
@@ -2813,15 +2645,14 @@
                 </div>
 
 
-                <button type="submit" id="btnGuardarCompetencia" class="btn-save-section">
+                <button type="submit" id="btnGuardarCompetencia" class="btn btn-primario btn-save-section">
                     Registrar Competencia
                 </button>
 
-                <button type="button" id="btnEditarCompetencia" class="btn-edit-section" style="display:none;">
+                <button type="button" id="btnEditarCompetencia" class="btn btn-secundario btn-edit-section" style="display:none;">
                     Editar borrador
                 </button>
 
-            </form>
             </form>
 
             <!-- =====================================================
@@ -2851,8 +2682,8 @@
                             <input id="titulo_fecha" class="form-control" type="date">
                         </div>
                         <div class="form-group">
-                            <label for="titulo_nivel">Nivel académico</label>
-                            <select id="titulo_nivel" data-cierra-dropdown="mi-registro" class="form-control">
+                            <label for="titulo_nivel">Nivel académico <span>*</span></label>
+                            <select id="titulo_nivel" data-cierra-dropdown="mi-registro" class="form-control" required>
                                 <option value="">Seleccione...</option>
                                 <option value="Técnico">Técnico</option>
                                 <option value="Tecnólogo">Tecnólogo</option>
@@ -2864,7 +2695,7 @@
                             </select>
                         </div>
                     </div>
-                    <button type="submit" class="btn-save-section">Agregar título</button>
+                    <button type="submit" class="btn btn-primario btn-save-section">Agregar título</button>
                 </form>
 
                 <div id="listaTitulosAcademicos" class="registro-lista">
@@ -2911,7 +2742,7 @@
                             <span class="help-text">Puede adjuntar una certificación laboral u otro soporte.</span>
                         </div>
                     </div>
-                    <button type="submit" class="btn-save-section">Agregar experiencia laboral</button>
+                    <button type="submit" class="btn btn-primario btn-save-section">Agregar experiencia laboral</button>
                 </form>
 
                 <div id="listaExperienciasLaborales" class="registro-lista">
@@ -2974,7 +2805,7 @@
                                     soporte.</span>
                             </div>
                         </div>
-                        <button type="submit" class="btn-save-section">Agregar experiencia de auditoría</button>
+                        <button type="submit" class="btn btn-primario btn-save-section">Agregar experiencia de auditoría</button>
                     </form>
                 </div>
 
@@ -3031,7 +2862,7 @@
                         </div>
                     </div>
 
-                    <button type="button" id="btnAdjuntarDocumento" class="btn-save-section" disabled
+                    <button type="button" id="btnAdjuntarDocumento" class="btn btn-primario btn-save-section" disabled
                         title="Verificando el estado de la postulación…">📎 Cargar
                         documento</button>
                 </div>
@@ -3171,16 +3002,16 @@
          BOTONES
     ================================================== -->
 
-                <button type="submit" id="btnGuardarConflicto" class="btn-save-section">
+                <button type="submit" id="btnGuardarConflicto" class="btn btn-primario btn-save-section">
                     Guardar declaraciones
                 </button>
 
-                <button type="button" id="btnEditarConflicto" class="btn-edit-section" style="display:none;">
+                <button type="button" id="btnEditarConflicto" class="btn btn-secundario btn-edit-section" style="display:none;">
                     Editar borrador
                 </button>
 
 
-                <button type="button" id="btnEnviarGeneral" class="btn-submit">
+                <button type="button" id="btnEnviarGeneral" class="btn btn-primario btn-bloque btn-submit">
                     Enviar Formulario al Banco de Auditores
                 </button>
 
@@ -3197,7 +3028,7 @@
                 <p class="help-text">
                     Consulte el consolidado de títulos académicos, competencias, cursos y certificaciones registradas.
                 </p>
-                <button type="button" class="btn-save-section" onclick="cargarHistorialAcademico()">
+                <button type="button" class="btn btn-primario btn-save-section" onclick="cargarHistorialAcademico()">
                     Cargar historial
                 </button>
                 <div id="historialAcademicoLista" class="registro-lista" style="margin-top: 16px;">
@@ -4887,7 +4718,7 @@
                     contenedor.innerHTML = `
                         <div class="sin-registros">
                             No fue posible recuperar los documentos guardados.
-                            <button type="button" class="btn-mini btn-mini-ver" onclick="cargarDocumentosSoporte()">
+                            <button type="button" class="btn btn-secundario btn-sm btn-mini btn-mini-ver" onclick="cargarDocumentosSoporte()">
                                 Volver a cargar
                             </button>
                         </div>`;
@@ -5028,7 +4859,7 @@
                 acciones.className = 'documento-soporte-acciones';
                 const botonVer = document.createElement('button');
                 botonVer.type = 'button';
-                botonVer.className = 'btn-mini btn-mini-ver';
+                botonVer.className = 'btn btn-secundario btn-sm btn-mini btn-mini-ver';
                 botonVer.textContent = '👁 Ver';
                 botonVer.disabled = !url;
                 botonVer.title = url ? 'Ver documento' : 'El documento no tiene una URL disponible';
@@ -5036,7 +4867,7 @@
 
                 const botonReemplazar = document.createElement('button');
                 botonReemplazar.type = 'button';
-                botonReemplazar.className = 'btn-mini btn-mini-ver';
+                botonReemplazar.className = 'btn btn-secundario btn-sm btn-mini btn-mini-reemplazar';
                 botonReemplazar.textContent = '🔄 Reemplazar';
                 const idDocumento = documento.id_documento || documento.id_documento_soporte || documento.documento_id || documento.id;
                 // El permiso depende del estado de la postulacion, no solo del
@@ -5053,7 +4884,7 @@
 
                 const botonEliminar = document.createElement('button');
                 botonEliminar.type = 'button';
-                botonEliminar.className = 'btn-mini btn-mini-eliminar';
+                botonEliminar.className = 'btn btn-peligro-contorno btn-sm btn-mini btn-mini-eliminar';
                 botonEliminar.textContent = '🗑 Eliminar';
                 botonEliminar.disabled = !idDocumento || bloqueado;
                 botonEliminar.title = bloqueado
@@ -5545,6 +5376,7 @@
                     estadoPostulacion,
                     estadoAuditorCargado
                 );
+                actualizarExperienciaAuditoriaOpcional();
 
                 /* El punto rojo del "Formulario de registro" depende de
                    correcciones reales pendientes (documentos o competencia),
@@ -5871,12 +5703,27 @@
                     );
 
 
+                const existeConflictoServidor = Array.isArray(data.conflictos) && data.conflictos.length > 0;
+
                 if (declaraciones) {
                     setChecked('acepta_imparcialidad', declaraciones.acepta_imparcialidad);
                     setChecked('acepta_confidencialidad', declaraciones.acepta_confidencialidad);
+                } else {
+                    /* Las declaraciones solo se guardan en este navegador y el
+                       cierre de sesión borra localStorage: al volver a entrar
+                       las casillas aparecían vacías. Si la postulación ya fue
+                       enviada o hay un conflicto guardado en el servidor, las
+                       declaraciones se aceptaron (ambos flujos lo exigen). */
+                    const estadoActual = String(data.estado || '').trim().toLowerCase();
+                    const yaAceptadas =
+                        existeConflictoServidor ||
+                        ['enviado', 'enviada', 'correcciones', 'aprobado', 'aprobada'].includes(estadoActual);
+                    if (yaAceptadas) {
+                        setChecked('acepta_imparcialidad', true);
+                        setChecked('acepta_confidencialidad', true);
+                    }
                 }
 
-                const existeConflictoServidor = Array.isArray(data.conflictos) && data.conflictos.length > 0;
                 if (!existeConflictoServidor && declaraciones && typeof declaraciones.tiene_conflicto === 'boolean') {
                     setChecked('tiene_conflicto', declaraciones.tiene_conflicto);
                 }
@@ -6085,7 +5932,7 @@
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.detail || 'No fue posible cargar la foto profesional.');
+                throw new Error(mensajeDeError(data, 'No fue posible cargar la foto profesional.'));
             }
 
             let url = data.foto_url || data.url_archivo || data.archivo_url || data.url ||
@@ -6483,9 +6330,9 @@
               ${observacion ? `<div class="documento-observacion"><strong>${clase === 'rechazado' ? 'Observación de rechazo:' : 'Observación de revisión:'}</strong> ${escapeHtml(observacion)}</div>` : (clase === 'rechazado' ? '<div class="documento-observacion"><strong>Observación de rechazo:</strong> No se registró una observación de revisión.</div>' : '')}
             </div>
             <div class="documento-relacionado-acciones">
-              <button type="button" class="btn-mini btn-mini-ver" ${url ? `onclick="verDocumentoSoporte('${url}')"` : 'disabled'}>👁 Ver</button>
-              <button type="button" class="btn-mini btn-mini-reemplazar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoReemplazar)}"` : `onclick="reemplazarDocumentoSoporte('${id}')"`}>🔄 Reemplazar</button>
-              <button type="button" class="btn-mini btn-mini-eliminar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoEliminar)}"` : `onclick="eliminarDocumentoSoporte('${id}')"`}>🗑 Eliminar</button>
+              <button type="button" class="btn btn-secundario btn-sm btn-mini btn-mini-ver" ${url ? `onclick="verDocumentoSoporte('${url}')"` : 'disabled'}>👁 Ver</button>
+              <button type="button" class="btn btn-secundario btn-sm btn-mini btn-mini-reemplazar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoReemplazar)}"` : `onclick="reemplazarDocumentoSoporte('${id}')"`}>🔄 Reemplazar</button>
+              <button type="button" class="btn btn-peligro-contorno btn-sm btn-mini btn-mini-eliminar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoEliminar)}"` : `onclick="eliminarDocumentoSoporte('${id}')"`}>🗑 Eliminar</button>
             </div>
           </div>
         `;
@@ -6518,7 +6365,7 @@
 
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    throw new Error(data.detail || 'No fue posible quitar el documento.');
+                    throw new Error(mensajeDeError(data, 'No fue posible quitar el documento.'));
                 }
 
                 await cargarDocumentosSoporte();
@@ -6557,7 +6404,7 @@
 
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.detail || 'No fue posible adjuntar el soporte.');
+                throw new Error(mensajeDeError(data, 'No fue posible adjuntar el soporte.'));
             }
         }
 
@@ -6583,11 +6430,150 @@
 
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.detail || `No fue posible eliminar ${nombre}.`);
+                // Se llama desde onclick: un throw aquí no lo veía el usuario.
+                alert(mensajeDeError(data, `No fue posible eliminar ${nombre}.`));
+                return;
+            }
+
+            // Si se elimina el registro que estaba en edición, el formulario
+            // vuelve a modo "agregar".
+            if (EDICION_REGISTROS[endpoint] && String(EDICION_REGISTROS[endpoint].id) === String(idRegistro)) {
+                cancelarEdicionRegistro(endpoint);
             }
 
             await cargarDocumentosSoporte();
             await cargarNuevosRegistros();
+        }
+
+        /* =====================================================
+           MENSAJE DE ERROR LEGIBLE
+
+           FastAPI devuelve `detail` como texto o, en errores de
+           validación (422), como lista de objetos. Sin esto el usuario
+           veía "[object Object]".
+        ====================================================== */
+        function mensajeDeError(data, porDefecto) {
+            const detalle = data && data.detail;
+            if (typeof detalle === 'string' && detalle.trim()) return detalle;
+            if (Array.isArray(detalle) && detalle.length) {
+                return detalle.map((error) => {
+                    const campo = Array.isArray(error.loc) ? error.loc[error.loc.length - 1] : '';
+                    const texto = String(error.msg || '').replace(/^Value error,\s*/i, '');
+                    return campo && campo !== 'body' ? `${campo}: ${texto}` : texto;
+                }).join('\n');
+            }
+            return porDefecto;
+        }
+
+        /* =====================================================
+           EDITAR TÍTULOS Y EXPERIENCIAS
+
+           "Editar" carga el registro en su formulario; al guardar se
+           envía PUT al mismo id en lugar de crear una fila nueva.
+        ====================================================== */
+        const EDICION_REGISTROS = {
+            'titulos': { form: 'formTituloAcademico', textoAgregar: 'Agregar título', id: null },
+            'experiencias-laborales': { form: 'formExperienciaLaboral', textoAgregar: 'Agregar experiencia laboral', id: null },
+            'experiencias-auditoria': { form: 'formExperienciaAuditoria', textoAgregar: 'Agregar experiencia de auditoría', id: null }
+        };
+
+        function asignarValor(id, valor) {
+            const campo = document.getElementById(id);
+            if (!campo) return;
+            const texto = valor === null || valor === undefined ? '' : String(valor);
+            if (campo.tagName === 'SELECT' && texto && !Array.from(campo.options).some((o) => o.value === texto)) {
+                campo.add(new Option(texto, texto));
+            }
+            campo.value = campo.type === 'date' ? texto.slice(0, 10) : texto;
+        }
+
+        function botonCancelarEdicion(endpoint) {
+            const config = EDICION_REGISTROS[endpoint];
+            const form = config && document.getElementById(config.form);
+            if (!form) return null;
+            let boton = form.querySelector('.btn-cancelar-edicion');
+            if (!boton) {
+                boton = document.createElement('button');
+                boton.type = 'button';
+                boton.className = 'btn btn-secundario btn-cancelar-edicion';
+                boton.textContent = 'Cancelar edición';
+                boton.hidden = true;
+                boton.addEventListener('click', () => cancelarEdicionRegistro(endpoint));
+                form.querySelector('button[type="submit"]')?.after(boton);
+            }
+            return boton;
+        }
+
+        function iniciarEdicionRegistro(endpoint, idRegistro) {
+            const config = EDICION_REGISTROS[endpoint];
+            if (!config) return;
+            const permiso = permisoEditarRegistros();
+            if (!permiso.permitido) {
+                alert(permiso.motivo || 'No puede modificar el registro en el estado actual.');
+                return;
+            }
+            const listas = {
+                'titulos': titulosAcademicos,
+                'experiencias-laborales': experienciasLaborales,
+                'experiencias-auditoria': experienciasAuditoria
+            };
+            const item = (listas[endpoint] || []).find((registro) =>
+                String(registro.id_titulo || registro.id_experiencia || registro.id) === String(idRegistro));
+            if (!item) return;
+
+            if (endpoint === 'titulos') {
+                asignarValor('titulo_nombre', item.titulo || item.nombre_titulo);
+                asignarValor('titulo_institucion_academica', item.institucion || item.institucion_educativa);
+                asignarValor('titulo_fecha', item.fecha_grado || item.fecha_obtencion);
+                asignarValor('titulo_nivel', item.nivel);
+            } else if (endpoint === 'experiencias-laborales') {
+                asignarValor('lab_empresa', item.empresa);
+                asignarValor('lab_cargo', item.cargo);
+                asignarValor('lab_fecha_inicio', item.fecha_inicio);
+                asignarValor('lab_fecha_fin', item.fecha_fin);
+                asignarValor('lab_descripcion', item.descripcion);
+            } else {
+                const casilla = document.getElementById('deseaExperienciaAuditoria');
+                if (casilla) casilla.checked = true;
+                actualizarExperienciaAuditoriaOpcional();
+                asignarValor('aud_empresa', item.organizacion || item.empresa || item.entidad);
+                asignarValor('aud_tipo', item.tipo_auditoria || item.rol_auditoria);
+                asignarValor('aud_fecha_inicio', item.fecha_inicio);
+                asignarValor('aud_fecha_fin', item.fecha_fin);
+                asignarValor('aud_descripcion', item.descripcion);
+            }
+
+            config.id = idRegistro;
+            const form = document.getElementById(config.form);
+            const enviar = form?.querySelector('button[type="submit"]');
+            if (enviar) enviar.textContent = 'Guardar cambios';
+            const cancelar = botonCancelarEdicion(endpoint);
+            if (cancelar) {
+                cancelar.hidden = false;
+                cancelar.disabled = false;
+            }
+            form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function cancelarEdicionRegistro(endpoint) {
+            const config = EDICION_REGISTROS[endpoint];
+            if (!config) return;
+            config.id = null;
+            const form = document.getElementById(config.form);
+            form?.reset();
+            form?.querySelectorAll('input[type="file"]').forEach((input) => actualizarVistaArchivo(input));
+            const enviar = form?.querySelector('button[type="submit"]');
+            if (enviar) enviar.textContent = config.textoAgregar;
+            const cancelar = botonCancelarEdicion(endpoint);
+            if (cancelar) cancelar.hidden = true;
+        }
+
+        function destinoRegistro(endpoint) {
+            const config = EDICION_REGISTROS[endpoint];
+            const base = `/auditores/registro/${userId}/${endpoint}`;
+            return config && config.id
+                ? { url: `${base}/${encodeURIComponent(config.id)}`, method: 'PUT', editando: true }
+                : { url: base, method: 'POST', editando: false };
         }
 
         function renderizarTitulos() {
@@ -6610,7 +6596,10 @@
                 ${item.fecha_obtencion ? ` · ${escapeHtml(item.fecha_obtencion)}` : ''}
               </div>
             </div>
-            <button type="button" class="btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('titulos', '${escaparAtributo(item.id_titulo || item.id)}', 'este título')">✕</button>
+            <div class="registro-card-acciones">
+              <button type="button" class="btn btn-secundario btn-sm btn-mini btn-mini-editar" ${permisoEditarRegistros().permitido && item.estado_validacion !== 'Aprobado' ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo || 'Un registro aprobado no se modifica.')}"`} onclick="iniciarEdicionRegistro('titulos', '${escaparAtributo(item.id_titulo || item.id)}')">Editar</button>
+              <button type="button" class="btn btn-peligro-contorno btn-sm btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('titulos', '${escaparAtributo(item.id_titulo || item.id)}', 'este título')">Eliminar</button>
+            </div>
           </div>
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_titulo || item.id }, 'id_titulo')}
           <div class="upload-relacionado">
@@ -6618,7 +6607,7 @@
               <label>Agregar o reemplazar soporte</label>
               <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoTitulo_${escaparAtributo(item.id_titulo || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
-            <button type="button" class="btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('titulo', '${escaparAtributo(item.id_titulo || item.id)}')">Adjuntar</button>
+            <button type="button" class="btn btn-primario btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('titulo', '${escaparAtributo(item.id_titulo || item.id)}')">Adjuntar</button>
           </div>
         </div>
       `).join('');
@@ -6645,7 +6634,10 @@
               </div>
               ${item.descripcion ? `<div class="registro-card-meta">${escapeHtml(item.descripcion)}</div>` : ''}
             </div>
-            <button type="button" class="btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('experiencias-laborales', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia laboral')">✕</button>
+            <div class="registro-card-acciones">
+              <button type="button" class="btn btn-secundario btn-sm btn-mini btn-mini-editar" ${permisoEditarRegistros().permitido && item.estado_validacion !== 'Aprobado' ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo || 'Un registro aprobado no se modifica.')}"`} onclick="iniciarEdicionRegistro('experiencias-laborales', '${escaparAtributo(item.id_experiencia || item.id)}')">Editar</button>
+              <button type="button" class="btn btn-peligro-contorno btn-sm btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('experiencias-laborales', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia laboral')">Eliminar</button>
+            </div>
           </div>
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_experiencia || item.id }, 'id_experiencia_laboral')}
           <div class="help-text" style="margin-top:10px;">El soporte de esta experiencia es opcional.</div>
@@ -6654,7 +6646,7 @@
               <label>Soporte de la experiencia</label>
               <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoLab_${escaparAtributo(item.id_experiencia || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
-            <button type="button" class="btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('laboral', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
+            <button type="button" class="btn btn-primario btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('laboral', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
           </div>
         </div>
       `).join('');
@@ -6683,7 +6675,10 @@
               </div>
               ${item.descripcion ? `<div class="registro-card-meta">${escapeHtml(item.descripcion)}</div>` : ''}
             </div>
-            <button type="button" class="btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('experiencias-auditoria', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia de auditoría')">✕</button>
+            <div class="registro-card-acciones">
+              <button type="button" class="btn btn-secundario btn-sm btn-mini btn-mini-editar" ${permisoEditarRegistros().permitido && item.estado_validacion !== 'Aprobado' ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo || 'Un registro aprobado no se modifica.')}"`} onclick="iniciarEdicionRegistro('experiencias-auditoria', '${escaparAtributo(item.id_experiencia || item.id)}')">Editar</button>
+              <button type="button" class="btn btn-peligro-contorno btn-sm btn-mini btn-mini-eliminar" ${permisoEditarRegistros().permitido ? '' : `disabled title="${escaparAtributo(permisoEditarRegistros().motivo)}"`} onclick="eliminarRegistroRelacionado('experiencias-auditoria', '${escaparAtributo(item.id_experiencia || item.id)}', 'esta experiencia de auditoría')">Eliminar</button>
+            </div>
           </div>
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_experiencia || item.id }, 'id_experiencia_auditoria')}
           <div class="upload-relacionado">
@@ -6691,7 +6686,7 @@
               <label>Soporte de la experiencia</label>
               <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoAud_${escaparAtributo(item.id_experiencia || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
-            <button type="button" class="btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('auditoria', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
+            <button type="button" class="btn btn-primario btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('auditoria', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
           </div>
         </div>
       `).join('');
@@ -6773,6 +6768,15 @@
                 renderizarTitulos();
                 renderizarExperienciasLaborales();
                 renderizarExperienciasAuditoria();
+
+                // Con experiencia en auditoría ya registrada, la casilla
+                // "¿Desea agregar su experiencia como auditor?" aparece
+                // marcada al recargar en lugar de quedar vacía.
+                const casillaAuditoria = document.getElementById('deseaExperienciaAuditoria');
+                if (casillaAuditoria && experienciasAuditoria.length) {
+                    casillaAuditoria.checked = true;
+                }
+                actualizarExperienciaAuditoriaOpcional();
             } catch (error) {
                 console.error('Error cargando formación y experiencias:', error);
             }
@@ -6782,15 +6786,24 @@
             event.preventDefault();
 
             try {
+                // El backend (TituloAcademicoCrear) espera fecha_grado y un
+                // nivel obligatorio; antes se enviaba fecha_obtencion (la
+                // fecha se perdía) y nivel null (error 422).
+                const nivel = document.getElementById('titulo_nivel').value;
+                if (!nivel) {
+                    alert('Seleccione el nivel académico del título.');
+                    return;
+                }
                 const payload = {
                     titulo: document.getElementById('titulo_nombre').value.trim(),
                     institucion: document.getElementById('titulo_institucion_academica').value.trim(),
-                    fecha_obtencion: document.getElementById('titulo_fecha').value || null,
-                    nivel: document.getElementById('titulo_nivel').value || null
+                    fecha_grado: document.getElementById('titulo_fecha').value || null,
+                    nivel: nivel
                 };
 
-                const response = await fetch(`/auditores/registro/${userId}/titulos`, {
-                    method: 'POST',
+                const destino = destinoRegistro('titulos');
+                const response = await fetch(destino.url, {
+                    method: destino.method,
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
@@ -6800,11 +6813,11 @@
 
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    throw new Error(data.detail || 'No fue posible registrar el título.');
+                    throw new Error(mensajeDeError(data, 'No fue posible registrar el título.'));
                 }
 
-                event.target.reset();
-                alert(data.mensaje || 'Título académico agregado correctamente.');
+                cancelarEdicionRegistro('titulos');
+                alert(data.mensaje || (destino.editando ? 'Título académico actualizado correctamente.' : 'Título académico agregado correctamente.'));
                 await cargarNuevosRegistros();
             } catch (error) {
                 console.error('Error registrando título:', error);
@@ -6821,11 +6834,12 @@
                     cargo: document.getElementById('lab_cargo').value.trim(),
                     fecha_inicio: document.getElementById('lab_fecha_inicio').value,
                     fecha_fin: document.getElementById('lab_fecha_fin').value || null,
-                    descripcion: document.getElementById('lab_descripcion').value.trim() || null
+                    descripcion: document.getElementById('lab_descripcion').value.trim()
                 };
 
-                const response = await fetch(`/auditores/registro/${userId}/experiencias-laborales`, {
-                    method: 'POST',
+                const destino = destinoRegistro('experiencias-laborales');
+                const response = await fetch(destino.url, {
+                    method: destino.method,
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
@@ -6835,10 +6849,10 @@
 
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    throw new Error(data.detail || 'No fue posible registrar la experiencia laboral.');
+                    throw new Error(mensajeDeError(data, 'No fue posible registrar la experiencia laboral.'));
                 }
 
-                const idRegistro = data.id_experiencia || data.id;
+                const idRegistro = data.id_experiencia || data.id || EDICION_REGISTROS['experiencias-laborales'].id;
                 const archivo = document.getElementById('lab_archivo').files[0];
 
                 if (archivo && idRegistro) {
@@ -6850,10 +6864,8 @@
                     );
                 }
 
-                event.target.reset();
-                const archivoLaboralInput = document.getElementById('lab_archivo');
-                if (archivoLaboralInput) actualizarVistaArchivo(archivoLaboralInput);
-                alert(data.mensaje || 'Experiencia laboral agregada correctamente.');
+                cancelarEdicionRegistro('experiencias-laborales');
+                alert(data.mensaje || (destino.editando ? 'Experiencia laboral actualizada correctamente.' : 'Experiencia laboral agregada correctamente.'));
                 await cargarDocumentosSoporte();
                 await cargarNuevosRegistros();
             } catch (error) {
@@ -6875,11 +6887,12 @@
                     tipo_auditoria: tipoAuditoria,
                     fecha_inicio: document.getElementById('aud_fecha_inicio').value,
                     fecha_fin: document.getElementById('aud_fecha_fin').value || null,
-                    descripcion: document.getElementById('aud_descripcion').value.trim() || null
+                    descripcion: document.getElementById('aud_descripcion').value.trim()
                 };
 
-                const response = await fetch(`/auditores/registro/${userId}/experiencias-auditoria`, {
-                    method: 'POST',
+                const destino = destinoRegistro('experiencias-auditoria');
+                const response = await fetch(destino.url, {
+                    method: destino.method,
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
@@ -6889,10 +6902,10 @@
 
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    throw new Error(data.detail || 'No fue posible registrar la experiencia de auditoría.');
+                    throw new Error(mensajeDeError(data, 'No fue posible registrar la experiencia de auditoría.'));
                 }
 
-                const idRegistro = data.id_experiencia || data.id;
+                const idRegistro = data.id_experiencia || data.id || EDICION_REGISTROS['experiencias-auditoria'].id;
                 const archivo = document.getElementById('aud_archivo').files[0];
 
                 if (archivo && idRegistro) {
@@ -6904,13 +6917,10 @@
                     );
                 }
 
-                event.target.reset();
-                const archivoAuditoriaInput = document.getElementById('aud_archivo');
-                if (archivoAuditoriaInput) actualizarVistaArchivo(archivoAuditoriaInput);
-                const opcionAuditoria = document.getElementById('deseaExperienciaAuditoria');
-                if (opcionAuditoria) opcionAuditoria.checked = false;
-                actualizarExperienciaAuditoriaOpcional();
-                alert(data.mensaje || 'Experiencia de auditoría agregada correctamente.');
+                // La casilla queda marcada: el auditor ya tiene experiencia
+                // registrada y puede seguir agregando más.
+                cancelarEdicionRegistro('experiencias-auditoria');
+                alert(data.mensaje || (destino.editando ? 'Experiencia de auditoría actualizada correctamente.' : 'Experiencia de auditoría agregada correctamente.'));
                 await cargarDocumentosSoporte();
                 await cargarNuevosRegistros();
             } catch (error) {
@@ -7017,7 +7027,7 @@
 
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
-                    throw new Error(data.detail || 'No fue posible registrar el conflicto.');
+                    throw new Error(mensajeDeError(data, 'No fue posible registrar el conflicto.'));
                 }
 
                 guardarDeclaraciones();
@@ -7467,6 +7477,11 @@
 
             const fragmento = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
             mostrarSeccion(fragmento && (fragmento === 'inicioRegistro' || panels[fragmento]) ? fragmento : 'inicioRegistro', false);
+            // Con #seccion en la URL el navegador saltaba al ancla: la vista arranca arriba.
+            if (fragmento) {
+                window.scrollTo(0, 0);
+                window.addEventListener('load', () => setTimeout(() => window.scrollTo(0, 0), 0), { once: true });
+            }
         }
 
         /* =====================================================
@@ -7579,13 +7594,21 @@
             const contenido = document.getElementById('contenidoExperienciaAuditoria');
             const formulario = document.getElementById('formExperienciaAuditoria');
             const activa = Boolean(casilla && casilla.checked);
+            // Con la casilla marcada el formulario se muestra, pero solo se
+            // habilita si la postulación admite cambios: antes la casilla
+            // reabría los campos aunque el registro estuviera bloqueado.
+            const habilitado = activa && seccionEditable('formExperienciaAuditoria');
             if (contenido) {
                 contenido.hidden = !activa;
                 contenido.setAttribute('aria-hidden', activa ? 'false' : 'true');
             }
             if (formulario) {
-                formulario.querySelectorAll('input, select, textarea, button[type="submit"]').forEach((control) => {
-                    control.disabled = !activa;
+                formulario.querySelectorAll('input, select, textarea, button').forEach((control) => {
+                    control.disabled = !habilitado;
+                    if (habilitado) {
+                        control.style.pointerEvents = '';
+                        control.removeAttribute('aria-disabled');
+                    }
                 });
             }
         }
@@ -7722,7 +7745,7 @@
                             <div class="registro-card-meta">${escapeHtml(item.titulo_institucion || '')}</div>
                             <div class="registro-card-meta">${escapeHtml(item.codigo_sector_iaf || '')} ${item.fecha_inicio ? '· ' + escapeHtml(item.fecha_inicio) : ''}</div>
                         </div>
-                        <button type="button" class="btn-mini btn-mini-eliminar" onclick="eliminarCompetencia('${String(item.id_competencia).replace(/'/g, '')}')">Eliminar</button>
+                        <button type="button" class="btn btn-peligro-contorno btn-sm btn-mini btn-mini-eliminar" onclick="eliminarCompetencia('${String(item.id_competencia).replace(/'/g, '')}')">Eliminar</button>
                     </div>
                     ${item.descripcion ? `<div class="registro-card-meta">${escapeHtml(String(item.descripcion))}</div>` : ''}
                 </div>

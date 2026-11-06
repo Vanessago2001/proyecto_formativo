@@ -13,8 +13,8 @@ class ConflictoAuditorService(AuditorService):
     async def eliminar(self, id_usuario: UUID, id_conflicto: UUID):
         return await self.eliminar_conflicto(id_usuario, id_conflicto)
 
-    async def empresas_restringidas(self):
-        return await self.consultar_empresas_restringidas()
+    async def empresas_restringidas(self, id_usuario: UUID | None = None):
+        return await self.consultar_empresas_restringidas(id_usuario)
 
     async def validar_antes_asignacion(self, id_usuario: UUID, id_empresa: UUID):
         return await self.validar_conflicto_antes_asignacion(id_usuario, id_empresa)

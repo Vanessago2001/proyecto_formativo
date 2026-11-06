@@ -41,7 +41,7 @@
     .portal {
       max-width: var(--ancho-contenido);
       margin: 0 auto;
-      padding: 18px 22px 28px;
+      padding: 28px;
       display: grid;
       grid-template-columns: 218px minmax(0, 1fr);
       align-items: start;
@@ -375,33 +375,9 @@
       margin: 14px 0 2px;
     }
 
+    /* "Ver mas" usa btn btn-secundario (tema.css); aqui solo el ancho. */
     .btn-ver-mas {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
       min-width: 145px;
-      padding: 9px 16px;
-      border: 1px solid #a9c59d;
-      border-radius: 8px;
-      background: #f1f5f9;
-      color: var(--verde-sena);
-      font-size: 13px;
-      font-weight: 750;
-      cursor: pointer;
-      transition: background .18s ease, border-color .18s ease, transform .18s ease;
-    }
-
-    .btn-ver-mas:hover {
-      background: #e4f1dc;
-      border-color: var(--verde-claro);
-    }
-
-    .btn-ver-mas:focus-visible,
-    .btn-accion:focus-visible,
-    .btn-nueva-postulacion:focus-visible {
-      outline: 3px solid #a9c59d;
-      outline-offset: 2px;
     }
 
     .btn-ver-mas .chevron {
@@ -527,20 +503,6 @@
 
     .btn-nueva-postulacion {
       display: none;
-      margin-top: 15px;
-      border: 0;
-      padding: 11px 16px;
-      border-radius: 8px;
-      background: var(--verde-sena);
-      color: #fff;
-      font-size: 13px;
-      font-weight: 750;
-      cursor: pointer;
-      transition: background .18s ease, transform .18s ease;
-    }
-
-    .btn-nueva-postulacion:hover {
-      background: #1b4b12;
     }
 
     /* Paginación */
@@ -572,61 +534,11 @@
     .acciones {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
       margin-top: 20px;
     }
 
-    .btn-accion {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      border: 0;
-      padding: 11px 15px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 750;
-      cursor: pointer;
-      transition: background .18s ease, transform .18s ease;
-    }
-
-    .btn-accion:hover:not(:disabled),
-    .btn-nueva-postulacion:hover {
-      transform: translateY(-1px);
-    }
-
-    .btn-actualizar {
-      background: #0369a1;
-      color: #fff;
-    }
-
-    .btn-actualizar:hover:not(:disabled) {
-      background: #075985;
-    }
-
-    .btn-cancelar {
-      background: #dc2626;
-      color: #fff;
-    }
-
-    .btn-cancelar:hover:not(:disabled) {
-      background: #b42318;
-    }
-
-    .btn-pdf {
-      background: var(--verde-sena);
-      color: #fff;
-    }
-
-    .btn-pdf:hover:not(:disabled) {
-      background: #1b4b12;
-    }
-
-    .btn-accion:disabled,
-    .btn-modal:disabled {
-      opacity: .55;
-      cursor: not-allowed;
-    }
+    /* Botones de accion: sistema comun de tema.css (btn btn-primario/secundario/peligro). */
 
     .mensaje {
       display: none;
@@ -727,24 +639,6 @@
       border-top: 1px solid #e2e8f0;
     }
 
-    .btn-modal {
-      border: 0;
-      padding: 10px 14px;
-      border-radius: 7px;
-      font-size: 13px;
-      font-weight: 750;
-      cursor: pointer;
-    }
-
-    .btn-modal-volver {
-      background: #e2e8f0;
-      color: #334155;
-    }
-
-    .btn-modal-confirmar {
-      background: #dc2626;
-      color: #fff;
-    }
 
     @media (max-width: 1100px) {
       .status-grid {
@@ -804,7 +698,7 @@
         flex-direction: column;
       }
 
-      .btn-accion {
+      .acciones .btn {
         width: 100%;
       }
 
@@ -821,7 +715,7 @@
         flex-direction: column-reverse;
       }
 
-      .btn-modal {
+      .modal-footer .btn {
         width: 100%;
       }
     }
@@ -1020,15 +914,6 @@
             }
         }
 
-    .header-content .comite-header-user .comite-back-button {
-      background: transparent;
-      color: #fff;
-    }
-
-    .header-content .comite-header-user .comite-back-button:hover {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
-    }
   </style>
 </head>
 
@@ -1044,8 +929,9 @@
       </div>
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
-        <a class="profile-link" href="#" id="profileLink">Mi perfil</a>
-        <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
+        <a class="profile-link" href="/reportes">Reportes</a>
+        <a class="profile-link" href="/perfil-auditor" title="Mi perfil" aria-label="Mi perfil"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
+        <button id="logoutButton" class="comite-logout js-salir" type="button">Cerrar sesión</button>
       </div>
     </div>
   </header>
@@ -1160,7 +1046,7 @@
           </div>
 
           <div class="ver-mas-wrap" id="verMasWrap" style="display:none;">
-            <button type="button" id="btnVerMas" class="btn-ver-mas" aria-expanded="false"
+            <button type="button" id="btnVerMas" class="btn btn-secundario btn-ver-mas" aria-expanded="false"
               aria-controls="detallesAdicionales">
               <span id="textoVerMas">Ver más</span>
               <span class="chevron" aria-hidden="true">⌄</span>
@@ -1217,16 +1103,16 @@
 
           <!-- La paginación queda fuera del bloque desplegable para que siempre sea accesible. -->
           <div id="paginacionPostulaciones" class="paginacion" aria-label="Paginación de postulaciones">
-            <button type="button" id="btnAnterior" class="btn-accion btn-actualizar">← Anterior</button>
+            <button type="button" id="btnAnterior" class="btn btn-secundario btn-sm btn-accion btn-actualizar">← Anterior</button>
             <span id="indicadorPostulacion" class="indicador" aria-live="polite">Postulación 1 de 1</span>
-            <button type="button" id="btnSiguiente" class="btn-accion btn-actualizar">Siguiente →</button>
+            <button type="button" id="btnSiguiente" class="btn btn-secundario btn-sm btn-accion btn-actualizar">Siguiente →</button>
           </div>
 
-          <div class="acciones">
-            <button type="button" id="btnActualizar" class="btn-accion btn-actualizar">↻ Actualizar estado</button>
-            <button type="button" id="btnCancelar" class="btn-accion btn-cancelar">Cancelar solicitud</button>
-            <button type="button" id="btnPdf" class="btn-accion btn-pdf">↓ Descargar comprobante PDF</button>
-            <button type="button" id="btnNuevaPostulacion" class="btn-nueva-postulacion">Iniciar nueva postulación</button>
+          <div class="acciones grupo-botones">
+            <button type="button" id="btnActualizar" class="btn btn-secundario btn-accion btn-actualizar">↻ Actualizar estado</button>
+            <button type="button" id="btnCancelar" class="btn btn-peligro-contorno btn-accion btn-cancelar">Cancelar solicitud</button>
+            <button type="button" id="btnPdf" class="btn btn-secundario btn-accion btn-pdf">↓ Descargar comprobante PDF</button>
+            <button type="button" id="btnNuevaPostulacion" class="btn btn-primario btn-nueva-postulacion">Iniciar nueva postulación</button>
           </div>
 
           <div id="mensaje" class="mensaje" role="status" aria-live="polite"></div>
@@ -1252,8 +1138,8 @@
         <p>¿Desea continuar con la cancelación?</p>
       </div>
       <div class="modal-footer">
-        <button type="button" id="btnCerrarModal" class="btn-modal btn-modal-volver">Volver</button>
-        <button type="button" id="btnConfirmarCancelacion" class="btn-modal btn-modal-confirmar">Sí, cancelar
+        <button type="button" id="btnCerrarModal" class="btn btn-secundario btn-modal btn-modal-volver">Volver</button>
+        <button type="button" id="btnConfirmarCancelacion" class="btn btn-peligro btn-modal btn-modal-confirmar">Sí, cancelar
           solicitud</button>
       </div>
     </div>

@@ -93,9 +93,10 @@ async def test_inactivar_empresa_segun_la_hoja(rol, esperado):
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Super Administrador", 200), ("Administrador", 403), ("Auxiliar", 202)],
+    [("Super Administrador", 200), ("Administrador", 200), ("Auxiliar", 202), ("Empresa", 403)],
 )
-async def test_solo_el_superadministrador_reactiva(rol, esperado):
+async def test_el_administrador_reactiva(rol, esperado):
+    # El rol Super Administrador ya no se usa: la reactivacion la hace el Administrador.
     db = sesion(fila("Inactiva"))
 
     respuesta = await pedir(db, rol, "post", f"{BASE}/reactivar")

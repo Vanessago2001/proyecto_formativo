@@ -20,10 +20,10 @@
             --border-color: #e2e8f0;
             --text-primary: #1f2937;
             --text-secondary: #5f6f69;
-            --shadow-card: 0 5px 20px rgba(32, 74, 25, 0.07);
-            --shadow-hover: 0 8px 24px rgba(32, 74, 25, 0.10);
-            --radius-card: 14px;
-            --radius-control: 8px;
+            --shadow-card: none;
+            --shadow-hover: none;
+            --radius-card: 8px;
+            --radius-control: 6px;
         }
 
         /* BASE */
@@ -124,49 +124,17 @@
             min-width: 0;
         }
 
-        /* ENCABEZADO */
-
-        .login-header {
-            position: relative;
-            z-index: 1;
-        }
-
-        .login-header .header-content {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .login-header .sena-blanco {
-            width: 76px;
-            height: auto;
-            object-fit: contain;
-            flex-shrink: 0;
-        }
-
-        .login-header h1 {
-            margin: 0;
-            font-size: 30px;
-            line-height: 1.2;
-        }
-
-        .login-header .subtitle {
-            margin: 6px 0 0;
-            font-size: 13px;
-            line-height: 1.5;
-            opacity: 0.92;
-        }
-
-        /* BARRA SUPERIOR Y REGRESO */
 
         .top-navigation {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 22px;
+            margin-bottom: 0;
             min-width: 0;
         }
+
+        /* BARRA SUPERIOR Y REGRESO */
 
         .page-context {
             min-width: 0;
@@ -183,8 +151,8 @@
 
         .section-card {
             min-width: 0;
-            padding: 26px;
-            margin: 0 0 28px;
+            padding: 24px;
+            margin: 0;
             background: var(--surface);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-card);
@@ -246,38 +214,11 @@
             line-height: 1.5;
         }
 
+
         .form-control {
             display: block;
             width: 100%;
             min-width: 0;
-            min-height: 44px;
-            padding: 11px 13px;
-            color: var(--text-primary);
-            background: #fff;
-            border: 1px solid #cbd5e1;
-            border-radius: var(--radius-control);
-            outline: none;
-            font: inherit;
-            font-size: 14px;
-            line-height: 1.5;
-            transition: border-color 0.2s ease,
-                box-shadow 0.2s ease,
-                background-color 0.2s ease;
-        }
-
-        .form-control::placeholder {
-            color: #929d95;
-            opacity: 1;
-        }
-
-        .form-control:hover {
-            border-color: #a9c59d;
-        }
-
-        .form-control:focus {
-            border-color: var(--sena-green);
-            box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.13);
-            background-color: #fff;
         }
 
         /* FILTROS */
@@ -305,7 +246,7 @@
 
         .record-table {
             width: 100%;
-            min-width: 1000px;
+            min-width: 1250px;
             border-collapse: separate;
             border-spacing: 0;
             text-align: left;
@@ -384,32 +325,10 @@
             white-space: nowrap;
         }
 
-        .acciones-celda .mini-button {
-            min-height: 34px;
-            padding: 7px 13px;
-            font-size: 12px;
-        }
 
-        .btn-eliminar {
-            background: #dc2626;
-            border-color: #dc2626;
-        }
-
-        .btn-eliminar:hover {
-            background: #b42318;
-            border-color: #b42318;
-            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
-        }
-
-        .btn-reporte {
-            background: #2563eb;
-            border-color: #2563eb;
-        }
-
-        .btn-reporte:hover {
-            background: #1d4ed8;
-            border-color: #1d4ed8;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        .acciones-guardar {
+            margin-top: 14px;
+            gap: 16px;
         }
 
         /* PAGINACIÓN */
@@ -431,49 +350,6 @@
             flex-wrap: nowrap;
         }
 
-        .mini-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 38px;
-            padding: 9px 16px;
-            border-radius: 6px;
-            background: var(--sena-green);
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            line-height: 1.4;
-            text-decoration: none;
-            border: 1px solid var(--sena-green);
-            cursor: pointer;
-            transition: background-color 0.2s ease,
-                border-color 0.2s ease,
-                box-shadow 0.2s ease,
-                transform 0.2s ease;
-        }
-
-        .mini-button:hover {
-            background: var(--sena-green-hover);
-            border-color: var(--sena-green-hover);
-            box-shadow: 0 4px 12px rgba(57, 169, 0, 0.20);
-            transform: translateY(-1px);
-        }
-
-        .mini-button.secondary {
-            background: #94a3b8;
-            border-color: #94a3b8;
-        }
-
-        .mini-button.secondary:hover {
-            background: #7d8ea3;
-            border-color: #7d8ea3;
-            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.20);
-        }
-
-        .mini-button:focus-visible {
-            outline: 3px solid rgba(57, 169, 0, 0.30);
-            outline-offset: 3px;
-        }
 
         /* TABLETAS */
 
@@ -495,9 +371,6 @@
                 font-size: 20px;
             }
 
-            .login-header .header-content {
-                gap: 14px;
-            }
 
             .top-navigation {
                 align-items: flex-start;
@@ -517,28 +390,9 @@
                 padding: 18px 14px;
             }
 
-            .login-header .header-content {
-                gap: 10px;
-            }
-
-            .login-header .sena-blanco {
-                width: 58px !important;
-            }
-
-            .login-header h1 {
-                font-size: 22px;
-            }
-
-            .login-header .subtitle {
-                font-size: 12px;
-            }
 
             .section-title {
                 font-size: 19px;
-            }
-
-            .form-control {
-                font-size: 14px;
             }
         }
 
@@ -621,15 +475,15 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 14px;
-    margin-bottom: 24px;
+    margin-bottom: 0;
 }
 .tarjeta-resumen {
     padding: 16px 18px;
     background: linear-gradient(160deg, #f8fafc 0%, #ffffff 100%);
     border: 1px solid var(--border-color);
     border-left: 4px solid var(--sena-green);
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(32, 74, 25, 0.05);
+    border-radius: 8px;
+    box-shadow: none;
 }
 .tarjeta-resumen .valor {
     display: block;
@@ -657,6 +511,12 @@
     border-radius: 12px;
 }
 .campo-bloque .form-group + .form-group { margin-top: 14px; }
+.campo-bloque .filters-grid .form-group + .form-group { margin-top: 0; }
+#tablaAuditorConflicto { overflow-x: auto; }
+/* La columna de acciones queda siempre visible al desplazar la tabla. */
+.record-table th:last-child,
+.record-table td:last-child { position: sticky; right: 0; background: inherit; box-shadow: -1px 0 0 #e2e8f0; }
+.record-table thead th:last-child { background: var(--sena-green); }
 .checkbox-inline {
     display: inline-flex;
     align-items: center;
@@ -689,7 +549,6 @@
 .modal-box { background:#fff; border-radius:12px; padding:24px; max-width:400px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center; }
 .modal-box h3 { margin-top:0; color:#256d00; }
 .modal-box p { color:#334155; margin-bottom:20px; }
-.modal-box .btn-close { background:#3baa01; color:#fff; border:none; padding:8px 20px; border-radius:6px; cursor:pointer; font-weight:bold; }
 .modal-box.error h3 { color:#dc2626; }
 .modal-box.success h3 { color:#256d00; }
 </style>
@@ -698,10 +557,12 @@
 <body>
     <header class="login-header">
         <div class="header-content">
-            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
-            <div>
-                <h1>CertiSENA</h1>
-                <p class="subtitle">Conflictos de interés registrados - vista general del administrador</p>
+            <div class="header-left">
+                <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+                <div>
+                    <h1>CertiSENA</h1>
+                    <p class="subtitle">Conflictos de interés registrados - vista general del administrador</p>
+                </div>
             </div>
             <div class="comite-header-user">
                 <a class="comite-back-button" href="/dashboard">Panel</a>
@@ -742,9 +603,10 @@
         <section class="content">
 
             <!-- CONTEXTO DE LA PAGINA -->
-            <nav class="top-navigation" aria-label="Navegación de la página">
+            <nav class="top-navigation comite-page-heading" aria-label="Navegación de la página">
                 <div class="page-context">
-                    <p style="font-weight:600;color:var(--text-primary);font-size:14px;">Banco de auditores / Conflictos registrados</p>
+                    <span class="comite-kicker">Banco de auditores</span>
+                    <h2>Conflictos registrados</h2>
                     <p>Gestione los conflictos de interés detectados y genere los reportes correspondientes.</p>
                 </div>
             </nav>
@@ -823,12 +685,12 @@
                         </table>
                     </div>
 
-                    <div class="acciones-celda" style="margin-top:14px;">
+                    <div class="acciones-celda acciones-guardar">
                         <label class="checkbox-inline">
                             <input type="checkbox" id="bloqueaConflicto" checked>
                             Bloquea asignación
                         </label>
-                        <button type="button" class="mini-button" onclick="guardarConflictoDetectado()">Guardar conflicto</button>
+                        <button type="button" class="mini-button btn btn-primario" onclick="guardarConflictoDetectado()">Guardar conflicto</button>
                     </div>
                 </div>
             </section>
@@ -884,8 +746,8 @@
                 <div class="pagination-row">
                     <span id="resumen" class="help-text"></span>
                     <div class="action-group">
-                        <button type="button" class="mini-button secondary" onclick="paginaAnterior()">Anterior</button>
-                        <button type="button" class="mini-button" onclick="paginaSiguiente()">Siguiente</button>
+                        <button type="button" class="mini-button secondary btn btn-secundario" onclick="paginaAnterior()">Anterior</button>
+                        <button type="button" class="mini-button btn btn-secundario" onclick="paginaSiguiente()">Siguiente</button>
                     </div>
                 </div>
             </section>
@@ -898,7 +760,7 @@
     <div id="modalBox" class="modal-box">
         <h3 id="modalTitle">Mensaje</h3>
         <p id="modalMessage"></p>
-        <button class="btn-close" onclick="closeModal()">Cerrar</button>
+        <button type="button" class="btn-close btn btn-primario" onclick="closeModal()">Cerrar</button>
     </div>
 </div>
 
@@ -1006,7 +868,7 @@
                     <td>${escapeHtml((a.tipo_doc ? a.tipo_doc + ' ' : '') + (a.num_doc || a.numero_documento || '-'))}</td>
                     <td>${escapeHtml(a.correo || '-')}</td>
                     <td><span class="chip ${String(a.estado_auditor || a.estado || '').toLowerCase() === 'activo' ? 'chip-activo' : 'chip-inactivo'}">${escapeHtml(a.estado_auditor || a.estado || '-')}</span></td>
-                    <td class="acciones-celda"><button type="button" class="mini-button" onclick="seleccionarAuditorConflicto('${a.id_usuario || a.id || ''}', '${escapeHtml(a.nombre || '')}')">Seleccionar</button></td>
+                    <td><button type="button" class="mini-button btn btn-secundario btn-sm" onclick="seleccionarAuditorConflicto('${a.id_usuario || a.id || ''}', '${escapeHtml(a.nombre || '')}')">Seleccionar</button></td>
                 </tr>
             `).join('');
             tabla.style.display = 'block';
@@ -1143,9 +1005,9 @@
                         <td><span class="chip ${String(item.estado || '').toLowerCase() === 'activo' ? 'chip-activo' : 'chip-inactivo'}">${escapeHtml(item.estado || '-')}</span></td>
                         <td>${escapeHtml(item.fecha_declaracion || '-')}</td>
                         <td>${escapeHtml(item.descripcion || '-')}</td>
-                        <td class="acciones-celda">
-                            <button type="button" class="mini-button btn-reporte" onclick="generarReporteConflictos('${item.id_usuario}')">Generar reporte</button>
-                            <button type="button" class="mini-button btn-eliminar" onclick="eliminarConflicto('${item.id_usuario}', '${item.id_conflicto}')">Eliminar</button>
+                        <td><div class="acciones-tabla">
+                            <button type="button" class="mini-button btn-reporte btn btn-secundario btn-sm" onclick="generarReporteConflictos('${item.id_usuario}')">Generar reporte</button>
+                            <button type="button" class="mini-button btn-eliminar btn btn-peligro-contorno btn-sm" onclick="eliminarConflicto('${item.id_usuario}', '${item.id_conflicto}')">Eliminar</button></div>
                         </td>
                     </tr>
                 `).join('');

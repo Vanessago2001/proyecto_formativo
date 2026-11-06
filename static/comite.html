@@ -56,35 +56,50 @@
             <h2 id="viewTitle">Expedientes pendientes</h2>
             <p id="viewDescription">Consulta los expedientes y revisa la información necesaria para emitir un dictamen.</p>
           </div>
-          <button id="refreshButton" class="comite-button secondary" type="button">Actualizar</button>
+          <button id="refreshButton" class="comite-button secondary btn btn-secundario" type="button">Actualizar</button>
         </div>
 
         <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
 
         <section id="expedientesView">
-          <div class="comite-toolbar">
+          <div class="comite-toolbar" style="flex-wrap: wrap;">
             <form id="searchForm" class="comite-search-form">
               <label for="searchInput">Buscar expediente</label>
               <div class="comite-search-row">
-                <input id="searchInput" type="search" placeholder="NIT o código del expediente">
-                <button class="comite-button primary" type="submit">Buscar</button>
+                <input id="searchInput" type="search" placeholder="NIT, código del expediente o empresa">
+                <button class="comite-button primary btn btn-primario" type="submit">Buscar</button>
               </div>
             </form>
-            <div class="comite-filter-group">
+            <div class="comite-filter-group" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); flex: 2 1 640px;">
+              <div>
+                <label for="estadoFilter">Estado</label>
+                <select id="estadoFilter">
+                  <option value="pendientes" selected>Pendientes (radicada o en revisión)</option>
+                  <option value="todos">Todos los estados</option>
+                  <option value="Radicada">Radicada</option>
+                  <option value="En revision">En revisión</option>
+                  <option value="Aprobada">Aprobada</option>
+                  <option value="Rechazada">Rechazada</option>
+                  <option value="Cerrada">Cerrada</option>
+                  <option value="Cancelada">Cancelada</option>
+                </select>
+              </div>
               <div>
                 <label for="normaFilter">Norma</label>
                 <select id="normaFilter">
                   <option value="">Todas</option>
-                  <option value="ISO 9001">ISO 9001</option>
-                  <option value="ISO 14001">ISO 14001</option>
-                  <option value="ISO 45001">ISO 45001</option>
                 </select>
               </div>
               <div>
-                <label for="sectorFilter">Sector</label>
-                <input id="sectorFilter" type="text" placeholder="Todos los sectores">
+                <label for="fechaDesdeFilter">Radicado desde</label>
+                <input id="fechaDesdeFilter" type="date">
               </div>
-              <button id="filterButton" class="comite-button secondary" type="button">Filtrar</button>
+              <div>
+                <label for="fechaHastaFilter">Radicado hasta</label>
+                <input id="fechaHastaFilter" type="date">
+              </div>
+              <button id="filterButton" class="comite-button primary btn btn-primario" type="button">Filtrar</button>
+              <button id="clearFiltersButton" class="comite-button secondary btn btn-secundario" type="button">Limpiar</button>
             </div>
           </div>
 
@@ -128,7 +143,10 @@
               <h3>Historial de decisiones</h3>
               <p>Consulta el registro consolidado de decisiones del comité.</p>
             </div>
-            <button id="exportButton" class="comite-button secondary" type="button">Exportar decisiones</button>
+            <div class="comite-search-row">
+              <button id="exportButton" class="comite-button secondary btn btn-secundario" type="button" data-formato="xlsx">Exportar decisiones (Excel)</button>
+              <button id="exportPdfButton" class="comite-button secondary btn btn-secundario" type="button" data-formato="pdf">Exportar decisiones (PDF)</button>
+            </div>
           </div>
           <div id="historyContent" class="comite-history-content">Cargando historial...</div>
         </section>
@@ -237,18 +255,55 @@
         return "pending";
       }
 
-      async function loadExpedientes() {
+      // Un solo punto de carga: el estado lo decide el filtro de estado (por
+      // defecto "Pendientes") y el buscador, la norma y las fechas solo
+      // restringen. Antes la búsqueda por NIT ignoraba el estado y la lista
+      // inicial solo traía radicados, así que los resultados no coincidían.
+      function filtrosActuales() {
+        const params = new URLSearchParams();
+        params.set("estado", $("#estadoFilter").value || "pendientes");
+        const query = $("#searchInput").value.trim();
+        if (query) params.set("q", query);
+        if ($("#normaFilter").value) params.set("norma", $("#normaFilter").value);
+        if ($("#fechaDesdeFilter").value) params.set("fecha_desde", $("#fechaDesdeFilter").value);
+        if ($("#fechaHastaFilter").value) params.set("fecha_hasta", $("#fechaHastaFilter").value);
+        return params;
+      }
+
+      function cargarNormas(normas) {
+        const select = $("#normaFilter");
+        if (!select || !Array.isArray(normas) || select.dataset.cargado) return;
+        const actual = select.value;
+        select.innerHTML = '<option value="">Todas</option>' + normas.map((norma) =>
+          '<option value="' + escapeHtml(norma.codigo) + '">' + escapeHtml(norma.codigo) + '</option>'
+        ).join("");
+        select.value = actual;
+        select.dataset.cargado = "1";
+      }
+
+      async function loadExpedientes(event) {
+        if (event && event.preventDefault) event.preventDefault();
         if (!canConsult) return;
         $("#resultCount").textContent = "Cargando expedientes...";
         try {
-          const response = await api("/comite/expedientes-pendientes");
+          const response = await api("/comite/expedientes-pendientes?" + filtrosActuales().toString());
+          cargarNormas(response && response.normas);
           state.expedientes = Array.isArray(response && response.expedientes) ? response.expedientes : [];
           renderExpedientes(state.expedientes);
-          showFeedback("Expedientes actualizados.", "success");
+          showFeedback("", "");
         } catch (error) {
           renderExpedientes([]);
           showFeedback(error.message, "error");
         }
+      }
+
+      function limpiarFiltros() {
+        $("#searchInput").value = "";
+        $("#estadoFilter").value = "pendientes";
+        $("#normaFilter").value = "";
+        $("#fechaDesdeFilter").value = "";
+        $("#fechaHastaFilter").value = "";
+        loadExpedientes();
       }
 
       function renderExpedientes(items) {
@@ -267,7 +322,7 @@
             '<td>' + escapeHtml(company) + '</td>' +
             '<td>' + escapeHtml(item.norma || "Sin norma") + '</td>' +
             '<td><span class="comite-status ' + statusClass(status) + '">' + escapeHtml(status) + '</span></td>' +
-            '<td><button class="comite-table-action" type="button" data-expediente="' + escapeHtml(id) + '">Revisar</button></td>' +
+            '<td><button class="btn btn-secundario btn-sm" type="button" data-expediente="' + escapeHtml(id) + '">Revisar</button></td>' +
             '</tr>';
         }).join("");
         body.querySelectorAll("[data-expediente]").forEach((button) => {
@@ -301,9 +356,9 @@
         const observationItems = observations && observations.observaciones || [];
         const reportData = report && report.informe || {};
         const decisionActions = canDecide ? '<div class="comite-decision-actions">' +
-          '<button class="comite-button secondary" data-decision="/comite/decision-borrador">Guardar borrador</button>' +
-          '<button class="comite-button danger" data-decision="/comite/rechazar">Rechazar</button>' +
-          '<button class="comite-button primary" data-decision="/comite/aprobar">Aprobar otorgamiento</button>' +
+          '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/decision-borrador">Guardar borrador</button>' +
+          '<button class="comite-button danger btn btn-peligro" data-decision="/comite/rechazar">Rechazar</button>' +
+          '<button class="comite-button primary btn btn-primario" data-decision="/comite/aprobar">Aprobar otorgamiento</button>' +
           '</div>' : '<p class="comite-readonly-note">Tu rol tiene permisos de consulta. Las acciones de decisión están restringidas.</p>';
 
         $("#detailPanel").innerHTML =
@@ -329,15 +384,15 @@
           '<div class="comite-detail-section"><h4>Observaciones técnicas</h4>' + (observations && observations.disponible ? renderItems(observationItems, "No hay observaciones registradas.") : '<p class="comite-muted">La consulta de observaciones técnicas aún no está conectada a una fuente de datos.</p>') + '</div>' +
           '<div class="comite-detail-section"><h4>Dictamen del comité</h4><label for="decisionComment">Comentario de la decisión</label><textarea id="decisionComment" rows="3" placeholder="Registra la justificación o las observaciones del comité"></textarea>' + decisionActions + '</div>' +
           (canDecide ? '<div class="comite-detail-section"><h4>Acta y seguimiento</h4><div class="comite-decision-actions">' +
-            '<button class="comite-button secondary" data-decision="/comite/decisiones">Registrar decisión</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/solicitar-info-adicional">Solicitar información</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/observaciones-acta">Agregar observación al acta</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/restricciones-alcance">Registrar restricción</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/comentarios-debate">Comentar debate</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/acta-definitiva" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Solicitar generación del acta</button>' +
-            '<button class="comite-button secondary" data-decision="/comite/firmar-acta" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Solicitar firma electrónica</button>' +
-            '<button class="comite-button danger" data-decision="/comite/cerrar-expediente" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Cerrar expediente</button>' +
-            (isSuperAdmin ? '<button class="comite-button danger" data-decision="/comite/reabrir-dictamen">Reabrir dictamen</button>' : '') +
+            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/decisiones">Registrar decisión</button>' +
+            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/solicitar-info-adicional">Solicitar información</button>' +
+            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/observaciones-acta">Agregar observación al acta</button>' +
+            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/restricciones-alcance">Registrar restricción</button>' +
+            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/comentarios-debate">Comentar debate</button>' +
+            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/acta-definitiva" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Solicitar generación del acta</button>' +
+            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/firmar-acta" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Solicitar firma electrónica</button>' +
+            '<button class="comite-button danger btn btn-peligro" data-decision="/comite/cerrar-expediente" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Cerrar expediente</button>' +
+            (isSuperAdmin ? '<button class="comite-button danger btn btn-peligro" data-decision="/comite/reabrir-dictamen">Reabrir dictamen</button>' : '') +
             '</div></div>' : '');
 
         $("#detailPanel").querySelectorAll("[data-decision]").forEach((button) => button.addEventListener("click", () => submitDecision(button.dataset.decision)));
@@ -487,32 +542,6 @@
         }
       }
 
-      async function searchExpediente(event) {
-        event.preventDefault();
-        const query = $("#searchInput").value.trim();
-        if (!query) return loadExpedientes();
-        try {
-          const response = await api("/comite/buscar-expediente?query=" + encodeURIComponent(query));
-          state.expedientes = response && response.resultados || [];
-          renderExpedientes(state.expedientes);
-        } catch (error) {
-          showFeedback(error.message, "error");
-        }
-      }
-
-      async function filterExpedientes() {
-        const params = new URLSearchParams();
-        if ($("#normaFilter").value) params.set("norma", $("#normaFilter").value);
-        if ($("#sectorFilter").value.trim()) params.set("sector", $("#sectorFilter").value.trim());
-        try {
-          const response = await api("/comite/filtrar-expedientes?" + params.toString());
-          state.expedientes = response && response.resultados || [];
-          renderExpedientes(state.expedientes);
-        } catch (error) {
-          showFeedback(error.message, "error");
-        }
-      }
-
       function showView(viewName) {
         const historical = viewName === "historico";
         const expedientesView = $("#expedientesView");
@@ -533,33 +562,44 @@
 
       document.querySelectorAll(".comite-nav-link").forEach((link) => link.addEventListener("click", () => showView(link.dataset.view)));
 
-      $("#searchForm").addEventListener("submit", searchExpediente);
-      $("#filterButton").addEventListener("click", filterExpedientes);
-      $("#refreshButton").addEventListener("click", loadExpedientes);
-      $("#exportButton").addEventListener("click", async () => {
+      $("#searchForm").addEventListener("submit", loadExpedientes);
+      $("#filterButton").addEventListener("click", () => loadExpedientes());
+      $("#clearFiltersButton").addEventListener("click", limpiarFiltros);
+      $("#estadoFilter").addEventListener("change", () => loadExpedientes());
+      $("#normaFilter").addEventListener("change", () => loadExpedientes());
+      $("#refreshButton").addEventListener("click", () => loadExpedientes());
+      async function exportarDecisiones(event) {
+        const button = event.currentTarget;
+        const formato = button.dataset.formato || "xlsx";
+        button.disabled = true;
         try {
-          const result = await api("/comite/exportar-decisiones");
-          const decisions = result && result.decisiones || [];
-          if (decisions.length) {
-            const columns = ["expediente_id", "codigo_expediente", "accion", "datos", "id_usuario", "fecha"];
-            const csv = [columns.join(","), ...decisions.map((decision) => columns.map((column) => {
-              const value = decision[column] == null ? "" : String(decision[column]);
-              const safeValue = /^[=+\-@]/.test(value) ? "'" + value : value;
-              return '"' + safeValue.replace(/"/g, '""') + '"';
-            }).join(","))].join("\r\n");
-            const blobUrl = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-            const anchor = document.createElement("a");
-            anchor.href = blobUrl;
-            anchor.download = "decisiones-comite.csv";
-            anchor.click();
-            URL.revokeObjectURL(blobUrl);
+          const response = await fetch("/comite/exportar-decisiones?formato=" + encodeURIComponent(formato), {
+            headers: { Authorization: "Bearer " + token }
+          });
+          if (response.status === 401) {
+            localStorage.clear();
+            window.location.href = "/login";
+            return;
           }
-          renderHistory(decisions, "Todavía no hay decisiones para exportar.");
-          showFeedback(decisions.length + (decisions.length === 1 ? " acción persistida exportada." : " acciones persistidas exportadas."), "success");
+          if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            throw new Error(body && typeof body.detail === "string" ? body.detail : "No fue posible generar la exportación.");
+          }
+          const blobUrl = URL.createObjectURL(await response.blob());
+          const anchor = document.createElement("a");
+          anchor.href = blobUrl;
+          anchor.download = "decisiones-comite." + formato;
+          anchor.click();
+          window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+          showFeedback("Exportación generada (" + (formato === "pdf" ? "PDF" : "Excel") + ").", "success");
         } catch (error) {
           showFeedback(error.message, "error");
+        } finally {
+          button.disabled = false;
         }
-      });
+      }
+      $("#exportButton").addEventListener("click", exportarDecisiones);
+      $("#exportPdfButton").addEventListener("click", exportarDecisiones);
       $("#logoutButton").addEventListener("click", () => { localStorage.clear(); window.location.href = "/login"; });
       loadExpedientes();
     })();

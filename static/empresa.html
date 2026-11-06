@@ -12,33 +12,6 @@
   <link rel="stylesheet" href="/static/styles.css?v=20261028">
   <style>
     body { background: #f1f5f9; }
-    .portal { max-width: var(--ancho-contenido); margin: 0 auto; padding: 28px; display: grid; grid-template-columns: 220px 1fr; gap: 24px; }
-    .side, .content, .panel { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
-    .side a { display: block; padding: 11px 12px; color: #334155; text-decoration: none; border-left: 3px solid transparent; margin-bottom: 8px; }
-    .side a.active { color: #256d00; background: #f1f5f9; border-left-color: #3baa01; }
-    .content h2 { color: #256d00; font-size: 23px; margin-bottom: 8px; }
-    .content p { color: #64748b; line-height: 1.5; }
-    .notice { margin: 22px 0; padding: 16px; background: #f1f5f9; border-left: 4px solid #3baa01; color: #1b4b12; border-radius: 8px; }
-    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 16px; margin-top: 20px; }
-    .field { display: flex; flex-direction: column; gap: 8px; }
-    .field input, .field select { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
-    .field.full { grid-column: 1 / -1; }
-    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
-    button { border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
-    .btn-primary { background: #3baa01; color: white; }
-    .btn-secondary { background: #f1f5f9; color: #1b4b12; }
-    .btn-danger { background: #dc2626; color: white; }
-    .appeal-link { display: inline-block; padding: 6px 10px; border-radius: 6px; background: #f1f5f9; color: #256d00; text-decoration: none; font-weight: 700; }
-    .table-wrap { overflow: auto; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-    th { background: #3baa01; color: white; }
-    .status-ok { color: #256d00; font-weight: 600; }
-    .status-no { color: #b42318; font-weight: 600; }
-    .alert { padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; display: none; }
-    .alert.error { background: #fffbeb; color: #7a1f1a; }
-    .alert.success { background: #f1f5f9; color: #185b2e; }
-    @media(max-width: 720px){ .portal { grid-template-columns: 1fr; padding: 18px; } .form-grid{ grid-template-columns: 1fr; } }
   </style>
 </head>
 
@@ -55,6 +28,7 @@
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
         <a class="profile-link" href="/reportes">Reportes</a>
+        <a class="profile-link" href="/pqrs#mis-pqrs">PQRS</a>
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
@@ -74,6 +48,7 @@
           <button class="comite-nav-link" type="button" data-view="informacion">Información técnica</button>
           <button class="comite-nav-link" type="button" data-view="sedes">Sedes</button>
           <button class="comite-nav-link" type="button" data-view="documentos">Documentos</button>
+          <button class="comite-nav-link" type="button" data-view="auditores">Auditores asignados</button>
           <a class="comite-nav-link" style="text-decoration:none" href="/empresas">Datos de mi empresa</a>
         </nav>
         <div class="comite-access-note">
@@ -89,7 +64,7 @@
             <h2 id="viewTitle">Mis solicitudes</h2>
             <p id="viewDescription"></p>
           </div>
-          <button id="refreshButton" class="comite-button secondary" type="button">Actualizar</button>
+          <button id="refreshButton" class="comite-button secondary btn btn-secundario" type="button">Actualizar</button>
         </div>
 
         <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
@@ -137,8 +112,8 @@
                 <textarea id="nuevaObservaciones" rows="2" maxlength="2000"></textarea>
               </div>
               <div class="full comite-decision-actions">
-                <button class="comite-button primary" type="submit">Guardar borrador</button>
-                <button class="comite-button secondary" type="reset">Limpiar</button>
+                <button class="comite-button primary btn btn-primario" type="submit">Guardar borrador</button>
+                <button class="comite-button secondary btn btn-secundario" type="reset">Limpiar</button>
               </div>
             </form>
           </div>
@@ -147,6 +122,7 @@
         <section id="vista-informacion" class="comite-view-hidden"></section>
         <section id="vista-sedes" class="comite-view-hidden"></section>
         <section id="vista-documentos" class="comite-view-hidden"></section>
+        <section id="vista-auditores" class="comite-view-hidden"></section>
       </section>
     </div>
   </main>
@@ -174,7 +150,8 @@
         nueva: ["Nueva solicitud", "Registre los datos básicos. La solicitud solo se vuelve formal cuando la radica."],
         informacion: ["Información técnica", "Norma ISO, tamaño de la empresa, alcance técnico y procesos clave."],
         sedes: ["Sedes", "Sedes de la empresa que forman parte de la solicitud."],
-        documentos: ["Documentos", "Documentos que respaldan la solicitud. Cada archivo conserva sus versiones anteriores."]
+        documentos: ["Documentos", "Documentos que respaldan la solicitud. Cada archivo conserva sus versiones anteriores."],
+        auditores: ["Auditores asignados", "Auditores asignados a sus solicitudes. Si necesita un cambio, solicítelo explicando la razón; el administrador decide."]
       };
       const NECESITAN_SOLICITUD = ["informacion", "sedes", "documentos"];
       const CAMPOS_RADICAR = {
@@ -284,7 +261,9 @@
       const panel = (contenido) => '<div class="comite-panel">' + contenido + "</div>";
       const cargando = (texto) => panel('<div class="comite-loading">' + esc(texto) + "</div>");
       const vacioTabla = (columnas, texto) => '<tr><td colspan="' + columnas + '"><div class="comite-table-empty">' + esc(texto) + "</div></td></tr>";
-      const accion = (nombre, texto, id) => '<button class="comite-table-action" type="button" data-accion="' + nombre + '" data-id="' + esc(id) + '">' + texto + "</button>";
+      // Clases del sistema de botones (tema.css): acciones de fila pequenas; quitar/inactivar/eliminar en rojo de contorno.
+      const claseAccion = (nombre) => /^(quitar|inactivar|borrar)/.test(nombre) ? "btn-peligro-contorno" : nombre === "radicar" ? "btn-primario" : "btn-secundario";
+      const accion = (nombre, texto, id) => '<button class="btn btn-sm ' + claseAccion(nombre) + '" type="button" data-accion="' + nombre + '" data-id="' + esc(id) + '">' + texto + "</button>";
       const fact = (etiqueta, valor) => "<div><dt>" + esc(etiqueta) + "</dt><dd>" + esc(valor) + "</dd></div>";
 
       function nombreNorma(idNorma) {
@@ -319,6 +298,7 @@
         const vista = estado.vista;
         if (vista === "solicitudes") return cargarSolicitudes();
         if (vista === "nueva") return prepararNueva();
+        if (vista === "auditores") return cargarAuditoresAsignados();
         if (!estado.actual) return sinSolicitud(vista);
         if (vista === "informacion") return cargarInformacion();
         if (vista === "sedes") return cargarSedes();
@@ -329,7 +309,7 @@
         $("#vista-" + vista).innerHTML = panel(
           '<div class="comite-empty-state"><span class="comite-empty-icon">+</span>' +
           "<h3>Seleccione una solicitud</h3><p>Elíjala en el selector de arriba o desde Mis solicitudes.</p>" +
-          '<div class="comite-decision-actions" style="justify-content:center"><button class="comite-button primary" type="button" data-ir="solicitudes">Ir a mis solicitudes</button></div></div>'
+          '<div class="comite-decision-actions" style="justify-content:center"><button class="comite-button primary btn btn-primario" type="button" data-ir="solicitudes">Ir a mis solicitudes</button></div></div>'
         );
       }
 
@@ -368,12 +348,12 @@
               "<td>" + chip(s.estado) + "</td>" +
               "<td>" + esc((s.alcance_certificacion || "-").slice(0, 60)) + "</td>" +
               "<td>" + fecha(s.fecha_creacion) + "</td>" +
-              '<td><div class="comite-decision-actions" style="margin-top:0">' +
+              '<td><div class="acciones-tabla">' +
               accion("ir-informacion", "Información", s.id_solicitud) +
               accion("ir-sedes", "Sedes", s.id_solicitud) +
               accion("ir-documentos", "Documentos", s.id_solicitud) +
               (borrador ? accion("radicar", "Radicar", s.id_solicitud) : "") +
-              (rechazada ? '<a class="appeal-link" href="/apelacion?solicitud=' + encodeURIComponent(s.id_solicitud) + '">Apelar</a>' : "") +
+              (rechazada ? '<a class="appeal-link btn btn-secundario btn-sm" href="/apelacion?solicitud=' + encodeURIComponent(s.id_solicitud) + '">Apelar</a>' : "") +
               accion("pdf", "PDF", s.id_solicitud) +
               "</div></td></tr>";
           }).join("");
@@ -381,13 +361,77 @@
           caja.innerHTML = panel(
             '<div class="comite-panel-heading"><div><h3>Solicitudes de la empresa</h3><p>' +
             estado.solicitudes.length + (estado.solicitudes.length === 1 ? " solicitud" : " solicitudes") + "</p></div>" +
-            '<button class="comite-button primary" type="button" data-ir="nueva">Nueva solicitud</button></div>' +
+            '<button class="comite-button primary btn btn-primario" type="button" data-ir="nueva">Nueva solicitud</button></div>' +
             '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Norma</th><th>Estado</th><th>Alcance</th><th>Creada</th><th>Acciones</th></tr></thead><tbody>' +
             (filas || vacioTabla(6, 'Aún no tiene solicitudes. Use "Nueva solicitud" para crear la primera.')) +
             "</tbody></table></div>"
           );
         } catch (error) {
           caja.innerHTML = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      // ---------------- Auditores asignados y solicitudes de cambio ----------------
+      async function cargarAuditoresAsignados() {
+        const caja = $("#vista-auditores");
+        caja.innerHTML = cargando("Cargando auditores asignados...");
+        try {
+          const [asignaciones, cambios] = await Promise.all([
+            api("/asignacion-auditores/"),
+            api("/asignacion-auditores/solicitudes-cambio")
+          ]);
+          const listaCambios = cambios || [];
+          const pendientePor = {};
+          listaCambios.forEach((c) => { if (c.estado === "Pendiente") pendientePor[c.id_asignacion] = true; });
+          const vigentes = (asignaciones || []).filter((a) => !/cancelad/i.test(a.estado_asignacion || ""));
+
+          const filas = vigentes.map((a) => "<tr>" +
+            "<td><strong>" + esc(a.numero_radicado || "-") + "</strong></td>" +
+            "<td>" + esc(a.auditor_nombre || "-") + "</td>" +
+            "<td>" + esc(a.especialidad || "-") + "</td>" +
+            "<td>" + (a.fecha_inicio_planificada ? fecha(a.fecha_inicio_planificada) : "Por programar") + "</td>" +
+            "<td>" + (pendientePor[a.id]
+              ? chip("Cambio solicitado")
+              : accion("solicitar-cambio", "Solicitar cambio", a.id)) + "</td></tr>").join("");
+
+          const filasCambios = listaCambios.map((c) => "<tr>" +
+            "<td>" + esc(c.numero_radicado || "-") + "</td>" +
+            "<td>" + esc(c.auditor_nombre || "-") + "</td>" +
+            "<td>" + esc(c.motivo || "") + "</td>" +
+            "<td>" + chip(c.estado) + "</td>" +
+            "<td>" + esc(c.respuesta || "En revisión") + "</td></tr>").join("");
+
+          caja.innerHTML = panel(
+            '<div class="comite-panel-heading"><div><h3>Auditores asignados</h3><p>' + vigentes.length +
+            (vigentes.length === 1 ? " auditor asignado" : " auditores asignados") + "</p></div></div>" +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Auditor</th><th>Rol</th><th>Visita</th><th>Acción</th></tr></thead><tbody>' +
+            (filas || vacioTabla(5, "Todavía no hay auditores asignados a sus solicitudes.")) +
+            "</tbody></table></div>"
+          ) + panel(
+            '<div class="comite-panel-heading"><div><h3>Mis solicitudes de cambio</h3><p>El administrador revisa cada solicitud y responde.</p></div></div>' +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Auditor</th><th>Razón</th><th>Estado</th><th>Respuesta del administrador</th></tr></thead><tbody>' +
+            (filasCambios || vacioTabla(5, "No ha enviado solicitudes de cambio.")) +
+            "</tbody></table></div>"
+          );
+        } catch (error) {
+          caja.innerHTML = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      async function solicitarCambio(idAsignacion) {
+        const motivo = prompt("Explique la razón justificada por la que solicita cambiar este auditor (mínimo 30 caracteres). El administrador la revisará:");
+        if (motivo === null) return;
+        if (motivo.trim().length < 30) {
+          mostrar("La razón debe tener al menos 30 caracteres para que el administrador pueda evaluarla.", "error");
+          return;
+        }
+        try {
+          const respuesta = await enviar("/asignacion-auditores/" + encodeURIComponent(idAsignacion) + "/solicitar-cambio", "POST", { motivo: motivo.trim() });
+          await cargarAuditoresAsignados();
+          mostrar(respuesta.mensaje || "Solicitud de cambio enviada.", "success");
+        } catch (error) {
           mostrar(error.message, "error");
         }
       }
@@ -458,13 +502,13 @@
             '<div class="portal-form-grid">' +
             '<div class="full"><label for="infoNorma">Norma ISO solicitada</label><div class="comite-search-row">' +
             '<select id="infoNorma">' + opcionesNormas(info.id_norma) + "</select>" +
-            '<button class="comite-button primary" type="button" data-accion="norma">' + (info.id_norma ? "Cambiar norma" : "Registrar norma") + "</button></div></div>" +
+            '<button class="comite-button primary btn btn-primario" type="button" data-accion="norma">' + (info.id_norma ? "Cambiar norma" : "Registrar norma") + "</button></div></div>" +
             '<div><label for="infoEmpleados">Número de empleados</label><div class="comite-search-row">' +
             '<input id="infoEmpleados" type="number" min="1" value="' + esc(info.numero_empleados == null ? "" : info.numero_empleados) + '">' +
-            '<button class="comite-button primary" type="button" data-accion="empleados">' + (info.numero_empleados == null ? "Registrar" : "Editar") + "</button></div></div>" +
+            '<button class="comite-button primary btn btn-primario" type="button" data-accion="empleados">' + (info.numero_empleados == null ? "Registrar" : "Editar") + "</button></div></div>" +
             '<div><label for="infoSedes">Número de sedes</label>' +
             (info.numero_sedes == null
-              ? '<div class="comite-search-row"><input id="infoSedes" type="number" min="1"><button class="comite-button primary" type="button" data-accion="numero-sedes">Registrar</button></div>'
+              ? '<div class="comite-search-row"><input id="infoSedes" type="number" min="1"><button class="comite-button primary btn btn-primario" type="button" data-accion="numero-sedes">Registrar</button></div>'
               : '<input id="infoSedes" type="number" value="' + esc(info.numero_sedes) + '" disabled><p class="comite-muted">Ya registrado.</p>') +
             "</div></div>"
           ) : "";
@@ -474,14 +518,14 @@
             '<div class="comite-panel-heading"><div><h3>Alcance técnico</h3><p>Actividades concretas que cubre la certificación.</p></div></div>' +
             '<div class="comite-table-wrap"><table><thead><tr><th>Descripción</th><th>Estado</th>' + (editable ? "<th>Acciones</th>" : "") + "</tr></thead><tbody>" +
             (info.alcances.map((a) => "<tr><td>" + esc(a.descripcion) + "</td><td>" + chip(a.estado) + "</td>" +
-              (editable ? '<td><div class="comite-decision-actions" style="margin-top:0">' + accion("editar-alcance", "Editar", a.id_alcance) +
+              (editable ? '<td><div class="acciones-tabla">' + accion("editar-alcance", "Editar", a.id_alcance) +
                 accion("estado-alcance", a.estado === "Activo" ? "Desactivar" : "Activar", a.id_alcance) + "</div></td>" : "") +
               "</tr>").join("") || vacioTabla(3, "No hay líneas de alcance registradas.")) +
             "</tbody></table></div>" +
             (editable ? '<div class="comite-detail-section"><h4>' + (alcanceEditado ? "Editar alcance" : "Registrar alcance técnico") + "</h4>" +
               '<label for="alcanceTexto">Descripción</label><textarea id="alcanceTexto" rows="2" maxlength="2000">' + esc(alcanceEditado ? alcanceEditado.descripcion : "") + "</textarea>" +
-              '<div class="comite-decision-actions"><button class="comite-button primary" type="button" data-accion="guardar-alcance">' + (alcanceEditado ? "Guardar cambios" : "Registrar alcance") + "</button>" +
-              (alcanceEditado ? '<button class="comite-button secondary" type="button" data-accion="cancelar-alcance">Cancelar</button>' : "") + "</div></div>" : "")
+              '<div class="comite-decision-actions"><button class="comite-button primary btn btn-primario" type="button" data-accion="guardar-alcance">' + (alcanceEditado ? "Guardar cambios" : "Registrar alcance") + "</button>" +
+              (alcanceEditado ? '<button class="comite-button secondary btn btn-secundario" type="button" data-accion="cancelar-alcance">Cancelar</button>' : "") + "</div></div>" : "")
           );
 
           const procesoEditado = info.procesos.find((p) => p.id_proceso === estado.edicion.proceso);
@@ -489,7 +533,7 @@
             '<div class="comite-panel-heading"><div><h3>Procesos clave</h3><p>Procesos de la empresa que entran en la auditoría.</p></div></div>' +
             '<div class="comite-table-wrap"><table><thead><tr><th>Proceso</th><th>Descripción</th><th>Estado</th>' + (editable ? "<th>Acciones</th>" : "") + "</tr></thead><tbody>" +
             (info.procesos.map((p) => "<tr><td><strong>" + esc(p.nombre) + "</strong></td><td>" + esc(p.descripcion || "-") + "</td><td>" + chip(p.estado) + "</td>" +
-              (editable ? '<td><div class="comite-decision-actions" style="margin-top:0">' + accion("editar-proceso", "Editar", p.id_proceso) +
+              (editable ? '<td><div class="acciones-tabla">' + accion("editar-proceso", "Editar", p.id_proceso) +
                 accion("estado-proceso", p.estado === "Activo" ? "Desactivar" : "Activar", p.id_proceso) + "</div></td>" : "") +
               "</tr>").join("") || vacioTabla(4, "No hay procesos clave registrados.")) +
             "</tbody></table></div>" +
@@ -498,8 +542,8 @@
               '<input id="procesoNombre" type="text" maxlength="150" value="' + esc(procesoEditado ? procesoEditado.nombre : "") + '"></div>' +
               '<div class="full"><label for="procesoDescripcion">Descripción (opcional)</label><textarea id="procesoDescripcion" rows="2" maxlength="2000">' +
               esc(procesoEditado ? procesoEditado.descripcion || "" : "") + "</textarea></div></div>" +
-              '<div class="comite-decision-actions"><button class="comite-button primary" type="button" data-accion="guardar-proceso">' + (procesoEditado ? "Guardar cambios" : "Registrar proceso") + "</button>" +
-              (procesoEditado ? '<button class="comite-button secondary" type="button" data-accion="cancelar-proceso">Cancelar</button>' : "") + "</div></div>" : "")
+              '<div class="comite-decision-actions"><button class="comite-button primary btn btn-primario" type="button" data-accion="guardar-proceso">' + (procesoEditado ? "Guardar cambios" : "Registrar proceso") + "</button>" +
+              (procesoEditado ? '<button class="comite-button secondary btn btn-secundario" type="button" data-accion="cancelar-proceso">Cancelar</button>' : "") + "</div></div>" : "")
           );
 
           const soloLectura = editable ? "" : '<p class="comite-readonly-note">La solicitud ya no está en borrador: su información se puede consultar pero no modificar.</p>';
@@ -589,13 +633,13 @@
 
           const incluidas = panel(
             '<div class="comite-panel-heading"><div><h3>Sedes incluidas</h3><p>' + sedes.length + (sedes.length === 1 ? " sede" : " sedes") + " en la solicitud.</p></div>" +
-            '<button class="comite-button secondary" type="button" data-accion="excel">Exportar a Excel</button></div>' +
+            '<button class="comite-button secondary btn btn-secundario" type="button" data-accion="excel">Exportar a Excel</button></div>' +
             '<div class="comite-table-wrap"><table><thead><tr><th>Sede</th><th>Dirección</th><th>Ciudad</th><th>Departamento</th><th>País</th><th>Principal</th><th>Estado</th>' +
             (editable ? "<th>Acciones</th>" : "") + "</tr></thead><tbody>" +
             (sedes.map((s) => "<tr><td><strong>" + esc(s.nombre_sede) + "</strong></td><td>" + esc(s.direccion) + "</td><td>" + esc(s.ciudad) + "</td>" +
               "<td>" + esc(s.departamento || "-") + "</td><td>" + esc(s.pais || "-") + "</td><td>" + (s.es_principal ? "Sí" : "No") + "</td>" +
               "<td>" + chip(s.estado_sede === "Inactiva" ? "Inactiva" : s.estado_en_solicitud) + "</td>" +
-              (editable ? '<td><div class="comite-decision-actions" style="margin-top:0">' + accion("editar-sede", "Editar", s.id_sede) +
+              (editable ? '<td><div class="acciones-tabla">' + accion("editar-sede", "Editar", s.id_sede) +
                 accion("quitar-sede", "Quitar", s.id_sede) + accion("inactivar-sede", "Inactivar", s.id_sede) + "</div></td>" : "") +
               "</tr>").join("") || vacioTabla(8, "La solicitud todavía no tiene sedes.")) +
             "</tbody></table></div>" +
@@ -610,8 +654,8 @@
             '<div><label for="editarNombre">Nombre de la sede</label><input id="editarNombre" type="text" maxlength="100" value="' + esc(editada.nombre_sede) + '"></div>' +
             '<div><label for="editarPrincipal">Sede principal</label><select id="editarPrincipal"><option value="false">No</option><option value="true"' + (editada.es_principal ? " selected" : "") + ">Sí</option></select></div>" +
             '<div class="full"><label for="editarDireccion">Dirección</label><input id="editarDireccion" type="text" maxlength="255" value="' + esc(editada.direccion) + '"></div></div>' +
-            '<div class="comite-decision-actions"><button class="comite-button primary" type="button" data-accion="guardar-sede">Guardar cambios</button>' +
-            '<button class="comite-button secondary" type="button" data-accion="cancelar-sede">Cancelar</button></div>'
+            '<div class="comite-decision-actions"><button class="comite-button primary btn btn-primario" type="button" data-accion="guardar-sede">Guardar cambios</button>' +
+            '<button class="comite-button secondary btn btn-secundario" type="button" data-accion="cancelar-sede">Cancelar</button></div>'
           ) : "";
 
           const agregar = editable ? '<div class="comite-workspace">' +
@@ -625,7 +669,7 @@
               '<div><label for="sedePais">País</label><input id="sedePais" type="text" maxlength="100" value="Colombia"></div>' +
               '<div><label for="sedePrincipal">Sede principal</label><select id="sedePrincipal"><option value="false">No</option><option value="true">Sí</option></select></div>' +
               '<p class="full comite-readonly-note" style="margin-top:0">Ciudad, departamento y país solo se indican ahora: después no se pueden cambiar.</p>' +
-              '<div class="full comite-decision-actions" style="margin-top:0"><button class="comite-button primary" type="submit">Registrar sede</button></div>' +
+              '<div class="full comite-decision-actions" style="margin-top:0"><button class="comite-button primary btn btn-primario" type="submit">Registrar sede</button></div>' +
               "</form>"
             ) +
             panel(
@@ -633,7 +677,7 @@
               (disponibles.length
                 ? '<label for="sedeDisponible">Sede</label><select id="sedeDisponible">' + disponibles.map((s) =>
                   '<option value="' + esc(s.id_sede) + '">' + esc(s.nombre_sede + " · " + s.ciudad + (s.departamento ? ", " + s.departamento : "")) + "</option>").join("") + "</select>" +
-                  '<div class="comite-decision-actions"><button class="comite-button primary" type="button" data-accion="incluir-sede">Agregar a la solicitud</button></div>'
+                  '<div class="comite-decision-actions"><button class="comite-button primary btn btn-primario" type="button" data-accion="incluir-sede">Agregar a la solicitud</button></div>'
                 : '<p class="comite-muted">No hay otras sedes activas registradas.</p>')
             ) + "</div>" : "";
 
@@ -732,7 +776,7 @@
             '<div class="comite-table-wrap"><table><thead><tr><th>Tipo</th><th>Archivo</th><th>Versión</th><th>Estado</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>' +
             (documentos.map((d) => "<tr><td><strong>" + esc(d.tipo_documento) + "</strong></td><td>" + esc(d.nombre_archivo) + "</td><td>v" + esc(d.version) + "</td>" +
               "<td>" + chip(d.estado) + "</td><td>" + esc(d.observaciones || "-") + "</td>" +
-              '<td><div class="comite-decision-actions" style="margin-top:0">' + accion("ver-doc", "Ver", d.id_documento) + accion("bajar-doc", "Descargar", d.id_documento) +
+              '<td><div class="acciones-tabla">' + accion("ver-doc", "Ver", d.id_documento) + accion("bajar-doc", "Descargar", d.id_documento) +
               (d.estado !== "Aprobado" ? accion("borrar-doc", "Eliminar", d.id_documento) : "") + "</div></td></tr>").join("") ||
               vacioTabla(6, "Todavía no hay documentos adjuntos.")) +
             "</tbody></table></div>"
@@ -822,6 +866,7 @@
           return mostrarVista(nombre.slice(3));
         }
         if (nombre === "radicar") return radicar(id);
+        if (nombre === "solicitar-cambio") return solicitarCambio(id);
         if (nombre === "pdf") return descargar("/solicitudes/" + id + "/pdf", "solicitud-" + id.slice(0, 8) + ".pdf");
         if (estado.vista === "informacion") return accionInformacion(nombre, id);
         if (estado.vista === "sedes") return accionSedes(nombre, id);

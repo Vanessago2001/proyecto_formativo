@@ -448,6 +448,7 @@ async def auditorias_programadas(
     hasta: date | None = None,
     ciudad: str | None = Query(None, max_length=150),
     modalidad: str | None = Query(None, max_length=30),
+    estado: str | None = Query(None, max_length=40),
     usuario: dict = Depends(_validar_admin_o_propio_auditor),
     db: AsyncSession = Depends(get_db),
 ):
@@ -457,7 +458,7 @@ async def auditorias_programadas(
         raise HTTPException(status_code=422, detail="La modalidad debe ser Presencial, Remota o Híbrida.")
     return {
         "auditorias": await AgendaAuditorService(db).consultar_auditorias_programadas(
-            id_usuario, desde, hasta, ciudad, modalidad
+            id_usuario, desde, hasta, ciudad, modalidad, estado
         )
     }
 

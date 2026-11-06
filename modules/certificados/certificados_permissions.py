@@ -3,6 +3,9 @@
 from fastapi import Depends, HTTPException, status
 
 from core.security import get_current_user
+from core.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from modules.permisos_auxiliar.permisos_auxiliar_service import usar_permiso_delegado
 from modules.solicitudes.solicitud_permissions import (
     COLUMNAS_MATRIZ,
     NivelPermiso,
@@ -69,7 +72,10 @@ def tiene_permiso(codigo: str, nombre_rol: str | None) -> bool:
 
 
 def requiere_permiso(codigo: str):
-    async def verificar(current_user: dict = Depends(get_current_user)) -> dict:
+    async def verificar(
+        current_user: dict = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> dict:
         nivel = nivel_permiso(codigo, current_user.get("role_name"))
         if not tiene_permiso(codigo, current_user.get("role_name")):
             descripcion = PERMISOS_M9[codigo][0]
@@ -77,7 +83,13 @@ def requiere_permiso(codigo: str):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permiso {codigo} ({descripcion}) denegado para el rol.",
             )
-        current_user["requiere_aprobacion"] = nivel is NivelPermiso.REQUIERE_APROBACION
+        requiere = nivel is NivelPermiso.REQUIERE_APROBACION
+        # Permiso delegado por el Administrador: el auxiliar actúa sin aprobación.
+        if requiere and await usar_permiso_delegado(db, current_user, codigo, f"{codigo} en certificados"):
+            requiere = False
+            current_user["permiso_delegado"] = True
+            await db.commit()  # el uso queda anotado aunque la ruta sea de solo lectura
+        current_user["requiere_aprobacion"] = requiere
         return current_user
 
     return verificar

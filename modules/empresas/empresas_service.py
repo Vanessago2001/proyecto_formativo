@@ -2,6 +2,7 @@ import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import _normalize_role_name
@@ -39,6 +40,22 @@ class EmpresasService:
         """))
         return [dict(row) for row in result.mappings().all()]
 
+    @staticmethod
+    def _conflicto_unico(error: IntegrityError) -> HTTPException:
+        """
+        `empresa` tiene UNIQUE sobre nit (uq_empresa_nit) y sobre correo
+        (empresa_correo_key). Antes el IntegrityError no se capturaba y el
+        usuario solo veia "No fue posible completar la solicitud (500)".
+        """
+        mensaje = str(getattr(error, "orig", error)).lower()
+        if "nit" in mensaje:
+            detalle = "Ya existe una empresa registrada con ese NIT."
+        elif "correo" in mensaje:
+            detalle = "Ya existe una empresa registrada con ese correo."
+        else:
+            detalle = "Ya existe una empresa registrada con esos datos (NIT o correo)."
+        return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detalle)
+
     async def create_empresa(self, data: dict, id_usuario: str | None = None) -> dict:
         # empresa.id_empresa es UUID sin valor por defecto: hay que generarlo.
         query = text(f"""
@@ -46,7 +63,11 @@ class EmpresasService:
             VALUES (gen_random_uuid(), :nombre, :nit, :ciudad, :direccion, :correo)
             RETURNING {COLUMNAS_EMPRESA};
         """)
-        result = await self.db.execute(query, data)
+        try:
+            result = await self.db.execute(query, data)
+        except IntegrityError as error:
+            await self.db.rollback()
+            raise self._conflicto_unico(error) from error
         empresa = dict(result.mappings().first())
 
         # Una cuenta de empresa queda vinculada a la empresa que registra.
@@ -95,7 +116,11 @@ class EmpresasService:
             RETURNING {COLUMNAS_EMPRESA};
         """)
         data["id_empresa"] = id_empresa
-        result = await self.db.execute(query, data)
+        try:
+            result = await self.db.execute(query, data)
+        except IntegrityError as error:
+            await self.db.rollback()
+            raise self._conflicto_unico(error) from error
         await self.db.commit()
         row = result.mappings().first()
         return dict(row) if row else None

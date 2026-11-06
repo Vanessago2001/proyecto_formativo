@@ -235,33 +235,9 @@
         }
 
 
+        /* Volver: btn btn-secundario (tema.css); aqui solo la separacion. */
         .back-button {
-
-            display: inline-block;
-
             margin-bottom: 20px;
-
-            padding: 10px 16px;
-
-            border-radius: 4px;
-
-            border: 1px solid #cbd5e1;
-
-            background: #fff;
-
-            color: #334155;
-
-            text-decoration: none;
-
-            font-weight: 700;
-
-        }
-
-
-        .back-button:hover {
-
-            background: #f8fafc;
-
         }
 
 
@@ -466,6 +442,16 @@
         }
 
 
+        .doc-preview-msg {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .doc-preview-missing {
+            color: #b42318;
+            font-weight: 600;
+        }
+
         .document-link:hover {
 
             text-decoration: underline;
@@ -480,35 +466,7 @@
             flex-wrap: wrap;
         }
 
-        .btn-review {
-            border: 1px solid transparent;
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-approve {
-            background: #e4f1dc;
-            color: #1f7a1f;
-            border-color: #b7e0a5;
-        }
-
-        .btn-approve:hover {
-            background: #cfe3c5;
-        }
-
-        .btn-reject {
-            background: #fffbeb;
-            color: #b42318;
-            border-color: #f5c2c0;
-        }
-
-        .btn-reject:hover {
-            background: #fdd;
-        }
+        /* Aprobar / Corregir de cada fila: btn btn-primario|btn-peligro-contorno btn-sm (tema.css). */
 
         .message {
 
@@ -585,10 +543,7 @@
             box-sizing: border-box;
             resize: vertical;
             min-height: 96px;
-            padding: 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font: inherit;
+            padding: 8px 10px;
         }
 
         .modal-error {
@@ -602,29 +557,6 @@
             justify-content: flex-end;
             gap: 10px;
             margin-top: 16px;
-        }
-
-        .modal-actions button {
-            border-radius: 6px;
-            border: 1px solid transparent;
-            padding: 9px 14px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .modal-cancel {
-            background: #f1f5f9;
-            color: #334155;
-            border-color: #cbd5e1;
-        }
-
-        .modal-confirm {
-            background: #b42318;
-            color: #fff;
-        }
-
-        .modal-confirm:hover {
-            background: #991b1b;
         }
 
         /* Confirmacion antes de aprobar. El "Aprobar" no pide aviso y la
@@ -715,43 +647,9 @@
             margin-top: 20px;
         }
 
-        .confirm-actions button {
+        .confirm-actions .btn {
             flex: 1 1 0;
             min-width: 120px;
-            padding: 11px 14px;
-            border: 1px solid transparent;
-            border-radius: 10px;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
-        }
-
-        .confirm-cancelar {
-            background: #f1f5f9;
-            color: #334155;
-            border-color: #cbd5e1;
-        }
-
-        .confirm-cancelar:hover {
-            background: #e2e8f0;
-        }
-
-        .confirm-aceptar {
-            background: linear-gradient(180deg, #45b800, #3BAA01);
-            color: #fff;
-            box-shadow: 0 6px 16px rgba(59, 170, 1, .28);
-        }
-
-        .confirm-aceptar:hover {
-            background: linear-gradient(180deg, #3fae05, #348f04);
-            transform: translateY(-1px);
-            box-shadow: 0 9px 20px rgba(59, 170, 1, .34);
-        }
-
-        .confirm-actions button:focus-visible {
-            outline: 2px solid #1f5c0a;
-            outline-offset: 2px;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -759,13 +657,6 @@
                 animation: none;
             }
 
-            .confirm-actions button {
-                transition: none;
-            }
-
-            .confirm-aceptar:hover {
-                transform: none;
-            }
         }
 
         .toast {
@@ -950,7 +841,7 @@
                         <div class="admin-header" style="margin-bottom: 14px;">
                 <a
                     href="/banco-auditores"
-                    class="back-button"
+                    class="btn btn-secundario back-button"
                 >
                     ← Volver al banco de auditores
                 </a>
@@ -1277,10 +1168,10 @@
         ></textarea>
         <p id="revisionModalError" class="modal-error hidden"></p>
         <div class="modal-actions">
-            <button type="button" class="modal-cancel" id="revisionCancelar">
+            <button type="button" class="btn btn-secundario modal-cancel" id="revisionCancelar">
                 Cancelar
             </button>
-            <button type="button" class="modal-confirm" id="revisionConfirmar">
+            <button type="button" class="btn btn-peligro modal-confirm" id="revisionConfirmar">
                 Rechazar
             </button>
         </div>
@@ -1311,10 +1202,10 @@
         </p>
 
         <div class="confirm-actions">
-            <button type="button" class="confirm-cancelar" id="confirmCancelar">
+            <button type="button" class="btn btn-secundario confirm-cancelar" id="confirmCancelar">
                 Cancelar
             </button>
-            <button type="button" class="confirm-aceptar" id="confirmAceptar">
+            <button type="button" class="btn btn-primario confirm-aceptar" id="confirmAceptar">
                 Sí, aprobar
             </button>
         </div>
@@ -1873,8 +1764,8 @@
                         <td>
                             ${item.estado_validacion === "Pendiente" ? `
                                 <div class="action-group">
-                                    <button type="button" class="btn-review btn-approve" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
-                                    <button type="button" class="btn-review btn-reject" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
+                                    <button type="button" class="btn btn-primario btn-sm btn-review btn-approve" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
+                                    <button type="button" class="btn btn-peligro-contorno btn-sm btn-review btn-reject" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
                                 </div>
                             ` : etiquetaAccionRevisada(item.estado_validacion)}
                         </td>
@@ -2159,14 +2050,16 @@
                         String(archivo || "")
                     );
 
+                // La vista previa no se incrusta directamente: si el archivo no
+                // existe en este servidor (la base es compartida, pero la carpeta
+                // uploads/ es local de cada equipo), /uploads responde un JSON
+                // {"detail":"Not Found"} y el <embed> mostraba un cuadro negro con
+                // el visor de JSON del navegador ("Dar formato al texto").
+                // prepararVistasPrevias() comprueba primero que el archivo exista.
                 const previewHtml =
                     !archivo
                         ? "-"
-                        : esImagen
-                            ? "<a href=\"" + escapeHtml(archivo) + "\" target=\"_blank\"><img src=\"" + escapeHtml(archivo) + "\" alt=\"Vista previa\" class=\"document-preview-thumb\" style=\"max-width: 92px; max-height: 92px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 6px;\"></a>"
-                            : esPdf
-                                ? "<embed src=\"" + escapeHtml(archivo) + "\" type=\"application/pdf\" style=\"width: 100%; max-width: 120px; height: 95px; border: 1px solid #e2e8f0; border-radius: 6px;\">"
-                                : "<a href=\"" + escapeHtml(archivo) + "\" target=\"_blank\" class=\"document-link\">Ver documento</a>";
+                        : "<div class=\"doc-preview\" data-archivo=\"" + escapeHtml(archivo) + "\" data-tipo=\"" + (esImagen ? "imagen" : esPdf ? "pdf" : "otro") + "\"><span class=\"doc-preview-msg\">Cargando vista previa...</span></div>";
 
                 rows += `
 
@@ -2209,6 +2102,9 @@
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             class="document-link"
+                                            data-doc-link="${escapeHtml(
+                                                archivo
+                                            )}"
                                         >
                                             Ver documento
                                         </a>
@@ -2225,8 +2121,8 @@
                         <td>
                             <div class="action-group">
                             ${item.estado_revision === "Pendiente" ? `
-                                <button type="button" class="btn-review btn-approve" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
-                                <button type="button" class="btn-review btn-reject" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
+                                <button type="button" class="btn btn-primario btn-sm btn-review btn-approve" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
+                                <button type="button" class="btn btn-peligro-contorno btn-sm btn-review btn-reject" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
                             ` : etiquetaAccionRevisada(item.estado_revision)}
                             </div>
                         </td>
@@ -2291,6 +2187,81 @@
             </div>
 
         `;
+
+        prepararVistasPrevias(
+            container
+        );
+
+    }
+
+
+    /* =====================================================
+       VISTA PREVIA DE DOCUMENTOS
+       Comprueba con HEAD que el archivo exista antes de
+       incrustarlo; si no, muestra un aviso legible.
+    ====================================================== */
+
+    const disponibilidadArchivos = new Map();
+
+    function archivoDisponible(
+        url
+    ) {
+
+        if (!disponibilidadArchivos.has(url)) {
+
+            disponibilidadArchivos.set(
+                url,
+                fetch(url, { method: "HEAD", cache: "no-store" })
+                    .then((respuesta) => {
+                        const tipo = respuesta.headers.get("content-type") || "";
+                        return respuesta.ok && !tipo.includes("application/json");
+                    })
+                    .catch(() => false)
+            );
+
+        }
+
+        return disponibilidadArchivos.get(url);
+
+    }
+
+    function prepararVistasPrevias(
+        container
+    ) {
+
+        container.querySelectorAll(".doc-preview[data-archivo]").forEach(async (caja) => {
+
+            const url = caja.dataset.archivo;
+            const disponible = await archivoDisponible(url);
+
+            if (!disponible) {
+
+                caja.innerHTML = "<span class=\"doc-preview-msg doc-preview-missing\">Archivo no disponible en el servidor</span>";
+
+                container.querySelectorAll("a[data-doc-link]").forEach((enlace) => {
+                    if (enlace.dataset.docLink !== url) return;
+                    const aviso = document.createElement("span");
+                    aviso.className = "doc-preview-msg doc-preview-missing";
+                    aviso.textContent = "No disponible";
+                    aviso.title = "El archivo registrado no se encuentra en la carpeta uploads de este servidor.";
+                    enlace.replaceWith(aviso);
+                });
+
+                return;
+
+            }
+
+            const seguro = escapeHtml(url);
+
+            if (caja.dataset.tipo === "imagen") {
+                caja.innerHTML = "<a href=\"" + seguro + "\" target=\"_blank\" rel=\"noopener noreferrer\"><img src=\"" + seguro + "\" alt=\"Vista previa\" class=\"document-preview-thumb\" style=\"max-width: 92px; max-height: 92px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 6px;\"></a>";
+            } else if (caja.dataset.tipo === "pdf") {
+                caja.innerHTML = "<iframe src=\"" + seguro + "#toolbar=0&navpanes=0\" title=\"Vista previa del PDF\" loading=\"lazy\" style=\"width: 120px; height: 95px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff;\"></iframe>";
+            } else {
+                caja.innerHTML = "<a href=\"" + seguro + "\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"document-link\">Ver documento</a>";
+            }
+
+        });
 
     }
 

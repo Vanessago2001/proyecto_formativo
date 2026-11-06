@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from modules.aprobaciones.aprobacion_service import AprobacionService
+from modules.aprobaciones.aprobacion_service import AprobacionService, respuesta_permiso_delegado
 from modules.solicitudes import trazabilidad_aprobaciones  # noqa: F401  (registra las acciones REQ)
 from modules.solicitudes.sede_excel import TIPO_XLSX, generar_excel
 from modules.solicitudes.solicitud_pdf import generar_pdf_solicitud
@@ -68,6 +68,10 @@ async def _dejar_pendiente(
         codigo, str(solicitud["id_empresa"]), {**datos, "id_solicitud": str(id_solicitud)},
         detalle, usuario,
     )
+    # Auxiliar con permiso delegado: la acción ya se ejecutó.
+    delegada = respuesta_permiso_delegado(aprobacion)
+    if delegada is not None:
+        return delegada
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
         content=jsonable_encoder({

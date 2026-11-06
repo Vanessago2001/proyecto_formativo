@@ -7,12 +7,14 @@ Por eso el router entero lleva el límite de peticiones por IP como dependencia.
 Las páginas del portal las sirve `paginas_router.py`, en este mismo módulo.
 """
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from modules.consultas_p.constancia_pdf import generar_pdf_constancia
-from modules.consultas_p.consultas_service import ConsultasPublicasService
+from modules.consultas_p.consultas_service import ConsultasPublicasService, normalizar_codigo
 from modules.consultas_p.rate_limit import limitar_consultas
 
 router = APIRouter(
@@ -70,9 +72,14 @@ async def validar_autenticidad(
 )
 async def descargar_constancia_pdf(
     nit: str,
+    codigo: str = "",
     db: AsyncSession = Depends(get_db),
 ):
-    """Devuelve la constancia con los datos de la tarjeta como PDF descargable."""
+    """Devuelve la constancia como PDF descargable.
+
+    Solo se emite si la empresa está activa y tiene certificados vigentes. Con
+    `codigo` incluye únicamente ese certificado; sin él, todos los vigentes.
+    """
     empresas = await ConsultasPublicasService(db).buscar_por_nit(nit)
     if not empresas:
         raise HTTPException(
@@ -80,8 +87,30 @@ async def descargar_constancia_pdf(
             detail="No hay empresas registradas con ese NIT.",
         )
     empresa = empresas[0]
-    pdf = generar_pdf_constancia(empresa)
-    nombre_archivo = f"constancia-{empresa.get('nit') or 'empresa'}.pdf"
+    vigentes = empresa.get("certificados") or []
+    if not vigentes:
+        detalle = empresa.get("mensaje") or (
+            "La empresa no tiene certificados vigentes: no hay constancia para descargar."
+        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detalle)
+
+    codigo_buscado = normalizar_codigo(codigo)
+    if codigo_buscado:
+        vigentes = [
+            c for c in vigentes
+            if normalizar_codigo(c.get("codigo_verificacion")) == codigo_buscado
+        ]
+        if not vigentes:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Ese código no corresponde a un certificado vigente de la empresa.",
+            )
+
+    pdf = generar_pdf_constancia({**empresa, "certificados": vigentes})
+    sufijo = f"-{vigentes[0].get('codigo_verificacion')}" if codigo_buscado else ""
+    nombre_archivo = re.sub(
+        r"[^A-Za-z0-9._-]", "", f"constancia-{empresa.get('nit') or 'empresa'}{sufijo}.pdf"
+    )
 
     return Response(
         content=pdf,

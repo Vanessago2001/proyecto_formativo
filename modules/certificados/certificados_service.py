@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import os
+import re
 import tempfile
 from datetime import date, timedelta
 from pathlib import Path
@@ -22,6 +23,23 @@ ESTADO_PENDIENTE_FIRMA = "PENDIENTE_FIRMA"
 ESTADO_VIGENTE = "VIGENTE"
 ESTADO_SUSPENDIDO = "SUSPENDIDO"
 ESTADOS_VISIBLES_PUBLICOS = {ESTADO_VIGENTE}
+
+# Criterio único de "certificado visible en el portal público": publicado,
+# vigente y de una empresa activa. La firma PAdES NO es requisito para
+# consultarlo (solo para descargar el PDF firmado); antes unas consultas la
+# exigían y otras no, y "Publicados" marcaba 0 mientras la consulta por código
+# sí encontraba el certificado.
+_CRITERIO_PUBLICO_SQL = (
+    "{p}publico_certificado IS TRUE"
+    " AND TRIM(UPPER({p}estado_certificado)) = 'VIGENTE'"
+    " AND {p}fecha_vencimiento >= CURRENT_DATE"
+    " AND NOT EXISTS ("
+    "SELECT 1 FROM solicitud s_pub JOIN empresa e_pub ON e_pub.id_empresa = s_pub.id_empresa"
+    " WHERE (s_pub.id_solicitud = {p}id_solicitud OR s_pub.id_certificado = {p}id_certificado)"
+    " AND LOWER(TRIM(COALESCE(e_pub.estado, 'Activa'))) <> 'activa')"
+)
+CRITERIO_PUBLICO = _CRITERIO_PUBLICO_SQL.format(p="certificado.")
+CRITERIO_PUBLICO_C = _CRITERIO_PUBLICO_SQL.format(p="c.")
 
 
 def es_usuario_empresa(usuario: dict) -> bool:
@@ -126,7 +144,7 @@ class CertificadosService:
     async def listar(self, usuario: dict, limite: int = 100, desplazamiento: int = 0) -> list[dict]:
         params: dict = {"limite": limite, "desplazamiento": desplazamiento}
         if es_usuario_publico(usuario):
-            resultado = await self.db.execute(text("""
+            resultado = await self.db.execute(text(f"""
                 SELECT c.codigo_verificacion, c.estado_certificado,
                        c.fecha_emision, c.fecha_vencimiento,
                        s.numero_radicado, e.nombre AS empresa, e.nit,
@@ -135,15 +153,7 @@ class CertificadosService:
                 JOIN solicitud s ON s.id_solicitud = c.id_solicitud
                 JOIN empresa e ON e.id_empresa = s.id_empresa
                 LEFT JOIN norma n ON n.id_norma = s.id_norma
-                WHERE c.publico_certificado IS TRUE
-                                    AND c.id_firmante IS NOT NULL
-                                      AND c.huella_firmante IS NOT NULL
-                                      AND c.codigo_hash IS NOT NULL
-                                      AND c.huella_pdf IS NOT NULL
-                                    AND c.id_firmante IS NOT NULL
-                                    AND c.codigo_hash IS NOT NULL
-                  AND TRIM(UPPER(c.estado_certificado)) = 'VIGENTE'
-                  AND c.fecha_vencimiento >= CURRENT_DATE
+                WHERE {CRITERIO_PUBLICO_C}
                 ORDER BY c.fecha_emision DESC NULLS LAST
                 LIMIT :limite OFFSET :desplazamiento;
             """), params)
@@ -547,22 +557,13 @@ class CertificadosService:
         return self._leer_pdf_firmado(id_certificado, certificado.get("huella_pdf"))
 
     async def pdf_publico_firmado(self, codigo: str) -> bytes:
-        resultado = await self.db.execute(text("""
-            SELECT c.id_certificado, c.huella_pdf
-            FROM certificado c
-            WHERE c.codigo_verificacion = :codigo
-              AND c.publico_certificado IS TRUE
-              AND c.id_firmante IS NOT NULL
-              AND c.huella_firmante IS NOT NULL
-              AND c.codigo_hash IS NOT NULL
-                              AND c.huella_pdf IS NOT NULL
-              AND TRIM(UPPER(c.estado_certificado)) = 'VIGENTE'
-              AND c.fecha_vencimiento >= CURRENT_DATE;
-        """), {"codigo": codigo})
-        fila = resultado.mappings().first()
-        if not fila:
-            raise HTTPException(status_code=404, detail="Certificado público no encontrado.")
-        return self._leer_pdf_firmado(fila["id_certificado"], fila["huella_pdf"])
+        certificado = await self._certificado_publico(codigo)
+        if not certificado["firmado"]:
+            raise HTTPException(
+                status_code=404,
+                detail="Este certificado no tiene un PDF con firma digital disponible para descarga.",
+            )
+        return self._leer_pdf_firmado(certificado["id_certificado"], certificado["huella_pdf"])
 
     async def _registrar_historial(
         self,
@@ -736,34 +737,75 @@ class CertificadosService:
         """), {"id_certificado": str(id_certificado)})
         return [dict(fila) for fila in resultado.mappings().all()]
 
+    async def _certificado_publico(self, codigo: str) -> dict:
+        """
+        Certificado vigente y publicado en el portal que corresponde a `codigo`.
+
+        El código se compara sin distinguir mayúsculas, espacios ni guiones (el
+        mismo criterio de `/api/consultas-publicas/validar`), para que el código
+        copiado del PDF se encuentre. La firma PAdES ya no es requisito para
+        consultarlo: se informa en `firmado` y solo condiciona la descarga del
+        PDF firmado. Antes se exigía y los certificados vigentes sin firma
+        respondían "Certificado público no encontrado".
+        """
+        codigo_normalizado = re.sub(r"[^A-Z0-9]", "", (codigo or "").upper())
+        fila = None
+        if codigo_normalizado:
+            resultado = await self.db.execute(text("""
+                SELECT
+                    c.id_certificado, c.codigo_verificacion,
+                    TRIM(c.estado_certificado) AS estado_certificado, c.fecha_emision,
+                    c.fecha_vencimiento, c.huella_pdf,
+                    c.huella_firmante AS huella_certificado,
+                    (c.id_firmante IS NOT NULL AND c.huella_firmante IS NOT NULL
+                     AND c.codigo_hash IS NOT NULL AND c.huella_pdf IS NOT NULL) AS firmado,
+                    firmante.nombre AS firmante, e.nombre AS empresa,
+                    e.nit, e.estado AS estado_empresa,
+                    n.codigo AS norma_codigo, n.nombre AS norma,
+                    n.version AS norma_version,
+                    COALESCE(a.descripcion, s.alcance_certificacion) AS alcance
+                FROM certificado c
+                JOIN solicitud s
+                  ON s.id_solicitud = c.id_solicitud
+                  OR s.id_certificado = c.id_certificado
+                JOIN empresa e ON e.id_empresa = s.id_empresa
+                LEFT JOIN norma n ON n.id_norma = s.id_norma
+                LEFT JOIN alcance_solicitud a ON a.id_alcance = c.id_alcance
+                LEFT JOIN usuario firmante ON firmante.id_usuario = c.id_firmante
+                WHERE regexp_replace(UPPER(COALESCE(c.codigo_verificacion, '')), '[^A-Z0-9]', '', 'g') = :codigo
+                  AND c.publico_certificado IS TRUE
+                  AND TRIM(UPPER(c.estado_certificado)) = 'VIGENTE'
+                  AND c.fecha_vencimiento >= CURRENT_DATE
+                ORDER BY c.fecha_emision DESC NULLS LAST
+                LIMIT 1;
+            """), {"codigo": codigo_normalizado})
+            fila = resultado.mappings().first()
+        if not fila:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    "Certificado público no encontrado: el código no corresponde a un "
+                    "certificado vigente publicado en el portal."
+                ),
+            )
+        certificado = dict(fila)
+        estado_empresa = str(certificado.get("estado_empresa") or "Activa").strip()
+        if estado_empresa.lower() != "activa":
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"La empresa titular figura como {estado_empresa.lower()} en CertiSENA: "
+                    "el certificado no está vigente."
+                ),
+            )
+        certificado["firmado"] = bool(certificado.get("firmado"))
+        return certificado
+
     async def publico(self, codigo: str) -> dict:
-        resultado = await self.db.execute(text("""
-            SELECT
-                c.codigo_verificacion, c.estado_certificado, c.fecha_emision,
-                c.fecha_vencimiento, c.huella_pdf,
-                c.huella_firmante AS huella_certificado,
-                firmante.nombre AS firmante, e.nombre AS empresa,
-                e.nit, n.codigo AS norma_codigo, n.nombre AS norma,
-                n.version AS norma_version, a.descripcion AS alcance
-            FROM certificado c
-            JOIN solicitud s ON s.id_solicitud = c.id_solicitud
-            JOIN empresa e ON e.id_empresa = s.id_empresa
-            LEFT JOIN norma n ON n.id_norma = s.id_norma
-            LEFT JOIN alcance_solicitud a ON a.id_alcance = c.id_alcance
-            LEFT JOIN usuario firmante ON firmante.id_usuario = c.id_firmante
-            WHERE c.codigo_verificacion = :codigo
-                            AND c.publico_certificado IS TRUE
-                            AND c.id_firmante IS NOT NULL
-                              AND c.huella_firmante IS NOT NULL
-                              AND c.codigo_hash IS NOT NULL
-                              AND c.huella_pdf IS NOT NULL
-              AND TRIM(UPPER(c.estado_certificado)) = 'VIGENTE'
-                            AND c.fecha_vencimiento >= CURRENT_DATE;
-        """), {"codigo": codigo})
-        certificado = resultado.mappings().first()
-        if not certificado:
-            raise HTTPException(status_code=404, detail="Certificado público no encontrado.")
-        return dict(certificado)
+        certificado = await self._certificado_publico(codigo)
+        certificado.pop("id_certificado", None)
+        certificado.pop("estado_empresa", None)
+        return certificado
 
     async def actualizar_alcance(self, id_certificado: UUID, id_alcance: UUID, usuario: dict) -> dict:
         certificado = await self._obtener(id_certificado)
@@ -803,7 +845,7 @@ class CertificadosService:
         return await self._obtener(id_certificado)
 
     async def metricas(self) -> dict:
-        resultado = await self.db.execute(text("""
+        resultado = await self.db.execute(text(f"""
             SELECT
                 COUNT(*) AS total,
                 COUNT(*) FILTER (
@@ -813,13 +855,7 @@ class CertificadosService:
                 COUNT(*) FILTER (WHERE TRIM(UPPER(estado_certificado)) = 'SUSPENDIDO') AS suspendidos,
                 COUNT(*) FILTER (WHERE TRIM(UPPER(estado_certificado)) = 'CANCELADO') AS cancelados,
                 COUNT(*) FILTER (
-                    WHERE publico_certificado IS TRUE
-                                            AND id_firmante IS NOT NULL
-                                              AND huella_firmante IS NOT NULL
-                                              AND codigo_hash IS NOT NULL
-                                              AND huella_pdf IS NOT NULL
-                      AND TRIM(UPPER(estado_certificado)) = 'VIGENTE'
-                      AND fecha_vencimiento >= CURRENT_DATE
+                    WHERE {CRITERIO_PUBLICO}
                 ) AS publicados,
                 COUNT(*) FILTER (
                     WHERE fecha_vencimiento BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
@@ -830,19 +866,13 @@ class CertificadosService:
         return dict(resultado.mappings().one())
 
     async def metricas_publicas(self) -> dict:
-        resultado = await self.db.execute(text("""
+        resultado = await self.db.execute(text(f"""
             SELECT COUNT(*) AS total,
                    COUNT(*) FILTER (
                        WHERE fecha_vencimiento <= CURRENT_DATE + INTERVAL '30 days'
                    ) AS proximos_a_vencer
             FROM certificado
-            WHERE publico_certificado IS TRUE
-                            AND id_firmante IS NOT NULL
-                              AND huella_firmante IS NOT NULL
-                              AND codigo_hash IS NOT NULL
-                              AND huella_pdf IS NOT NULL
-              AND TRIM(UPPER(estado_certificado)) = 'VIGENTE'
-              AND fecha_vencimiento >= CURRENT_DATE;
+            WHERE {CRITERIO_PUBLICO};
         """))
         metricas = resultado.mappings().one()
         total = metricas["total"]

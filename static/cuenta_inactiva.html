@@ -18,11 +18,13 @@
       flex-direction: column;
     }
 
+    /* La tarjeta arranca arriba (28px bajo el encabezado), como el resto de pantallas. */
     .cuenta-main {
       flex: 1;
-      display: grid;
-      place-items: center;
-      padding: 44px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 28px 20px;
     }
 
     .cuenta-card {
@@ -78,41 +80,6 @@
       flex-wrap: wrap;
       gap: 10px;
       margin-top: 24px;
-    }
-
-    .cuenta-acciones .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 40px;
-      padding: 10px 18px;
-      border: 1px solid transparent;
-      border-radius: 7px;
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: none;
-      cursor: pointer;
-    }
-
-    .cuenta-acciones .btn-principal {
-      background: #3baa01;
-      color: #fff;
-    }
-
-    .cuenta-acciones .btn-principal:hover {
-      background: #256d00;
-    }
-
-    .cuenta-acciones .btn-secundario {
-      border-color: #cbd5e1;
-      background: #fff;
-      color: #334155;
-    }
-
-    .cuenta-acciones .btn-secundario:hover {
-      border-color: #3baa01;
-      background: #f1f8ed;
-      color: #256d00;
     }
 
     .cuenta-footer {
@@ -173,7 +140,7 @@
       </div>
 
       <div class="cuenta-acciones">
-        <button type="button" class="btn btn-principal" id="btnCerrarSesion">
+        <button type="button" class="btn btn-primario btn-principal" id="btnCerrarSesion">
           Cerrar sesión
         </button>
         <a class="btn btn-secundario" href="/">Volver al inicio</a>

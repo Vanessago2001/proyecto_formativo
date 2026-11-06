@@ -262,53 +262,20 @@
       gap: 7px;
     }
 
-    .audit-action {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 30px;
-      padding: 6px 10px;
-      border: 1px solid #3baa01;
-      border-radius: 5px;
-      background: #fff;
-      color: #256d00;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 700;
-      white-space: nowrap;
-      transition: background .18s ease, border-color .18s ease, color .18s ease;
+    /* Acciones de fila y de documentos: btn btn-sm + variante (tema.css).
+       styles.css aplica `.comite-page button { font: inherit }`, que pisa el peso
+       y el tamano del sistema; aqui se devuelven. */
+    .auditores-page .btn,
+    .auditores-page .comite-button {
+      font-size: var(--boton-texto);
+      font-weight: var(--peso-fuerte);
+      line-height: 1.2;
     }
 
-    .audit-action:hover {
-      background: #f1f8ed;
+    .auditores-page .btn.btn-sm {
+      font-size: var(--boton-texto-sm);
     }
 
-    .audit-action.danger {
-      border-color: #efb5b1;
-      color: #b42318;
-    }
-
-    .audit-action.danger:hover {
-      background: #fff1f0;
-      border-color: #b42318;
-    }
-
-    .audit-action.success {
-      border-color: #b8dfaa;
-      color: #2d750b;
-    }
-
-    .audit-action.success:hover {
-      background: #edf8e9;
-      border-color: #2d750b;
-    }
-
-    .audit-action:disabled {
-      cursor: not-allowed;
-      opacity: .55;
-    }
-
-    .audit-action:focus-visible,
     .audit-pagination button:focus-visible,
     .audit-tab:focus-visible,
     .audit-icon-button:focus-visible {
@@ -842,11 +809,6 @@
       gap: 5px;
     }
 
-    .audit-doc-actions .audit-action {
-      min-height: 28px;
-      padding: 5px 8px;
-      font-size: 10px;
-    }
 
     .audit-unavailable {
       color: #a5261e;
@@ -1240,6 +1202,7 @@
       </div>
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
+        <a class="profile-link" href="/reportes">Reportes</a>
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button class="comite-logout js-logout" type="button">Cerrar sesión</button>
       </div>
@@ -1280,7 +1243,7 @@
             <h2>Auditores registrados</h2>
             <p>Consulta la hoja de vida, los documentos, los conflictos de interés y las certificaciones de cada auditor.</p>
           </div>
-          <button id="btnRecargar" class="comite-button secondary" type="button">Actualizar</button>
+          <button id="btnRecargar" class="btn btn-secundario comite-button secondary" type="button">Actualizar</button>
         </div>
 
         <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>
@@ -1334,7 +1297,7 @@
             <label for="busquedaAuditor">Buscar auditor</label>
             <div class="audit-search-row">
               <input id="busquedaAuditor" type="search" autocomplete="off" placeholder="Nombre, tipo o número de documento">
-              <button id="btnLimpiar" class="comite-button secondary" type="button">Limpiar</button>
+              <button id="btnLimpiar" class="btn btn-secundario comite-button secondary" type="button">Limpiar</button>
             </div>
           </div>
           <div class="audit-filter">
@@ -1410,8 +1373,8 @@
       </div>
 
       <div class="audit-modal-foot">
-        <button class="comite-button secondary" type="button" id="btnVolverListado">Volver al listado</button>
-        <button class="comite-button primary" type="button" id="btnDetalleEstado" hidden></button>
+        <button class="btn btn-secundario comite-button secondary" type="button" id="btnVolverListado">Volver al listado</button>
+        <button class="btn btn-primario comite-button primary" type="button" id="btnDetalleEstado" hidden></button>
       </div>
     </div>
   </div>
@@ -1439,8 +1402,8 @@
         <div class="audit-confirm-error" id="confirmarError" role="alert"></div>
       </div>
       <div class="audit-modal-foot">
-        <button class="comite-button secondary" type="button" id="btnCancelarConfirmar">Cancelar</button>
-        <button class="comite-button danger" type="button" id="btnEjecutarConfirmar">Confirmar</button>
+        <button class="btn btn-secundario comite-button secondary" type="button" id="btnCancelarConfirmar">Cancelar</button>
+        <button class="btn btn-peligro comite-button danger" type="button" id="btnEjecutarConfirmar">Confirmar</button>
       </div>
     </div>
   </div>
@@ -1814,7 +1777,7 @@
                   <span class="icono">!</span>
                   <strong>No se pudo cargar el listado</strong>
                   <p>${escapar(error.message || "Ocurrió un error al consultar los auditores.")}</p>
-                  <button class="comite-button secondary" type="button" data-reintentar>Reintentar</button>
+                  <button class="btn btn-secundario comite-button secondary" type="button" data-reintentar>Reintentar</button>
                 </div>
               </td>
             </tr>`;
@@ -1866,7 +1829,7 @@
                   <span class="icono">○</span>
                   <strong>No hay auditores registrados</strong>
                   <p>En el sistema todavía no existen cuentas con el rol Auditor.</p>
-                  <button class="comite-button secondary" type="button" data-reintentar>Actualizar</button>
+                  <button class="btn btn-secundario comite-button secondary" type="button" data-reintentar>Actualizar</button>
                 </div>
               </td>
             </tr>`;
@@ -1887,7 +1850,7 @@
                     ? "Ningún auditor coincide con el texto o el estado seleccionado. Prueba con otros criterios."
                     : "No hay auditores para mostrar."}</p>
                   ${hayFiltros
-                    ? '<button class="comite-button secondary" type="button" data-limpiar-filtros>Limpiar filtros</button>'
+                    ? '<button class="btn btn-secundario comite-button secondary" type="button" data-limpiar-filtros>Limpiar filtros</button>'
                     : ""}
                 </div>
               </td>
@@ -1933,9 +1896,9 @@
                 <td>${badgeEstado(auditor.estado)}</td>
                 <td>
                   <div class="audit-actions">
-                    <button class="audit-action" type="button" data-accion="detalle" data-id="${id}">Detalles</button>
+                    <button class="btn btn-secundario btn-sm audit-action" type="button" data-accion="detalle" data-id="${id}">Detalles</button>
                     ${puedeGestionar
-                      ? `<button class="audit-action ${estado ? "danger" : "success"}" type="button"
+                      ? `<button class="btn btn-sm audit-action ${estado ? "btn-peligro-contorno danger" : "btn-secundario success"}" type="button"
                            data-accion="estado" data-id="${id}" data-nombre="${escapar(auditor.nombre || "")}"
                            data-estado="${estado ? "Inactivo" : "Activo"}">
                            ${estado ? "Inactivar" : "Reactivar"}
@@ -2064,7 +2027,7 @@
               <span class="icono">!</span>
               <strong>No se pudo cargar la hoja de vida</strong>
               <p>${escapar(error.message || "Ocurrió un error al consultar el auditor.")}</p>
-              <button class="comite-button secondary" type="button" data-reintentar-detalle>Reintentar</button>
+              <button class="btn btn-secundario comite-button secondary" type="button" data-reintentar-detalle>Reintentar</button>
             </div>`;
         }
       }
@@ -2311,9 +2274,9 @@
             </div>
             <div class="audit-doc-actions">
               ${documento.archivo_disponible
-                ? `<button class="audit-action" type="button" data-doc-ver="${escapar(documento.id_documento)}"
+                ? `<button class="btn btn-secundario btn-sm audit-action" type="button" data-doc-ver="${escapar(documento.id_documento)}"
                      data-id-usuario="${escapar(idUsuario)}">Ver</button>
-                   <button class="audit-action" type="button" data-doc-descargar="${escapar(documento.id_documento)}"
+                   <button class="btn btn-secundario btn-sm audit-action" type="button" data-doc-descargar="${escapar(documento.id_documento)}"
                      data-id-usuario="${escapar(idUsuario)}">Descargar</button>`
                 : `<span class="audit-unavailable">Archivo no disponible</span>`}
             </div>
@@ -2410,9 +2373,9 @@
                       <span>${escapar(certificacion.nombre_archivo || "Soporte documental")}</span>
                       ${certificacion.archivo_disponible
                         ? `<div class="audit-doc-actions">
-                             <button class="audit-action" type="button" data-cert-ver="${escapar(certificacion.id_certificacion)}"
+                             <button class="btn btn-secundario btn-sm audit-action" type="button" data-cert-ver="${escapar(certificacion.id_certificacion)}"
                                data-id-usuario="${escapar(auditor.id_usuario)}">Ver soporte</button>
-                             <button class="audit-action" type="button" data-cert-descargar="${escapar(certificacion.id_certificacion)}"
+                             <button class="btn btn-secundario btn-sm audit-action" type="button" data-cert-descargar="${escapar(certificacion.id_certificacion)}"
                                data-id-usuario="${escapar(auditor.id_usuario)}">Descargar</button>
                            </div>`
                         : `<span class="audit-unavailable">Archivo no disponible</span>`}
@@ -2538,7 +2501,7 @@
         btnDetalleEstado.hidden = false;
         const activo = estadoDetalle() === "activo";
         btnDetalleEstado.textContent = activo ? "Inactivar auditor" : "Reactivar auditor";
-        btnDetalleEstado.className = "comite-button " + (activo ? "danger" : "primary");
+        btnDetalleEstado.className = "btn comite-button " + (activo ? "btn-peligro danger" : "btn-primario primary");
       }
 
       // ------------------------------------------------------------
@@ -2669,7 +2632,7 @@
              </svg>`;
 
         btnEjecutarConfirmar.textContent = inactivar ? "Sí, inactivar" : "Sí, reactivar";
-        btnEjecutarConfirmar.className = "comite-button " + (inactivar ? "danger" : "primary");
+        btnEjecutarConfirmar.className = "btn comite-button " + (inactivar ? "btn-peligro danger" : "btn-primario primary");
         btnEjecutarConfirmar.disabled = false;
         $("#btnCancelarConfirmar").disabled = false;
         abrirModal(modalConfirmar);

@@ -10,6 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261028">
   <link rel="stylesheet" href="/static/styles.css?v=20261028">
+  <style>
+    /* Solo hay un panel de resultados: ocupa todo el ancho (comite-workspace trae dos columnas). */
+    .comite-workspace { grid-template-columns: minmax(0, 1fr); }
+  </style>
 </head>
 
 <body class="comite-page">
@@ -56,7 +60,7 @@
             <h2 id="viewTitle">Selecciona un reporte</h2>
             <p id="viewDescription">Elige una opción del menú para ejecutarla.</p>
           </div>
-          <button id="refreshButton" class="comite-button secondary" type="button" disabled>Actualizar</button>
+          <button id="refreshButton" class="comite-button secondary btn btn-secundario" type="button" disabled>Actualizar</button>
         </div>
 
         <div id="feedback" class="comite-feedback" role="status" aria-live="polite"></div>

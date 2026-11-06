@@ -13,6 +13,34 @@
 
     <link rel="stylesheet" href="/static/styles.css?v=20261028">
   <link rel="stylesheet" href="/static/tema.css?v=20261028">
+    <style>
+        /* Formulario angosto: arranca a 28px del encabezado y usa los campos y
+           botones del sistema (tema.css). styles.css da a .form-group input
+           padding 14px, radio 10px, texto centrado y letter-spacing 4px. */
+        .login-container { padding: 28px 20px; }
+        .login-form .form-group input,
+        .login-form .form-group select {
+            min-height: var(--campo-alto);
+            padding: 8px 10px;
+            border: 1px solid var(--campo-borde);
+            border-radius: var(--campo-radio);
+            background-color: #fff;
+            font-family: var(--tipografia);
+            font-size: var(--txt-base);
+            text-align: left;
+            letter-spacing: 0;
+        }
+        .login-form .form-group input:focus,
+        .login-form .form-group select:focus { border-color: var(--verde-600); }
+        .login-form .form-group input[readonly] { background-color: var(--gris-100); color: var(--gris-700); }
+        .login-form .btn-bloque { margin-top: 10px; }
+        .btn.hidden-section { display: none; }
+        /* Codigo de 6 digitos: se deja centrado y espaciado para leerlo mejor. */
+        .login-form .form-group input#codigo { text-align: center; font-size: 18px; letter-spacing: 6px; }
+        .forgot-link { margin: -8px 0 6px; font-size: var(--txt-sm); }
+        .forgot-link a { color: var(--verde-800); font-weight: var(--peso-semi); }
+        .forgot-link a:hover { color: var(--verde-900); }
+    </style>
 </head>
 
 <body>
@@ -123,7 +151,7 @@
                 </p>
 
                 <div class="login-actions">
-                    <button type="submit" id="btnLogin" class="btn-login">
+                    <button type="submit" id="btnLogin" class="btn btn-primario btn-bloque btn-login">
                         Entrar
                     </button>
                 </div>
@@ -145,11 +173,11 @@
                     <input type="email" id="correoOlvido" name="correoOlvido" placeholder="Ingrese su correo" required>
                 </div>
 
-                <button type="button" id="btnEnviarEnlace" class="btn-login">
+                <button type="button" id="btnEnviarEnlace" class="btn btn-primario btn-bloque btn-login">
                     Enviar enlace
                 </button>
 
-                <button type="button" id="btnVolverDesdeOlvido" class="btn-secondary">
+                <button type="button" id="btnVolverDesdeOlvido" class="btn btn-secundario btn-bloque btn-secondary">
                     Volver a iniciar sesión
                 </button>
 
@@ -176,11 +204,15 @@
 
                 </div>
 
-                <button type="button" id="btnVerificar" class="btn-login">
+                <button type="button" id="btnVerificar" class="btn btn-primario btn-bloque btn-login">
                     Verificar código
                 </button>
 
-                <button type="button" id="btnVolverLogin" class="btn-secondary">
+                <button type="button" id="btnReenviarCodigo" class="btn btn-secundario btn-bloque btn-secondary">
+                    Reenviar código
+                </button>
+
+                <button type="button" id="btnVolverLogin" class="btn btn-secundario btn-bloque btn-secondary">
                     Volver a iniciar sesión
                 </button>
 
@@ -219,10 +251,72 @@
         const successMsg = document.getElementById("successMessage");
         const inputCodigo = document.getElementById("codigo");
         let tipoVerificacion = "codigo";
+
+        // ===== Reenviar código (con espera mínima entre envíos) =====
+        const btnReenviarCodigo = document.getElementById("btnReenviarCodigo");
+        const TEXTO_REENVIAR = "Reenviar código";
+        let temporizadorReenvio = null;
+
+        function esperarReenvio(segundos) {
+            clearInterval(temporizadorReenvio);
+            let restante = Math.max(0, parseInt(segundos, 10) || 0);
+            const pintar = () => {
+                if (restante <= 0) {
+                    clearInterval(temporizadorReenvio);
+                    btnReenviarCodigo.disabled = false;
+                    btnReenviarCodigo.textContent = TEXTO_REENVIAR;
+                    return;
+                }
+                btnReenviarCodigo.disabled = true;
+                btnReenviarCodigo.textContent = `${TEXTO_REENVIAR} (${restante} s)`;
+                restante -= 1;
+            };
+            pintar();
+            temporizadorReenvio = setInterval(pintar, 1000);
+        }
+
+        btnReenviarCodigo.addEventListener("click", async function () {
+            const correo = document.getElementById("correo").value.trim();
+            errorMsg.textContent = "";
+            successMsg.textContent = "";
+            if (!correo) {
+                errorMsg.textContent = "Ingrese su correo para reenviar el código.";
+                return;
+            }
+            btnReenviarCodigo.disabled = true;
+            btnReenviarCodigo.textContent = "Enviando...";
+            try {
+                const response = await fetch("/auth/reenviar-codigo", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ correo })
+                });
+                const data = await response.json().catch(() => ({}));
+                const espera = parseInt(response.headers.get("Retry-After"), 10) || data.espera_reenvio || 60;
+                if (!response.ok) {
+                    errorMsg.textContent = mensajeErrorApi(data, "No se pudo reenviar el código.");
+                    esperarReenvio(espera);
+                    return;
+                }
+                successMsg.textContent = data.mensaje || "Se envió un nuevo código a su correo.";
+                inputCodigo.value = "";
+                inputCodigo.focus();
+                esperarReenvio(espera);
+            } catch (error) {
+                errorMsg.textContent = "Error de conexión con el servidor.";
+                btnReenviarCodigo.disabled = false;
+                btnReenviarCodigo.textContent = TEXTO_REENVIAR;
+            }
+        });
+
         // ===== Mostrar formulario de código =====
-        function mostrarFormularioCodigo(mensaje, tipo = "codigo") {
+        function mostrarFormularioCodigo(mensaje, tipo = "codigo", espera = 60) {
 
             tipoVerificacion = tipo;
+
+            // El reenvío aplica al código por intentos fallidos; el MFA tiene su flujo.
+            btnReenviarCodigo.classList.toggle("hidden-section", tipo !== "codigo");
+            if (tipo === "codigo") esperarReenvio(espera);
 
             loginForm.classList.add("hidden-section");
             forgotForm.classList.add("hidden-section");
@@ -357,7 +451,7 @@
 
                         if (detail.accion === "codigo") {
 
-                            mostrarFormularioCodigo(detail.mensaje, "codigo");
+                            mostrarFormularioCodigo(detail.mensaje, "codigo", detail.espera_reenvio || 0);
                             return;
                         }
 
@@ -368,11 +462,7 @@
                         }
                     }
 
-                    errorMsg.textContent =
-                        (typeof detail === "string"
-                            ? detail
-                            : detail?.mensaje) ||
-                        "Credenciales inválidas.";
+                    errorMsg.textContent = mensajeErrorApi(data, "Credenciales inválidas.");
 
                     return;
                 }
@@ -464,7 +554,7 @@
                     body: JSON.stringify(body)
                 });
 
-                const data = await response.json();
+                const data = await response.json().catch(() => ({}));
 
                 if (!response.ok) {
 
@@ -479,8 +569,7 @@
                         return;
                     }
 
-                    errorMsg.textContent =
-                        data.detail || "Error al verificar el código.";
+                    errorMsg.textContent = mensajeErrorApi(data, "Error al verificar el código.");
 
                     return;
                 }
@@ -587,8 +676,7 @@
                 errorMsg.textContent = "";
 
                 if (!response.ok) {
-                    errorMsg.textContent =
-                        (typeof data.detail === "string" ? data.detail : "No se pudo procesar la solicitud.");
+                    errorMsg.textContent = mensajeErrorApi(data, "No se pudo procesar la solicitud.");
                     return;
                 }
 
@@ -633,6 +721,7 @@
         
 
     </script>
+<script src="/static/errores-api.js?v=20261104"></script>
 <script src="/static/session.js?v=20261029"></script>
 </body>
 

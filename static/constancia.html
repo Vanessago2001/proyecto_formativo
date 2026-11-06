@@ -13,18 +13,14 @@
 
     <link rel="stylesheet" href="/static/styles.css?v=20261028">
     <style>
-        .ct-wrap { max-width: var(--ancho-contenido); margin: 0 auto; padding: 26px 18px 40px; }
+        .ct-wrap { max-width: var(--ancho-contenido); margin: 0 auto; padding: 28px 28px 40px; }
         .ct-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 26px 28px; }
         .ct-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
         .ct-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
         .ct-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
         .ct-field { flex: 1 1 260px; min-width: 220px; }
         .ct-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-        .ct-field input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; font-size: 14px; box-sizing: border-box; }
-        .ct-field input:focus { outline: 2px solid #43a047; border-color: #43a047; }
-        .ct-btn { background: #43a047; color: #fff; border: 0; border-radius: 6px; padding: 11px 26px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-        .ct-btn:hover { background: #388e3c; }
-        .ct-btn:disabled { opacity: .6; cursor: wait; }
+        .ct-field input { width: 100%; }
         #loader { color: #6b7280; font-size: 13px; margin: 12px 2px; }
         .ct-card { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #2f7d32; border-radius: 3px; padding: 20px 22px; margin-top: 18px; }
         .ct-empresa { margin: 0; color: #374151; font-size: 16px; font-weight: 700; }
@@ -32,8 +28,9 @@
         .ct-rows { display: grid; grid-template-columns: 190px 1fr; row-gap: 6px; font-size: 13px; }
         .ct-rows dt { color: #2f7d32; font-weight: 700; }
         .ct-rows dd { margin: 0; color: #374151; word-break: break-word; }
-        .ct-descarga { display: inline-block; margin-top: 16px; background: #43a047; color: #fff; border-radius: 6px; padding: 11px 26px; font-size: 14px; font-weight: 700; text-decoration: none; }
-        .ct-descarga:hover { background: #388e3c; }
+        .ct-card .ct-descarga { margin-top: 16px; }
+        .ct-card.inactiva { border-left-color: #b42318; }
+        .ct-select { display: block; margin-top: 14px; max-width: 100%; }
         .ct-nota { margin: 10px 0 0; color: #6b7280; font-size: 12px; }
         .ct-error { background: #fffbeb; color: #b42318; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
         @media (max-width: 700px) {
@@ -41,7 +38,7 @@
             .ct-btn { width: 100%; }
             .ct-rows { grid-template-columns: 1fr; row-gap: 2px; }
             .ct-rows dt { margin-top: 8px; }
-            .ct-descarga { display: block; text-align: center; }
+            .ct-card .ct-descarga { display: flex; width: 100%; }
         }
         @media print {
             .login-header, .login-footer, .ct-panel, .ct-btn, #loader, .hamburger-btn, .mobile-menu { display: none !important; }
@@ -129,7 +126,7 @@
 
             <p class="ct-desc">
                 Obtenga en PDF la constancia con los datos públicos de una empresa y su estado de
-                certificación. Ingrese el NIT exacto o parcial. No necesita iniciar sesión.
+                certificación. Ingrese el NIT completo (con o sin dígito de verificación). No necesita iniciar sesión.
             </p>
 
             <form id="searchForm" class="ct-form">
@@ -139,7 +136,7 @@
                     <input type="text" id="nit" name="nit" placeholder="900123456-7" autocomplete="off">
                 </div>
 
-                <button type="submit" class="ct-btn" id="btnDescargar">Descargar</button>
+                <button type="submit" class="btn btn-primario ct-btn" id="btnDescargar">Consultar</button>
 
             </form>
 
@@ -200,17 +197,45 @@
             resultado.innerHTML = "";
         }
 
-        function tarjeta(empresa, urlPdf) {
-            return `<article class="ct-card">
+        function urlConstancia(nit, codigo) {
+            const base = `/api/consultas-publicas/constancia/${encodeURIComponent(nit)}/pdf`;
+            return codigo ? `${base}?codigo=${encodeURIComponent(codigo)}` : base;
+        }
+
+        // Sin certificados vigentes el botón queda deshabilitado; con varios se
+        // elige uno o "todos" (un solo PDF con la tabla de certificados).
+        function tarjeta(empresa, i) {
+            const activa = empresa.empresa_activa !== false;
+            const certs = Array.isArray(empresa.certificados) ? empresa.certificados : [];
+            const estado = !activa
+                ? `Empresa ${String(empresa.estado_empresa || "inactiva").toLowerCase()} - sin certificación vigente`
+                : (certs.length ? "Certificada" : "Sin certificados vigentes");
+            let control;
+            if (!certs.length) {
+                control = `<button type="button" class="btn btn-primario ct-descarga" disabled>Descargar PDF</button>
+                    <p class="ct-nota">${esc(activa
+                        ? "La empresa no tiene certificados vigentes: no hay constancia para descargar."
+                        : "La empresa no está activa: no hay constancia para descargar.")}</p>`;
+            } else {
+                const selector = certs.length > 1
+                    ? `<label class="ct-nota" for="cert-${i}">Certificado a incluir</label>
+                       <select class="ct-select" id="cert-${i}">
+                           <option value="">Todos los certificados vigentes (${certs.length})</option>
+                           ${certs.map(c => `<option value="${esc(c.codigo_verificacion)}">${esc(c.codigo_verificacion)}${c.norma_codigo ? " - " + esc(c.norma_codigo) : ""}${c.fecha_vencimiento ? " (vence " + esc(c.fecha_vencimiento) + ")" : ""}</option>`).join("")}
+                       </select>`
+                    : "";
+                control = `${selector}
+                    <button type="button" class="btn btn-primario ct-descarga" data-nit="${esc(empresa.nit)}" data-sel="cert-${i}">Descargar PDF</button>`;
+            }
+            return `<article class="ct-card ${activa ? "" : "inactiva"}">
                 <p class="ct-empresa">${esc(empresa.nombre)}</p>
                 <p class="ct-sub">NIT ${esc(empresa.nit)}${empresa.ciudad ? " - " + esc(empresa.ciudad) : ""}</p>
                 <dl class="ct-rows">
-                    <dt>Estado</dt><dd>${empresa.certificada ? "Certificada" : "Sin certificados vigentes"}</dd>
-                    <dt>Certificados vigentes</dt><dd>${esc(empresa.certificados_vigentes)}</dd>
+                    <dt>Estado</dt><dd>${esc(estado)}</dd>
+                    <dt>Certificados vigentes</dt><dd>${esc(certs.length)}</dd>
                     <dt>Trámites radicados</dt><dd>${esc(empresa.total_solicitudes)}</dd>
                 </dl>
-                <a class="ct-descarga" href="${esc(urlPdf)}" download>Descargar PDF</a>
-                <p class="ct-nota">Si la descarga no arranca sola, use este botón.</p>
+                ${control}
             </article>`;
         }
 
@@ -219,8 +244,9 @@
 
             limpiar();
 
-            if (!nit) {
-                mostrarError("Ingrese el NIT de la empresa.");
+            const errorNit = validarNit(nit);
+            if (errorNit) {
+                mostrarError(errorNit);
                 return;
             }
 
@@ -237,7 +263,7 @@
                     let detalle = "No se pudo completar la búsqueda.";
                     try {
                         const datos = await respuesta.json();
-                        detalle = datos.detail || detalle;
+                        detalle = mensajeErrorApi(datos, detalle);
                     } catch (e) { /* respuesta no JSON */ }
                     mostrarError(detalle);
                     return;
@@ -250,14 +276,16 @@
                     return;
                 }
 
-                const empresa = empresas[0];
-                const urlPdf = `/api/consultas-publicas/constancia/${encodeURIComponent(nit)}/pdf`;
-
-                resultado.innerHTML = tarjeta(empresa, urlPdf);
+                resultado.innerHTML = empresas.map(tarjeta).join("");
 
                 // Content-Disposition: attachment hace que el navegador descargue
                 // el PDF sin abandonar esta página.
-                window.location.assign(urlPdf);
+                resultado.querySelectorAll("button[data-nit]").forEach(boton => {
+                    boton.addEventListener("click", () => {
+                        const selector = document.getElementById(boton.dataset.sel);
+                        window.location.assign(urlConstancia(boton.dataset.nit, selector ? selector.value : ""));
+                    });
+                });
 
             } catch (error) {
                 console.error("Error en la descarga:", error);
@@ -276,6 +304,7 @@
 
     </script>
 
+<script src="/static/errores-api.js?v=20261104"></script>
 <script src="/static/session.js?v=20261029"></script>
 </body>
 
