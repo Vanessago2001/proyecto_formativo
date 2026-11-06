@@ -497,8 +497,11 @@ class AuditoresRegistradosService:
                     ON r.id_rol = u.rol_id
                 WHERE u.id_usuario = :id_usuario
                 LIMIT 1
-                FOR UPDATE
+                FOR UPDATE OF u
                 """
+                # PostgreSQL no permite bloquear el lado opcional de un LEFT
+                # JOIN (rol): sin "OF u" la consulta fallaba y no se podía
+                # inactivar ni reactivar ningún auditor.
             ),
             {"id_usuario": id_usuario},
         )
