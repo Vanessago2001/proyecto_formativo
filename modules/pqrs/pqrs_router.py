@@ -184,7 +184,7 @@ async def reporte(
     usuario: dict = Depends(get_current_user),
     servicio: PqrsService = Depends(obtener_servicio),
 ):
-    """PQR-015: listado filtrable; formato json, csv, pdf o xlsx (si openpyxl está instalado)."""
+    """PQR-015: listado filtrable; formato json, pdf o xlsx (si openpyxl está instalado)."""
     filas = await servicio.reporte(usuario, _filtros(estado, tipo, desde, hasta, None, None))
     if (formato or "json").lower() == "json":
         return {"filas": filas, "total": len(filas), "formatos": formatos_disponibles()}

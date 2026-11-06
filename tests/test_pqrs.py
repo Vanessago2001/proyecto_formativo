@@ -434,44 +434,40 @@ async def test_empresa_no_ve_notas_internas_del_historial(entorno):
     assert any("nota interna" in (h["comentario"] or "") for h in completo)
 
 
-async def test_auditor_ve_solo_asignadas_o_de_sus_auditorias(entorno):
+async def test_auditor_no_tiene_acceso_a_pqrs(entorno):
+    # Decisión del equipo (06/11/2026): las PQRS solo las gestionan el
+    # Administrador y los auxiliares con permiso delegado. El auditor no
+    # consulta ni gestiona ninguna, ni siquiera las de sus auditorías.
     admin = entorno.registrar(usuario("Administrador"))
     auditor = entorno.registrar(usuario("Auditor"))
     id_auditoria, id_empresa = str(uuid.uuid4()), str(uuid.uuid4())
     entorno.repo.auditorias[id_auditoria] = {"id_empresa": id_empresa, "auditores": {auditor["id_usuario"]}}
     entorno.repo.empresas[id_empresa] = {"id_empresa": id_empresa, "nombre": "ACME", "nit": "1"}
-
     vinculada = await entorno.servicio().radicar({**DATOS, "id_auditoria": id_auditoria}, admin)
-    asignada = await radicar_publica(entorno)
-    await entorno.servicio().asignar(asignada["id_pqrs"], auditor["id_usuario"], None, admin)
-    ajena = await radicar_publica(entorno)
-
-    ids = {str(f["id_pqrs"]) for f in await entorno.servicio().listar(auditor)}
-    assert ids == {str(vinculada["id_pqrs"]), str(asignada["id_pqrs"])}
-    assert (await entorno.servicio().estado(vinculada["id_pqrs"], auditor))["estado"] == "Radicada"
-    with pytest.raises(HTTPException) as error:
-        await entorno.servicio().historial(ajena["id_pqrs"], auditor)
-    assert error.value.status_code == 404
-    # La vinculación con auditoría también fija la empresa.
-    assert str(entorno.repo.casos[str(vinculada["id_pqrs"])]["id_empresa"]) == id_empresa
-
-
-async def test_auditor_no_gestiona(entorno):
-    admin = entorno.registrar(usuario("Administrador"))
-    auditor = entorno.registrar(usuario("Auditor"))
-    creada = await radicar_publica(entorno)
-    await entorno.servicio().asignar(creada["id_pqrs"], auditor["id_usuario"], None, admin)
     s = entorno.servicio()
     for accion in (
-        lambda: s.cambiar_estado(creada["id_pqrs"], "En trámite", None, auditor),
-        lambda: s.responder(creada["id_pqrs"], "x" * 30, auditor),
-        lambda: s.cerrar(creada["id_pqrs"], None, auditor),
-        lambda: s.asignar(creada["id_pqrs"], admin["id_usuario"], None, auditor),
-        lambda: s.adjuntar(creada["id_pqrs"], [archivo("a.pdf", PDF)], None, auditor),
+        lambda: s.listar(auditor),
+        lambda: s.estado(vinculada["id_pqrs"], auditor),
+        lambda: s.historial(vinculada["id_pqrs"], auditor),
+        lambda: s.cambiar_estado(vinculada["id_pqrs"], "En trámite", None, auditor),
+        lambda: s.responder(vinculada["id_pqrs"], "x" * 30, auditor),
+        lambda: s.cerrar(vinculada["id_pqrs"], None, auditor),
+        lambda: s.asignar(vinculada["id_pqrs"], admin["id_usuario"], None, auditor),
+        lambda: s.adjuntar(vinculada["id_pqrs"], [archivo("a.pdf", PDF)], None, auditor),
+        lambda: s.reporte(auditor),
     ):
         with pytest.raises(HTTPException) as error:
             await accion()
         assert error.value.status_code == 403
+
+
+async def test_no_se_asigna_pqrs_a_un_auditor(entorno):
+    admin = entorno.registrar(usuario("Administrador"))
+    auditor = entorno.registrar(usuario("Auditor"))
+    creada = await radicar_publica(entorno)
+    with pytest.raises(HTTPException) as error:
+        await entorno.servicio().asignar(creada["id_pqrs"], auditor["id_usuario"], None, admin)
+    assert error.value.status_code == 422
 
 
 async def test_auxiliar_sin_permiso_no_consulta_y_con_permiso_ve_todas(entorno):
@@ -632,8 +628,8 @@ async def test_responsables_auxiliares_solo_con_pqr_008(entorno):
     auditor = entorno.registrar(usuario("Auditor", "Auditora"))
     entorno.dar(aux_si, "PQR-008", "PQR-005")
     nombres = {r["nombre"] for r in await entorno.servicio().responsables_disponibles(admin)}
-    assert nombres == {"Admin", "Aux con permiso", "Auditora"}
-    # El auxiliar no puede asignar a auditores.
+    # Los auditores no aparecen como responsables posibles para nadie.
+    assert nombres == {"Admin", "Aux con permiso"}
     nombres_aux = {r["nombre"] for r in await entorno.servicio().responsables_disponibles(aux_si)}
     assert nombres_aux == {"Admin", "Aux con permiso"}
 
@@ -858,15 +854,17 @@ async def test_reporte_permisos(entorno):
         await entorno.servicio().reporte(aux)
     entorno.dar(aux, "PQR-015")
     assert len(await entorno.servicio().reporte(aux)) == 1
-    assert await entorno.servicio().reporte(usuario("Auditor")) == []
+    with pytest.raises(HTTPException) as error:
+        await entorno.servicio().reporte(usuario("Auditor"))
+    assert error.value.status_code == 403
 
 
-def test_csv_con_bom_y_sin_formulas():
-    from modules.pqrs.pqrs_exportacion import generar_csv
-    contenido = generar_csv([{"radicado": "PQRS-2026-000001", "asunto": "=HYPERLINK(\"x\")", "tipo": "Queja"}])
-    assert contenido.startswith("﻿".encode("utf-8"))
-    texto = contenido.decode("utf-8-sig")
-    assert "'=HYPERLINK" in texto and "Radicado;Tipo" in texto
+def test_reporte_ya_no_ofrece_csv():
+    from modules.pqrs.pqrs_exportacion import formatos_disponibles, respuesta_reporte
+    assert "csv" not in formatos_disponibles()
+    with pytest.raises(HTTPException) as error:
+        respuesta_reporte("csv", [], "Prueba")
+    assert error.value.status_code == 422
 
 
 def test_reporte_pdf_y_excel():
@@ -946,9 +944,11 @@ async def test_http_gestion_requiere_sesion_y_rol(cliente):
         app.dependency_overrides[get_current_user] = lambda: usuario("Administrador")
         assert (await ac.get("/api/pqrs")).status_code == 200
         r = await ac.get("/api/pqrs/reporte", params={"formato": "csv"})
-        assert r.status_code == 200 and r.content.startswith("﻿".encode("utf-8"))
+        assert r.status_code == 422
+        r = await ac.get("/api/pqrs/reporte", params={"formato": "pdf"})
+        assert r.status_code == 200 and r.content.startswith(b"%PDF")
         r = await ac.get("/api/pqrs/mis-permisos")
-        assert r.json()["permisos"]["PQR-015"] is True and "csv" in r.json()["formatos_reporte"]
+        assert r.json()["permisos"]["PQR-015"] is True and "csv" not in r.json()["formatos_reporte"]
 
 
 async def test_http_paginas():

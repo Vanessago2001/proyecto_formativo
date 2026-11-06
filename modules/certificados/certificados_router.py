@@ -1,5 +1,3 @@
-import csv
-import io
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -39,12 +37,6 @@ from modules.reportes.exportacion_tabular import Columna, estado_legible, respue
 router = APIRouter(prefix="/certificados", tags=["M9 - Certificados"])
 
 
-def _csv_safe_value(value):
-    if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")):
-        return "'" + value
-    return value
-
-
 def requiere_firma_lider_o_permiso():
     async def verificar(usuario: dict = Depends(get_current_user)) -> dict:
         if es_usuario_comite(usuario):
@@ -77,19 +69,6 @@ def requiere_permiso_o_lider(codigo: str):
         return usuario
 
     return verificar
-
-
-def _csv_response(filas: list[dict], columnas: tuple[str, ...], nombre: str) -> Response:
-    buffer = io.StringIO(newline="")
-    escritor = csv.writer(buffer)
-    escritor.writerow(columnas)
-    for fila in filas:
-        escritor.writerow([_csv_safe_value(fila.get(columna)) for columna in columnas])
-    return Response(
-        content=buffer.getvalue(),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
-    )
 
 
 @router.get(
@@ -271,24 +250,19 @@ COLUMNAS_EMPRESAS_CERTIFICADAS = [
 
 @router.get("/exportar", summary="CER-025 · Exportar base de certificados")
 async def exportar_certificados(
-    formato: str = Query(default="xlsx", description="xlsx (Excel), pdf o csv"),
+    formato: str = Query(default="xlsx", description="xlsx (Excel) o pdf"),
     usuario: dict = Depends(requiere_permiso("CER-025")),
     db: AsyncSession = Depends(get_db),
 ):
     filas = await CertificadosService(db).registros_exportacion()
-    if str(formato).strip().lower() == "csv":
-        respuesta = _csv_response(
-            filas, tuple(c.clave for c in COLUMNAS_EXPORTACION_CERTIFICADOS), "certificados.csv"
-        )
-    else:
-        respuesta = respuesta_exportacion(
-            formato,
-            titulo="Base de certificados",
-            columnas=COLUMNAS_EXPORTACION_CERTIFICADOS,
-            filas=filas,
-            nombre_base="certificados",
-            hoja="Certificados",
-        )
+    respuesta = respuesta_exportacion(
+        formato,
+        titulo="Base de certificados",
+        columnas=COLUMNAS_EXPORTACION_CERTIFICADOS,
+        filas=filas,
+        nombre_base="certificados",
+        hoja="Certificados",
+    )
     if usuario.get("requiere_aprobacion"):
         respuesta.headers["X-Requiere-Aprobacion"] = "true"
     return respuesta
@@ -296,15 +270,11 @@ async def exportar_certificados(
 
 @router.get("/empresas-oficiales", summary="CER-026 · Listado oficial de empresas")
 async def exportar_empresas_certificadas(
-    formato: str = Query(default="xlsx", description="xlsx (Excel), pdf o csv"),
+    formato: str = Query(default="xlsx", description="xlsx (Excel) o pdf"),
     usuario: dict = Depends(requiere_permiso("CER-026")),
     db: AsyncSession = Depends(get_db),
 ):
     filas = await CertificadosService(db).empresas_oficiales()
-    if str(formato).strip().lower() == "csv":
-        return _csv_response(
-            filas, tuple(c.clave for c in COLUMNAS_EMPRESAS_CERTIFICADAS), "empresas-certificadas.csv"
-        )
     return respuesta_exportacion(
         formato,
         titulo="Listado oficial de empresas certificadas",

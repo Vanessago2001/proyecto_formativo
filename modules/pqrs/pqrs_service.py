@@ -7,8 +7,10 @@ Fuente de verdad: hoja "pqr" de documentacion/permisos.xlsx, transcrita en
 CÓMO SE APLICA CADA CELDA
 =========================
 El rol Super administrador ya no se usa: el Administrador (ADM) tiene todo lo
-que la hoja concede a SUPERADM. COM (Comité) y APR (Aprendiz) no tienen acceso
-a ninguna operación (403).
+que la hoja concede a SUPERADM. COM (Comité), APR (Aprendiz) y AUD (Auditor)
+no tienen acceso a ninguna operación (403): las PQRS las gestionan solo el
+Administrador y los auxiliares a los que él les delega el permiso. Lo que la
+hoja concede a AUD queda sin efecto por decisión del equipo (06/11/2026).
 
 "Cond." del ADMINISTRADOR (PQR-005 a 008, 011 a 013)
     Puede siempre, pero sujeto a las reglas de estado del flujo
@@ -26,13 +28,8 @@ a ninguna operación (403).
     · PQR-001: registra en nombre de un ciudadano (canal presencial,
       telefónico o por correo; por defecto «Presencial»).
     · PQR-005: puede asignar a administradores y a auxiliares que tengan
-      PQR-008 (Registrar respuesta); no a auditores.
-
-"Cond." del AUDITOR (PQR-003, 004, 010) y ✓ limitado (PQR-014, 015)
-    Solo PQRS en las que es responsable o que están vinculadas
-    (`id_auditoria`) a una auditoría donde tiene una asignación vigente en
-    `auditores_solicitud` (no Cancelada ni Reasignado). Tiempos y reportes,
-    limitados a esas mismas PQRS. Ve el historial completo.
+      PQR-008 (Registrar respuesta). El Administrador asigna a esos mismos;
+      nunca a auditores.
 
 "Propias" de EMPRESA (PQR-003, 004, 010)
     Las radicadas por su usuario o a nombre de una empresa a la que está
@@ -102,7 +99,6 @@ from modules.pqrs.pqrs_reglas import (
     REABIERTA,
     RESPONDIDA,
     ROL_ADMIN,
-    ROL_AUDITOR,
     ROL_AUXILIAR,
     ROL_EMPRESA,
     ROL_PUBLICO,
@@ -199,8 +195,6 @@ class PqrsService:
             return {"tipo": "todas"}
         if rol == ROL_EMPRESA:
             return {"tipo": "empresa", "id_usuario": usuario["id_usuario"]}
-        if rol == ROL_AUDITOR:
-            return {"tipo": "auditor", "id_usuario": usuario["id_usuario"]}
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin acceso a PQRS.")
 
     async def _puede_ver(self, pqrs: dict, rol: str, usuario: dict) -> bool:
@@ -212,10 +206,6 @@ class PqrsService:
                 return True
             empresa = _id(pqrs.get("id_empresa"))
             return bool(empresa) and empresa in await self.repo.empresas_de_usuario(uid)
-        if rol == ROL_AUDITOR:
-            if _id(pqrs.get("id_responsable")) == uid:
-                return True
-            return await self.repo.auditor_vinculado(pqrs.get("id_auditoria"), uid)
         return False
 
     async def _obtener_visible(self, id_pqrs, codigo: str, usuario: dict) -> tuple[dict, str]:
@@ -575,9 +565,7 @@ class PqrsService:
         if rol_candidato == ROL_AUXILIAR:
             # Solo auxiliares que puedan responder (PQR-008 delegado).
             return await self.auxiliar_puede(candidato["id_usuario"], "PQR-008")
-        if rol_candidato == ROL_AUDITOR:
-            # Un auditor solo puede consultarla (concepto técnico); lo asigna el administrador.
-            return rol_asigna == ROL_ADMIN
+        # Auditores y demás roles no gestionan PQRS: no se les asigna.
         return False
 
     async def asignar(self, id_pqrs, id_responsable, comentario: str | None, usuario: dict) -> dict:
@@ -588,8 +576,7 @@ class PqrsService:
         if not candidato or not await self._puede_ser_responsable(candidato, rol):
             raise HTTPException(
                 status_code=422,
-                detail="El responsable debe ser un administrador o un auxiliar activo con permiso para responder PQRS"
-                       + (" (o un auditor)." if rol == ROL_ADMIN else "."),
+                detail="El responsable debe ser un administrador o un auxiliar activo con permiso para responder PQRS.",
             )
         if _id(pqrs.get("id_responsable")) == _id(id_responsable):
             raise HTTPException(status_code=409, detail="Esa persona ya es la responsable de la PQRS.")

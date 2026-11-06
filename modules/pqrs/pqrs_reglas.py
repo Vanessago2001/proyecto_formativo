@@ -79,8 +79,11 @@ def rol_pqrs(usuario: dict | None) -> str:
     rol = _normalize_role_name(usuario.get("role_name"))
     if rol in ("admin", "superadmin"):
         return ROL_ADMIN
-    if rol in (ROL_AUXILIAR, ROL_EMPRESA, ROL_AUDITOR):
+    if rol in (ROL_AUXILIAR, ROL_EMPRESA):
         return rol
+    # El auditor no gestiona ni consulta PQRS (decisión del equipo, 06/11/2026):
+    # solo las gestionan el Administrador y los auxiliares a los que él les
+    # delega el permiso. La columna AUD de la hoja "pqr" queda sin efecto.
     return ROL_SIN_ACCESO
 
 

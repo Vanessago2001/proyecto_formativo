@@ -165,7 +165,7 @@
       var VISTAS = {
         bandeja: { codigo: "PQR-003", titulo: "Bandeja de PQRS", texto: "PQRS radicadas, su responsable y el tiempo que les queda." },
         tiempos: { codigo: "PQR-014", titulo: "Tiempos de atención", texto: "Semáforo de vencimientos y promedio de respuesta en días hábiles." },
-        reportes: { codigo: "PQR-015", titulo: "Reportes", texto: "Listado filtrable con descarga en CSV, PDF o Excel." }
+        reportes: { codigo: "PQR-015", titulo: "Reportes", texto: "Listado filtrable con descarga en PDF o Excel." }
       };
       var permisos = {};
       var formatos = [];
@@ -438,7 +438,7 @@
       }
       $("#filtrosReporte").addEventListener("submit", function (ev) { ev.preventDefault(); cargarReporte(); });
       function pintarExportar() {
-        var nombres = { csv: "Descargar CSV", pdf: "Descargar PDF", xlsx: "Descargar Excel" };
+        var nombres = { pdf: "Descargar PDF", xlsx: "Descargar Excel" };
         $("#botonesExportar").innerHTML = formatos.map(function (f) {
           return '<button type="button" class="btn btn-secundario pq-btn sec" data-formato="' + f + '">' + nombres[f] + "</button>";
         }).join("");

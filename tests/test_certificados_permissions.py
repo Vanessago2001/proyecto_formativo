@@ -26,7 +26,6 @@ from modules.certificados.certificados_service import (
     validar_transicion,
 )
 from modules.certificados.certificados_pdf import generar_pdf_certificado
-from modules.certificados.certificados_router import _csv_response
 
 
 class FakeResult:
@@ -676,13 +675,13 @@ def test_pdf_pendiente_de_firma_se_identifica_como_borrador():
     assert b"No constituye un certificado oficial" in pdf
 
 
-def test_exportacion_csv_neutraliza_formulas_de_celdas():
-    respuesta = _csv_response(
-        [{"empresa": "=HYPERLINK(\"https://ejemplo.test\")"}],
-        ("empresa",),
-        "certificados.csv",
-    )
+def test_exportacion_de_certificados_ya_no_acepta_csv():
+    # El CSV se quitó: solo Excel (xlsx) y PDF.
+    from modules.reportes.exportacion_tabular import normalizar_formato
 
-    contenido = respuesta.body.decode("utf-8")
-    assert contenido.startswith("empresa\r\n")
-    assert "\"'=HYPERLINK" in contenido
+    with pytest.raises(HTTPException) as error:
+        normalizar_formato("csv")
+    assert error.value.status_code == 422
+    assert normalizar_formato("excel") == "xlsx"
+    assert normalizar_formato("pdf") == "pdf"
+

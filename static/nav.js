@@ -374,7 +374,6 @@
           { texto: "Registrar certificaciones vigentes", href: "/catalogo-competencias-auditor#vistaCertificaciones", proxy: '.side a[data-vista="certificaciones"]' }
         ]
       },
-      GRUPO_PQRS,
       { texto: "Notificaciones", href: "/notificaciones-auditor", insignia: "notifBadge" },
       { texto: "Mi perfil", href: "/perfil-auditor" },
       REPORTES,
