@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>CertiSENA | {{titulo}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <link rel="stylesheet" href="/static/styles.css?v=20261028">
+  <!--
+    Página de error común. La rellena core/paginas_error.py: reemplaza las
+    marcas entre dobles llaves con textos ya escapados. Usa el mismo encabezado, tarjeta y
+    botones que cuenta_inactiva.html para mantener el diseño del sistema.
+  -->
+  <style>
+    .error-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .error-main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 28px 20px;
+    }
+
+    .error-card {
+      width: min(600px, 100%);
+      padding: 40px 34px;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, .08);
+      text-align: center;
+    }
+
+    .error-icon {
+      display: grid;
+      width: 78px;
+      height: 78px;
+      margin: 0 auto 16px;
+      place-items: center;
+      border-radius: 50%;
+    }
+
+    /* Errores de la persona (dirección, permisos): ámbar. Del servidor: rojo. */
+    .error-card[data-tipo="cliente"] .error-icon { background: #fffbeb; color: #8d6e00; }
+    .error-card[data-tipo="servidor"] .error-icon { background: #fff1f0; color: #b42318; }
+
+    .error-codigo {
+      display: inline-block;
+      margin: 0 0 10px;
+      padding: 3px 12px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .6px;
+    }
+
+    .error-card h2 {
+      margin: 0 0 12px;
+      color: #1f2937;
+      font-size: 26px;
+      line-height: 1.25;
+    }
+
+    .error-card p {
+      margin: 0 auto 14px;
+      max-width: 460px;
+      color: #475569;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .error-que-hacer {
+      margin: 18px auto 0;
+      max-width: 460px;
+      padding: 12px 14px;
+      border: 1px solid #dbe7d4;
+      border-radius: 8px;
+      background: #fbfdf9;
+      color: #256d00;
+      font-size: 13px;
+      line-height: 1.55;
+      text-align: left;
+    }
+
+    .error-que-hacer strong { display: block; margin-bottom: 2px; }
+
+    .error-detalles {
+      margin: 16px auto 0;
+      max-width: 460px;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.6;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    .error-detalles dt { display: inline; font-weight: 700; }
+    .error-detalles dd { display: inline; margin: 0; }
+    .error-detalles div { margin-bottom: 2px; }
+    .error-detalles [hidden] { display: none; }
+
+    .error-acciones {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .error-acciones [hidden] { display: none; }
+
+    .error-footer {
+      padding: 18px;
+      color: #64748b;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 560px) {
+      .error-card { padding: 30px 20px; }
+      .error-card h2 { font-size: 22px; }
+    }
+  </style>
+</head>
+
+<body class="error-page">
+  <header class="login-header">
+    <div class="header-content">
+      <div class="header-left">
+        <a href="/" aria-label="Ir al inicio de CertiSENA">
+          <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
+        </a>
+        <div>
+          <h1>CertiSENA</h1>
+          <p class="subtitle">Gestión de certificados</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="error-main">
+    <section class="error-card" role="alert" aria-labelledby="tituloError" data-tipo="{{tipo}}" data-codigo="{{codigo}}">
+      <div class="error-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+
+      <span class="error-codigo">Error {{codigo}}</span>
+      <h2 id="tituloError">{{titulo}}</h2>
+
+      <p>{{mensaje}}</p>
+
+      <div class="error-que-hacer">
+        <strong>¿Qué puede hacer?</strong>
+        {{sugerencia}}
+      </div>
+
+      <dl class="error-detalles">
+        <div><dt>Página solicitada:</dt> <dd>{{ruta}}</dd></div>
+        <div {{ocultar_referencia}}><dt>Código de referencia:</dt> <dd>{{referencia}}</dd></div>
+      </dl>
+
+      <div class="error-acciones">
+        <button type="button" class="btn btn-primario" id="btnReintentar" {{ocultar_reintentar}}>Intentar de nuevo</button>
+        <button type="button" class="btn btn-secundario" id="btnVolver">Volver atrás</button>
+        <a class="btn btn-secundario" id="btnPanel" href="/dashboard" hidden>Ir a mi panel</a>
+        <a class="btn btn-secundario" href="/">Ir al inicio</a>
+        <a class="btn btn-secundario" id="btnLogin" href="/login" {{ocultar_login}}>Iniciar sesión</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="error-footer">
+    © 2026 CertiSENA - SENA. Todos los derechos reservados.
+  </footer>
+
+  <script>
+    (function () {
+      "use strict";
+
+      document.getElementById("btnReintentar").addEventListener("click", function () {
+        window.location.reload();
+      });
+
+      // Sin historial (enlace abierto en una pestaña nueva) "Volver" lleva al inicio.
+      document.getElementById("btnVolver").addEventListener("click", function () {
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = "/";
+        }
+      });
+
+      // Con sesión iniciada se ofrece volver al panel que corresponde al rol.
+      try {
+        var token = localStorage.getItem("access_token");
+        if (!token) return;
+        var parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        var datos = JSON.parse(decodeURIComponent(atob(parte).split("").map(function (c) {
+          return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join("")));
+        var rol = String(datos.role_name || "").normalize("NFD")
+          .replace(/[̀-ͯ]/g, "").toLowerCase();
+        var panel = /empresa/.test(rol) ? "/empresa"
+          : /comite/.test(rol) ? "/comite"
+          : (/auditor/.test(rol) && !/administrar/.test(rol)) ? "/auditor"
+          : "/dashboard";
+        var enlace = document.getElementById("btnPanel");
+        enlace.href = panel;
+        enlace.hidden = false;
+      } catch (_) {
+        // Un token ilegible no impide mostrar el error.
+      }
+    })();
+  </script>
+</body>
+
+</html>

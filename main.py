@@ -14,6 +14,7 @@ from time import perf_counter
 from core.arranque import debe_preparar_la_base, guardar_huella, huella
 from core.database import AsyncSessionLocal
 from core.logger import logger
+from core.paginas_error import registrar_paginas_error
 from core.security import hash_password
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
@@ -337,6 +338,11 @@ app = FastAPI(
     description="Estructura limpia basada en dominios directo en raíz sin Passlib",
     lifespan=lifespan
 )
+
+# Página de error con el diseño del sistema cuando el navegador pide una página
+# que falla (404, 403, 500...). El API sigue respondiendo JSON.
+registrar_paginas_error(app)
+
 # Montaje de directorio para archivos subidos por los usuarios (PDF, imágenes, etc.)
 app.mount(
     "/uploads",
