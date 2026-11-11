@@ -450,6 +450,43 @@
       font-size: 17px;
     }
 
+    .assignments-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #1f2937;
+      cursor: pointer;
+      font: inherit;
+      font-size: 17px;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .assignments-toggle:hover {
+      color: #256d00;
+    }
+
+    .assignments-toggle:focus-visible {
+      outline: 2px solid #3baa01;
+      outline-offset: 4px;
+    }
+
+    .assignments-toggle .accordion-chevron {
+      width: 9px;
+      height: 9px;
+      border-right: 2px solid #64748b;
+      border-bottom: 2px solid #64748b;
+      transform: rotate(45deg);
+      transition: transform .2s ease;
+    }
+
+    .assignments-toggle[aria-expanded="false"] .accordion-chevron {
+      transform: rotate(-45deg);
+    }
+
     .table-counter {
       color: #64748b;
       font-size: 13px;
@@ -1687,48 +1724,56 @@
             ================================================== -->
             <div class="table-header" style="margin-top: 28px;">
               <div>
-                <h3>Auditores asignados</h3>
+                <h3>
+                  <button type="button" id="assignmentsToggle" class="assignments-toggle"
+                    aria-expanded="true" aria-controls="assignmentsContent">
+                    Auditores asignados
+                    <span class="accordion-chevron" aria-hidden="true"></span>
+                  </button>
+                </h3>
               </div>
               <span id="assignmentCounter" class="table-counter">0 asignaciones</span>
             </div>
 
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Solicitud</th>
-                    <th>Auditor</th>
-                    <th>Correo</th>
-                    <th>Fecha de inicio</th>
-                    <th>Fecha de finalización</th>
-                    <th>Rol</th>
-                    <th>Estado</th>
-                    <th>Acción</th>
-                  </tr>
-                </thead>
-                <tbody id="assignmentsTableBody"></tbody>
-              </table>
+            <div id="assignmentsContent">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Solicitud</th>
+                      <th>Auditor</th>
+                      <th>Correo</th>
+                      <th>Fecha de inicio</th>
+                      <th>Fecha de finalización</th>
+                      <th>Rol</th>
+                      <th>Estado</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="assignmentsTableBody"></tbody>
+                </table>
 
-              <div id="emptyState" class="empty-state" style="display:none;">
-                <strong>No hay auditores asignados</strong>
-                <span>Las asignaciones realizadas aparecerán aquí.</span>
+                <div id="emptyState" class="empty-state" style="display:none;">
+                  <strong>No hay auditores asignados</strong>
+                  <span>Las asignaciones realizadas aparecerán aquí.</span>
+                </div>
+
+                <div id="tableLoading" class="loading">Cargando asignaciones...</div>
               </div>
 
-              <div id="tableLoading" class="loading">Cargando asignaciones...</div>
-            </div>
-
-            <div class="users-pager" id="assignmentsPager" style="display: none;">
-              <label class="pager-size">
-                Filas por página
-                <select id="assignmentsPageSize">
-                  <option value="5" selected>5</option>
-                  <option value="10">10</option>
-                  <option value="20">20</option>
-                  <option value="50">50</option>
-                </select>
-              </label>
-              <span class="pager-info" id="assignmentsPagerInfo"></span>
-              <div class="pager-buttons" id="assignmentsPagerButtons"></div>
+              <div class="users-pager" id="assignmentsPager" style="display: none;">
+                <label class="pager-size">
+                  Filas por página
+                  <select id="assignmentsPageSize">
+                    <option value="5" selected>5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                  </select>
+                </label>
+                <span class="pager-info" id="assignmentsPagerInfo"></span>
+                <div class="pager-buttons" id="assignmentsPagerButtons"></div>
+              </div>
             </div>
 
 
@@ -1921,6 +1966,14 @@
     const emptyState = document.getElementById("emptyState");
     const tableLoading = document.getElementById("tableLoading");
     const assignmentForm = document.getElementById("assignmentForm");
+    const assignmentsToggle = document.getElementById("assignmentsToggle");
+    const assignmentsContent = document.getElementById("assignmentsContent");
+
+    assignmentsToggle.addEventListener("click", () => {
+      const expanded = assignmentsToggle.getAttribute("aria-expanded") === "true";
+      assignmentsToggle.setAttribute("aria-expanded", String(!expanded));
+      assignmentsContent.hidden = expanded;
+    });
 
 
     /* =========================================================
