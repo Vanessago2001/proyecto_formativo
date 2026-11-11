@@ -130,6 +130,14 @@ class SolicitudRespuesta(BaseModel):
     fecha_cancelacion: datetime | None
 
 
+class SolicitudListadoRespuesta(SolicitudRespuesta):
+    """Solicitud con los datos del usuario que la creó para el listado."""
+
+    usuario_nombre: str | None = None
+    usuario_correo: str | None = None
+    usuario_rol: str | None = None
+
+
 class SolicitudEstadoRespuesta(BaseModel):
     """Respuesta reducida de SOL-010 (consultar estado)."""
 

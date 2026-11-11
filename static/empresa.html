@@ -12,6 +12,30 @@
   <link rel="stylesheet" href="/static/styles.css?v=20261028">
   <style>
     body { background: #f1f5f9; }
+    .empresa-solicitudes-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .empresa-solicitudes-filter {
+      display: grid;
+      flex: 1 1 280px;
+      max-width: 420px;
+      gap: 6px;
+    }
+    .empresa-solicitudes-filter input {
+      min-height: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, .05);
+    }
+    .empresa-solicitudes-toolbar .comite-button { flex: 0 0 auto; }
+    @media (max-width: 640px) {
+      .empresa-solicitudes-filter { flex-basis: 100%; max-width: none; }
+      .empresa-solicitudes-toolbar .comite-button { width: 100%; }
+    }
   </style>
 </head>
 
@@ -163,6 +187,8 @@
       const estado = {
         vista: "solicitudes",
         solicitudes: [],
+        filtroSolicitudes: "",
+        paginaSolicitudes: 1,
         normas: [],
         actual: null,
         edicion: { alcance: null, proceso: null, sede: null }
@@ -322,7 +348,7 @@
       }
 
       async function refrescarSolicitudes() {
-        estado.solicitudes = (await api("/solicitudes/")) || [];
+        estado.solicitudes = (await api("/solicitudes/?limite=200")) || [];
         $("#solicitudSelect").innerHTML = '<option value="">Seleccione una solicitud</option>' + estado.solicitudes.map((s) =>
           '<option value="' + esc(s.id_solicitud) + '">' +
           esc((s.numero_radicado || "Borrador del " + fecha(s.fecha_creacion)) + " · " + nombreNorma(s.id_norma) + " · " + s.estado) +
@@ -331,16 +357,32 @@
       }
 
       // ---------------- SOL-006: mis solicitudes ----------------
-      async function cargarSolicitudes() {
-        const caja = $("#vista-solicitudes");
-        caja.innerHTML = cargando("Cargando solicitudes...");
-        try {
-          await refrescarSolicitudes();
-          const filas = estado.solicitudes.map((s) => {
+      function renderizarSolicitudes() {
+        const normalizar = (valor) => String(valor == null ? "" : valor)
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
+        const consulta = normalizar(estado.filtroSolicitudes.trim());
+        const filtradas = estado.solicitudes.filter((s) =>
+          [s.estado, s.numero_radicado].some((valor) => normalizar(valor).includes(consulta))
+        );
+        const porPagina = 5;
+        const totalPaginas = Math.ceil(filtradas.length / porPagina);
+        estado.paginaSolicitudes = Math.min(Math.max(estado.paginaSolicitudes, 1), totalPaginas || 1);
+        const inicio = (estado.paginaSolicitudes - 1) * porPagina;
+        const pagina = filtradas.slice(inicio, inicio + porPagina);
+        const cuerpo = $("#solicitudesBody");
+
+        if (!filtradas.length) {
+          cuerpo.innerHTML = vacioTabla(
+            6,
+            consulta
+              ? "No se encontraron solicitudes que coincidan con el filtro."
+              : 'Aún no tiene solicitudes. Use "Nueva solicitud" para crear la primera.'
+          );
+        } else {
+          cuerpo.innerHTML = pagina.map((s) => {
             const borrador = s.estado === "Borrador";
-            // El Comite guarda "RECHAZADO" y M5 define "Rechazada": se aceptan ambas.
             const rechazada = /^rechaz/.test(String(s.estado || "").normalize("NFD")
-              .replace(/[̀-ͯ]/g, "").trim().toLowerCase());
+              .replace(/[\u0300-\u036f]/g, "").trim().toLowerCase());
             return "<tr>" +
               "<td><strong>" + esc(s.numero_radicado || "Borrador") + "</strong></td>" +
               "<td>" + esc(nombreNorma(s.id_norma)) + "</td>" +
@@ -356,15 +398,57 @@
               accion("pdf", "PDF", s.id_solicitud) +
               "</div></td></tr>";
           }).join("");
+        }
 
+        const cantidadTexto = filtradas.length + (filtradas.length === 1 ? " solicitud" : " solicitudes");
+        $("#solicitudesConteo").textContent = consulta
+          ? cantidadTexto + " encontradas"
+          : cantidadTexto;
+        const info = $("#solicitudesPaginacionInfo");
+        const numeros = $("#solicitudesPaginas");
+        if (!filtradas.length) {
+          info.textContent = "0 solicitudes";
+          numeros.innerHTML = "";
+          return;
+        }
+
+        info.textContent = "Mostrando " + (inicio + 1) + "–" +
+          Math.min(inicio + porPagina, filtradas.length) + " de " + filtradas.length;
+        numeros.innerHTML =
+          '<button class="comite-pager" type="button" data-pagina-solicitudes="' +
+          (estado.paginaSolicitudes - 1) + '" aria-label="Página anterior"' +
+          (estado.paginaSolicitudes === 1 ? " disabled" : "") + ">‹</button>" +
+          Array.from({ length: totalPaginas }, (_, indice) => {
+            const numero = indice + 1;
+            const activa = numero === estado.paginaSolicitudes;
+            return '<button class="comite-pager' + (activa ? " active" : "") +
+              '" type="button" data-pagina-solicitudes="' + numero + '"' +
+              (activa ? ' aria-current="page"' : "") +
+              ' aria-label="Página ' + numero + '">' + numero + "</button>";
+          }).join("") +
+          '<button class="comite-pager" type="button" data-pagina-solicitudes="' +
+          (estado.paginaSolicitudes + 1) + '" aria-label="Página siguiente"' +
+          (estado.paginaSolicitudes === totalPaginas ? " disabled" : "") + ">›</button>";
+      }
+
+      async function cargarSolicitudes() {
+        const caja = $("#vista-solicitudes");
+        caja.innerHTML = cargando("Cargando solicitudes...");
+        try {
+          await refrescarSolicitudes();
           caja.innerHTML = panel(
-            '<div class="comite-panel-heading"><div><h3>Solicitudes de la empresa</h3><p>' +
-            estado.solicitudes.length + (estado.solicitudes.length === 1 ? " solicitud" : " solicitudes") + "</p></div>" +
+            '<div class="empresa-solicitudes-toolbar"><div><h3>Solicitudes de la empresa</h3><p id="solicitudesConteo"></p></div>' +
+            '<label class="empresa-solicitudes-filter" for="filtroSolicitudes"><span>Buscar por estado o radicado</span>' +
+            '<input id="filtroSolicitudes" type="search" autocomplete="off" placeholder="Ej.: Aprobada o RAD-2026-001" value="' +
+            esc(estado.filtroSolicitudes) + '"></label>' +
             '<button class="comite-button primary btn btn-primario" type="button" data-ir="nueva">Nueva solicitud</button></div>' +
-            '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Norma</th><th>Estado</th><th>Alcance</th><th>Creada</th><th>Acciones</th></tr></thead><tbody>' +
-            (filas || vacioTabla(6, 'Aún no tiene solicitudes. Use "Nueva solicitud" para crear la primera.')) +
-            "</tbody></table></div>"
+            '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Norma</th><th>Estado</th><th>Alcance</th><th>Creada</th><th>Acciones</th></tr></thead><tbody id="solicitudesBody">' +
+            '<tr><td colspan="6"><div class="comite-table-empty">Cargando solicitudes...</div></td></tr>' +
+            '</tbody></table></div><div class="comite-pagination">' +
+            '<span class="comite-pagination-info" id="solicitudesPaginacionInfo"></span>' +
+            '<nav class="comite-pagination-numeros" id="solicitudesPaginas" aria-label="Paginación de solicitudes"></nav></div>'
           );
+          renderizarSolicitudes();
         } catch (error) {
           caja.innerHTML = "";
           mostrar(error.message, "error");
@@ -845,6 +929,20 @@
 
       // ---------------- eventos ----------------
       document.querySelectorAll(".comite-nav-link[data-view]").forEach((boton) => boton.addEventListener("click", () => mostrarVista(boton.dataset.view)));
+
+      $("#vista-solicitudes").addEventListener("input", (evento) => {
+        if (evento.target.id !== "filtroSolicitudes") return;
+        estado.filtroSolicitudes = evento.target.value;
+        estado.paginaSolicitudes = 1;
+        renderizarSolicitudes();
+      });
+
+      $("#vista-solicitudes").addEventListener("click", (evento) => {
+        const boton = evento.target.closest("[data-pagina-solicitudes]");
+        if (!boton || boton.disabled) return;
+        estado.paginaSolicitudes = Number(boton.dataset.paginaSolicitudes);
+        renderizarSolicitudes();
+      });
 
       $("#solicitudSelect").addEventListener("change", (evento) => {
         seleccionar(evento.target.value);

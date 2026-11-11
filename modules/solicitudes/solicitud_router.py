@@ -18,6 +18,7 @@ from modules.solicitudes.solicitud_pdf import generar_pdf_solicitud
 from modules.solicitudes.solicitud_permissions import requiere_permiso
 from modules.solicitudes.solicitud_schema import (
     EstadoSolicitud,
+    SolicitudListadoRespuesta,
     SolicitudCancelar,
     SolicitudCrear,
     SolicitudEditar,
@@ -79,7 +80,7 @@ async def guardar_borrador(
 
 @router.get(
     "/",
-    response_model=list[SolicitudRespuesta],
+    response_model=list[SolicitudListadoRespuesta],
     summary="SOL-006 · Consultar solicitudes",
 )
 async def listar_solicitudes(
