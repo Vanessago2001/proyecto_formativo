@@ -270,14 +270,154 @@
         display: none;
       }
     }
-    /* Filtros de Control de usuarios */
-    .usuarios-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 10px 0 14px; }
-    .usuarios-filtro { display: flex; flex-direction: column; gap: 5px; min-width: 180px; }
-    .usuarios-filtro:first-child { flex: 1 1 260px; }
-    .usuarios-filtro label { font-size: 12px; font-weight: 600; color: #374151; }
-    .usuarios-filtro input, .usuarios-filtro select { min-height: 38px; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; background: #fff; }
-    .usuarios-conteo { margin-left: auto; font-size: 12px; color: #64748b; padding-bottom: 9px; }
-    .usuarios-vacio { padding: 18px; text-align: center; color: #64748b; }
+
+    .users-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin: 0 0 8px;
+    }
+
+    .users-section h3 {
+      margin-bottom: 8px;
+    }
+
+    #tableMessage:empty {
+      display: none;
+    }
+
+    .users-filter {
+      position: relative;
+      width: min(420px, 100%);
+    }
+
+    .users-filter svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+
+    .users-filter input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+      color: #1f2937;
+      font-size: 14px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .users-filter input::placeholder {
+      color: #94a3b8;
+    }
+
+    .users-filter input:focus {
+      outline: none;
+      border-color: #3baa01;
+      box-shadow: 0 0 0 3px rgba(59, 170, 1, .15);
+    }
+
+    .users-pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .pager-size {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #5f6f69;
+    }
+
+    .pager-size select {
+      padding: 6px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      color: #1f2937;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .pager-info {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .pager-buttons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pager-btn {
+      min-width: 34px;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+
+    .pager-btn:hover:not(:disabled):not(.active) {
+      border-color: #3baa01;
+      color: #256d00;
+      background: #f0fdf4;
+    }
+
+    .pager-btn.active {
+      background: #256d00;
+      border-color: #256d00;
+      color: #fff;
+      cursor: default;
+    }
+
+    .pager-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .pager-ellipsis {
+      padding: 0 4px;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    .users-empty td {
+      text-align: center;
+      color: #64748b;
+      padding: 24px;
+    }
+
+    @media (max-width: 640px) {
+      .users-toolbar {
+        justify-content: stretch;
+      }
+
+      .users-filter {
+        width: 100%;
+      }
+
+      .users-pager {
+        justify-content: center;
+      }
+    }
   </style>
 </head>
 
@@ -390,26 +530,18 @@
             después podrá iniciar sesión y será enviada automáticamente al módulo de Comité.
           </div>
         </section>
-        <section class="surface" style="margin-top: 24px">
+        <section class="surface users-section" style="margin-top: 24px">
           <h3>Control de usuarios</h3>
-          <div class="usuarios-filtros">
-            <div class="usuarios-filtro">
-              <label for="buscarUsuario">Buscar</label>
-              <input type="search" id="buscarUsuario" placeholder="Nombre o correo" autocomplete="off">
+          <div class="users-toolbar">
+            <div class="users-filter">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+              </svg>
+              <input type="search" id="usersFilter" placeholder="Buscar por usuario, correo, rol o estado..."
+                autocomplete="off" />
             </div>
-            <div class="usuarios-filtro">
-              <label for="filtroRolUsuario">Rol</label>
-              <select id="filtroRolUsuario"><option value="">Todos los roles</option></select>
-            </div>
-            <div class="usuarios-filtro">
-              <label for="filtroEstadoUsuario">Estado</label>
-              <select id="filtroEstadoUsuario">
-                <option value="">Todos</option>
-                <option value="Activo">Activo</option>
-                <option value="Inactivo">Inactivo</option>
-              </select>
-            </div>
-            <span class="usuarios-conteo" id="conteoUsuarios"></span>
           </div>
           <p class="message" id="tableMessage"></p>
           <div class="table-wrap">
@@ -425,8 +557,20 @@
                 </tr>
               </thead>
               <tbody id="usersBody"></tbody>
-              <tbody id="usersVacio" hidden><tr><td colspan="6" class="usuarios-vacio">Ningún usuario coincide con la búsqueda.</td></tr></tbody>
             </table>
+          </div>
+          <div class="users-pager">
+            <label class="pager-size">
+              Filas por página
+              <select id="usersPageSize">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+              </select>
+            </label>
+            <span class="pager-info" id="usersPagerInfo"></span>
+            <div class="pager-buttons" id="usersPagerButtons"></div>
           </div>
         </section>
       </div>
@@ -979,37 +1123,195 @@
       });
       select.disabled = false;
     }
-    // Todos los usuarios cargados; la tabla muestra los que pasan los filtros.
-    let usuariosCargados = [];
-    function sinTildes(valor) {
-      return String(valor || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const usersState = {
+      lista: [],
+      filtro: "",
+      pagina: 1,
+      porPagina: 5,
+    };
+
+    function normalizarTexto(valor) {
+      return String(valor || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "");
     }
-    function actualizarFiltroRoles(users) {
-      const select = document.getElementById("filtroRolUsuario");
-      const actual = select.value;
-      const roles = [...new Set(users.map((u) => u.rol_nombre).filter(Boolean))].sort();
-      select.innerHTML = '<option value="">Todos los roles</option>';
-      roles.forEach((r) => select.add(new Option(r, r, false, r === actual)));
-    }
+
     function usuariosFiltrados() {
-      const texto = sinTildes(document.getElementById("buscarUsuario").value.trim());
-      const rol = document.getElementById("filtroRolUsuario").value;
-      const estado = document.getElementById("filtroEstadoUsuario").value;
-      return usuariosCargados.filter((u) =>
-        (!texto || sinTildes(u.nombre).includes(texto) || sinTildes(u.correo).includes(texto)) &&
-        (!rol || u.rol_nombre === rol) &&
-        (!estado || u.estado === estado));
+      if (!usersState.filtro) return usersState.lista;
+      const consulta = normalizarTexto(usersState.filtro);
+      return usersState.lista.filter((u) =>
+        [u.nombre, u.correo, u.rol_nombre, u.estado].some((campo) =>
+          normalizarTexto(campo).includes(consulta),
+        ),
+      );
     }
-    ["buscarUsuario", "filtroRolUsuario", "filtroEstadoUsuario"].forEach((id) =>
-      document.getElementById(id).addEventListener(id === "buscarUsuario" ? "input" : "change", () => renderUsers()));
+
+    function paginasVisibles(totalPaginas, paginaActual) {
+      const paginas = [];
+      const agregar = (p) => {
+        const ultima = paginas[paginas.length - 1];
+        if (ultima === p) return;
+        if (typeof ultima === "number" && p - ultima > 1) paginas.push("…");
+        paginas.push(p);
+      };
+      agregar(1);
+      for (let p = paginaActual - 1; p <= paginaActual + 1; p++) {
+        if (p > 1 && p < totalPaginas) agregar(p);
+      }
+      if (totalPaginas > 1) agregar(totalPaginas);
+      return paginas;
+    }
+
+    function construirFilaUsuario(u) {
+      const tr = document.createElement("tr");
+      const roleSelect = document.createElement("select");
+      availableRoles.forEach((r) =>
+        roleSelect.add(
+          new Option(
+            r.nombre,
+            r.id_rol,
+            false,
+            String(r.id_rol) === String(u.rol_id),
+          ),
+        ),
+      );
+      if (!availableRoles.some((role) => String(role.id_rol) === String(u.rol_id))) {
+        roleSelect.add(new Option(
+          u.rol_nombre || "Rol " + u.rol_id,
+          u.rol_id,
+          true,
+          true,
+        ));
+      }
+      roleSelect.addEventListener("change", () =>
+        updateUser(u.id, { rol: roleSelect.value }),
+      );
+      const state = document.createElement("select");
+      state.className =
+        "status " + (u.estado === "Activo" ? "active" : "inactive");
+      state.add(
+        new Option("Activo", "Activo", false, u.estado === "Activo"),
+      );
+      state.add(
+        new Option("Inactivo", "Inactivo", false, u.estado === "Inactivo"),
+      );
+      state.addEventListener("change", () =>
+        updateUser(u.id, { estado: state.value }),
+      );
+      tr.innerHTML = "<td></td><td></td><td></td><td></td><td></td><td></td>";
+      tr.children[0].textContent = u.nombre;
+      tr.children[1].textContent = u.correo;
+      tr.children[2].textContent = u.rol_nombre || "Rol " + u.rol_id;
+      tr.children[3].appendChild(state);
+      tr.children[4].appendChild(roleSelect);
+      // Cambiar correo / restablecer contraseña: solo cuentas Empresa o
+      // Auditor (el backend lo vuelve a validar).
+      if (esCuentaGestionable(u.rol_nombre)) {
+        const acciones = document.createElement("div");
+        acciones.className = "acceso-actions acciones-tabla";
+        const btnCorreo = document.createElement("button");
+        btnCorreo.type = "button";
+        btnCorreo.className = "btn btn-secundario btn-sm";
+        btnCorreo.textContent = "Cambiar correo";
+        btnCorreo.addEventListener("click", () => abrirAcceso("correo", u));
+        const btnClave = document.createElement("button");
+        btnClave.type = "button";
+        btnClave.className = "btn btn-secundario btn-sm";
+        btnClave.textContent = "Restablecer contraseña";
+        btnClave.addEventListener("click", () => abrirAcceso("clave", u));
+        acciones.append(btnCorreo, btnClave);
+        tr.children[5].appendChild(acciones);
+      } else {
+        tr.children[5].textContent = "-";
+      }
+      return tr;
+    }
+
+    function renderPaginador(totalFiltrados, totalPaginas) {
+      const contenedor = document.getElementById("usersPagerButtons");
+      contenedor.textContent = "";
+      if (totalFiltrados === 0) {
+        document.getElementById("usersPagerInfo").textContent = "Sin resultados";
+        return;
+      }
+      const inicio = (usersState.pagina - 1) * usersState.porPagina + 1;
+      const fin = Math.min(usersState.pagina * usersState.porPagina, totalFiltrados);
+      document.getElementById("usersPagerInfo").textContent =
+        `Mostrando ${inicio}-${fin} de ${totalFiltrados} usuarios`;
+      const irAPagina = (p) => {
+        if (p === usersState.pagina) return;
+        usersState.pagina = p;
+        renderUsuarios();
+      };
+      const btnAnterior = document.createElement("button");
+      btnAnterior.type = "button";
+      btnAnterior.className = "pager-btn";
+      btnAnterior.textContent = "‹";
+      btnAnterior.disabled = usersState.pagina <= 1;
+      btnAnterior.setAttribute("aria-label", "Página anterior");
+      btnAnterior.addEventListener("click", () => irAPagina(usersState.pagina - 1));
+      contenedor.appendChild(btnAnterior);
+      paginasVisibles(totalPaginas, usersState.pagina).forEach((p) => {
+        if (p === "…") {
+          const span = document.createElement("span");
+          span.className = "pager-ellipsis";
+          span.textContent = "…";
+          contenedor.appendChild(span);
+          return;
+        }
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pager-btn" + (p === usersState.pagina ? " active" : "");
+        btn.textContent = p;
+        btn.setAttribute("aria-label", "Ir a la página " + p);
+        if (p === usersState.pagina) btn.setAttribute("aria-current", "page");
+        btn.addEventListener("click", () => irAPagina(p));
+        contenedor.appendChild(btn);
+      });
+      const btnSiguiente = document.createElement("button");
+      btnSiguiente.type = "button";
+      btnSiguiente.className = "pager-btn";
+      btnSiguiente.textContent = "›";
+      btnSiguiente.disabled = usersState.pagina >= totalPaginas;
+      btnSiguiente.setAttribute("aria-label", "Página siguiente");
+      btnSiguiente.addEventListener("click", () => irAPagina(usersState.pagina + 1));
+      contenedor.appendChild(btnSiguiente);
+    }
+
+    function renderUsuarios() {
+      const filtrados = usuariosFiltrados();
+      const totalPaginas = Math.max(
+        1,
+        Math.ceil(filtrados.length / usersState.porPagina),
+      );
+      if (usersState.pagina > totalPaginas) usersState.pagina = totalPaginas;
+      const inicio = (usersState.pagina - 1) * usersState.porPagina;
+      const pagina = filtrados.slice(inicio, inicio + usersState.porPagina);
+      const body = document.getElementById("usersBody");
+      body.textContent = "";
+      if (pagina.length === 0) {
+        const tr = document.createElement("tr");
+        tr.className = "users-empty";
+        const td = document.createElement("td");
+        td.colSpan = 6;
+        td.textContent = usersState.filtro
+          ? "No se encontraron usuarios que coincidan con la búsqueda."
+          : "No hay usuarios registrados.";
+        tr.appendChild(td);
+        body.appendChild(tr);
+      } else {
+        pagina.forEach((u) => body.appendChild(construirFilaUsuario(u)));
+      }
+      renderPaginador(filtrados.length, totalPaginas);
+    }
 
     async function loadUsers() {
       // Sin caché: tras cambiar un correo o un estado se ve el dato nuevo.
       const res = await fetch("/users/all-users", { headers: headers(), cache: "no-store" });
       if (!res.ok) throw new Error("No se pudieron cargar los usuarios.");
       const users = await res.json();
-      usuariosCargados = users;
-      actualizarFiltroRoles(users);
+      usersState.lista = users;
       document.getElementById("totalUsers").textContent = users.length;
       document.getElementById("activeUsers").textContent = users.filter(
         (u) => u.estado === "Activo",
@@ -1017,81 +1319,24 @@
       document.getElementById("auxUsers").textContent = users.filter((u) =>
         ["Auxiliar", "Instructor"].includes(u.rol_nombre),
       ).length;
-      renderUsers();
+      renderUsuarios();
     }
 
-    function renderUsers() {
-      const users = usuariosFiltrados();
-      document.getElementById("conteoUsuarios").textContent =
-        users.length + " de " + usuariosCargados.length + " usuarios";
-      document.getElementById("usersVacio").hidden = users.length > 0 || usuariosCargados.length === 0;
-      const body = document.getElementById("usersBody");
-      body.textContent = "";
-      users.forEach((u) => {
-        const tr = document.createElement("tr");
-        const roleSelect = document.createElement("select");
-        availableRoles.forEach((r) =>
-          roleSelect.add(
-            new Option(
-              r.nombre,
-              r.id_rol,
-              false,
-              String(r.id_rol) === String(u.rol_id),
-            ),
-          ),
-        );
-        if (!availableRoles.some((role) => String(role.id_rol) === String(u.rol_id))) {
-          roleSelect.add(new Option(
-            u.rol_nombre || "Rol " + u.rol_id,
-            u.rol_id,
-            true,
-            true,
-          ));
-        }
-        roleSelect.addEventListener("change", () =>
-          updateUser(u.id, { rol: roleSelect.value }),
-        );
-        const state = document.createElement("select");
-        state.className =
-          "status " + (u.estado === "Activo" ? "active" : "inactive");
-        state.add(
-          new Option("Activo", "Activo", false, u.estado === "Activo"),
-        );
-        state.add(
-          new Option("Inactivo", "Inactivo", false, u.estado === "Inactivo"),
-        );
-        state.addEventListener("change", () =>
-          updateUser(u.id, { estado: state.value }),
-        );
-        tr.innerHTML = "<td></td><td></td><td></td><td></td><td></td><td></td>";
-        tr.children[0].textContent = u.nombre;
-        tr.children[1].textContent = u.correo;
-        tr.children[2].textContent = u.rol_nombre || "Rol " + u.rol_id;
-        tr.children[3].appendChild(state);
-        tr.children[4].appendChild(roleSelect);
-        // Cambiar correo / restablecer contraseña: solo cuentas Empresa o
-        // Auditor (el backend lo vuelve a validar).
-        if (esCuentaGestionable(u.rol_nombre)) {
-          const acciones = document.createElement("div");
-          acciones.className = "acceso-actions acciones-tabla";
-          const btnCorreo = document.createElement("button");
-          btnCorreo.type = "button";
-          btnCorreo.className = "btn btn-secundario btn-sm";
-          btnCorreo.textContent = "Cambiar correo";
-          btnCorreo.addEventListener("click", () => abrirAcceso("correo", u));
-          const btnClave = document.createElement("button");
-          btnClave.type = "button";
-          btnClave.className = "btn btn-secundario btn-sm";
-          btnClave.textContent = "Restablecer contraseña";
-          btnClave.addEventListener("click", () => abrirAcceso("clave", u));
-          acciones.append(btnCorreo, btnClave);
-          tr.children[5].appendChild(acciones);
-        } else {
-          tr.children[5].textContent = "-";
-        }
-        body.appendChild(tr);
-      });
-    }
+    const inputFiltroUsuarios = document.getElementById("usersFilter");
+    let temporizadorFiltro = null;
+    inputFiltroUsuarios.addEventListener("input", () => {
+      clearTimeout(temporizadorFiltro);
+      temporizadorFiltro = setTimeout(() => {
+        usersState.filtro = inputFiltroUsuarios.value.trim();
+        usersState.pagina = 1;
+        renderUsuarios();
+      }, 200);
+    });
+    document.getElementById("usersPageSize").addEventListener("change", (e) => {
+      usersState.porPagina = Number(e.target.value);
+      usersState.pagina = 1;
+      renderUsuarios();
+    });
     function esCuentaGestionable(rolNombre) {
       const rol = String(rolNombre || "").trim().toLowerCase();
       return rol === "empresa" || rol === "auditor";
@@ -1156,9 +1401,9 @@
         show("tableMessage", result.mensaje || "Acción realizada.", true);
         if (esCorreo) {
           // Se ve de inmediato y luego se confirma con la lista del servidor.
-          const fila = usuariosCargados.find((x) => String(x.id) === String(usuario.id));
+          const fila = usersState.lista.find((x) => String(x.id) === String(usuario.id));
           if (fila) fila.correo = result.correo || cuerpo.correo;
-          renderUsers();
+          renderUsuarios();
           loadUsers().catch(() => {});
         }
       } finally {

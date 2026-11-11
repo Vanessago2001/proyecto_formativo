@@ -1316,6 +1316,88 @@
         padding: 10px 12px;
       }
     }
+
+    .users-pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .pager-size {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #5f6f69;
+    }
+
+    .pager-size select {
+      padding: 6px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      color: #1f2937;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .pager-info {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .pager-buttons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pager-btn {
+      min-width: 34px;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+
+    .pager-btn:hover:not(:disabled):not(.active) {
+      border-color: #3baa01;
+      color: #256d00;
+      background: #f0fdf4;
+    }
+
+    .pager-btn.active {
+      background: #256d00;
+      border-color: #256d00;
+      color: #fff;
+      cursor: default;
+    }
+
+    .pager-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .pager-ellipsis {
+      padding: 0 4px;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    @media (max-width: 640px) {
+      .users-pager {
+        justify-content: center;
+      }
+    }
   </style>
 </head>
 
@@ -1635,6 +1717,20 @@
               <div id="tableLoading" class="loading">Cargando asignaciones...</div>
             </div>
 
+            <div class="users-pager" id="assignmentsPager" style="display: none;">
+              <label class="pager-size">
+                Filas por página
+                <select id="assignmentsPageSize">
+                  <option value="5" selected>5</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                </select>
+              </label>
+              <span class="pager-info" id="assignmentsPagerInfo"></span>
+              <div class="pager-buttons" id="assignmentsPagerButtons"></div>
+            </div>
+
 
             <!-- =================================================
                  SOLICITUDES DE CAMBIO ENVIADAS POR LAS EMPRESAS
@@ -1840,6 +1936,7 @@
     const auditorRolesAsignados = new Map();
 
     let asignaciones = [];
+    const asignacionesPagerState = { pagina: 1, porPagina: 5 };
     let paginaAuditores = 1;
     let paginaSolicitudes = 1;
     let totalPaginasAuditores = 0;
@@ -2555,6 +2652,89 @@
 
 
     /* =========================================================
+       PAGINACION DE ASIGNACIONES
+    ========================================================= */
+
+    function paginasVisiblesAsignaciones(totalPaginas, paginaActual) {
+      const paginas = [];
+      const agregar = (p) => {
+        const ultima = paginas[paginas.length - 1];
+        if (ultima === p) return;
+        if (typeof ultima === "number" && p - ultima > 1) paginas.push("…");
+        paginas.push(p);
+      };
+      agregar(1);
+      for (let p = paginaActual - 1; p <= paginaActual + 1; p++) {
+        if (p > 1 && p < totalPaginas) agregar(p);
+      }
+      if (totalPaginas > 1) agregar(totalPaginas);
+      return paginas;
+    }
+
+    function renderAsignacionesPaginador() {
+      const pager = document.getElementById("assignmentsPager");
+      const contenedor = document.getElementById("assignmentsPagerButtons");
+      const info = document.getElementById("assignmentsPagerInfo");
+      contenedor.innerHTML = "";
+      const total = asignaciones.length;
+      if (total === 0) {
+        pager.style.display = "none";
+        return;
+      }
+      pager.style.display = "flex";
+      const totalPaginas = Math.max(1, Math.ceil(total / asignacionesPagerState.porPagina));
+      if (asignacionesPagerState.pagina > totalPaginas) asignacionesPagerState.pagina = totalPaginas;
+      const inicio = (asignacionesPagerState.pagina - 1) * asignacionesPagerState.porPagina + 1;
+      const fin = Math.min(asignacionesPagerState.pagina * asignacionesPagerState.porPagina, total);
+      info.textContent = `Mostrando ${inicio}-${fin} de ${total} asignaciones`;
+      const irAPagina = (p) => {
+        if (p === asignacionesPagerState.pagina) return;
+        asignacionesPagerState.pagina = p;
+        renderAsignaciones();
+      };
+      const btnAnterior = document.createElement("button");
+      btnAnterior.type = "button";
+      btnAnterior.className = "pager-btn";
+      btnAnterior.textContent = "‹";
+      btnAnterior.disabled = asignacionesPagerState.pagina <= 1;
+      btnAnterior.setAttribute("aria-label", "Página anterior");
+      btnAnterior.addEventListener("click", () => irAPagina(asignacionesPagerState.pagina - 1));
+      contenedor.appendChild(btnAnterior);
+      paginasVisiblesAsignaciones(totalPaginas, asignacionesPagerState.pagina).forEach((p) => {
+        if (p === "…") {
+          const span = document.createElement("span");
+          span.className = "pager-ellipsis";
+          span.textContent = "…";
+          contenedor.appendChild(span);
+          return;
+        }
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pager-btn" + (p === asignacionesPagerState.pagina ? " active" : "");
+        btn.textContent = p;
+        btn.setAttribute("aria-label", "Ir a la página " + p);
+        if (p === asignacionesPagerState.pagina) btn.setAttribute("aria-current", "page");
+        btn.addEventListener("click", () => irAPagina(p));
+        contenedor.appendChild(btn);
+      });
+      const btnSiguiente = document.createElement("button");
+      btnSiguiente.type = "button";
+      btnSiguiente.className = "pager-btn";
+      btnSiguiente.textContent = "›";
+      btnSiguiente.disabled = asignacionesPagerState.pagina >= totalPaginas;
+      btnSiguiente.setAttribute("aria-label", "Página siguiente");
+      btnSiguiente.addEventListener("click", () => irAPagina(asignacionesPagerState.pagina + 1));
+      contenedor.appendChild(btnSiguiente);
+    }
+
+    document.getElementById("assignmentsPageSize").addEventListener("change", (e) => {
+      asignacionesPagerState.porPagina = Number(e.target.value);
+      asignacionesPagerState.pagina = 1;
+      renderAsignaciones();
+    });
+
+
+    /* =========================================================
        RENDER ASIGNACIONES
     ========================================================= */
 
@@ -2564,13 +2744,18 @@
 
       assignmentCounter.textContent = `${asignaciones.length} ${asignaciones.length === 1 ? "asignación" : "asignaciones"}`;
 
+      renderAsignacionesPaginador();
+
       if (asignaciones.length === 0) {
         emptyState.style.display = "block";
         return;
       }
       emptyState.style.display = "none";
 
-      asignaciones.forEach((asignacion) => {
+      const inicioPagina = (asignacionesPagerState.pagina - 1) * asignacionesPagerState.porPagina;
+      const pagina = asignaciones.slice(inicioPagina, inicioPagina + asignacionesPagerState.porPagina);
+
+      pagina.forEach((asignacion) => {
         const row = document.createElement("tr");
         let statusClass = "assigned";
         const estado = asignacion.tiene_programacion
