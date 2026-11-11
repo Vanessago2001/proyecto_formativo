@@ -254,7 +254,7 @@
         if (!estado.catalogo.length) {
           $("#sidebarTitle").textContent = "Sin reportes";
           nav.innerHTML = '<p class="comite-muted">Tu rol no tiene reportes asignados.</p>';
-          avisar("Tu rol no tiene reportes disponibles. Si crees que es un error, avísale al administrador.", "error");
+          avisar("Tu rol no tiene reportes disponibles. Si crees que es un error, avísale al coordinador.", "error");
           return;
         }
 
@@ -309,12 +309,20 @@
           if (!catalogo) return;
           estado.catalogo = catalogo;
           pintarCatalogo();
+          abrirReporteDelHash();
         } catch (error) {
           $("#sidebarTitle").textContent = "Error";
           $("#listaReportes").innerHTML = "";
           avisar(error.message, "error");
         }
       }
+
+      // Desde el menú de otra pantalla se llega con "#codigo" del reporte.
+      function abrirReporteDelHash() {
+        const codigo = decodeURIComponent(location.hash.slice(1));
+        if (codigo && estado.catalogo.some((r) => r.codigo === codigo)) ejecutar(codigo);
+      }
+      window.addEventListener("hashchange", abrirReporteDelHash);
 
       $("#refreshButton").addEventListener("click", () => {
         if (estado.seleccionado) ejecutar(estado.seleccionado);

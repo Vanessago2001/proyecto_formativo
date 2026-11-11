@@ -1432,8 +1432,8 @@
           .replace(/[\u0300-\u036f]/g, "")
           .toLowerCase()
           .replace(/[\s_-]+/g, "");
-        if (base === "administrador") return "admin";
-        if (base === "superadministrador") return "superadmin";
+        // "Coordinador" es el antiguo "Administrador".
+        if (base === "coordinador" || base === "administrador") return "admin";
         return base;
       }
 
@@ -1453,8 +1453,8 @@
         return;
       }
 
-      const ROLES_LECTURA = ["admin", "superadmin", "auxiliar"];
-      const ROLES_ESCRITURA = ["admin", "superadmin"];
+      const ROLES_LECTURA = ["admin", "auxiliar"];
+      const ROLES_ESCRITURA = ["admin"];
       let rolActual = normalizarRol(payload.role_name);
       let puedeGestionar = ROLES_ESCRITURA.includes(rolActual);
 

@@ -96,5 +96,5 @@ class SolicitudCambioAsignacionResolver(BaseModel):
         ...,
         max_length=1000,
         # El mínimo de 10 caracteres se valida en el servicio, con mensaje en español.
-        description="Respuesta del administrador a la empresa (mínimo 10 caracteres).",
+        description="Respuesta del Coordinador a la empresa (mínimo 10 caracteres).",
     )

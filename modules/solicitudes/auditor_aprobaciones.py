@@ -4,13 +4,13 @@ M5 — GESTIÓN DE SOLICITUDES · acciones con permiso REQ en los Bloques 5 a 7.
 La hoja marca REQ cuando el rol puede pedir la acción pero necesita que la
 apruebe un superior. Quien aprueba sale de la misma hoja:
 
-    SOL-048  Aprobar asignación de auditor  -> aprueba ADM o SUPERADM
-    SOL-049  Reasignar auditor (SA)         -> aprueba solo SUPERADM
-    SOL-050  Cancelar asignación            -> aprueba ADM o SUPERADM
-    SOL-054  Cambiar estado de solicitud    -> aprueba ADM o SUPERADM
-    SOL-060  Cerrar solicitud               -> aprueba ADM o SUPERADM
-    SOL-063  Recalcular tiempo de auditoría -> aprueba ADM o SUPERADM
-    SOL-065  Justificar ajustes de tiempo   -> aprueba solo SUPERADM
+    SOL-048  Aprobar asignación de auditor  -> aprueba el Coordinador
+    SOL-049  Reasignar auditor (SA)         -> aprueba el Coordinador (era SA)
+    SOL-050  Cancelar asignación            -> aprueba el Coordinador
+    SOL-054  Cambiar estado de solicitud    -> aprueba el Coordinador
+    SOL-060  Cerrar solicitud               -> aprueba el Coordinador
+    SOL-063  Recalcular tiempo de auditoría -> aprueba el Coordinador
+    SOL-065  Justificar ajustes de tiempo   -> aprueba el Coordinador (era SA)
 
 Cuando el superior aprueba, se ejecuta aquí la misma operación que habría
 hecho el solicitante, con su propio usuario como autor del cambio.
@@ -20,8 +20,9 @@ from uuid import UUID
 
 from modules.aprobaciones.aprobacion_service import registrar_accion
 
-APROBADORES = ["superadmin", "admin"]
-SOLO_SUPERADMIN = ["superadmin"]
+APROBADORES = ["admin"]
+# Lo que antes aprobaba solo el Super Administrador (retirado) lo aprueba el Coordinador.
+SOLO_COORDINADOR = ["admin"]
 
 
 def _id_solicitud(aprobacion: dict) -> UUID:
@@ -32,7 +33,7 @@ def _autor(aprobacion: dict, codigo: str) -> dict:
     """Quien aprueba queda como autor del cambio, con el permiso aplicado."""
     return {
         "id_usuario": aprobacion.get("id_revisor") or aprobacion.get("id_solicitante"),
-        "role_name": "Administrador",
+        "role_name": "Coordinador",
         "permiso_codigo": codigo,
     }
 
@@ -72,5 +73,5 @@ async def _cancelar_asignacion(db, aprobacion: dict) -> dict:
 
 
 registrar_accion("SOL-048", "Aprobar asignación de auditor", APROBADORES, _aprobar_asignacion)
-registrar_accion("SOL-049", "Reasignar auditor", SOLO_SUPERADMIN, _reasignar_auditor)
+registrar_accion("SOL-049", "Reasignar auditor", SOLO_COORDINADOR, _reasignar_auditor)
 registrar_accion("SOL-050", "Cancelar asignación de auditor", APROBADORES, _cancelar_asignacion)

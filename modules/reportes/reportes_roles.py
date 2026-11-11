@@ -10,10 +10,9 @@ según quién consulta:
   sus auditorías, su disponibilidad, sus apelaciones).
 
 Los nombres de rol se guardan ya normalizados con `core.security`, que es quien
-traduce "Super Administrador", "ADMIN" o "aud" a una forma canónica.
+traduce "ADMIN" o "aud" a una forma canónica.
 """
 
-SUPERADMIN = "superadmin"
 ADMIN = "admin"
 AUXILIAR = "auxiliar"
 EMPRESA = "empresa"
@@ -21,9 +20,9 @@ AUDITOR = "auditor"
 COMITE = "comite"
 
 # Dirección y operación del sistema: ven todo el parque de empresas.
-ROLES_DIRECCION = [SUPERADMIN, ADMIN, AUXILIAR]
+ROLES_DIRECCION = [ADMIN, AUXILIAR]
 # Órganos de control: vigilan auditorías, conflictos y apelaciones.
-ROLES_CONTROL = [SUPERADMIN, ADMIN, COMITE]
+ROLES_CONTROL = [ADMIN, COMITE]
 
 CATALOGO_REPORTES: dict[str, dict] = {
     "estadistico-empresas": {
@@ -42,7 +41,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
             "Carga de trabajo por auditor: asignaciones, auditorías abiertas y "
             "cerradas. Un auditor solo ve su propia carga."
         ),
-        "roles": [SUPERADMIN, ADMIN, AUDITOR],
+        "roles": [ADMIN, AUDITOR],
         "alcance_empresa": False,
         "alcance_auditor": True,
     },
@@ -62,7 +61,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
             "Auditorías ya cerradas con su solicitud, empresa y auditor "
             "responsable. Un auditor solo ve las suyas."
         ),
-        "roles": [SUPERADMIN, ADMIN, AUDITOR],
+        "roles": [ADMIN, AUDITOR],
         "alcance_empresa": False,
         "alcance_auditor": True,
     },
@@ -103,7 +102,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
             "que tiene activos para programar visitas. No incluye lo cancelado. "
             "Un auditor solo ve su disponibilidad."
         ),
-        "roles": [SUPERADMIN, ADMIN, AUDITOR],
+        "roles": [ADMIN, AUDITOR],
         "alcance_empresa": False,
         "alcance_auditor": True,
     },

@@ -1180,7 +1180,7 @@
     function pintarComiteAsignado(miembros) {
       const contenedor = document.getElementById('expedienteComite');
       if (!Array.isArray(miembros) || miembros.length === 0) {
-        contenedor.innerHTML = '<div class="empty-state">El Administrador aún no asigna el comité de esta apelación.</div>';
+        contenedor.innerHTML = '<div class="empty-state">El Coordinador aún no asigna el comité de esta apelación.</div>';
         return;
       }
       contenedor.innerHTML = miembros.map((item) => `

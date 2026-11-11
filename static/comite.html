@@ -180,9 +180,10 @@
       const payload = parseToken(token);
       const role = String(payload && (payload.role_name || payload.rol || "") || "").trim().toLowerCase();
       const roleLabel = payload && (payload.role_name || payload.rol) ? payload.role_name || payload.rol : "Usuario";
-      const canDecide = ["superadm", "superadmin", "superadministrador", "adm", "admin", "administrador", "comite", "comité"].includes(role);
-      const canConsult = ["superadm", "superadmin", "superadministrador", "adm", "admin", "administrador", "aux", "auxiliar", "comite", "comité"].includes(role);
-      const isSuperAdmin = ["superadm", "superadmin", "superadministrador"].includes(role);
+      const canDecide = ["adm", "admin", "administrador", "coordinador", "comite", "comité"].includes(role);
+      const canConsult = ["adm", "admin", "administrador", "coordinador", "aux", "auxiliar", "comite", "comité"].includes(role);
+      // Reabrir un dictamen (COM-029) era del Super Administrador (retirado): ahora es del Coordinador.
+      const isSuperAdmin = ["adm", "admin", "administrador", "coordinador"].includes(role);
       const state = { selectedId: null, expedientes: [] };
 
       const $ = (selector) => document.querySelector(selector);

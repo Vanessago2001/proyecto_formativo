@@ -788,7 +788,7 @@
 
         const isAdmin =
             user &&
-            user.role_name === "Administrador";
+            ["Coordinador", "Administrador"].includes(user.role_name);
 
 
         if (!isAdmin) {
@@ -1969,7 +1969,7 @@
             if (!idUsuarioActor) {
                 console.error("Payload JWT sin identificador de usuario:", user);
                 showMessage(
-                    "No fue posible identificar al usuario administrador autenticado. " +
+                    "No fue posible identificar al usuario coordinador autenticado. " +
                     "Cierra sesión, vuelve a ingresar y prueba nuevamente."
                 );
                 return;

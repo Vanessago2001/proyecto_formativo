@@ -51,6 +51,23 @@
     }
   }
 
+  // Nombre del rol tal como está en la sesión (para mostrarlo).
+  function nombreRolSesion() {
+    try {
+      var token = localStorage.getItem("access_token");
+      if (!token) return "";
+      var parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      var datos = JSON.parse(decodeURIComponent(atob(parte).split("").map(function (c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join("")));
+      var nombre = String(datos.role_name || datos.rol || "").trim();
+      // Nombre vigente del rol mientras la base termina el cambio de nombre.
+      return /^administrador$/i.test(nombre) ? "Coordinador" : nombre;
+    } catch (_) {
+      return "";
+    }
+  }
+
   function panelDelRol(rol) {
     if (/empresa/.test(rol)) return "/empresa";
     if (/comite/.test(rol)) return "/comite";
@@ -255,7 +272,7 @@
       {
         grupo: "Usuarios",
         opciones: [
-          // El panel solo muestra la gestión de usuarios al Administrador.
+          // El panel solo muestra la gestión de usuarios al Coordinador.
           { texto: "Gestionar usuarios", href: "/dashboard#usuarios", solo: ["admin"] },
           { texto: "Permisos de auxiliares", href: "/permisos-auxiliar", solo: ["admin"] }
         ]
@@ -272,9 +289,11 @@
       {
         grupo: "Auditorías",
         opciones: [
-          { texto: "Consultar auditorías programadas", href: "/consultar-auditorias-programadas-admin#listado", proxy: '.page-tabs a[data-vista="listado"]' },
-          { texto: "Solicitudes de reprogramación", href: "/consultar-auditorias-programadas-admin#reprogramaciones", proxy: '.page-tabs a[data-vista="reprogramaciones"]' },
-          { texto: "Consultar programaciones futuras", href: "/consultar-auditorias-programadas-admin#futuras", proxy: '.page-tabs a[data-vista="futuras"]' }
+          // La pantalla cambia de vista con la dirección (#listado,
+          // #reprogramaciones, #futuras): ya no tiene pestañas propias.
+          { texto: "Consultar auditorías programadas", href: "/consultar-auditorias-programadas-admin#listado" },
+          { texto: "Solicitudes de reprogramación", href: "/consultar-auditorias-programadas-admin#reprogramaciones" },
+          { texto: "Consultar programaciones futuras", href: "/consultar-auditorias-programadas-admin#futuras" }
         ]
       },
       {
@@ -316,7 +335,7 @@
       GRUPO_PQRS,
       REPORTES,
       { texto: "Mi perfil", href: "/profile" },
-      { mfa: true },                       // solo en el panel, donde vive su lógica
+      { mfa: true },                       // en el panel abre la ventana; en las demás pantallas lleva al panel
       SALIR
     ]
   };
@@ -395,13 +414,12 @@
 
   // Menús propios de cada pantalla que quedan cubiertos por el lateral.
   var MENUS_INTERNOS = {
-    "/apelacion": ["#vistaNav"],
-    "/consultar-auditorias-programadas-admin": [".page-tabs"]
+    "/apelacion": ["#vistaNav"]
   };
 
   function tipoDeRol(rol) {
     if (/auxiliar/.test(rol)) return "auxiliar";
-    if (/admin/.test(rol)) return "admin";
+    if (/admin|coordinador/.test(rol)) return "admin";
     if (/comite/.test(rol)) return "comite";
     if (/auditor/.test(rol)) return "auditor";
     return "";
@@ -508,6 +526,21 @@
       caja.appendChild(guardados);
     }
     caja.classList.add("ma-host");
+
+    // Recuadro "Rol: ..." al final del menú, igual en todas las pantallas.
+    // Si la página ya trae el suyo (columnas con nota de permisos) se deja ese.
+    var notaPropia = Array.prototype.some.call(caja.querySelectorAll(".comite-access-note"), function (n) {
+      return !n.closest(".ma-oculto");
+    });
+    var nombreRol = nombreRolSesion();
+    if (!notaPropia && nombreRol) {
+      var nota = document.createElement("div");
+      nota.className = "comite-access-note ma-nota-rol";
+      var etiqueta = document.createElement("span");
+      etiqueta.textContent = "Rol: " + nombreRol;
+      nota.appendChild(etiqueta);
+      raiz.parentNode.insertBefore(nota, raiz.nextSibling);
+    }
 
     (MENUS_INTERNOS[rutaActual()] || []).forEach(function (selector) {
       document.querySelectorAll(selector).forEach(function (elemento) {
@@ -642,6 +675,34 @@
       });
     }
 
+    // Catálogo de reportes del rol para el grupo "Reportes" en las demás pantallas.
+    function cargarCatalogoReportes(grupo, item) {
+      var token = null;
+      try { token = localStorage.getItem("access_token"); } catch (_) {}
+      var respaldo = function () {
+        grupo.lista.innerHTML = "";
+        grupo.lista.appendChild(crearEnlace({ texto: "Ver reportes", href: item.href }, grupo));
+      };
+      if (!token || !window.fetch) { respaldo(); return; }
+      var cargando = document.createElement("span");
+      cargando.className = "ma-vacio";
+      cargando.textContent = "Cargando...";
+      grupo.lista.appendChild(cargando);
+      fetch("/api/reportes", { headers: { Authorization: "Bearer " + token } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (catalogo) {
+          if (!Array.isArray(catalogo) || !catalogo.length) { respaldo(); return; }
+          grupo.lista.innerHTML = "";
+          catalogo.forEach(function (reporte) {
+            grupo.lista.appendChild(crearEnlace({
+              texto: reporte.titulo,
+              href: item.href + "#" + encodeURIComponent(reporte.codigo)
+            }, grupo));
+          });
+        })
+        .catch(respaldo);
+    }
+
     menu.items.forEach(function (item) {
       if (item.salir) {
         var salir = document.createElement("a");
@@ -658,6 +719,14 @@
         if (mfa && !mfa.closest(".menu-acordeon")) {
           mfa.className = "ma-enlace";
           raiz.appendChild(mfa);
+        } else if (!mfa) {
+          // En las demás pantallas la opción también se ve: lleva al panel,
+          // que abre la configuración de la autenticación en dos pasos.
+          var irMfa = document.createElement("a");
+          irMfa.className = "ma-enlace";
+          irMfa.href = "/dashboard#mfa";
+          irMfa.textContent = "Autenticación en dos pasos";
+          raiz.appendChild(irMfa);
         }
         return;
       }
@@ -668,7 +737,11 @@
           raiz.appendChild(dinamico.caja);
           rehacerDinamico(dinamico);
         } else {
-          raiz.appendChild(crearEnlace({ texto: item.texto, href: item.href }, null));
+          // Fuera de su pantalla también es un grupo con los mismos reportes:
+          // antes el submenú solo aparecía al entrar a Reportes.
+          var externo = crearGrupo(item.texto, item);
+          raiz.appendChild(externo.caja);
+          cargarCatalogoReportes(externo, item);
         }
         return;
       }
@@ -839,7 +912,17 @@
     var contenido = cabecera && cabecera.querySelector(".header-content");
     if (!contenido || contenido.querySelector(".header-buttons")) return;
     var subtitulo = contenido.querySelector(".subtitle");
-    if (subtitulo) subtitulo.textContent = "Plataforma de gestión y consulta de certificados";
+    if (subtitulo) {
+      subtitulo.textContent = "Plataforma de gestión y consulta de certificados";
+      // Misma tercera línea que las demás consultas públicas.
+      if (!subtitulo.parentNode.querySelector(".cp-linea-sena")) {
+        var linea = document.createElement("p");
+        linea.className = "cp-linea-sena";
+        linea.style.cssText = "font-size:12px;opacity:.85;margin-top:4px;";
+        linea.textContent = "Servicio Nacional de Aprendizaje • CertiSENA";
+        subtitulo.parentNode.appendChild(linea);
+      }
+    }
 
     var botones = document.createElement("div");
     botones.className = "header-buttons";

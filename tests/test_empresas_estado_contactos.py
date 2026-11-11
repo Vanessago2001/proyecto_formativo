@@ -80,7 +80,7 @@ CONTACTOS = f"{BASE}/sedes/{ID_SEDE}/contactos"
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Super Administrador", 200), ("Administrador", 200), ("Auxiliar", 202), ("Empresa", 403), ("Auditor", 403)],
+    [("Super Administrador", 403), ("Administrador", 200), ("Auxiliar", 202), ("Empresa", 403), ("Auditor", 403)],
 )
 async def test_inactivar_empresa_segun_la_hoja(rol, esperado):
     db = sesion(fila("Activa"))
@@ -93,7 +93,7 @@ async def test_inactivar_empresa_segun_la_hoja(rol, esperado):
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Super Administrador", 200), ("Administrador", 200), ("Auxiliar", 202), ("Empresa", 403)],
+    [("Super Administrador", 403), ("Administrador", 200), ("Auxiliar", 202), ("Empresa", 403)],
 )
 async def test_el_administrador_reactiva(rol, esperado):
     # El rol Super Administrador ya no se usa: la reactivacion la hace el Administrador.
@@ -107,7 +107,7 @@ async def test_el_administrador_reactiva(rol, esperado):
 
 async def test_no_se_reactiva_una_empresa_que_no_esta_inactiva():
     db = sesion(fila("Activa"))
-    assert (await pedir(db, "Super Administrador", "post", f"{BASE}/reactivar")).status_code == 409
+    assert (await pedir(db, "Coordinador", "post", f"{BASE}/reactivar")).status_code == 409
 
 
 async def test_no_se_inactiva_dos_veces():

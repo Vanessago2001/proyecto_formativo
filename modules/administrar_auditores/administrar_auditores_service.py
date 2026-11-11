@@ -1345,7 +1345,7 @@ class AdministrarAuditoresService:
 
             mensaje += (
 
-                f" Observaciones del administrador: "
+                f" Observaciones del coordinador: "
 
                 f"{observaciones_finales}"
 
@@ -1601,7 +1601,7 @@ class AdministrarAuditoresService:
             if estado_revision == "Aprobado"
             else (
                 f"Su documento '{documento['tipo_documento']}' fue rechazado. "
-                f"Observacion del administrador: {observacion_final}"
+                f"Observación del coordinador: {observacion_final}"
             )
         )
 
@@ -1792,7 +1792,7 @@ class AdministrarAuditoresService:
                 if aprobada
                 else (
                     f"Su competencia '{tipo_competencia}' fue rechazada. "
-                    f"Observacion del administrador: {observacion_final}"
+                    f"Observación del coordinador: {observacion_final}"
                 )
             )
 

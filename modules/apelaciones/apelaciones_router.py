@@ -61,7 +61,7 @@ async def registrar_apelacion(
 async def contexto_de_solicitud(
     id_solicitud: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin", "auxiliar"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"]))
 ):
     """Si la solicitud se puede apelar y el motivo del rechazo del Comité."""
     return await ApelacionesService(db).contexto_de_solicitud(id_solicitud, current_user)
@@ -71,7 +71,7 @@ async def contexto_de_solicitud(
 async def consultar_apelacion(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
 ):
     apelacion = await ApelacionesService(db).get_apelacion_by_id(id, current_user)
     if not apelacion:
@@ -83,7 +83,7 @@ async def consultar_apelacion(
 async def consultar_expediente_apelacion(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin", "auxiliar"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"]))
 ):
     """
     Expediente completo de la apelación: la solicitud original, la evaluación
@@ -97,7 +97,7 @@ async def consultar_expediente_apelacion(
 async def consultar_comite_elegible(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["admin"]))
 ):
     """
     Miembros del Comité que el Administrador puede asignar a esta apelación.
@@ -151,7 +151,7 @@ async def editar_apelacion(
 @router.get("/")
 async def consultar_apelaciones_radicadas(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
 ):
     return await ApelacionesService(db).get_all_apelaciones(current_user)
 
@@ -160,7 +160,7 @@ async def consultar_apelaciones_radicadas(
 async def consultar_estado_tramite(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
 ):
     apelacion = await ApelacionesService(db).get_apelacion_by_id(id, current_user)
     if not apelacion:
@@ -185,7 +185,7 @@ async def asignar_comite_apelacion(
     id: UUID,
     data: ComitéAssignmentRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["comite", "admin"]))
 ):
     try:
         return await ApelacionesService(db).assign_committee(
@@ -201,7 +201,7 @@ async def asignar_comite_apelacion(
 async def consultar_historial_apelacion(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
 ):
     return await ApelacionesService(db).get_historial(id, current_user)
 
@@ -210,7 +210,7 @@ async def consultar_historial_apelacion(
 async def consultar_evidencias_previas(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
 ):
     return await ApelacionesService(db).get_evidencias_previas(id, current_user)
 
@@ -220,7 +220,7 @@ async def descargar_evidencia(
     id: UUID,
     id_evidencia: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin"])),
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin"])),
 ):
     archivo = await ApelacionesService(db).obtener_archivo_evidencia(id, id_evidencia, current_user)
     if not archivo:
@@ -233,7 +233,7 @@ async def descargar_evidencia(
 async def consultar_requerimientos(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "superadmin", "admin", "auxiliar"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"]))
 ):
     """Lo que el Comité ha pedido en esta apelación y si ya fue atendido."""
     return await ApelacionesService(db).listar_requerimientos(id, current_user)
@@ -244,7 +244,7 @@ async def solicitar_info_adicional(
     id: UUID,
     data: RequerimientoCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["comite", "admin"]))
 ):
     updated = await ApelacionesService(db).solicitar_info_adicional(
         id, data.requerimiento, current_user, data.observaciones
@@ -259,7 +259,7 @@ async def resolver_apelacion(
     id: UUID,
     data: DecisionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["comite", "admin"]))
 ):
     updated = await ApelacionesService(db).registrar_decision_final(id, data.decision, data.observaciones, current_user)
     if not updated:
@@ -271,7 +271,7 @@ async def resolver_apelacion(
 async def aprobar_apelacion(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["comite", "admin"]))
 ):
     updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "APROBADA", current_user)
     if not updated:
@@ -283,7 +283,7 @@ async def aprobar_apelacion(
 async def rechazar_apelacion(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["comite", "admin"]))
 ):
     updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "RECHAZADA", current_user)
     if not updated:
@@ -295,7 +295,7 @@ async def rechazar_apelacion(
 async def notificar_dictamen_final(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["comite", "admin"]))
 ):
     updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "NOTIFICADA", current_user)
     if not updated:
@@ -307,7 +307,7 @@ async def notificar_dictamen_final(
 async def cerrar_apelacion_definitivamente(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["comite", "superadmin", "admin"]))
+    current_user: dict = Depends(require_role(["comite", "admin"]))
 ):
     updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "CERRADA", current_user)
     if not updated:

@@ -4,11 +4,11 @@ M3 — EMPRESAS · acciones con permiso REQ para el Auxiliar.
 Según la hoja "M3 — EMPRESAS", el Auxiliar puede pedir estas acciones pero
 necesita que las apruebe un rol con el permiso concedido:
 
-    EMP-006  Cambiar estado de la empresa   -> aprueba ADM o SUPERADM
-    EMP-007  Inactivar empresa              -> aprueba ADM o SUPERADM
-    EMP-008  Reactivar empresa              -> aprueba ADM (el rol SUPERADM ya no se usa)
-    EMP-023  Eliminar sede                  -> aprueba ADM o SUPERADM
-    EMP-029  Eliminar contacto              -> aprueba ADM o SUPERADM
+    EMP-006  Cambiar estado de la empresa   -> aprueba el Coordinador
+    EMP-007  Inactivar empresa              -> aprueba el Coordinador
+    EMP-008  Reactivar empresa              -> aprueba el Coordinador
+    EMP-023  Eliminar sede                  -> aprueba el Coordinador
+    EMP-029  Eliminar contacto              -> aprueba el Coordinador
 
 (EMP-010 exportar y EMP-013 eliminar documento también son REQ, pero esas
 funciones todavía no existen.)
@@ -17,7 +17,7 @@ funciones todavía no existen.)
 from modules.aprobaciones.aprobacion_service import registrar_accion
 from modules.empresas.empresas_service import EmpresasService
 
-APROBADORES = ["superadmin", "admin"]
+APROBADORES = ["admin"]
 
 
 def _id_empresa(aprobacion: dict) -> str:

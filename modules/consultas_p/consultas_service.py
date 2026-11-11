@@ -39,6 +39,18 @@ COLUMNAS_PUBLICAS_EMPRESA_ALIAS = (
 # NIT sin dígito de verificación puede coincidir con varias.
 MAX_EMPRESAS_POR_BUSQUEDA = 20
 
+# Un certificado solo existe para el portal público cuando está publicado y
+# firmado (PAdES) por el líder del comité. Es el mismo criterio de
+# "Verificar certificado" (certificados_service.CRITERIO_PUBLICO): así un
+# código que aparece en la constancia siempre se puede verificar.
+CERTIFICADO_PUBLICADO_Y_FIRMADO = (
+    "c.publico_certificado IS TRUE"
+    " AND c.id_firmante IS NOT NULL"
+    " AND c.huella_firmante IS NOT NULL"
+    " AND c.codigo_hash IS NOT NULL"
+    " AND c.huella_pdf IS NOT NULL"
+)
+
 # Días que faltan para el vencimiento a partir de los cuales un certificado se
 # reporta "POR VENCER": es el margen típico para gestionar la renovación.
 DIAS_ALERTA_VENCIMIENTO = 90
@@ -264,7 +276,7 @@ class ConsultasPublicasService:
         for emp in empresas:
             eid = emp.get("id_empresa")
 
-            certs = await self.db.execute(text("""
+            certs = await self.db.execute(text(f"""
                 SELECT
                     c.codigo_verificacion,
                     TRIM(c.estado_certificado) AS estado,
@@ -280,13 +292,14 @@ class ConsultasPublicasService:
                   OR s.id_certificado = c.id_certificado
                 LEFT JOIN norma n ON n.id_norma = s.id_norma
                 WHERE s.id_empresa = :eid
+                  AND {CERTIFICADO_PUBLICADO_Y_FIRMADO}
                   AND TRIM(UPPER(c.estado_certificado)) = 'VIGENTE'
                   AND (c.fecha_vencimiento IS NULL OR c.fecha_vencimiento >= CURRENT_DATE)
                 ORDER BY c.fecha_emision DESC NULLS LAST;
             """), {"eid": eid})
             certificados = [dict(r) for r in certs.mappings().all()]
 
-            hist = await self.db.execute(text("""
+            hist = await self.db.execute(text(f"""
                 SELECT
                     c.codigo_verificacion,
                     TRIM(c.estado_certificado) AS estado,
@@ -298,6 +311,7 @@ class ConsultasPublicasService:
                   ON s.id_solicitud = c.id_solicitud
                   OR s.id_certificado = c.id_certificado
                 WHERE s.id_empresa = :eid
+                  AND {CERTIFICADO_PUBLICADO_Y_FIRMADO}
                 ORDER BY c.fecha_emision DESC NULLS LAST;
             """), {"eid": eid})
             historial_certificados = [dict(r) for r in hist.mappings().all()]
@@ -424,8 +438,8 @@ class ConsultasPublicasService:
             JOIN empresa e ON e.id_empresa = s.id_empresa
             LEFT JOIN norma n ON n.id_norma = s.id_norma
             LEFT JOIN certificado c
-              ON c.id_solicitud = s.id_solicitud
-              OR c.id_certificado = s.id_certificado
+              ON (c.id_solicitud = s.id_solicitud OR c.id_certificado = s.id_certificado)
+             AND {CERTIFICADO_PUBLICADO_Y_FIRMADO}
             WHERE {where}
             ORDER BY s.fecha DESC NULLS LAST
             LIMIT 20;
@@ -491,7 +505,11 @@ class ConsultasPublicasService:
             f["dias_desde_radicacion"] = (hoy - radicacion).days if radicacion else None
             resultados.append(f)
 
-        if not resultados and nit:
+        # Solo se muestra la tarjeta de la empresa cuando se buscó únicamente
+        # por NIT. Si además se escribió un radicado o código que no existe, la
+        # respuesta es "no se encontró": antes salía la empresa con datos
+        # incompletos ("sin norma registrada") como si el radicado fuera suyo.
+        if not resultados and nit and not codigo:
             filtro_empresa, parametros_empresa = filtro_nit_publico("nit", "nombre", nit, nit_exacto)
             emp = await self.db.execute(text(f"""
                 SELECT {COLUMNAS_PUBLICAS_EMPRESA_ALIAS}
@@ -558,6 +576,7 @@ class ConsultasPublicasService:
             JOIN empresa e ON e.id_empresa = s.id_empresa
             LEFT JOIN norma n ON n.id_norma = s.id_norma
             WHERE {condicion_codigo("c.codigo_verificacion")}
+              AND {CERTIFICADO_PUBLICADO_Y_FIRMADO}
             ORDER BY c.fecha_emision DESC NULLS LAST
             LIMIT 1;
         """), {"codigo": codigo_limpio})

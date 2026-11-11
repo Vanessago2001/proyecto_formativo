@@ -32,7 +32,7 @@ ESTADO_PENDIENTE = "Pendiente"
 ESTADO_APROBADA = "Aprobada"
 ESTADO_RECHAZADA = "Rechazada"
 
-NOMBRES_ROL = {"superadmin": "Super Administrador", "admin": "Administrador"}
+NOMBRES_ROL = {"admin": "Coordinador"}
 
 
 @dataclass(frozen=True)
@@ -215,7 +215,7 @@ class AprobacionService:
                 aprobacion["id_aprobacion"],
                 ESTADO_APROBADA,
                 usuario,
-                "Ejecutada directamente por el Auxiliar con permiso delegado por el Administrador.",
+                "Ejecutada directamente por el Auxiliar con permiso delegado por el Coordinador.",
             )
         except Exception:
             await self.db.rollback()

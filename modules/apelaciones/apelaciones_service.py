@@ -13,7 +13,7 @@ from modules.solicitudes.solicitud_service import SolicitudService
 
 
 # Quien administra ve y decide cualquier apelacion; el Comite solo las suyas.
-ROLES_ADMINISTRACION = {"superadmin", "admin", "auxiliar"}
+ROLES_ADMINISTRACION = {"admin", "auxiliar"}
 
 APELACION_EDITABLE = {"ENVIADA", "EN_REVISION", "INFORMACION_SOLICITADA"}
 APELACION_FINAL = {"APROBADA", "RECHAZADA", "CANCELADA"}

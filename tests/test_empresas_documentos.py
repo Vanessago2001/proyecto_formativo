@@ -99,7 +99,7 @@ def sentencias(db) -> list[tuple[str, dict]]:
 @pytest.mark.parametrize(
     "rol,esperado",
     [
-        ("Super Administrador", 201),
+        ("Super Administrador", 403),
         ("Administrador", 201),
         ("Auxiliar", 201),
         ("Empresa", 201),
@@ -230,7 +230,7 @@ async def test_no_se_reemplaza_un_documento_ya_resuelto(estado):
 @pytest.mark.parametrize(
     "rol,esperado",
     [
-        ("Super Administrador", 200),
+        ("Super Administrador", 403),
         ("Administrador", 200),
         ("Auxiliar", 200),
         ("Empresa", 403),

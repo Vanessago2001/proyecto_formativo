@@ -45,7 +45,7 @@
         </nav>
         <div class="comite-access-note">
           <span id="roleLabel">Validando permisos...</span>
-          <small>Validar sedes está disponible para Administrador, Auxiliar y Super Administrador.</small>
+          <small>Validar sedes está disponible para el Coordinador y el Auxiliar.</small>
         </div>
       </aside>
 
@@ -121,7 +121,7 @@
       if (!payload) return;
 
       // Roles con SOL-029 (validar sedes) en la matriz de M5.
-      const ROLES_PERMITIDOS = ["administrador", "admin", "adm", "auxiliar", "aux", "super administrador", "superadministrador", "superadmin", "superadm"];
+      const ROLES_PERMITIDOS = ["coordinador", "administrador", "admin", "adm", "auxiliar", "aux"];
       const rol = String(payload.role_name || "").trim().toLowerCase();
       if (!ROLES_PERMITIDOS.includes(rol)) {
         window.location.href = "/dashboard";
@@ -243,14 +243,33 @@
         }
       }
 
+      // Búsqueda flexible: sin mayúsculas, tildes, guiones ni espacios. Si se
+      // escribe solo un número se compara con el consecutivo del radicado sin
+      // ceros a la izquierda ("1", "000001" y "0000001" encuentran ...-000001).
+      function normalizarBusqueda(valor) {
+        return String(valor || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+          .toLowerCase().replace(/[^a-z0-9]/g, "");
+      }
+      function coincideBusqueda(valor, texto) {
+        const v = normalizarBusqueda(valor);
+        const q = normalizarBusqueda(texto);
+        if (!q) return true;
+        if (v.includes(q)) return true;
+        if (/^\d+$/.test(q)) {
+          const consecutivo = String(valor || "").match(/(\d+)\s*$/);
+          return Boolean(consecutivo) && Number(consecutivo[1]) === Number(q);
+        }
+        return false;
+      }
+
       function renderizarCola() {
         const [, , coincide] = FILTROS[estado.filtro];
-        const texto = estado.busqueda.toLowerCase();
+        const texto = estado.busqueda;
         const visibles = estado.solicitudes.filter((s) => {
           if (!coincide(s.estado || "")) return false;
           if (!texto) return true;
           const empresa = estado.empresas[s.id_empresa] || {};
-          return [s.numero_radicado, empresa.nombre, empresa.nit].some((v) => String(v || "").toLowerCase().includes(texto));
+          return [s.numero_radicado, empresa.nombre, empresa.nit].some((v) => coincideBusqueda(v, texto));
         });
 
         $("#resultCount").textContent = visibles.length + (visibles.length === 1 ? " solicitud" : " solicitudes");
@@ -355,6 +374,11 @@
 
       $("#searchForm").addEventListener("submit", (evento) => {
         evento.preventDefault();
+        estado.busqueda = $("#searchInput").value.trim();
+        renderizarCola();
+      });
+      // Filtra mientras se escribe.
+      $("#searchInput").addEventListener("input", () => {
         estado.busqueda = $("#searchInput").value.trim();
         renderizarCola();
       });

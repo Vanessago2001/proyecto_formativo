@@ -116,8 +116,7 @@
       if (!payload) return;
 
       const ALIAS = {
-        superadministrador: "superadmin", superadmin: "superadmin", superadm: "superadmin",
-        administrador: "admin", admin: "admin", adm: "admin", aprobador: "admin",
+        coordinador: "admin", administrador: "admin", admin: "admin", adm: "admin", aprobador: "admin",
         auxiliar: "auxiliar", aux: "auxiliar",
         empresa: "empresa", empresario: "empresa",
         auditor: "auditor", aud: "auditor",
@@ -128,17 +127,17 @@
 
       // Roles por acción según la hoja "M3 — EMPRESAS".
       const PERMISOS = {
-        consultar: ["superadmin", "admin", "auxiliar", "empresa", "auditor", "comite"],
-        listar: ["superadmin", "admin", "auxiliar", "auditor", "comite"],
-        gestionar: ["superadmin", "admin", "auxiliar", "empresa"],
-        eliminar: ["superadmin", "admin", "empresa"],
-        estado: ["superadmin", "admin"],
-        // El rol Super Administrador ya no se usa: reactiva el Administrador.
-        reactivar: ["superadmin", "admin"],
+        consultar: ["admin", "auxiliar", "empresa", "auditor", "comite"],
+        listar: ["admin", "auxiliar", "auditor", "comite"],
+        gestionar: ["admin", "auxiliar", "empresa"],
+        eliminar: ["admin", "empresa"],
+        estado: ["admin"],
+        // Reactiva el Coordinador.
+        reactivar: ["admin"],
         // REQ: el Auxiliar pide estas acciones y un superior las aprueba.
         solicitar: ["auxiliar"],
-        aprobar: ["superadmin", "admin"],
-        verAprobaciones: ["superadmin", "admin", "auxiliar"]
+        aprobar: ["admin"],
+        verAprobaciones: ["admin", "auxiliar"]
       };
       const puede = (accion) => PERMISOS[accion].includes(rol);
 
@@ -436,10 +435,10 @@
 
         let nota = "";
         if (actual === "Inactiva" && !puede("reactivar") && !conAprobacion) {
-          nota = '<p class="comite-readonly-note">La empresa está inactiva. Solo un Administrador puede reactivarla.</p>';
+          nota = '<p class="comite-readonly-note">La empresa está inactiva. Solo un Coordinador puede reactivarla.</p>';
         }
         if (conAprobacion) {
-          nota += '<p class="comite-readonly-note">Los cambios de estado y las eliminaciones que usted pida quedan pendientes hasta que un administrador los apruebe.</p>';
+          nota += '<p class="comite-readonly-note">Los cambios de estado y las eliminaciones que usted pida quedan pendientes hasta que un coordinador los apruebe.</p>';
         }
 
         const formulario = estado.editandoEmpresa
@@ -596,7 +595,7 @@
           if (puedeAprobar(a)) {
             acciones = accion("aprobar", "Aprobar", a.id_aprobacion) + accion("rechazar", "Rechazar", a.id_aprobacion);
           } else if (a.estado === "Pendiente" && puede("aprobar")) {
-            acciones = '<span class="comite-muted">Solo un Administrador</span>';
+            acciones = '<span class="comite-muted">Solo un Coordinador</span>';
           }
           return "<tr><td>" + fecha(a.fecha_solicitud) + "</td>" +
             "<td><strong>" + esc(a.detalle || a.descripcion) + '</strong><br><span class="comite-muted">' + esc(a.codigo_permiso + " · " + a.descripcion) + "</span></td>" +
@@ -718,8 +717,8 @@
             return resolver(enviar(base + "/estado", "PATCH", { estado: "Activa" }), "Empresa activada.");
           case "inactivar":
             if (!confirm(puede("solicitar")
-              ? "¿Solicitar la inactivación de la empresa? Un administrador deberá aprobarla."
-              : "¿Inactivar la empresa? Solo un Administrador podrá reactivarla.")) return;
+              ? "¿Solicitar la inactivación de la empresa? Un coordinador deberá aprobarla."
+              : "¿Inactivar la empresa? Solo un Coordinador podrá reactivarla.")) return;
             return resolver(enviar(base + "/inactivar", "POST"), "Empresa inactivada.");
           case "reactivar":
             return resolver(enviar(base + "/reactivar", "POST"), "Empresa reactivada.");

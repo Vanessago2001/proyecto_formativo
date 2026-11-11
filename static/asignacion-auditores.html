@@ -1786,7 +1786,7 @@
       location.href = "/login";
     }
 
-    const isAdmin = user && user.role_name === "Administrador";
+    const isAdmin = user && ["Coordinador", "Administrador"].includes(user.role_name);
 
 
     /* =========================================================

@@ -31,22 +31,20 @@ router = APIRouter(prefix="/api/empresas", tags=["Empresas"])
 # propias empresas (EmpresasService.exigir_acceso).
 
 # EMP-003 consultar, EMP-009 historial, EMP-014/015 documentos, EMP-024/030 sedes
-ROLES_CONSULTA = ["superadmin", "admin", "auxiliar", "empresa", "auditor", "comite"]
+ROLES_CONSULTA = ["admin", "auxiliar", "empresa", "auditor", "comite"]
 # EMP-004 buscar / EMP-005 filtrar (la empresa usa /mias)
-ROLES_BUSQUEDA = ["superadmin", "admin", "auxiliar", "auditor", "comite"]
+ROLES_BUSQUEDA = ["admin", "auxiliar", "auditor", "comite"]
 # EMP-001/002 empresa, EMP-021/022/025/026 sedes, EMP-027/028 contactos
-ROLES_GESTION = ["superadmin", "admin", "auxiliar", "empresa"]
+ROLES_GESTION = ["admin", "auxiliar", "empresa"]
 # EMP-023 eliminar sede, EMP-029 eliminar contacto
-ROLES_ELIMINACION = ["superadmin", "admin", "empresa"]
+ROLES_ELIMINACION = ["admin", "empresa"]
 # EMP-006 cambiar estado, EMP-007 inactivar
-ROLES_ESTADO = ["superadmin", "admin"]
-# EMP-008 reactivar: el rol Super Administrador ya no se usa, asi que la
-# reactivacion la hace el Administrador (se conserva "superadmin" solo para no
-# dejar sin acceso a cuentas antiguas que aun tengan ese rol).
-ROLES_REACTIVACION = ["superadmin", "admin"]
+ROLES_ESTADO = ["admin"]
+# EMP-008 reactivar: la hace el Coordinador.
+ROLES_REACTIVACION = ["admin"]
 # EMP-016 validar, EMP-017 rechazar, EMP-018 aprobar, EMP-019 pedir corrección:
 # la revisión la hace la administración, nunca la propia empresa.
-ROLES_REVISION_DOC = ["superadmin", "admin", "auxiliar"]
+ROLES_REVISION_DOC = ["admin", "auxiliar"]
 # Roles con REQ en esas acciones: piden la acción y un superior la aprueba.
 ROLES_CON_APROBACION = ["auxiliar"]
 

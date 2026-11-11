@@ -31,27 +31,22 @@
         .cd-error { background: #fffbeb; color: #b42318; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 14px; text-align: left; }
     </style>
     <style>
-        /* Formulario angosto: arranca a 28px del encabezado y usa los campos y
-           botones del sistema (tema.css). styles.css da a .form-group input
-           padding 14px, radio 10px, texto centrado y letter-spacing 4px. */
-        .login-container { padding: 28px 20px; }
-        .login-form .form-group input,
-        .login-form .form-group select {
-            min-height: var(--campo-alto);
-            padding: 8px 10px;
-            border: 1px solid var(--campo-borde);
-            border-radius: var(--campo-radio);
-            background-color: #fff;
-            font-family: var(--tipografia);
-            font-size: var(--txt-base);
-            text-align: left;
-            letter-spacing: 0;
-        }
-        .login-form .form-group input:focus,
-        .login-form .form-group select:focus { border-color: var(--verde-600); }
-        .login-form .form-group input[readonly] { background-color: var(--gris-100); color: var(--gris-700); }
-        .login-form .btn-bloque { margin-top: 10px; }
+        /* Mismo diseño de las demás consultas públicas (vigencia.html). */
+        .cd-wrap { max-width: var(--ancho-contenido); margin: 0 auto; padding: 28px 28px 40px; }
+        .cd-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 26px 28px; }
+        .cd-panel h2 { margin: 0 0 6px; color: #2f7d32; font-size: 24px; font-weight: 700; }
+        .cd-desc { margin: 0 0 18px; color: #6b7280; font-size: 13px; line-height: 1.5; }
+        .cd-form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+        .cd-field { flex: 1 1 240px; min-width: 200px; }
+        .cd-field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .cd-field input { width: 100%; }
+        .resultado-container { margin-top: 16px; }
         .btn.hidden-section { display: none; }
+        @media (max-width: 640px) {
+            .cd-wrap { padding: 20px 16px 32px; }
+            .cd-form { flex-direction: column; align-items: stretch; }
+            .cd-btn { width: 100%; }
+        }
     </style>
 </head>
 
@@ -63,23 +58,14 @@
 
         <div class="header-left">
 
-            <img
-                src="/static/sena_blanco.png"
-                alt="Logo SENA"
-                class="sena-blanco">
+            <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco">
 
-            <div class="header-text">
-
+            <div>
                 <h1>CertiSENA</h1>
-
-                <p class="subtitle">
-                    Plataforma de gestión y consulta de certificados
-                </p>
-
-                <p class="small-text">
+                <p class="subtitle">Plataforma de gestión y consulta de certificados</p>
+                <p style="font-size:12px;opacity:.85;margin-top:4px;">
                     Servicio Nacional de Aprendizaje • CertiSENA
                 </p>
-
             </div>
 
         </div>
@@ -159,34 +145,28 @@
 </header>
 
 
-<main class="login-container">
+<main class="cd-wrap">
 
-    <section class="login-form">
+    <section class="cd-panel">
 
         <h2>Consultar estado de vigencia</h2>
 
-        <div class="form-group">
+        <p class="cd-desc">
+            Consulte si una empresa está certificada y el estado de sus trámites.
+            Ingrese el NIT de la empresa. No necesita iniciar sesión.
+        </p>
 
-            <label>NIT de la empresa</label>
-
-            <input
-                type="text"
-                id="nit"
-                placeholder="Ingrese el NIT">
-
+        <div class="cd-form">
+            <div class="cd-field">
+                <label for="nit">NIT de la empresa</label>
+                <input type="text" id="nit" placeholder="900123456-7">
+            </div>
+            <button type="button" class="btn btn-primario cd-btn" id="btnConsultar">Consultar</button>
         </div>
 
-        <button
-            class="btn btn-primario btn-bloque btn-login"
-            id="btnConsultar">
-
-            Consultar
-
-        </button>
-
-        <div id="resultadoConsulta" class="resultado-container"></div>
-
     </section>
+
+    <div id="resultadoConsulta" class="resultado-container"></div>
 
 </main>
 

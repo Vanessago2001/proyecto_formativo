@@ -17,14 +17,13 @@ from modules.agenda_auditor.agenda_schema import (
 )
 from modules.agenda_auditor.agenda_service import AgendaAuditorService
 from modules.solicitudes.solicitud_permissions import (
-    ROL_SUPERADM,
     normalizar_rol,
     requiere_permiso,
 )
 
 router = APIRouter(prefix="/agenda-auditor", tags=["Agenda del auditor"])
 
-_ROLES_ADMIN_AGENDA = {"ADM", "ADMIN", "ADMINISTRADOR", str(ROL_SUPERADM).upper(), "SUPERADM"}
+_ROLES_ADMIN_AGENDA = {"ADM", "ADMIN", "ADMINISTRADOR", "COORDINADOR"}
 
 
 def _es_administrador(usuario: dict) -> bool:
@@ -37,7 +36,7 @@ async def _validar_administrador(usuario: dict = Depends(requiere_permiso("SOL-0
     if not _es_administrador(usuario):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo un administrador puede administrar la programación de auditorías.",
+            detail="Solo el Coordinador puede gestionar la programación de auditorías.",
         )
     return usuario
 

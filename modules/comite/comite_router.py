@@ -25,9 +25,6 @@ from modules.solicitudes.documento_service import CARPETA_ARCHIVOS, DocumentoSer
 router = APIRouter(prefix="/comite", tags=["Comité de certificación"])
 
 COMITE_CERTIFICACION_PERMISOS = {
-    "superadm",
-    "superadmin",
-    "superadministrador",
     "adm",
     "admin",
     "administrador",
@@ -38,9 +35,6 @@ COMITE_CERTIFICACION_PERMISOS = {
 }
 
 COMITE_DESCARGA_PERMISOS = {
-    "superadm",
-    "superadmin",
-    "superadministrador",
     "adm",
     "admin",
     "administrador",
@@ -53,9 +47,6 @@ COMITE_DESCARGA_PERMISOS = {
 }
 
 COMITE_INFORME_AUDITOR_PERMISOS = {
-    "superadm",
-    "superadmin",
-    "superadministrador",
     "adm",
     "admin",
     "administrador",
@@ -66,9 +57,6 @@ COMITE_INFORME_AUDITOR_PERMISOS = {
 }
 
 COMITE_EVIDENCIAS_FISICAS_PERMISOS = {
-    "superadm",
-    "superadmin",
-    "superadministrador",
     "adm",
     "admin",
     "administrador",
@@ -79,9 +67,6 @@ COMITE_EVIDENCIAS_FISICAS_PERMISOS = {
 }
 
 COMITE_NO_CONFORMIDADES_PERMISOS = {
-    "superadm",
-    "superadmin",
-    "superadministrador",
     "adm",
     "admin",
     "administrador",
@@ -92,9 +77,6 @@ COMITE_NO_CONFORMIDADES_PERMISOS = {
 }
 
 COMITE_HISTORIAL_SOLICITUDES_PERMISOS = {
-    "superadm",
-    "superadmin",
-    "superadministrador",
     "adm",
     "admin",
     "administrador",
@@ -105,9 +87,6 @@ COMITE_HISTORIAL_SOLICITUDES_PERMISOS = {
 }
 
 COMITE_CONSULTA_PERMISOS = {
-    "superadm",
-    "superadmin",
-    "superadministrador",
     "adm",
     "admin",
     "administrador",
@@ -118,9 +97,6 @@ COMITE_CONSULTA_PERMISOS = {
 }
 
 COMITE_DECISION_PERMISOS = {
-    "superadm",
-    "superadmin",
-    "superadministrador",
     "adm",
     "admin",
     "administrador",
@@ -128,10 +104,13 @@ COMITE_DECISION_PERMISOS = {
     "comité",
 }
 
+# Reabrir un dictamen (COM-029) era exclusivo del Super Administrador, que se
+# retiró del sistema: ahora lo hace el Coordinador.
 COMITE_SUPERADMIN_ONLY_PERMISOS = {
-    "superadm",
-    "superadmin",
-    "superadministrador",
+    "adm",
+    "admin",
+    "administrador",
+    "coordinador",
 }
 
 
@@ -178,7 +157,7 @@ async def consultar_expedientes_pendientes(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-001",
         "permiso": "Consultar expedientes pendientes",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "filtro": {
             "estado": estado or FILTRO_ESTADO_PENDIENTES,
             "q": q,
@@ -238,7 +217,7 @@ async def consultar_expediente_completo(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-002",
         "permiso": "Consultar expediente completo",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "expediente_id": expediente_id,
         "expediente": dict(expediente),
     }
@@ -357,7 +336,7 @@ async def consultar_informe_auditor(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-004",
         "permiso": "Consultar informe del auditor",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "expediente_id": expediente_id,
         "informe": ({
             **dict(informe),
@@ -409,7 +388,7 @@ async def consultar_evidencias_fisicas(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-005",
         "permiso": "Consultar evidencias físicas",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "expediente_id": expediente_id,
         "evidencias": evidencias,
         "disponible": True,
@@ -458,7 +437,7 @@ async def consultar_no_conformidades(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-006",
         "permiso": "Consultar no conformidades",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "expediente_id": expediente_id,
         "no_conformidades": hallazgos,
         "disponible": True,
@@ -495,7 +474,7 @@ async def consultar_historial_solicitudes_previas(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-007",
         "permiso": "Consultar historial solicitudes previas",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "usuario_id": usuario_id,
         "solicitudes_previas": [dict(fila) for fila in resultado.mappings().all()],
     }
@@ -537,7 +516,7 @@ async def consultar_observaciones_tecnicos(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-008",
         "permiso": "Consultar observaciones de técnicos",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "expediente_id": expediente_id,
         "observaciones": observaciones,
         "disponible": True,
@@ -581,7 +560,7 @@ async def buscar_expediente_por_nit_o_codigo(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-009",
         "permiso": "Buscar expediente por NIT o código",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "query": query,
         "resultados": [dict(fila) for fila in resultado.mappings().all()],
     }
@@ -626,7 +605,7 @@ async def filtrar_expedientes_por_norma_sector(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-010",
         "permiso": "Filtrar expedientes por norma/sector",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "filtro": {"norma": norma, "sector": sector},
         "resultados": [dict(fila) for fila in resultado.mappings().all()],
     }
@@ -772,7 +751,7 @@ async def consultar_decisiones_historicas(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-019",
         "permiso": "Consultar decisiones históricas",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "decisiones": [dict(fila) for fila in resultado.mappings().all()],
     }
 
@@ -848,7 +827,7 @@ async def exportar_decisiones_consolidadas(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-020",
         "permiso": "Exportar decisiones consolidadas",
-        "roles_autorizados": ["SUPERADM", "ADM", "REQ"],
+        "roles_autorizados": ["ADM", "REQ"],
         "decisiones": decisiones,
     }
 
@@ -879,7 +858,7 @@ async def consultar_historial_por_empresa(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-021",
         "permiso": "Consultar historial por empresa",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "empresa_id": empresa_id,
         "historial": [dict(fila) for fila in resultado.mappings().all()],
     }
@@ -921,7 +900,7 @@ async def consultar_auditor_responsable(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-022",
         "permiso": "Consultar auditor responsable",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "expediente_id": expediente_id,
         "auditor": dict(auditor) if auditor else None,
     }
@@ -949,7 +928,7 @@ async def consultar_datos_empresa_evaluada(
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-023",
         "permiso": "Consultar datos empresa evaluada",
-        "roles_autorizados": ["SUPERADM", "ADM", "AUX"],
+        "roles_autorizados": ["ADM", "AUX"],
         "empresa_id": empresa_id,
         "empresa": dict(empresa),
     }
@@ -1075,5 +1054,5 @@ async def reabrir_dictamen_por_error(
     """Permiso COM-029: reabrir dictamen por error."""
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_SUPERADMIN_ONLY_PERMISOS:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Este permiso solo lo puede ejecutar un superadministrador.")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Este permiso solo lo puede ejecutar el Coordinador.")
     return await ComiteService(db).registrar_accion("reabrir-dictamen", payload, current_user)

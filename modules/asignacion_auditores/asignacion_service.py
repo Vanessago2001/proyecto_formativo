@@ -5,6 +5,7 @@ La asignación relaciona auditor, solicitud y rol. Las fechas, la disponibilidad
 por intervalo y los cruces horarios se validan al programar desde Agenda.
 """
 
+import re
 from datetime import date
 from uuid import UUID, uuid4
 
@@ -148,8 +149,15 @@ class AsignacionAuditorService:
             filtros.append("CAST(s.fecha AS DATE) <= :hasta")
             params["hasta"] = hasta
         if norma:
-            filtros.append("LOWER(COALESCE(n.codigo, '')) = LOWER(:norma)")
-            params["norma"] = norma.strip()
+            # Búsqueda parcial: "9001", "iso 9001" o "ISO-9001" encuentran la
+            # norma ISO-9001 (se ignoran guiones, espacios y mayúsculas).
+            filtros.append(
+                "(regexp_replace(LOWER(COALESCE(n.codigo, '')), '[^a-z0-9]', '', 'g')"
+                " LIKE '%' || :norma || '%'"
+                " OR regexp_replace(LOWER(COALESCE(n.nombre, '')), '[^a-z0-9]', '', 'g')"
+                " LIKE '%' || :norma || '%')"
+            )
+            params["norma"] = re.sub(r"[^a-z0-9]", "", norma.strip().lower())
         if sector:
             filtros.append(
                 """EXISTS (
@@ -844,7 +852,7 @@ class AsignacionAuditorService:
         return {
             "id_solicitud_cambio": id_nueva,
             "estado": "Pendiente",
-            "mensaje": "Solicitud de cambio enviada. El administrador la revisará.",
+            "mensaje": "Solicitud de cambio enviada. El Coordinador la revisará.",
         }
 
     async def listar_solicitudes_cambio(
@@ -950,7 +958,7 @@ class AsignacionAuditorService:
                 ) VALUES (
                     gen_random_uuid(), :id_solicitud, :id_auditor, 'RESPUESTA_CAMBIO_EMPRESA', :respuesta,
                     'Pendiente', :estado, :id_usuario, CURRENT_TIMESTAMP,
-                    :id_asignacion, 'Administrador'
+                    :id_asignacion, 'Coordinador'
                 )
             """),
             {

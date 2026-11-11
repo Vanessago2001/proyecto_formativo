@@ -270,6 +270,14 @@
         display: none;
       }
     }
+    /* Filtros de Control de usuarios */
+    .usuarios-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 10px 0 14px; }
+    .usuarios-filtro { display: flex; flex-direction: column; gap: 5px; min-width: 180px; }
+    .usuarios-filtro:first-child { flex: 1 1 260px; }
+    .usuarios-filtro label { font-size: 12px; font-weight: 600; color: #374151; }
+    .usuarios-filtro input, .usuarios-filtro select { min-height: 38px; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; background: #fff; }
+    .usuarios-conteo { margin-left: auto; font-size: 12px; color: #64748b; padding-bottom: 9px; }
+    .usuarios-vacio { padding: 18px; text-align: center; color: #64748b; }
   </style>
 </head>
 
@@ -384,6 +392,25 @@
         </section>
         <section class="surface" style="margin-top: 24px">
           <h3>Control de usuarios</h3>
+          <div class="usuarios-filtros">
+            <div class="usuarios-filtro">
+              <label for="buscarUsuario">Buscar</label>
+              <input type="search" id="buscarUsuario" placeholder="Nombre o correo" autocomplete="off">
+            </div>
+            <div class="usuarios-filtro">
+              <label for="filtroRolUsuario">Rol</label>
+              <select id="filtroRolUsuario"><option value="">Todos los roles</option></select>
+            </div>
+            <div class="usuarios-filtro">
+              <label for="filtroEstadoUsuario">Estado</label>
+              <select id="filtroEstadoUsuario">
+                <option value="">Todos</option>
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+              </select>
+            </div>
+            <span class="usuarios-conteo" id="conteoUsuarios"></span>
+          </div>
           <p class="message" id="tableMessage"></p>
           <div class="table-wrap">
             <table>
@@ -398,6 +425,7 @@
                 </tr>
               </thead>
               <tbody id="usersBody"></tbody>
+              <tbody id="usersVacio" hidden><tr><td colspan="6" class="usuarios-vacio">Ningún usuario coincide con la búsqueda.</td></tr></tbody>
             </table>
           </div>
         </section>
@@ -546,7 +574,7 @@
     if (!token || !user) {
       location.href = "/login";
     }
-    const isAdmin = user && user.role_name === "Administrador";
+    const isAdmin = user && ["Coordinador", "Administrador"].includes(user.role_name);
     const isCompany = user && /empresa/i.test(user.role_name || "");
     document.getElementById("welcomeTitle").textContent =
       "Bienvenido, " + (user.sub || "usuario");
@@ -706,7 +734,13 @@
       }
     }
 
-    actualizarEstadoMFA();
+    // Desde otra pantalla el menú llega con "#mfa": se abre la configuración.
+    actualizarEstadoMFA().then(() => {
+      if (location.hash === "#mfa") {
+        history.replaceState(null, "", location.pathname);
+        mfaLink.click();
+      }
+    });
 
     mfaLink.addEventListener("click", async (e) => {
 
@@ -924,7 +958,7 @@
       const roles = await res.json();
       const select = document.getElementById("rol");
       const displayed = new Set();
-      // El rol Super Administrador ya no se usa: no se ofrece para asignar
+      // El Super Administrador (rol del desarrollador) se retiró: no se ofrece para asignar
       // (el backend tambien lo excluye y rechaza asignarlo).
       const esRolRetirado = (nombre) =>
         String(nombre || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -945,10 +979,37 @@
       });
       select.disabled = false;
     }
+    // Todos los usuarios cargados; la tabla muestra los que pasan los filtros.
+    let usuariosCargados = [];
+    function sinTildes(valor) {
+      return String(valor || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    }
+    function actualizarFiltroRoles(users) {
+      const select = document.getElementById("filtroRolUsuario");
+      const actual = select.value;
+      const roles = [...new Set(users.map((u) => u.rol_nombre).filter(Boolean))].sort();
+      select.innerHTML = '<option value="">Todos los roles</option>';
+      roles.forEach((r) => select.add(new Option(r, r, false, r === actual)));
+    }
+    function usuariosFiltrados() {
+      const texto = sinTildes(document.getElementById("buscarUsuario").value.trim());
+      const rol = document.getElementById("filtroRolUsuario").value;
+      const estado = document.getElementById("filtroEstadoUsuario").value;
+      return usuariosCargados.filter((u) =>
+        (!texto || sinTildes(u.nombre).includes(texto) || sinTildes(u.correo).includes(texto)) &&
+        (!rol || u.rol_nombre === rol) &&
+        (!estado || u.estado === estado));
+    }
+    ["buscarUsuario", "filtroRolUsuario", "filtroEstadoUsuario"].forEach((id) =>
+      document.getElementById(id).addEventListener(id === "buscarUsuario" ? "input" : "change", () => renderUsers()));
+
     async function loadUsers() {
-      const res = await fetch("/users/all-users", { headers: headers() });
+      // Sin caché: tras cambiar un correo o un estado se ve el dato nuevo.
+      const res = await fetch("/users/all-users", { headers: headers(), cache: "no-store" });
       if (!res.ok) throw new Error("No se pudieron cargar los usuarios.");
       const users = await res.json();
+      usuariosCargados = users;
+      actualizarFiltroRoles(users);
       document.getElementById("totalUsers").textContent = users.length;
       document.getElementById("activeUsers").textContent = users.filter(
         (u) => u.estado === "Activo",
@@ -956,6 +1017,14 @@
       document.getElementById("auxUsers").textContent = users.filter((u) =>
         ["Auxiliar", "Instructor"].includes(u.rol_nombre),
       ).length;
+      renderUsers();
+    }
+
+    function renderUsers() {
+      const users = usuariosFiltrados();
+      document.getElementById("conteoUsuarios").textContent =
+        users.length + " de " + usuariosCargados.length + " usuarios";
+      document.getElementById("usersVacio").hidden = users.length > 0 || usuariosCargados.length === 0;
       const body = document.getElementById("usersBody");
       body.textContent = "";
       users.forEach((u) => {
@@ -1085,7 +1154,13 @@
         }
         cerrarAcceso();
         show("tableMessage", result.mensaje || "Acción realizada.", true);
-        if (esCorreo) loadUsers();
+        if (esCorreo) {
+          // Se ve de inmediato y luego se confirma con la lista del servidor.
+          const fila = usuariosCargados.find((x) => String(x.id) === String(usuario.id));
+          if (fila) fila.correo = result.correo || cuerpo.correo;
+          renderUsers();
+          loadUsers().catch(() => {});
+        }
       } finally {
         boton.disabled = false;
       }

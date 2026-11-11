@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/aprobaciones", tags=["Aprobaciones (permisos REQ
 
 # Quién revisa cada acción lo decide su registro; aquí solo se filtra quién
 # puede entrar a estas rutas.
-ROLES_REVISION = ["superadmin", "admin"]
+ROLES_REVISION = ["admin"]
 ROLES_CONSULTA = ROLES_REVISION + ["auxiliar"]
 
 

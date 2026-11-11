@@ -291,7 +291,7 @@
                 const filas = await respuesta.json();
 
                 if (!Array.isArray(filas) || filas.length === 0) {
-                    mostrarError("No se encontraron trámites con esos datos.");
+                    mostrarError("No encontramos ningún trámite con esos datos. Si escribió un número de radicado, revise que exista y que corresponda al NIT de la empresa.");
                     return;
                 }
 

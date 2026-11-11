@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.logger import logger
-from core.security import hash_password, validar_password_segura
+from core.security import es_coordinador, hash_password, validar_password_segura
 from modules.auditores_registrados.auditores_registrados_service import (
     AuditoresRegistradosService,
 )
@@ -13,7 +13,7 @@ from modules.roles.roles_service import es_rol_retirado
 from modules.users.user_schema import UserCreate, UserUpdate
 
 MENSAJE_ROL_RETIRADO = (
-    'El rol Super Administrador ya no se usa y no se puede asignar.'
+    'El rol Super Administrador se retiró del sistema y no se puede asignar.'
 )
 
 class UserService:
@@ -32,7 +32,13 @@ class UserService:
     """)
     result = await self.db.execute(query)
     rows = result.mappings().all()
-    return [{k: v for k, v in row.items()} for row in rows]
+    # Las cuentas con el rol retirado (Super Administrador, del desarrollador)
+    # no se muestran en Gestionar usuarios.
+    return [
+        {k: v for k, v in row.items()}
+        for row in rows
+        if not es_rol_retirado(row.get("rol_nombre"))
+    ]
 
   async def create_user(self, user_data: UserCreate) -> dict:
     logger.info(f'SQL Nativo: Registrando usuario {user_data.nombre}')
@@ -209,7 +215,7 @@ class UserService:
     )
 
     if (
-        current_user.get('role_name') != 'Administrador'
+        not es_coordinador(current_user)
         and current_user.get('id') != target_user_id
     ):
       raise HTTPException(
@@ -220,12 +226,12 @@ class UserService:
           ),
       )
 
-    if current_user.get('role_name') != 'Administrador':
+    if not es_coordinador(current_user):
       if user_update.rol is not None or user_update.estado is not None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
-                'Permiso denegado. Solo un Administrador puede alterar rol o'
+                'Permiso denegado. Solo el Coordinador puede alterar rol o'
                 ' estados.'
             ),
         )

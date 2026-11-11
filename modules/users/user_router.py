@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from core.database import get_db
-from core.security import get_current_user
+from core.security import es_coordinador, get_current_user
 from uuid import UUID
 
 from modules.users.gestion_cuenta_service import GestionCuentaService
@@ -53,23 +53,23 @@ async def read_current_user(current_user: dict = Depends(get_current_user)):
 
 @router.get("/all-users", response_model=list[UserResponse], status_code=status.HTTP_200_OK)
 async def read_users(db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    if current_user.get("role_name") != "Administrador":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso exclusivo para administradores.")
+    if not es_coordinador(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso exclusivo para el Coordinador.")
     service = UserService(db)
     return await service.get_all_users()
 
 @router.post("/create-user", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def add_user(user_in: UserCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    if current_user.get("role_name") != "Administrador":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo un administrador puede crear cuentas.")
+    if not es_coordinador(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el Coordinador puede crear cuentas.")
     service = UserService(db)
     return await service.create_user(user_in)
 
 
 @router.put("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
 async def edit_user(user_id: str, user_in: UserUpdate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    if current_user.get("role_name") != "Administrador":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo un administrador puede modificar cuentas.")
+    if not es_coordinador(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el Coordinador puede modificar cuentas.")
     return await UserService(db).update_user(user_id, user_in, current_user)
 
 

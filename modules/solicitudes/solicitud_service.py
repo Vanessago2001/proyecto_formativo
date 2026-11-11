@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.datetime_utils import system_now
 from modules.solicitudes.solicitud_permissions import (
     ROL_EMP,
-    ROL_SUPERADM,
     normalizar_rol,
 )
 from modules.solicitudes.solicitud_schema import (
@@ -74,7 +73,7 @@ class SolicitudService:
         True si el rol puede consultar solicitudes de cualquier empresa.
 
         La empresa solo ve las suyas; los demás roles con permiso de consulta
-        (ADM, AUX, AUD, COM, APR y SUPERADM) ven todas.
+        (Coordinador, AUX, AUD y COM) ven todas.
         """
         return normalizar_rol(usuario.get("role_name")) != ROL_EMP
 
@@ -187,12 +186,7 @@ class SolicitudService:
     async def _exigir_propiedad(self, solicitud: dict, usuario: dict) -> None:
         """
         Las acciones de escritura del Bloque 1 pertenecen a la empresa titular.
-
-        El SuperAdministrador puede intervenir cualquier solicitud.
         """
-        if normalizar_rol(usuario.get("role_name")) == ROL_SUPERADM:
-            return
-
         empresas = await self._empresas_del_usuario(usuario)
         if str(solicitud["id_empresa"]) not in empresas:
             raise HTTPException(
@@ -239,14 +233,6 @@ class SolicitudService:
         vinculado a varias debe indicar cuál, y siempre se valida que la
         empresa pedida sea una de las suyas.
         """
-        if normalizar_rol(usuario.get("role_name")) == ROL_SUPERADM:
-            if id_empresa is None:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail="El SuperAdministrador debe indicar 'id_empresa'.",
-                )
-            return str(id_empresa)
-
         empresas = await self._empresas_del_usuario(usuario)
 
         if not empresas:

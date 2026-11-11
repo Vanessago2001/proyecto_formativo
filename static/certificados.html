@@ -38,6 +38,9 @@
         <div>
           <h1>CertiSENA</h1>
           <p id="headerSubtitle" class="subtitle">Gestión de certificados</p>
+          <p id="headerLineaSena" style="font-size:12px;opacity:.85;margin-top:4px;" hidden>
+            Servicio Nacional de Aprendizaje • CertiSENA
+          </p>
         </div>
       </div>
       <div id="authControls" class="comite-header-user">
@@ -330,16 +333,18 @@
       const feedback = $("#feedback");
       const rolePayload = token ? parseToken(token) : null;
       const role = publicMode ? "public" : normalizeRole(rolePayload && (rolePayload.role_name || rolePayload.rol));
-      const canCreate = ["superadmin", "admin", "auxiliar"].includes(role);
-      const canManage = ["superadmin", "admin", "auxiliar"].includes(role);
+      const canCreate = ["admin", "auxiliar"].includes(role);
+      const canManage = ["admin", "auxiliar"].includes(role);
       const canRenew = canCreate;
-      const canEmail = ["superadmin", "admin", "auxiliar", "empresa", "auditor"].includes(role);
-      const canDecide = ["superadmin", "admin", "comite"].includes(role);
-      const canAssignLeader = ["superadmin", "admin"].includes(role);
-      const canWithdrawPublic = role === "superadmin";
-      const canExport = ["superadmin", "admin", "auxiliar"].includes(role);
-      const canSeeAlerts = ["superadmin", "admin", "auxiliar", "empresa", "auditor"].includes(role);
-      const canSeeHistory = ["superadmin", "admin", "auxiliar", "empresa", "auditor", "public"].includes(role);
+      const canEmail = ["admin", "auxiliar", "empresa", "auditor"].includes(role);
+      const canDecide = ["admin", "comite"].includes(role);
+      const canAssignLeader = ["admin"].includes(role);
+      // Retirar del portal (CER-022) y cambiar el alcance (CER-030) eran del Super
+      // Coordinador (retirado): ahora los hace el Coordinador.
+      const canWithdrawPublic = role === "admin";
+      const canExport = ["admin", "auxiliar"].includes(role);
+      const canSeeAlerts = ["admin", "auxiliar", "empresa", "auditor"].includes(role);
+      const canSeeHistory = ["admin", "auxiliar", "empresa", "auditor", "public"].includes(role);
       const publicOnly = publicMode || role === "public";
       const roleLabel = rolePayload && (rolePayload.role_name || rolePayload.rol) || "Usuario";
 
@@ -357,8 +362,7 @@
       function normalizeRole(value) {
         const normalized = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[\s_-]+/g, "");
         const aliases = {
-          superadministrador: "superadmin", superadm: "superadmin",
-          administrador: "admin", adm: "admin", aux: "auxiliar",
+          coordinador: "admin", administrador: "admin", adm: "admin", aux: "auxiliar",
           comite: "comite", comitedecertificacion: "comite",
           empresario: "empresa", emp: "empresa",
           publico: "public", pub: "public"
@@ -378,9 +382,26 @@
           return null;
         }
         if (!response.ok) {
-          throw new Error(body && body.detail || "No fue posible completar la solicitud.");
+          throw new Error(textoDeError(body && body.detail) || "No fue posible completar la solicitud.");
         }
         return body;
+      }
+
+      // El servidor responde el error como texto o, en validaciones, como una
+      // lista de objetos: antes se mostraba "[object Object]".
+      function textoDeError(detalle) {
+        if (!detalle) return "";
+        if (typeof detalle === "string") return detalle;
+        if (Array.isArray(detalle)) {
+          return detalle.map((d) => {
+            const campo = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : "";
+            const nombres = { id_alcance: "Alcance técnico", id_solicitud: "Solicitud", fecha_vencimiento: "Fecha de vencimiento" };
+            const mensaje = String(d.msg || "").replace(/^Value error, /, "");
+            return (nombres[campo] ? nombres[campo] + ": " : "") + (/uuid|valid/i.test(mensaje) ? "falta seleccionar un valor válido." : mensaje);
+          }).join(" · ");
+        }
+        if (typeof detalle === "object") return detalle.mensaje || detalle.message || JSON.stringify(detalle);
+        return String(detalle);
       }
 
       function escapeHtml(value) {
@@ -571,7 +592,7 @@
         if (canWithdrawPublic && status === "VIGENTE" && certificate.publico_certificado) {
           actions.push('<button class="comite-button danger btn btn-peligro" type="button" data-action="unpublish">Retirar del portal</button>');
         }
-        if (role === "superadmin" && status === "VIGENTE") {
+        if (role === "admin" && status === "VIGENTE") {
           actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="change-scope">Cambiar alcance</button>');
         }
         if (canSeeHistory) {
@@ -998,6 +1019,8 @@
       $("#committeeNav").hidden = publicOnly;
       $("#authControls").hidden = publicMode;
       $("#publicControls").hidden = !publicMode;
+      // Misma tercera línea del encabezado que las demás consultas públicas.
+      $("#headerLineaSena").hidden = !publicMode;
       $("#hamburgerBtn").hidden = !publicMode;
       $("#mobileMenu").hidden = !publicMode;
       $("#roleNote").hidden = publicMode;
@@ -1016,6 +1039,10 @@
       });
       $("#createForm").addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (!$("#alcanceSelect").value) {
+          showFeedback("La solicitud no tiene un alcance técnico registrado. La empresa debe registrar el alcance en su solicitud antes de generar el certificado.", "error");
+          return;
+        }
         const button = $("#createButton");
         button.disabled = true;
         try {

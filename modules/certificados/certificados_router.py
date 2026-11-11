@@ -142,7 +142,7 @@ async def consultar_lider_comite_actual(
 @router.get(
     "/lider-comite/opciones",
     summary="Listar usuarios Comité activos para asignar líder",
-    dependencies=[Depends(require_role(["Super Administrador", "Administrador"]))],
+    dependencies=[Depends(require_role(["Coordinador"]))],
 )
 async def listar_lideres_comite(db: AsyncSession = Depends(get_db)):
     return await CertificadosService(db).listar_lideres_comite()
@@ -151,7 +151,7 @@ async def listar_lideres_comite(db: AsyncSession = Depends(get_db)):
 @router.put(
     "/lider-comite",
     summary="Asignar líder de firma del Comité",
-    dependencies=[Depends(require_role(["Super Administrador", "Administrador"]))],
+    dependencies=[Depends(require_role(["Coordinador"]))],
 )
 async def asignar_lider_comite(
     data: LiderComiteAsignar,

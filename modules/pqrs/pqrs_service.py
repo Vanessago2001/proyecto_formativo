@@ -174,7 +174,7 @@ class PqrsService:
         if rol == ROL_AUXILIAR and not await self.auxiliar_puede(usuario["id_usuario"], codigo):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"El administrador no te ha otorgado el permiso «{descripcion}» ({codigo}).",
+                detail=f"El Coordinador no te ha otorgado el permiso «{descripcion}» ({codigo}).",
             )
         return rol
 
@@ -576,7 +576,7 @@ class PqrsService:
         if not candidato or not await self._puede_ser_responsable(candidato, rol):
             raise HTTPException(
                 status_code=422,
-                detail="El responsable debe ser un administrador o un auxiliar activo con permiso para responder PQRS.",
+                detail="El responsable debe ser un coordinador o un auxiliar activo con permiso para responder PQRS.",
             )
         if _id(pqrs.get("id_responsable")) == _id(id_responsable):
             raise HTTPException(status_code=409, detail="Esa persona ya es la responsable de la PQRS.")
@@ -902,7 +902,7 @@ class PqrsService:
 
     async def actualizar_plazo(self, tipo: str, dias: int, alerta: int, usuario: dict) -> dict:
         if reglas.rol_pqrs(usuario) != ROL_ADMIN:
-            raise HTTPException(status_code=403, detail="Solo el administrador configura los plazos de PQRS.")
+            raise HTTPException(status_code=403, detail="Solo el Coordinador configura los plazos de PQRS.")
         try:
             tipo = reglas.normalizar_tipo(tipo)
         except ReglaPqrsError as error:

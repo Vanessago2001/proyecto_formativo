@@ -45,7 +45,7 @@ async def revisar_documento(
     actor = usuario.get("id_usuario") or usuario.get("sub")
     if not actor:
         from fastapi import HTTPException
-        raise HTTPException(401, "No fue posible identificar al administrador.")
+        raise HTTPException(401, "No fue posible identificar al coordinador.")
     return await AdministrarAuditoresService(db).revisar_documento(
         id_documento=id_documento,
         estado_revision=estado,
@@ -63,7 +63,7 @@ async def revisar_competencia(
     actor = usuario.get("id_usuario") or usuario.get("sub")
     if not actor:
         from fastapi import HTTPException
-        raise HTTPException(401, "No fue posible identificar al administrador.")
+        raise HTTPException(401, "No fue posible identificar al coordinador.")
     estado = str(data.get("estado_validacion", "")).strip()
     observacion = str(data.get("observacion", "") or "")
     return await AdministrarAuditoresService(db).revisar_validacion_competencia(
@@ -143,7 +143,7 @@ async def _ejecutar_alias_estado(
     actor = usuario.get("id_usuario") or usuario.get("sub")
     if not actor:
         from fastapi import HTTPException
-        raise HTTPException(401, "No fue posible identificar al administrador.")
+        raise HTTPException(401, "No fue posible identificar al coordinador.")
     observaciones = str(data.get("observaciones") or "")
     return await AdministrarAuditoresService(db).cambiar_estado(
         id_postulacion=id_postulacion,
@@ -162,7 +162,7 @@ async def cambiar_estado(
     actor = usuario.get("id_usuario") or usuario.get("sub")
     if not actor:
         from fastapi import HTTPException
-        raise HTTPException(401, "No fue posible identificar al administrador.")
+        raise HTTPException(401, "No fue posible identificar al coordinador.")
     return await AdministrarAuditoresService(db).cambiar_estado(
         id_postulacion=id_postulacion,
         nuevo_estado=str(data.get("nuevo_estado", "")).strip(),

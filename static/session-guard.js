@@ -23,8 +23,8 @@
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
       .replace(/[\s_-]+/g, "");
-    if (base === "administrador") return "admin";
-    if (base === "superadministrador") return "superadmin";
+    // "Coordinador" es el antiguo "Administrador".
+    if (base === "coordinador" || base === "administrador") return "admin";
     return base;
   }
 

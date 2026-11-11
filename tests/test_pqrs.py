@@ -300,7 +300,9 @@ def test_comite_y_aprendiz_no_tienen_ninguna_operacion():
 
 
 def test_super_administrador_se_trata_como_administrador():
-    assert reglas.rol_pqrs({"role_name": "Super Administrador"}) == reglas.ROL_ADMIN
+    # El Super Administrador se retiró: no tiene acceso. El Coordinador sí.
+    assert reglas.rol_pqrs({"role_name": "Super Administrador"}) == reglas.ROL_SIN_ACCESO
+    assert reglas.rol_pqrs({"role_name": "Coordinador"}) == reglas.ROL_ADMIN
     assert reglas.rol_pqrs({"role_name": "Administrador"}) == reglas.ROL_ADMIN
 
 
@@ -477,7 +479,7 @@ async def test_auxiliar_sin_permiso_no_consulta_y_con_permiso_ve_todas(entorno):
     with pytest.raises(HTTPException) as error:
         await entorno.servicio().listar(aux)
     assert error.value.status_code == 403
-    assert "administrador no te ha otorgado" in error.value.detail
+    assert "Coordinador no te ha otorgado" in error.value.detail
     entorno.dar(aux, "PQR-003")
     assert len(await entorno.servicio().listar(aux)) == 2
 

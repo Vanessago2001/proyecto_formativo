@@ -226,7 +226,7 @@ async def test_el_administrador_aprueba_y_la_accion_se_ejecuta():
     assert respuesta.json()["aprobacion"]["estado"] == "Aprobada"
 
 
-@pytest.mark.parametrize("rol,esperado", [("Administrador", 200), ("Super Administrador", 200)])
+@pytest.mark.parametrize("rol,esperado", [("Administrador", 200), ("Super Administrador", 403)])
 async def test_el_administrador_aprueba_una_reactivacion(rol, esperado):
     db = BaseFalsa(estado_empresa="Inactiva", aprobacion=aprobacion("EMP-008"))
 

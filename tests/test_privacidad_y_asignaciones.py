@@ -157,7 +157,7 @@ def test_solo_el_administrador_cancela_asignaciones(app, cancelar_falso, rol):
     assert respuesta.status_code == 403
 
 
-@pytest.mark.parametrize("rol", ["Administrador", "Super Administrador"])
+@pytest.mark.parametrize("rol", ["Administrador", "Coordinador"])
 def test_administrador_cancela_asignaciones(app, cancelar_falso, rol):
     autenticar(app, rol)
     respuesta = TestClient(app).delete(f"/asignacion-auditores/{ID_ASIGNACION}")

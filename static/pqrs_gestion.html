@@ -106,7 +106,7 @@
           </div>
           <div class="pq-panel" id="panelPlazos" style="margin-top:20px" hidden>
             <h3>Plazos de respuesta por tipo</h3>
-            <p class="pq-ayuda">Solo el administrador los cambia. Aplican a las PQRS que se radiquen desde ahora.</p>
+            <p class="pq-ayuda">Solo el coordinador los cambia. Aplican a las PQRS que se radiquen desde ahora.</p>
             <div class="pq-table-wrap">
               <table class="pq-table">
                 <thead><tr><th>Tipo</th><th>Días hábiles</th><th>Alerta (días antes)</th><th></th></tr></thead>
@@ -139,7 +139,7 @@
 
         <section id="vista-sin-acceso" class="pq-panel" hidden>
           <h3>Sin acceso</h3>
-          <p class="pq-ayuda">Tu cuenta no tiene permisos sobre las PQRS. Si eres auxiliar, pide al administrador que te los otorgue.</p>
+          <p class="pq-ayuda">Tu cuenta no tiene permisos sobre las PQRS. Si eres auxiliar, pide al coordinador que te los otorgue.</p>
         </section>
       </section>
     </div>
@@ -390,7 +390,7 @@
           $("#tablaPorTipo").innerHTML = t.por_tipo.length ? t.por_tipo.map(function (g) {
             return "<tr><td>" + P.esc(g.tipo) + "</td><td>" + g.total + "</td><td>" + g.abiertas + "</td><td>" + g.vencidas + "</td></tr>";
           }).join("") : '<tr><td colspan="4" class="pq-vacio">Sin datos.</td></tr>';
-          if (/admin/.test(rol)) cargarPlazos();
+          if (/admin|coordinador/.test(rol)) cargarPlazos();
         } catch (e) { P.mostrar($("#msgGeneral"), "error", e.message); }
       }
 

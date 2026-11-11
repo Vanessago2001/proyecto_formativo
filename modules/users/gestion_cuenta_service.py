@@ -17,6 +17,7 @@ Cada accion exige un motivo y queda en `historial_gestion_cuenta`
 (user_bootstrap.py), sin guardar nunca la contrasena ni el enlace.
 """
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -35,7 +36,9 @@ ROLES_OBJETIVO = {"empresa", "auditor"}
 
 # Fecha muy antigua para marcar la contrasena como vencida: el login ya
 # obliga a cambiarla cuando vence (DIAS_EXPIRACION_POR_ROL en auth_service).
-FECHA_PASSWORD_VENCIDA = "2000-01-01 00:00:00"
+# Va como datetime: asyncpg rechaza un texto en un parámetro de tipo TIMESTAMP
+# y el restablecimiento respondía "No fue posible completar la acción".
+FECHA_PASSWORD_VENCIDA = datetime(2000, 1, 1)
 
 
 def _registrar_permisos_delegables() -> None:
@@ -97,11 +100,11 @@ class GestionCuentaService:
                 return
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="El administrador no le ha otorgado este permiso.",
+                detail="El Coordinador no le ha otorgado este permiso.",
             )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo un administrador puede gestionar el acceso de otras cuentas.",
+            detail="Solo el Coordinador puede gestionar el acceso de otras cuentas.",
         )
 
     async def _cuenta_objetivo(self, id_usuario: UUID) -> dict:
@@ -250,7 +253,7 @@ class GestionCuentaService:
         avisos = [
             (correo_anterior, "Su correo de acceso fue cambiado - CertiSENA ISO",
              "Su correo de acceso fue cambiado",
-             f"El administrador de CertiSENA cambió el correo de acceso de su cuenta "
+             f"El Coordinador de CertiSENA cambió el correo de acceso de su cuenta "
              f"a {_enmascarar(correo_nuevo)}. Si usted no lo solicitó, comuníquese de inmediato con el SENA."),
             (correo_nuevo, "Correo de acceso actualizado - CertiSENA ISO",
              "Correo de acceso actualizado",

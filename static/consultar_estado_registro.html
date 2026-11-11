@@ -1027,16 +1027,16 @@
           <div id="correccionesCard" class="correcciones-card">
             <div class="correcciones-header">
               <h3>⚠️ Observaciones de corrección</h3>
-              <p class="correcciones-subtitulo">El administrador ha solicitado cambios en su postulación.</p>
+              <p class="correcciones-subtitulo">El coordinador ha solicitado cambios en su postulación.</p>
             </div>
             <div class="correcciones-body">
               <div class="observacion-box">
-                <span class="observacion-label">Observación del administrador</span>
+                <span class="observacion-label">Observación del coordinador</span>
                 <div id="observacionCorreccion">-</div>
               </div>
               <div class="correccion-meta">
                 <div class="correccion-meta-item">
-                  <strong>Administrador</strong>
+                  <strong>Coordinador</strong>
                   <span id="administradorCorreccion">No registrado</span>
                 </div>
                 <div class="correccion-meta-item">
@@ -1327,7 +1327,7 @@
       elementos.observacionCorreccion.textContent = obtenerValor(
         postulacion,
         ["observaciones_correccion"],
-        "El administrador marcó la postulación para correcciones, pero no registró una observación."
+        "El coordinador marcó la postulación para correcciones, pero no registró una observación."
       );
       elementos.administradorCorreccion.textContent = obtenerValor(postulacion, ["administrador_correccion"], "No registrado");
       elementos.fechaCorreccion.textContent = formatearFecha(postulacion.fecha_correccion);
@@ -1384,7 +1384,7 @@
         ""
       );
       const observacionFinal = observacion ||
-        "La postulación fue rechazada. Consulte con el administrador si requiere información adicional.";
+        "La postulación fue rechazada. Consulte con el coordinador si requiere información adicional.";
 
       elementos.observacionRechazo.textContent = observacionFinal;
       elementos.observacionRechazoResumen.textContent = observacionFinal;

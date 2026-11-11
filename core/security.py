@@ -135,10 +135,15 @@ async def get_current_user(
     
     if not user_row:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario inexistente o inhabilitado en el sistema."
         )
-        
+    if es_rol_retirado(user_row.get("role_name")):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta cuenta tiene un rol retirado y no tiene acceso al sistema.",
+        )
+
     return dict(user_row)
 
 async def get_session_user(
@@ -193,6 +198,21 @@ async def get_session_user(
     return usuario
 
 
+# Nombre del rol de coordinación del sistema (antes "Administrador").
+ROL_COORDINADOR = "Coordinador"
+# Super Administrador: rol del desarrollador, retirado del sistema.
+ROLES_RETIRADOS = {"superadmin", "superadministrador", "superadm"}
+ROL_RETIRADO = "rol_retirado"
+
+
+def es_rol_retirado(role_name: str | None) -> bool:
+    return _normalize_role_name(role_name) == ROL_RETIRADO
+
+
+def es_coordinador(usuario: dict | None) -> bool:
+    return bool(usuario) and _normalize_role_name(usuario.get("role_name")) == "admin"
+
+
 def _normalize_role_name(role_name: str) -> str:
     if role_name is None:
         return ""
@@ -207,10 +227,17 @@ def _normalize_role_name(role_name: str) -> str:
 
     normalized = re.sub(r"[\s_\-]+", "", normalized)
 
+    # Retirado: el Super Administrador era una cuenta del desarrollador y se
+    # eliminó del sistema. Se traduce a un rol que ninguna regla reconoce,
+    # así no hereda ningún permiso aunque quede alguna cuenta con ese rol.
+    if normalized in ROLES_RETIRADOS:
+        return ROL_RETIRADO
+
     aliases = {
-        "superadmin": "superadmin",
-        "superadministrador": "superadmin",
-        "superadm": "superadmin",
+        # El rol del coordinador del sistema se llama "Coordinador"; se
+        # conserva "Administrador" como alias mientras se renombra en la base.
+        "coordinador": "admin",
+        "coord": "admin",
         "adm": "admin",
         "administrador": "admin",
         "admin": "admin",

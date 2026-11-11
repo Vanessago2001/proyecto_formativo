@@ -36,9 +36,8 @@ from core.security import get_current_user
 from modules.solicitudes.solicitud_permissions import (
     COLUMNAS_MATRIZ,
     NivelPermiso,
-    ROL_SUPERADM,
     columna_de_rol,
-    normalizar_rol,
+    nivel_de_columna,
 )
 
 V = NivelPermiso.CONCEDIDO
@@ -151,7 +150,7 @@ def nivel_permiso(codigo: str, nombre_rol: str | None) -> NivelPermiso:
         return NivelPermiso.DENEGADO
 
     _, valores = PERMISOS_M7[codigo]
-    return valores[COLUMNAS_MATRIZ.index(columna)]
+    return nivel_de_columna(valores, columna)
 
 
 def tiene_permiso(codigo: str, nombre_rol: str | None) -> bool:
@@ -162,7 +161,7 @@ def tiene_permiso(codigo: str, nombre_rol: str | None) -> bool:
         return False
 
     if nivel is NivelPermiso.SOLO_SUPERADMIN:
-        return normalizar_rol(nombre_rol) == ROL_SUPERADM
+        return False
 
     return True
 

@@ -1280,8 +1280,7 @@
 
     const isAdmin =
         user &&
-        user.role_name ===
-        "Administrador";
+        ["Coordinador", "Administrador"].includes(user.role_name);
 
 
     if (!isAdmin) {

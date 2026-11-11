@@ -1457,7 +1457,7 @@ class AuditorService:
                     f"'{usuario['estado_auditor']}' y ya no admite cambios "
                     "desde el formulario de registro. Si necesita "
                     "actualizar esta información, inicie una nueva "
-                    "postulación o comuníquese con el administrador."
+                    "postulación o comuníquese con el Coordinador."
                 ),
             )
 
@@ -2732,7 +2732,7 @@ class AuditorService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
                     "Su cuenta no está activa, por eso no puede declarar "
-                    "conflictos de interés. Comuníquese con el administrador."
+                    "conflictos de interés. Comuníquese con el Coordinador."
                 ),
             )
         return usuario

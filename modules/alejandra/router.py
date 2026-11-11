@@ -13,7 +13,7 @@ router = APIRouter(prefix="/alejandra/seguridad", tags=["Seguridad - Alejandra"]
 async def endpoint_cerrar_sesiones(
     user_id: str, 
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["Administrador", "Super Administrador"]))
+    current_user: dict = Depends(require_role(["Coordinador"]))
 ):
     exito = await cerrar_todas_las_sesiones(user_id, db)
     if not exito:
@@ -25,7 +25,7 @@ async def endpoint_bloquear_usuario(
     user_id: str, 
     minutos: int = 15, 
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["Administrador", "Super Administrador"]))
+    current_user: dict = Depends(require_role(["Coordinador"]))
 ):
     exito = await bloquear_usuario_temporalmente(user_id, db, minutos)
     if not exito:
@@ -36,7 +36,7 @@ async def endpoint_bloquear_usuario(
 async def endpoint_desbloquear_usuario(
     user_id: str, 
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["Administrador", "Super Administrador"]))
+    current_user: dict = Depends(require_role(["Coordinador"]))
 ):
     exito = await desbloquear_usuario(user_id, db)
     if not exito:

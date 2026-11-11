@@ -1,8 +1,8 @@
 """
 M5 — GESTIÓN DE SOLICITUDES · acciones REQ del Bloque 7.
 
-    SOL-063  Recalcular tiempo de auditoría -> aprueba ADM o SUPERADM
-    SOL-065  Justificar ajustes de tiempo   -> aprueba solo SUPERADM
+    SOL-063  Recalcular tiempo de auditoría -> aprueba el Coordinador
+    SOL-065  Justificar ajustes de tiempo   -> aprueba el Coordinador (era SA)
 
 SOL-065 es SA para el Administrador en la hoja, así que un ajuste pedido por
 el Auxiliar solo lo puede confirmar el SuperAdministrador.
@@ -12,8 +12,9 @@ from uuid import UUID
 
 from modules.aprobaciones.aprobacion_service import registrar_accion
 
-APROBADORES = ["superadmin", "admin"]
-SOLO_SUPERADMIN = ["superadmin"]
+APROBADORES = ["admin"]
+# Lo que antes aprobaba solo el Super Administrador (retirado) lo aprueba el Coordinador.
+SOLO_COORDINADOR = ["admin"]
 
 
 def _id_solicitud(aprobacion: dict) -> UUID:
@@ -23,7 +24,7 @@ def _id_solicitud(aprobacion: dict) -> UUID:
 def _autor(aprobacion: dict, codigo: str) -> dict:
     return {
         "id_usuario": aprobacion.get("id_revisor") or aprobacion.get("id_solicitante"),
-        "role_name": "Administrador",
+        "role_name": "Coordinador",
         "permiso_codigo": codigo,
     }
 
@@ -50,4 +51,4 @@ async def _ajustar(db, aprobacion: dict) -> dict:
 
 
 registrar_accion("SOL-063", "Recalcular el tiempo de auditoría", APROBADORES, _recalcular)
-registrar_accion("SOL-065", "Justificar un ajuste de tiempo", SOLO_SUPERADMIN, _ajustar)
+registrar_accion("SOL-065", "Justificar un ajuste de tiempo", SOLO_COORDINADOR, _ajustar)

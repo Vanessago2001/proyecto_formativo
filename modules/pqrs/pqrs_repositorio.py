@@ -355,13 +355,13 @@ class PqrsRepositorio:
         return dict(fila) if fila else None
 
     async def usuarios_internos_activos(self) -> list[dict]:
-        """Administradores, auxiliares y auditores activos (candidatos a responsable)."""
+        """Coordinadores y auxiliares activos (candidatos a responsable)."""
         resultado = await self.db.execute(text("""
             SELECT u.id_usuario, u.nombre, u.correo, u.estado, r.nombre AS role_name
             FROM usuario u
             JOIN rol r ON r.id_rol = u.rol_id
             WHERE u.estado = 'Activo'
-              AND LOWER(r.nombre) IN ('administrador', 'super administrador', 'auxiliar', 'auditor')
+              AND LOWER(r.nombre) IN ('coordinador', 'administrador', 'auxiliar')
             ORDER BY r.nombre, u.nombre;
         """))
         return [dict(f) for f in resultado.mappings().all()]

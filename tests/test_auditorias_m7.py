@@ -151,11 +151,12 @@ def test_la_hoja_deja_la_ejecucion_de_campo_en_una_sola_columna():
     assert "COM" in ROLES_EJECUTAN_CAMPO
 
 
-def test_suspender_la_auditoria_es_exclusivo_del_superadministrador():
-    """AUT-010: SA para el SuperAdministrador y REQ para el Auxiliar."""
-    assert nivel_permiso("AUT-010", "Super Administrador").value == "SA"
+def test_suspender_la_auditoria_la_hace_el_coordinador():
+    """AUT-010: era SA (Super Administrador, retirado); ahora la ejerce el Coordinador."""
+    assert nivel_permiso("AUT-010", "Coordinador").value == "V"
+    assert nivel_permiso("AUT-010", "Administrador").value == "V"
     assert nivel_permiso("AUT-010", "Auxiliar").value == "REQ"
-    assert nivel_permiso("AUT-010", "Administrador").value == "F"
+    assert nivel_permiso("AUT-010", "Super Administrador").value == "F"
 
 
 # ============================================================
@@ -272,7 +273,7 @@ async def pedir(db, rol, metodo, ruta, **kwargs):
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Super Administrador", 201), ("Comité", 201), ("Administrador", 403),
+    [("Super Administrador", 403), ("Comité", 201), ("Administrador", 403),
      ("Auxiliar", 403), ("Empresa", 403), ("Publico", 403)],
 )
 async def test_iniciar_auditoria_segun_la_hoja(rol, esperado):
@@ -324,7 +325,7 @@ async def test_una_auditoria_suspendida_o_cerrada_no_admite_registros(estado):
 async def test_suspender_exige_un_motivo_escrito():
     db = BaseFalsa()
 
-    corta = await pedir(db, "Super Administrador", "post", f"{BASE}/suspender", json={"motivo": "no"})
+    corta = await pedir(db, "Coordinador", "post", f"{BASE}/suspender", json={"motivo": "no"})
 
     assert corta.status_code == 422
 
@@ -529,7 +530,7 @@ async def test_no_se_cierra_la_auditoria_con_no_conformidades_abiertas():
 async def test_solo_se_reabre_una_auditoria_cerrada():
     db = BaseFalsa(fila_auditoria=auditoria(estado="En ejecucion"))
 
-    respuesta = await pedir(db, "Super Administrador", "post", f"{BASE}/reabrir",
+    respuesta = await pedir(db, "Coordinador", "post", f"{BASE}/reabrir",
                             json={"motivo": "Se detectó un error en el informe."})
 
     assert respuesta.status_code == 409
@@ -538,7 +539,7 @@ async def test_solo_se_reabre_una_auditoria_cerrada():
 async def test_reabrir_exige_justificacion_larga():
     db = BaseFalsa(fila_auditoria=auditoria(estado="Cerrada"))
 
-    respuesta = await pedir(db, "Super Administrador", "post", f"{BASE}/reabrir", json={"motivo": "porque"})
+    respuesta = await pedir(db, "Coordinador", "post", f"{BASE}/reabrir", json={"motivo": "porque"})
 
     assert respuesta.status_code == 422
 
@@ -559,7 +560,7 @@ async def test_una_accion_correctiva_siempre_responde_a_un_hallazgo():
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Super Administrador", 200), ("Administrador", 200), ("Auxiliar", 202), ("Comité", 403)],
+    [("Super Administrador", 403), ("Administrador", 200), ("Auxiliar", 202), ("Comité", 403)],
 )
 async def test_cerrar_la_auditoria_segun_la_hoja(rol, esperado):
     """AUT-057: el Auxiliar la pide (REQ) y un superior la aprueba."""

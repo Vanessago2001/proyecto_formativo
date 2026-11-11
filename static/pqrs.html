@@ -17,7 +17,10 @@
         <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco" />
         <div>
           <h1>CertiSENA</h1>
-          <p class="subtitle">Peticiones, quejas, reclamos y sugerencias</p>
+          <p class="subtitle">Plataforma de gestión y consulta de certificados</p>
+          <p style="font-size:12px;opacity:.85;margin-top:4px;">
+            Servicio Nacional de Aprendizaje • CertiSENA
+          </p>
         </div>
       </div>
       <div class="comite-header-user" id="cabeceraSesion" hidden>
@@ -26,9 +29,45 @@
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
       </div>
-      <div class="comite-header-user" id="cabeceraPublica">
-        <a class="comite-back-button" href="/">Inicio</a>
-        <a class="comite-back-button" href="/login">Iniciar sesión</a>
+      <!-- Sin sesión: la misma cabecera de las demás consultas públicas. -->
+      <div class="header-buttons" id="cabeceraPublica">
+        <div class="nav-dropdown">
+          <button type="button" class="btn-login nav-dropdown-toggle" aria-haspopup="true">
+            Consulta pública <span class="nav-caret">▼</span>
+          </button>
+          <div class="nav-dropdown-menu">
+            <div class="nav-dropdown-panel">
+              <a href="/buscar_empresa">Buscar empresa por NIT</a>
+              <a href="/">Consultar estado de vigencia</a>
+              <a href="/verificar-certificado">Verificar certificado</a>
+              <a href="/consulta-norma">Consultar norma evaluada</a>
+              <a href="/vigencia">Consultar vigencia y plazos</a>
+              <a href="/validar">Validar autenticidad</a>
+              <a href="/constancia">Descargar constancia pública</a>
+            </div>
+          </div>
+        </div>
+        <a href="/pqrs" class="btn-login" title="Peticiones, quejas, reclamos y sugerencias">PQRS</a>
+        <a href="/login" class="btn-login">Iniciar sesión</a>
+        <a href="/register" class="btn-login">Registrarse</a>
+      </div>
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menú">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="/login">Iniciar sesión</a>
+      <a href="/pqrs">PQRS: peticiones, quejas y reclamos</a>
+      <a href="/register">Registrarse</a>
+      <div class="mobile-menu-group">
+        <span class="mobile-menu-label">Consulta pública</span>
+        <a href="/buscar_empresa">Buscar empresa por NIT</a>
+              <a href="/">Consultar estado de vigencia</a>
+              <a href="/verificar-certificado">Verificar certificado</a>
+              <a href="/consulta-norma">Consultar norma evaluada</a>
+              <a href="/vigencia">Consultar vigencia y plazos</a>
+              <a href="/validar">Validar autenticidad</a>
+              <a href="/constancia">Descargar constancia pública</a>
       </div>
     </div>
   </header>
@@ -193,7 +232,21 @@
       var consultaActual = null;     // {radicado, correo} de la consulta pública
       var abierta = null;            // PQRS en el diálogo (empresa)
 
-      if (rol) { $("#cabeceraSesion").hidden = false; $("#cabeceraPublica").hidden = true; }
+      if (rol) {
+        $("#cabeceraSesion").hidden = false;
+        // Con sesión no se muestra la navegación pública (ni el enlace PQRS).
+        ["#cabeceraPublica", "#hamburgerBtn", "#mobileMenu"].forEach(function (s) {
+          var el = $(s); if (el) { el.hidden = true; el.style.display = "none"; }
+        });
+      }
+      (function () {
+        var boton = $("#hamburgerBtn"), menu = $("#mobileMenu");
+        if (!boton || !menu) return;
+        boton.addEventListener("click", function () {
+          boton.classList.toggle("active");
+          menu.classList.toggle("open");
+        });
+      })();
       if (esGestor) $("#enlaceGestion").hidden = false;
       if (esEmpresa) { $("#tabMias").hidden = false; }
       if (esInterno) { $("#campoCanal").hidden = false; }

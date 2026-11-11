@@ -829,7 +829,7 @@
 
                 <div class="page-head">
                     <h1>Consultar auditorías programadas</h1>
-                    <p>Consulta las auditorías que te han asignado o, si eres administrador, todas las programaciones
+                    <p>Consulta las auditorías que te han asignado o, si eres coordinador, todas las programaciones
                         registradas en el sistema.</p>
                 </div>
 
@@ -1132,7 +1132,7 @@
             try {
                 const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
                 usuarioId = payload.user_id || payload.id_usuario || payload.sub;
-                esAdmin = true; // vista exclusiva del administrador
+                esAdmin = true; // vista exclusiva del coordinador
                 return usuarioId;
             } catch { return null; }
         }
@@ -1144,7 +1144,7 @@
             const titulo = document.getElementById('tituloLista');
             const subtitulo = document.getElementById('subtitulo');
             if (esAdmin) {
-                titulo.textContent = 'Auditorías programadas (vista administrador)';
+                titulo.textContent = 'Auditorías programadas (vista coordinador)';
                 subtitulo.textContent = 'Consulta todas las auditorías programadas en el sistema.';
             } else {
                 titulo.textContent = 'Mis auditorías programadas';
@@ -1264,7 +1264,7 @@
             const yaConfirmo = row.auditor_confirmado === true || String(row.auditor_confirmado).toLowerCase() === 'true';
             return {
                 yaConfirmo: yaConfirmo,
-                // La confirmacion es individual: en la vista de administrador
+                // La confirmacion es individual: en la vista de coordinador
                 // el equipo se confirma desde la vista de cada auditor.
                 puedeConfirmar: !esAdmin && !yaConfirmo && ['programada', 'reprogramada'].includes(estado),
                 // La solicitud de reprogramacion la realiza el auditor asignado.
@@ -2318,6 +2318,8 @@
             // Las vistas se abren desde el menú lateral y se pueden enlazar por hash.
             const vista = (location.hash || '#listado').slice(1).trim();
             if (['listado', 'reprogramaciones', 'futuras'].includes(vista)) {
+                // La vista queda en la dirección para que el menú lateral la marque.
+                if (location.hash !== '#' + vista) history.replaceState(null, '', '#' + vista);
                 mostrarVistaAdmin(vista);
                 actualizarMenuVista(vista);
             }

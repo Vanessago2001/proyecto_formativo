@@ -53,8 +53,8 @@ PERMISOS_PQR: dict[str, tuple[str, tuple[str, ...]]] = {
     "PQR-015": ("Generar reporte de PQRS",          (SI, SI, COND, NO, SI, NO, NO, NO)),
 }
 
-# Roles del módulo. El super administrador ya no se usa: el administrador
-# hace todo lo que la hoja concede a SUPERADM.
+# Roles del módulo. El Super Administrador se retiró del sistema: el
+# Coordinador (antes Administrador) hace todo lo que la hoja concede a SUPERADM.
 ROL_ADMIN = "admin"
 ROL_AUXILIAR = "auxiliar"
 ROL_EMPRESA = "empresa"
@@ -77,7 +77,7 @@ def rol_pqrs(usuario: dict | None) -> str:
     if usuario is None:
         return ROL_PUBLICO
     rol = _normalize_role_name(usuario.get("role_name"))
-    if rol in ("admin", "superadmin"):
+    if rol == "admin":
         return ROL_ADMIN
     if rol in (ROL_AUXILIAR, ROL_EMPRESA):
         return rol

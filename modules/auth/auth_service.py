@@ -10,6 +10,7 @@ from modules.mfa.mfa_service import MFAService
 from core.config import settings
 from core.logger import logger
 from core.security import (
+    es_rol_retirado,
     create_access_token,
     verify_password,
     hash_password,
@@ -787,6 +788,13 @@ class AuthService:
 )
 
         await self.db.commit()
+        # El Super Administrador (rol del desarrollador) se retiró del sistema.
+        if es_rol_retirado(user.get("rol_nombre")):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Esta cuenta tiene un rol retirado y no puede iniciar sesión.",
+            )
+
         # nuevo Sneider
         if user["mfa_activado"]:
           mfa = MFAService(self.db)
@@ -907,6 +915,12 @@ class AuthService:
         )
 
         await self.db.commit()
+
+        if es_rol_retirado(user.get("rol_nombre")):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Esta cuenta tiene un rol retirado y no puede iniciar sesión.",
+            )
 
         token = create_access_token(
             data={

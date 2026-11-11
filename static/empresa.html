@@ -150,7 +150,7 @@
         informacion: ["Información técnica", "Norma ISO, tamaño de la empresa, alcance técnico y procesos clave."],
         sedes: ["Sedes", "Sedes de la empresa que forman parte de la solicitud."],
         documentos: ["Documentos", "Documentos que respaldan la solicitud. Cada archivo conserva sus versiones anteriores."],
-        auditores: ["Auditores asignados", "Auditores asignados a sus solicitudes. Si necesita un cambio, solicítelo explicando la razón; el administrador decide."]
+        auditores: ["Auditores asignados", "Auditores asignados a sus solicitudes. Si necesita un cambio, solicítelo explicando la razón; el coordinador decide."]
       };
       const NECESITAN_SOLICITUD = ["informacion", "sedes", "documentos"];
       const CAMPOS_RADICAR = {
@@ -408,8 +408,8 @@
             (filas || vacioTabla(5, "Todavía no hay auditores asignados a sus solicitudes.")) +
             "</tbody></table></div>"
           ) + panel(
-            '<div class="comite-panel-heading"><div><h3>Mis solicitudes de cambio</h3><p>El administrador revisa cada solicitud y responde.</p></div></div>' +
-            '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Auditor</th><th>Razón</th><th>Estado</th><th>Respuesta del administrador</th></tr></thead><tbody>' +
+            '<div class="comite-panel-heading"><div><h3>Mis solicitudes de cambio</h3><p>El coordinador revisa cada solicitud y responde.</p></div></div>' +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Auditor</th><th>Razón</th><th>Estado</th><th>Respuesta del coordinador</th></tr></thead><tbody>' +
             (filasCambios || vacioTabla(5, "No ha enviado solicitudes de cambio.")) +
             "</tbody></table></div>"
           );
@@ -420,10 +420,10 @@
       }
 
       async function solicitarCambio(idAsignacion) {
-        const motivo = prompt("Explique la razón justificada por la que solicita cambiar este auditor (mínimo 30 caracteres). El administrador la revisará:");
+        const motivo = prompt("Explique la razón justificada por la que solicita cambiar este auditor (mínimo 30 caracteres). El coordinador la revisará:");
         if (motivo === null) return;
         if (motivo.trim().length < 30) {
-          mostrar("La razón debe tener al menos 30 caracteres para que el administrador pueda evaluarla.", "error");
+          mostrar("La razón debe tener al menos 30 caracteres para que el coordinador pueda evaluarla.", "error");
           return;
         }
         try {

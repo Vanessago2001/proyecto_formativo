@@ -283,7 +283,7 @@ class CertificadosService:
             lider and str(lider["id_usuario"]) == str(usuario.get("id_usuario"))
         )
         rol = _normalize_role_name(usuario.get("role_name"))
-        if lider and rol not in {"admin", "superadmin"} and not es_persona_asignada:
+        if lider and rol not in {"admin"} and not es_persona_asignada:
             lider = {"nombre": lider["nombre"]}
         return {
             "es_lider": es_persona_asignada,
@@ -852,7 +852,8 @@ class CertificadosService:
                 status_code=404,
                 detail=(
                     "Certificado público no encontrado: el código no corresponde a un "
-                    "certificado vigente publicado en el portal."
+                    "certificado vigente y firmado publicado en el portal. Si el certificado "
+                    "se emitió hace poco, puede estar pendiente de la firma del líder del comité."
                 ),
             )
         certificado = dict(fila)

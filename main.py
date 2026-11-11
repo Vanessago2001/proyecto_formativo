@@ -232,17 +232,20 @@ async def seed_initial_data() -> None:
             default_rol = [
                 ("Auditor", "Puede completar su registro y cargar documentos"),
                 ("Empresa", "Puede registrar documentos y solicitudes"),
-                ("Auxiliar", "Cuenta interna creada por el administrador"),
-                ("Administrador", "Acceso total al sistema"),
+                ("Auxiliar", "Cuenta interna creada por el coordinador"),
+                ("Coordinador", "Coordina el sistema: cuentas, empresas, auditores y certificados"),
                 ("Comité", "Puede revisar expedientes y registrar decisiones de certificación"),
                 ("Instructor", "Rol heredado; sin permisos en los modulos de certificacion"),
                 ("Aprendiz", "Usuario estándar"),
             ]
 
+            # "Coordinador" es el antiguo "Administrador": si la base todavía tiene
+            # el nombre viejo no se crea otro rol (se renombra con SQL).
+            nombres_equivalentes = {"Coordinador": ["Coordinador", "Administrador"]}
             for role_name, role_description in default_rol:
                 existing_role = await session.execute(
-                    text("SELECT id_rol FROM rol WHERE nombre = :nombre;"),
-                    {"nombre": role_name},
+                    text("SELECT id_rol FROM rol WHERE nombre = ANY(:nombres);"),
+                    {"nombres": nombres_equivalentes.get(role_name, [role_name])},
                 )
                 # if existing_role.scalar_one_or_none() is None: ANTES
                 # CAMBIO: Usamos .scalar() en lugar de .scalar_one_or_none() 
@@ -263,8 +266,12 @@ async def seed_initial_data() -> None:
             # en caso de que existan múltiples registros con el nombre 'admin'.
             if existing_admin.scalar() is None:
                 role_result = await session.execute(
-                    text("SELECT id_rol FROM rol WHERE nombre = :nombre;"),
-                    {"nombre": "Administrador"},
+                    text("""
+                        SELECT id_rol FROM rol
+                        WHERE nombre IN ('Coordinador', 'Administrador')
+                        ORDER BY (nombre = 'Coordinador') DESC
+                        LIMIT 1;
+                    """),
                 )
                 # admin_role_id = role_result.scalar_one_or_none() ANTES
                 # CAMBIO: Obtenemos el id_rol del primer registro retornado de la tabla rol.

@@ -1,9 +1,9 @@
 """
 M5 — GESTIÓN DE SOLICITUDES · acciones REQ del Bloque 6.
 
-    SOL-054  Cambiar estado de la solicitud  -> aprueba ADM o SUPERADM
-    SOL-058  Compartir expediente con Comité -> aprueba ADM o SUPERADM
-    SOL-060  Cerrar solicitud definitivamente-> aprueba ADM o SUPERADM
+    SOL-054  Cambiar estado de la solicitud  -> aprueba el Coordinador
+    SOL-058  Compartir expediente con Comité -> aprueba el Coordinador
+    SOL-060  Cerrar solicitud definitivamente-> aprueba el Coordinador
 
 SOL-056 (exportar historial) y SOL-059 (reporte del módulo) también están
 marcadas REQ, pero solo leen: no cambian nada que haya que aprobar, así que
@@ -15,7 +15,7 @@ from uuid import UUID
 
 from modules.aprobaciones.aprobacion_service import registrar_accion
 
-APROBADORES = ["superadmin", "admin"]
+APROBADORES = ["admin"]
 
 
 def _id_solicitud(aprobacion: dict) -> UUID:
@@ -25,7 +25,7 @@ def _id_solicitud(aprobacion: dict) -> UUID:
 def _autor(aprobacion: dict, codigo: str) -> dict:
     return {
         "id_usuario": aprobacion.get("id_revisor") or aprobacion.get("id_solicitante"),
-        "role_name": "Administrador",
+        "role_name": "Coordinador",
         "permiso_codigo": codigo,
     }
 

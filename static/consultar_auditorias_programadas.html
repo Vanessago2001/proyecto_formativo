@@ -1019,7 +1019,7 @@
 
             <div class="page-head">
                 <h1>Consultar auditorías programadas</h1>
-                <p>Consulta las auditorías que te han asignado o, si eres administrador, todas las programaciones
+                <p>Consulta las auditorías que te han asignado o, si eres coordinador, todas las programaciones
                     registradas en el sistema.</p>
             </div>
 
@@ -1230,7 +1230,7 @@
             const titulo = document.getElementById('tituloLista');
             const subtitulo = document.getElementById('subtitulo');
             if (esAdmin) {
-                titulo.textContent = 'Auditorías programadas (vista administrador)';
+                titulo.textContent = 'Auditorías programadas (vista coordinador)';
                 subtitulo.textContent = 'Consulta todas las auditorías programadas en el sistema.';
             } else {
                 titulo.textContent = 'Mis auditorías programadas';
@@ -1345,7 +1345,7 @@
             const yaConfirmo = row.auditor_confirmado === true || String(row.auditor_confirmado).toLowerCase() === 'true';
             return {
                 yaConfirmo: yaConfirmo,
-                // La confirmacion es individual: en la vista de administrador
+                // La confirmacion es individual: en la vista de coordinador
                 // el equipo se confirma desde la vista de cada auditor.
                 puedeConfirmar: !esAdmin && !yaConfirmo && ['programada', 'reprogramada'].includes(estado),
                 puedeSolicitar: ['programada', 'confirmada', 'reprogramada'].includes(estado)
@@ -1487,7 +1487,7 @@
                 cerrarModalReprogramacion();
                 mostrarAvisoModal(
                     'Tu solicitud de reprogramación fue registrada correctamente.\n\n' +
-                    'El administrador la revisará y tú recibirás la respuesta en el menú de Notificaciones. ' +
+                    'El coordinador la revisará y tú recibirás la respuesta en el menú de Notificaciones. ' +
                     'Estate atento a las notificaciones.',
                     'Solicitud registrada'
                 );

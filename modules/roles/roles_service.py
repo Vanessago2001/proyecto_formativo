@@ -5,14 +5,7 @@ from modules.roles.roles_schema import RoleCreate
 from core.logger import logger
 from typing import List, Dict, Any, Optional
 
-from core.security import _normalize_role_name
-
-# Roles que siguen en la tabla `rol` pero ya no se asignan a ninguna cuenta.
-ROLES_RETIRADOS = {"superadmin"}
-
-
-def es_rol_retirado(nombre: Optional[str]) -> bool:
-    return _normalize_role_name(nombre) in ROLES_RETIRADOS
+from core.security import es_rol_retirado  # noqa: F401  (se reexporta)
 
 class rolervice:
     def __init__(self, db: AsyncSession) -> None:
@@ -22,8 +15,8 @@ class rolervice:
         logger.info("SQL Nativo: Consultando todos los rol.")
         query = text("SELECT id_rol, nombre, descripcion FROM rol ORDER BY id_rol ASC;")
         result = await self.db.execute(query)
-        # El rol "Super Administrador" ya no se usa: la fila sigue en la base
-        # (hay cuentas antiguas que lo tienen), pero no se ofrece para asignar.
+        # El Super Administrador (rol del desarrollador) se retiró: si la fila
+        # sigue en la base, no se ofrece para asignar.
         return [
             dict(row)
             for row in result.mappings().all()

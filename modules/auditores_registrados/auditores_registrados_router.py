@@ -25,8 +25,8 @@ router = APIRouter(
 
 # Consultar hojas de vida y documentos: administradores y auxiliares.
 # Inactivar o reactivar: solo perfiles con permisos de administraciÃ³n.
-require_lectura = require_role(["Administrador", "Super Administrador", "Auxiliar"])
-require_escritura = require_role(["Administrador", "Super Administrador"])
+require_lectura = require_role(["Coordinador", "Auxiliar"])
+require_escritura = require_role(["Coordinador"])
 
 
 @router.get("")

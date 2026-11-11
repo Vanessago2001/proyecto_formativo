@@ -205,10 +205,10 @@ def test_la_empresa_no_asigna_auditores_ni_cambia_estados():
         assert nivel_permiso(codigo, "Empresa").value == "F"
 
 
-def test_reasignar_auditor_es_exclusivo_del_superadministrador():
-    """SOL-049: SA para el SuperAdministrador y F para el Administrador."""
-    assert nivel_permiso("SOL-049", "Super Administrador").value == "SA"
-    assert nivel_permiso("SOL-049", "Administrador").value == "F"
+def test_reasignar_auditor_lo_hace_el_coordinador():
+    """SOL-049: era SA (Super Administrador, retirado); ahora la ejerce el Coordinador."""
+    assert nivel_permiso("SOL-049", "Coordinador").value == "V"
+    assert nivel_permiso("SOL-049", "Super Administrador").value == "F"
     assert nivel_permiso("SOL-049", "Auxiliar").value == "REQ"
 
 
@@ -219,7 +219,7 @@ def test_reasignar_auditor_es_exclusivo_del_superadministrador():
 @pytest.mark.parametrize(
     "rol,esperado",
     [
-        ("Super Administrador", 200),
+        ("Super Administrador", 403),
         ("Administrador", 200),
         ("Auxiliar", 200),
         ("Empresa", 403),
@@ -293,7 +293,7 @@ async def test_no_se_propone_un_auditor_con_conflicto_de_interes():
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Super Administrador", 200), ("Administrador", 200), ("Auxiliar", 202), ("Empresa", 403)],
+    [("Super Administrador", 403), ("Administrador", 200), ("Auxiliar", 202), ("Empresa", 403)],
 )
 async def test_aprobar_asignacion_segun_la_hoja(rol, esperado):
     """El Auxiliar tiene REQ: su petición queda pendiente (202)."""
@@ -323,7 +323,7 @@ async def test_solo_se_aprueba_lo_que_esta_propuesto():
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Super Administrador", 200), ("Administrador", 403), ("Auxiliar", 202), ("Empresa", 403)],
+    [("Super Administrador", 403), ("Coordinador", 200), ("Auxiliar", 202), ("Empresa", 403)],
 )
 async def test_reasignar_segun_la_hoja(rol, esperado):
     """SOL-049 es SA: ni siquiera el Administrador reasigna por su cuenta."""
@@ -341,7 +341,7 @@ async def test_reasignar_cierra_la_anterior_y_propone_la_nueva():
     db = BaseFalsa(registro=asignacion("Asignado"))
 
     await pedir(
-        db, "Super Administrador", "post", f"{BASE}/auditores/{ID_ASIGNACION}/reasignar",
+        db, "Coordinador", "post", f"{BASE}/auditores/{ID_ASIGNACION}/reasignar",
         json={"id_nuevo_auditor": ID_OTRO_AUDITOR, "motivo": "Quedó sin disponibilidad."},
     )
 
@@ -388,7 +388,7 @@ async def test_cada_movimiento_de_la_asignacion_deja_historial_y_bitacora():
 @pytest.mark.parametrize(
     "rol,esperado",
     [
-        ("Super Administrador", 200), ("Administrador", 200), ("Auxiliar", 200),
+        ("Super Administrador", 403), ("Administrador", 200), ("Auxiliar", 200),
         ("Empresa", 200), ("Auditor", 200), ("Comité", 200), ("Publico", 403),
     ],
 )
@@ -593,7 +593,7 @@ async def test_calcular_el_tiempo_segun_la_hoja(rol, esperado):
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Super Administrador", 200), ("Administrador", 200), ("Auxiliar", 202), ("Empresa", 403)],
+    [("Super Administrador", 403), ("Administrador", 200), ("Auxiliar", 202), ("Empresa", 403)],
 )
 async def test_recalcular_segun_la_hoja(rol, esperado):
     class Base(BaseFalsa):
@@ -619,7 +619,7 @@ async def test_recalcular_segun_la_hoja(rol, esperado):
 async def test_el_ajuste_exige_una_justificacion_larga():
     db = BaseFalsa(registro=calculo())
 
-    respuesta = await pedir(db, "Super Administrador", "post", f"{BASE}/calculo/ajuste",
+    respuesta = await pedir(db, "Coordinador", "post", f"{BASE}/calculo/ajuste",
                             json={"horas": 4, "justificacion": "corto"})
 
     assert respuesta.status_code == 422
@@ -627,7 +627,7 @@ async def test_el_ajuste_exige_una_justificacion_larga():
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Super Administrador", 200), ("Administrador", 403), ("Auxiliar", 202), ("Empresa", 403)],
+    [("Super Administrador", 403), ("Coordinador", 200), ("Auxiliar", 202), ("Empresa", 403)],
 )
 async def test_justificar_ajustes_es_exclusivo_del_superadministrador(rol, esperado):
     """SOL-065: SA para el SuperAdministrador, F para el Administrador."""
@@ -714,14 +714,14 @@ async def test_el_resultado_del_calculo_lo_ve_tambien_el_auditor_y_el_comite():
     assert (await pedir(Base(), "Empresa", "get", f"{BASE}/calculo")).status_code == 403
 
 
-async def test_las_variables_base_de_la_norma_solo_las_cambia_el_superadministrador():
+async def test_las_variables_base_de_la_norma_solo_las_cambia_el_coordinador():
     db = BaseFalsa(filas=[])
 
     ruta = f"/solicitudes/calculo/normas/{ID_NORMA}/variables"
     cuerpo = {"valores": {"horas_base": 10}}
 
-    assert (await pedir(db, "Super Administrador", "put", ruta, json=cuerpo)).status_code == 200
-    assert (await pedir(db, "Administrador", "put", ruta, json=cuerpo)).status_code == 403
+    assert (await pedir(db, "Coordinador", "put", ruta, json=cuerpo)).status_code == 200
+    assert (await pedir(db, "Super Administrador", "put", ruta, json=cuerpo)).status_code == 403
     assert (await pedir(db, "Auxiliar", "put", ruta, json=cuerpo)).status_code == 403
 
 
@@ -729,7 +729,7 @@ async def test_no_se_admiten_variables_inventadas_para_la_norma():
     db = BaseFalsa(filas=[])
 
     respuesta = await pedir(
-        db, "Super Administrador", "put", f"/solicitudes/calculo/normas/{ID_NORMA}/variables",
+        db, "Coordinador", "put", f"/solicitudes/calculo/normas/{ID_NORMA}/variables",
         json={"valores": {"horas_magicas": 3}},
     )
 

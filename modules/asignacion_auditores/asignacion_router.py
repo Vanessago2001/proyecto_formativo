@@ -19,16 +19,15 @@ from modules.solicitudes.solicitud_permissions import (
     ROL_ADM,
     ROL_AUX,
     ROL_EMP,
-    ROL_SUPERADM,
     normalizar_rol,
 )
 
 router = APIRouter(prefix="/asignacion-auditores", tags=["Asignación de Auditores"])
 
 # Quién gestiona asignaciones (consultar, proponer, asignar).
-ROLES_GESTION = {ROL_SUPERADM, ROL_ADM, ROL_AUX}
+ROLES_GESTION = {ROL_ADM, ROL_AUX}
 # Cancelar una asignación o resolver una solicitud de cambio: solo el administrador.
-ROLES_ADMINISTRADOR = {ROL_SUPERADM, ROL_ADM}
+ROLES_ADMINISTRADOR = {ROL_ADM}
 
 
 async def requiere_gestion_asignaciones(usuario: dict = Depends(get_current_user)) -> dict:
@@ -41,7 +40,7 @@ async def requiere_administrador(usuario: dict = Depends(get_current_user)) -> d
     if normalizar_rol(usuario.get("role_name")) not in ROLES_ADMINISTRADOR:
         raise HTTPException(
             status_code=403,
-            detail="Solo el administrador puede cancelar asignaciones o resolver solicitudes de cambio.",
+            detail="Solo el Coordinador puede cancelar asignaciones o resolver solicitudes de cambio.",
         )
     return usuario
 
@@ -133,7 +132,7 @@ async def listar_asignaciones(
     raise HTTPException(status_code=403, detail="No tiene permisos para consultar asignaciones.")
 
 
-@router.delete("/{id_asignacion}", summary="Cancelar asignación de auditor (solo administrador)")
+@router.delete("/{id_asignacion}", summary="Cancelar asignación de auditor (solo Coordinador)")
 async def cancelar_asignacion(
     id_asignacion: UUID,
     usuario: dict = Depends(requiere_administrador),
@@ -185,7 +184,7 @@ async def listar_solicitudes_cambio(
 
 @router.post(
     "/solicitudes-cambio/{id_solicitud_cambio}/resolver",
-    summary="El administrador aprueba o rechaza una solicitud de cambio",
+    summary="El Coordinador aprueba o rechaza una solicitud de cambio",
 )
 async def resolver_solicitud_cambio(
     id_solicitud_cambio: UUID,

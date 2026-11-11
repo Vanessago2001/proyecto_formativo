@@ -31,7 +31,9 @@ Códigos usados en las celdas del Excel:
     REQ  -> El rol lo tiene, pero requiere aprobación de un superior.
             Se trata como concedido a nivel de endpoint y se marca en la
             respuesta para que el flujo de aprobación lo procese después.
-    SA   -> Exclusivo del SuperAdministrador.
+    SA   -> Exclusivo del SuperAdministrador. Ese rol era del desarrollador y
+            se retiró del sistema: las celdas SA las ejerce el Coordinador
+            (columna ADM), que es quien coordina la operación.
 """
 
 from enum import Enum
@@ -84,15 +86,15 @@ COLUMNAS_MATRIZ = (
 # Los nombres se escriben igual que están en la base de datos.
 
 ROL_SUPERADM = "Super Administrador"
-ROL_ADM = "Administrador"
+ROL_ADM = "Coordinador"
 ROL_AUX = "Auxiliar"
 ROL_EMP = "Empresa"
 ROL_AUD = "Auditor"
 ROL_COM = "Comité"
 ROL_PUB = "Publico"
 
+# El Super Administrador ya no es un rol del sistema (ver docstring).
 ROLES_DEL_SISTEMA = (
-    ROL_SUPERADM,
     ROL_ADM,
     ROL_AUX,
     ROL_EMP,
@@ -107,7 +109,6 @@ ROLES_DEL_SISTEMA = (
 # filas de M5 no hay ninguna donde APR conceda algo que ADM no conceda, así
 # que unificarlos no le quita ningún permiso a nadie.
 ROLES_A_COLUMNA = {
-    ROL_SUPERADM: COL_SUPERADM,
     ROL_ADM: COL_ADM,
     ROL_AUX: COL_AUX,
     ROL_EMP: COL_EMP,
@@ -119,10 +120,7 @@ ROLES_A_COLUMNA = {
 # Alias tolerante: el equipo ha escrito los roles de varias formas distintas
 # (con tilde, en minúscula, abreviados). Todo se normaliza al nombre real.
 ALIAS_ROLES = {
-    "super administrador": ROL_SUPERADM,
-    "superadministrador": ROL_SUPERADM,
-    "superadmin": ROL_SUPERADM,
-    "superadm": ROL_SUPERADM,
+    "coordinador": ROL_ADM,
     "administrador": ROL_ADM,
     "admin": ROL_ADM,
     "adm": ROL_ADM,
@@ -263,6 +261,24 @@ PERMISOS_M5: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
 }
 
 
+def nivel_de_columna(valores: tuple, columna: str) -> "NivelPermiso":
+    """
+    Nivel de una fila de la matriz para una columna.
+
+    El Super Administrador se retiró: lo que era exclusivo suyo (celdas SA,
+    en su columna o en la del Coordinador) lo ejerce el Coordinador (ADM).
+    Lo demás de la columna SUPERADM (permisos de prueba del desarrollador,
+    p. ej. crear solicitudes como si fuera una empresa) no se hereda.
+    """
+    nivel = valores[COLUMNAS_MATRIZ.index(columna)]
+    if columna == COL_ADM and (
+        nivel is NivelPermiso.SOLO_SUPERADMIN
+        or valores[COLUMNAS_MATRIZ.index(COL_SUPERADM)] is NivelPermiso.SOLO_SUPERADMIN
+    ):
+        return NivelPermiso.CONCEDIDO
+    return nivel
+
+
 def nivel_permiso(codigo: str, nombre_rol: str | None) -> NivelPermiso:
     """Devuelve el nivel que la matriz asigna a `nombre_rol` para `codigo`."""
     if codigo not in PERMISOS_M5:
@@ -273,7 +289,7 @@ def nivel_permiso(codigo: str, nombre_rol: str | None) -> NivelPermiso:
         return NivelPermiso.DENEGADO
 
     _, valores = PERMISOS_M5[codigo]
-    return valores[COLUMNAS_MATRIZ.index(columna)]
+    return nivel_de_columna(valores, columna)
 
 
 def tiene_permiso(codigo: str, nombre_rol: str | None) -> bool:
@@ -284,7 +300,7 @@ def tiene_permiso(codigo: str, nombre_rol: str | None) -> bool:
         return False
 
     if nivel is NivelPermiso.SOLO_SUPERADMIN:
-        return normalizar_rol(nombre_rol) == ROL_SUPERADM
+        return False
 
     return True
 

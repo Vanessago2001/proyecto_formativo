@@ -108,11 +108,13 @@ def test_matriz_m9_transcribe_celdas(codigo, expected):
     assert tuple(value.value for value in PERMISOS_M9[codigo][1]) == expected
 
 
-def test_req_concede_permiso_y_sa_es_exclusivo_de_superadministrador():
+def test_req_concede_permiso_y_sa_lo_ejerce_el_coordinador():
     assert nivel_permiso("CER-010", "Auxiliar") is NivelPermiso.REQUIERE_APROBACION
     assert tiene_permiso("CER-010", "Auxiliar")
-    assert tiene_permiso("CER-022", "Super Administrador")
-    assert not tiene_permiso("CER-022", "Administrador")
+    # CER-022 era exclusivo del Super Administrador (retirado): ahora es del Coordinador.
+    assert tiene_permiso("CER-022", "Coordinador")
+    assert not tiene_permiso("CER-022", "Super Administrador")
+    assert not tiene_permiso("CER-022", "Auxiliar")
 
 
 def test_cer010_no_concede_firma_al_rol_comite_en_general():

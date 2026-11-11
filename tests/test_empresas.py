@@ -22,7 +22,7 @@ def mock_db_session():
 
 @pytest.fixture
 def mock_admin_user():
-    return {"sub": "1", "role_name": "SUPERADM"}
+    return {"sub": "1", "role_name": "Coordinador"}
 
 
 @pytest.fixture

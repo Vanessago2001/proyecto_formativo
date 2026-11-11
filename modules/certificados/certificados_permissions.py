@@ -10,7 +10,7 @@ from modules.solicitudes.solicitud_permissions import (
     COLUMNAS_MATRIZ,
     NivelPermiso,
     columna_de_rol,
-    normalizar_rol,
+    nivel_de_columna,
 )
 
 V = NivelPermiso.CONCEDIDO
@@ -59,7 +59,7 @@ def nivel_permiso(codigo: str, nombre_rol: str | None) -> NivelPermiso:
     columna = columna_de_rol(nombre_rol)
     if columna is None:
         return F
-    return PERMISOS_M9[codigo][1][COLUMNAS_MATRIZ.index(columna)]
+    return nivel_de_columna(PERMISOS_M9[codigo][1], columna)
 
 
 def tiene_permiso(codigo: str, nombre_rol: str | None) -> bool:
@@ -67,7 +67,7 @@ def tiene_permiso(codigo: str, nombre_rol: str | None) -> bool:
     if nivel is F:
         return False
     if nivel is SA:
-        return normalizar_rol(nombre_rol) == "Super Administrador"
+        return False
     return True
 
 
@@ -84,7 +84,7 @@ def requiere_permiso(codigo: str):
                 detail=f"Permiso {codigo} ({descripcion}) denegado para el rol.",
             )
         requiere = nivel is NivelPermiso.REQUIERE_APROBACION
-        # Permiso delegado por el Administrador: el auxiliar actúa sin aprobación.
+        # Permiso delegado por el Coordinador: el auxiliar actúa sin aprobación.
         if requiere and await usar_permiso_delegado(db, current_user, codigo, f"{codigo} en certificados"):
             requiere = False
             current_user["permiso_delegado"] = True
