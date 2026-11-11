@@ -39,6 +39,33 @@ async def ensure_comite_schema(session) -> None:
         );
     """))
     await session.execute(text("""
+        ALTER TABLE comite_acta
+        ADD COLUMN IF NOT EXISTS huella_pdf VARCHAR(64);
+    """))
+    await session.execute(text("""
+        ALTER TABLE comite_acta
+        ADD COLUMN IF NOT EXISTS huella_firmante VARCHAR(128);
+    """))
+    await session.execute(text("""
+        ALTER TABLE comite_acta
+        ADD COLUMN IF NOT EXISTS id_usuario_genero UUID
+            REFERENCES usuario(id_usuario) ON DELETE SET NULL;
+    """))
+    await session.execute(text("""
+        ALTER TABLE comite_acta
+        ADD COLUMN IF NOT EXISTS id_usuario_firmante UUID
+            REFERENCES usuario(id_usuario) ON DELETE SET NULL;
+    """))
+    await session.execute(text("""
+        ALTER TABLE comite_acta
+        ADD COLUMN IF NOT EXISTS fecha_generacion TIMESTAMP WITH TIME ZONE
+            NOT NULL DEFAULT CURRENT_TIMESTAMP;
+    """))
+    await session.execute(text("""
+        ALTER TABLE comite_acta
+        ADD COLUMN IF NOT EXISTS fecha_firma TIMESTAMP WITH TIME ZONE;
+    """))
+    await session.execute(text("""
         CREATE INDEX IF NOT EXISTS idx_comite_acta_solicitud_version
             ON comite_acta (id_solicitud, version DESC);
     """))
