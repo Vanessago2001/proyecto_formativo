@@ -575,26 +575,51 @@ class SolicitudService:
         La empresa solo obtiene las solicitudes de las empresas a las que está
         vinculada; el resto de roles con permiso de consulta ven todas.
         """
-        condiciones = ["deleted_at IS NULL"]
+        es_empresa = not self._ve_todas(usuario)
+        condiciones = ["s.deleted_at IS NULL"]
         parametros: dict = {"limite": limite, "desplazamiento": desplazamiento}
 
-        if not self._ve_todas(usuario):
+        if es_empresa:
             empresas = await self._empresas_del_usuario(usuario)
             if not empresas:
                 return []
-            condiciones.append("id_empresa = ANY(:empresas)")
+            condiciones.append("s.id_empresa = ANY(:empresas)")
             parametros["empresas"] = empresas
 
         if estado is not None:
-            condiciones.append("estado = :estado")
+            condiciones.append("s.estado = :estado")
             parametros["estado"] = estado.value
+
+        columnas_listado = ", ".join(
+            f"s.{columna.strip()}"
+            for columna in COLUMNAS_SOLICITUD.split(",")
+            if columna.strip()
+        )
+        if es_empresa:
+            columnas_usuario = """
+                u.nombre AS usuario_nombre,
+                u.correo AS usuario_correo,
+                r.nombre AS usuario_rol
+            """
+            joins_usuario = """
+                LEFT JOIN usuario u ON u.id_usuario = s.usuario_creador
+                LEFT JOIN rol r ON r.id_rol = u.rol_id
+            """
+        else:
+            columnas_usuario = """
+                NULL::VARCHAR AS usuario_nombre,
+                NULL::VARCHAR AS usuario_correo,
+                NULL::VARCHAR AS usuario_rol
+            """
+            joins_usuario = ""
 
         resultado = await self.db.execute(
             text(f"""
-                SELECT {COLUMNAS_SOLICITUD}
-                FROM solicitud
+                SELECT {columnas_listado}, {columnas_usuario}
+                FROM solicitud s
+                {joins_usuario}
                 WHERE {' AND '.join(condiciones)}
-                ORDER BY fecha_creacion DESC
+                ORDER BY s.fecha_creacion DESC
                 LIMIT :limite OFFSET :desplazamiento;
             """),
             parametros,
