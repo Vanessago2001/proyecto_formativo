@@ -100,3 +100,11 @@ def test_post_que_falla_responde_json_aunque_acepte_html(cliente):
 
     assert respuesta.status_code in (404, 405)
     assert respuesta.headers["content-type"].startswith("application/json")
+
+
+def test_un_archivo_que_no_existe_dice_archivo_no_disponible(cliente):
+    respuesta = cliente.get("/uploads/auditores/foto-que-no-existe.jpg", headers=HTML)
+
+    assert respuesta.status_code == 404
+    assert "Archivo no disponible" in respuesta.text
+    assert "No encontramos esta página" not in respuesta.text

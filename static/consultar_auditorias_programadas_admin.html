@@ -376,6 +376,7 @@
         }
         .dia-opcion:hover { background: var(--sena-green-light); border-color: var(--sena-green); }
         .dia-opcion input[type="radio"] { width: 17px; height: 17px; margin: 0; accent-color: var(--sena-green-bright); }
+        .repro-motivo { max-width: 340px; white-space: normal; line-height: 1.45; color: #1f2937; }
         .badge.reprogramada { background: #fff3cd; color: #92400e; }
         .badge.cancelada { background: #fee2e2; color: #b42318; }
         .badge.ejecutada { background: #e2e8f0; color: #374151; }
@@ -822,7 +823,6 @@
             <nav class="side admin-nav" aria-label="Navegación de auditorías">
                 <a href="/consultar-auditorias-programadas-admin#listado">Consultar auditorías</a>
                 <a href="/consultar-auditorias-programadas-admin#reprogramaciones">Solicitudes de reprogramación</a>
-                <a href="/consultar-auditorias-programadas-admin#futuras">Programaciones futuras</a>
             </nav>
 
             <section class="content">
@@ -838,7 +838,7 @@
                 <!-- ================================================
                      FILTROS
                 ================================================= -->
-                <section class="panel">
+                <section class="panel" id="panelFiltros">
                     <div class="panel-head">
                         <h2>Filtros de búsqueda</h2>
                         <span class="pill">Auto-aplicados</span>
@@ -929,66 +929,30 @@
                 <section class="panel" id="seccionReprogramaciones" style="display:none;">
                     <div class="panel-head">
                         <h2 id="tituloReprogramaciones">Solicitudes de reprogramación</h2>
-                        <span class="pill" id="pillReprogramaciones">Todas las solicitudes</span>
+                        <span class="pill" id="pillReprogramaciones">Pendientes</span>
                         <button type="button" class="btn btn-secundario mini-btn" onclick="cargarReprogramaciones()">Actualizar</button>
                     </div>
                     <div class="panel-body">
                         <p class="help-text">
-                            Todas las visitas que fueron marcadas para reprogramación, con el motivo registrado por el
-                            auditor y el estado de confirmación de cada integrante del equipo.
+                            Bandeja de solicitudes pendientes: cada fila es un pedido de un auditor para cambiar la
+                            fecha de una visita. Lea el motivo y decida: <strong>Reprogramar</strong> la visita o
+                            <strong>Rechazar</strong> la solicitud (el auditor recibe el motivo).
                         </p>
                         <div class="record-table-wrap">
                             <table class="record-table">
                                 <thead>
                                     <tr>
-                                        <th>Solicitud / empresa</th>
-                                        <th>Auditores</th>
-                                        <th>Confirmados</th>
-                                        <th>Visita</th>
-                                        <th>Modalidad</th>
-                                        <th>Ciudad</th>
-                                        <th>Estado</th>
-                                        <th>Solicitante / motivo</th>
-                                        <th>Acción</th>
+                                        <th>Solicitado por</th>
+                                        <th>Motivo de la solicitud</th>
+                                        <th>Visita a reprogramar</th>
+                                        <th>Equipo</th>
+                                        <th>Decisión</th>
                                     </tr>
                                 </thead>
                                 <tbody id="rowsReprogramaciones"></tbody>
                             </table>
                         </div>
                         <p id="resumenReprogramaciones" class="help-text" style="margin-top:12px;margin-bottom:0;"></p>
-                    </div>
-                </section>
-
-                <!-- ================================================
-                     PROGRAMACIONES FUTURAS
-                ================================================= -->
-                <section class="panel" id="seccionFuturas" style="display:none;">
-                    <div class="panel-head">
-                        <h2 id="tituloFuturas">Programaciones futuras</h2>
-                        <span class="pill" id="pillFuturas">A partir de 7 días</span>
-                        <button type="button" class="btn btn-secundario mini-btn" onclick="cargarProgramacionesFuturas()">Actualizar</button>
-                    </div>
-                    <div class="panel-body">
-                        <p class="help-text">
-                            Auditorías programadas cuya fecha de inicio sea igual o superior a siete días después de
-                            la fecha actual, con el equipo de auditores asignado a cada visita. Las programaciones
-                            canceladas o ya ejecutadas no se muestran.
-                        </p>
-                        <div class="record-table-wrap">
-                            <table class="record-table">
-                                <thead>
-                                    <tr>
-                                        <th>Solicitud aprobada / empresa</th>
-                                        <th>Rol asignado</th>
-                                        <th>Estado</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="rowsFuturas"></tbody>
-                            </table>
-                        </div>
-                        <div class="pagination" id="paginacionFuturas"></div>
-                        <p id="resumenFuturas" class="help-text" style="margin-top:12px;margin-bottom:0;"></p>
                     </div>
                 </section>
 
@@ -1071,20 +1035,6 @@
                 <button type="button" class="modal-close" onclick="cerrarModal()" aria-label="Cerrar detalle">×</button>
             </div>
             <div class="modal-body" id="modalBody"></div>
-        </div>
-    </div>
-
-    <!-- =========================================================
-         MODAL DE DETALLE DE PROGRAMACIÓN FUTURA (vista admin)
-    ========================================================= -->
-    <div class="modal" id="modalDetalleFuturas" role="dialog" aria-modal="true"
-        aria-labelledby="modalDetalleFuturasTitulo">
-        <div class="modal-card">
-            <div class="modal-head">
-                <h3 id="modalDetalleFuturasTitulo">Detalle de la programación</h3>
-                <button type="button" class="modal-close" onclick="cerrarModalFuturas()" aria-label="Cerrar">×</button>
-            </div>
-            <div class="modal-body" id="modalBodyFuturas"></div>
         </div>
     </div>
 
@@ -1275,268 +1225,43 @@
         let vistaAdmin = 'listado';
         let datosReprogramaciones = [];
 
-        /* =========================================================
-           PROGRAMACIONES FUTURAS (A PARTIR DE HOY + 7 DÍAS)
-        ========================================================== */
-        const DIAS_FUTURAS = 7;
-        let datosFuturas = [];
-        let paginaFuturas = 1;
-        const porPaginaFuturas = 10;
-
         function sinDato(v) { return (v===null||v===undefined||String(v).trim()==='')?'No disponible':String(v); }
 
-        function claseEstadoFuturas(estado) {
-            const valor = String(estado || '').toLowerCase();
-            if (valor.includes('cancel')) return 'cancelada';
-            if (valor.includes('confirm')) return 'confirmada';
-            if (valor.includes('reprogram')) return 'reprogramada';
-            if (valor.includes('ejecut')) return 'ejecutada';
-            return 'programada';
+        // Vistas: "listado" (todas las auditorías) y "reprogramaciones" (bandeja
+        // de solicitudes de los auditores). "Programaciones futuras" se quitó:
+        // repetía la consulta general.
+        function vistaValida(vista) {
+            if (vista === 'futuras') return 'listado';   // enlaces antiguos
+            return ['listado', 'reprogramaciones'].includes(vista) ? vista : null;
         }
 
         function mostrarVistaAdmin(vista) {
+            vista = vistaValida(vista) || 'listado';
             vistaAdmin = vista;
             const esListado = vista === 'listado';
             const esRepro = vista === 'reprogramaciones';
             const panelListado = document.getElementById('seccionListado');
             const panelRepro = document.getElementById('seccionReprogramaciones');
-            const panelFuturas = document.getElementById('seccionFuturas');
+            const panelFiltros = document.getElementById('panelFiltros');
             if (panelListado) panelListado.style.display = esListado ? '' : 'none';
             if (panelRepro) panelRepro.style.display = esRepro ? '' : 'none';
-            if (panelFuturas) panelFuturas.style.display = vista === 'futuras' ? '' : 'none';
+            // Los filtros solo aplican a la consulta de auditorías.
+            if (panelFiltros) panelFiltros.style.display = esListado ? '' : 'none';
             const h1 = document.querySelector('.page-head h1');
             const sub = document.querySelector('.page-head p');
-            if (h1) {
-                h1.textContent = esListado
-                    ? 'Consultar auditorías programadas'
-                    : (vista === 'futuras' ? 'Programaciones futuras' : 'Solicitudes de reprogramación');
-            }
+            if (h1) h1.textContent = esListado ? 'Consultar auditorías programadas' : 'Solicitudes de reprogramación';
             if (sub) {
                 sub.textContent = esListado
                     ? 'Consulta todas las programaciones registradas en el sistema.'
-                    : (vista === 'futuras'
-                        ? 'Consulta las auditorías programadas con siete días o más de anticipación y el equipo de auditores asignado a cada visita.'
-                        : 'Revisa las visitas que los auditores solicitaron reprogramar y el motivo de cada solicitud.');
+                    : 'Solicitudes de los auditores para cambiar la fecha de una visita. Revise el motivo y decida si se reprograma o se rechaza.';
             }
             if (esRepro) cargarReprogramaciones();
-            if (vista === 'futuras') cargarProgramacionesFuturas();
-        }
-
-        /* ---------------------------------------------------------
-           PROGRAMACIONES FUTURAS — ADMINISTRADOR
-        --------------------------------------------------------- */
-        async function cargarProgramacionesFuturas() {
-            const tbody = document.getElementById('rowsFuturas');
-            if (!tbody) return;
-            tbody.innerHTML = '<tr><td colspan="4" class="empty">Cargando programaciones futuras...</td></tr>';
-            try {
-                const res = await fetch(`/agenda-auditor/programaciones-futuras?dias=${DIAS_FUTURAS}`, {
-                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    throw new Error(typeof data.detail === 'string' ? data.detail : 'No fue posible consultar las programaciones futuras.');
-                }
-                const items = Array.isArray(data.programaciones) ? data.programaciones : [];
-                const grupos = new Map();
-                items.forEach((r) => {
-                    const key = String(r.id_programacion || r.id_solicitud + '|' + r.fecha_inicio);
-                    if (!grupos.has(key)) grupos.set(key, { ...r, equipo: [] });
-                    grupos.get(key).equipo.push({
-                        id_usuario: r.id_usuario,
-                        nombre: r.auditor_nombre,
-                        correo: r.auditor_correo,
-                        tipo_doc: r.auditor_tipo_doc,
-                        num_doc: r.auditor_num_doc,
-                        rol: r.rol_auditor,
-                        confirmado: r.auditor_confirmado === true || String(r.auditor_confirmado).toLowerCase() === 'true'
-                    });
-                });
-                datosFuturas = Array.from(grupos.values());
-                paginaFuturas = 1;
-                renderizarFuturas();
-            } catch (error) {
-                console.error(error);
-                datosFuturas = [];
-                tbody.innerHTML = '<tr><td colspan="4" class="empty">No se pudieron cargar las programaciones futuras.</td></tr>';
-                document.getElementById('resumenFuturas').textContent = '';
-                document.getElementById('pillFuturas').textContent = 'Sin datos';
-                mostrarMensaje(error.message || 'No se pudieron cargar las programaciones futuras.', 'error');
-            }
-        }
-
-        function renderizarFuturas() {
-            const inicio = (paginaFuturas - 1) * porPaginaFuturas;
-            const items = datosFuturas.slice(inicio, inicio + porPaginaFuturas);
-            const tbody = document.getElementById('rowsFuturas');
-            if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="4" class="empty">No hay programaciones futuras registradas en el sistema.</td></tr>';
-            } else {
-                tbody.innerHTML = items.map((r, idx) => {
-                    const roles = Array.from(new Set((r.equipo || []).map((a) => a.rol).filter(Boolean)));
-                    return `<tr>
-                        <td>
-                            <span class="cell-strong">${escapeHtml(r.numero_radicado || r.id_solicitud || 'No disponible')}</span>
-                            <span class="cell-meta">${escapeHtml(r.empresa_nombre || 'No disponible')}</span>
-                        </td>
-                        <td>${escapeHtml(roles.length ? roles.join(', ') : (r.rol_auditor || 'Auditor'))}</td>
-                        <td><span class="badge ${claseEstadoFuturas(r.estado)}">${escapeHtml(r.estado || 'No disponible')}</span></td>
-                        <td><div class="row-actions acciones-tabla">
-                            <button class="btn btn-secundario btn-sm mini-btn view" type="button" onclick="verDetalleFuturas('${escapeHtml(r.id_programacion || '')}')">Ver detalles</button>
-                        </div></td>
-                    </tr>`;
-                }).join('');
-            }
-            const totalPaginas = Math.max(1, Math.ceil(datosFuturas.length / porPaginaFuturas));
-            document.getElementById('resumenFuturas').textContent = datosFuturas.length
-                ? `Mostrando ${items.length} de ${datosFuturas.length} programación(es) futura(s). Página ${paginaFuturas} de ${totalPaginas}.`
-                : '';
-            document.getElementById('pillFuturas').textContent = `${datosFuturas.length} ${datosFuturas.length === 1 ? 'programación' : 'programaciones'}`;
-            renderizarPaginacionFuturas(totalPaginas);
-        }
-
-        function renderizarPaginacionFuturas(totalPaginas) {
-            const cont = document.getElementById('paginacionFuturas');
-            if (!cont) return;
-            if (totalPaginas <= 1) { cont.innerHTML = ''; return; }
-            let html = '';
-            html += `<button onclick="cambiarPaginaFuturas(${paginaFuturas - 1})" ${paginaFuturas <= 1 ? 'disabled' : ''}>Anterior</button>`;
-            for (let i = 1; i <= totalPaginas; i++) {
-                if (i === paginaFuturas) {
-                    html += `<span style="font-weight:700;color:#256d00;padding:0 6px;">${i}</span>`;
-                } else if (i === 1 || i === totalPaginas || Math.abs(i - paginaFuturas) <= 2) {
-                    html += `<button onclick="cambiarPaginaFuturas(${i})">${i}</button>`;
-                } else if (Math.abs(i - paginaFuturas) === 3) {
-                    html += `<span style="padding:0 4px;">...</span>`;
-                }
-            }
-            html += `<button onclick="cambiarPaginaFuturas(${paginaFuturas + 1})" ${paginaFuturas >= totalPaginas ? 'disabled' : ''}>Siguiente</button>`;
-            cont.innerHTML = html;
-        }
-
-        function cambiarPaginaFuturas(n) {
-            const totalPaginas = Math.max(1, Math.ceil(datosFuturas.length / porPaginaFuturas));
-            if (n < 1 || n > totalPaginas) return;
-            paginaFuturas = n;
-            renderizarFuturas();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        async function verDetalleFuturas(idProgramacion) {
-            const modal = document.getElementById('modalDetalleFuturas');
-            const body = document.getElementById('modalBodyFuturas');
-            if (!idProgramacion) {
-                body.innerHTML = '<p class="help-text">No se encontró la programación seleccionada.</p>';
-                modal.classList.add('show');
-                return;
-            }
-            body.innerHTML = '<p class="help-text">Cargando detalle de la programación...</p>';
-            modal.classList.add('show');
-            try {
-                const res = await fetch(`/agenda-auditor/programacion/${encodeURIComponent(idProgramacion)}/detalle`, {
-                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    throw new Error(typeof data.detail === 'string' ? data.detail : 'No fue posible consultar el detalle.');
-                }
-                body.innerHTML = construirDetalleFuturas(data);
-            } catch (error) {
-                console.error(error);
-                body.innerHTML = `<p class="help-text">${escapeHtml(error.message || 'No fue posible consultar el detalle de la programación.')}</p>`;
-            }
-        }
-
-        function construirDetalleFuturas(data) {
-            const p = data.programacion || {};
-            const auditores = data.auditores || [];
-            const esSede = Boolean(p.id_sede);
-
-            function iniciales(nombre) {
-                const partes = String(nombre || 'A').trim().split(/\s+/).slice(0, 2);
-                return (partes.map((x) => (x[0] || '')).join('') || 'A').toUpperCase();
-            }
-
-            const bloqueSolicitud = `
-                <div class="modal-section">
-                    <div class="modal-section-head"><h4>Solicitud y programación</h4></div>
-                    <div class="modal-fields-grid">
-                        <div class="modal-field"><label>Solicitud</label><span>${escapeHtml(sinDato(p.numero_radicado))}</span></div>
-                        <div class="modal-field"><label>Identificador</label><span>${escapeHtml(sinDato(p.id_solicitud))}</span></div>
-                        <div class="modal-field"><label>Estado de la solicitud</label><span>${escapeHtml(sinDato(p.estado_solicitud))}</span></div>
-                        <div class="modal-field"><label>Fecha de la solicitud</label><span>${escapeHtml(p.fecha_solicitud ? formatDate(p.fecha_solicitud) : 'No disponible')}</span></div>
-                        <div class="modal-field"><label>Norma</label><span>${escapeHtml(sinDato([p.norma_codigo, p.norma_nombre].filter(Boolean).join(' - ')))}</span></div>
-                        <div class="modal-field"><label>Versión de la norma</label><span>${escapeHtml(sinDato(p.norma_version))}</span></div>
-                        <div class="modal-field"><label>Fecha de inicio</label><span>${escapeHtml(formatDateTime(p.fecha_inicio))}</span></div>
-                        <div class="modal-field"><label>Fecha de fin</label><span>${escapeHtml(formatDateTime(p.fecha_fin))}</span></div>
-                        <div class="modal-field"><label>Modalidad</label><span>${escapeHtml(sinDato(p.modalidad))}</span></div>
-                        <div class="modal-field"><label>Estado de la programación</label><span><span class="badge ${claseEstadoFuturas(p.estado)}">${escapeHtml(sinDato(p.estado))}</span></span></div>
-                        <div class="modal-field"><label>Observación</label><span>${escapeHtml(sinDato(p.motivo_reprogramacion || p.motivo_cancelacion))}</span></div>
-                        <div class="modal-field"><label>Notificación enviada</label><span>${p.notificacion_enviada ? 'Sí' : 'No'}</span></div>
-                    </div>
-                </div>`;
-
-            const bloqueAuditores = `
-                <div class="modal-section">
-                    <div class="modal-section-head"><h4>Auditores asignados</h4></div>
-                    ${auditores.length ? auditores.map((a) => `
-                        <div class="modal-auditor">
-                            <div class="modal-auditor-avatar">${escapeHtml(iniciales(a.nombre))}</div>
-                            <div class="modal-auditor-body">
-                                <strong>${escapeHtml(sinDato(a.nombre))}</strong>
-                                <span class="modal-auditor-meta">${escapeHtml(sinDato([a.tipo_doc, a.num_doc].filter(Boolean).join(' ')))}</span>
-                                <span class="modal-auditor-meta">${escapeHtml(sinDato(a.correo))}</span>
-                                <span class="modal-auditor-meta">Ciudad: ${escapeHtml(sinDato(a.ciudad_residencia))} · Modalidad preferida: ${escapeHtml(sinDato(a.modalidad_preferida))}</span>
-                                <span class="modal-auditor-role">${escapeHtml(sinDato(a.rol_auditor))}${a.confirmado ? ' · Confirmado' : ' · Pendiente de confirmación'}</span>
-                            </div>
-                        </div>`).join('') : '<div class="empty" style="padding:16px;">Sin auditores registrados para esta programación.</div>'}
-                </div>`;
-
-            const bloqueEmpresa = `
-                <div class="modal-section">
-                    <div class="modal-section-head"><h4>Información de la empresa</h4></div>
-                    <div class="modal-fields-grid">
-                        <div class="modal-field"><label>Nombre</label><span>${escapeHtml(sinDato(p.empresa_nombre))}</span></div>
-                        <div class="modal-field"><label>NIT</label><span>${escapeHtml(sinDato(p.empresa_nit))}</span></div>
-                        <div class="modal-field"><label>Dirección</label><span>${escapeHtml(sinDato(p.empresa_direccion))}</span></div>
-                        <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(sinDato(p.empresa_ciudad))}</span></div>
-                        <div class="modal-field"><label>Correo</label><span>${escapeHtml(sinDato(p.empresa_correo))}</span></div>
-                        <div class="modal-field"><label>Estado</label><span>${escapeHtml(sinDato(p.empresa_estado))}</span></div>
-                    </div>
-                </div>`;
-
-            const bloqueSede = `
-                <div class="modal-section">
-                    <div class="modal-section-head"><h4>Información de la sede</h4></div>
-                    ${esSede ? `
-                    <div class="modal-fields-grid">
-                        <div class="modal-field"><label>Sede</label><span>${escapeHtml(sinDato(p.nombre_sede))}</span></div>
-                        <div class="modal-field"><label>Dirección</label><span>${escapeHtml(sinDato(p.sede_direccion))}</span></div>
-                        <div class="modal-field"><label>Ciudad</label><span>${escapeHtml(sinDato(p.sede_ciudad))}</span></div>
-                        <div class="modal-field"><label>Departamento</label><span>${escapeHtml(sinDato(p.sede_departamento))}</span></div>
-                        <div class="modal-field"><label>País</label><span>${escapeHtml(sinDato(p.sede_pais))}</span></div>
-                        <div class="modal-field"><label>Sede principal</label><span>${p.sede_es_principal ? 'Sí' : 'No'}</span></div>
-                        <div class="modal-field"><label>Dirección de la visita</label><span>${escapeHtml(sinDato(p.direccion_servicio))}</span></div>
-                        <div class="modal-field"><label>Ciudad de la visita</label><span>${escapeHtml(sinDato(p.ciudad_servicio))}</span></div>
-                    </div>` : `
-                    <div class="modal-fields-grid">
-                        <div class="modal-field"><label>Sede</label><span>La auditoría se realiza directamente en la empresa, sin sede específica.</span></div>
-                        <div class="modal-field"><label>Dirección de la visita</label><span>${escapeHtml(sinDato(p.direccion_servicio))}</span></div>
-                        <div class="modal-field"><label>Ciudad de la visita</label><span>${escapeHtml(sinDato(p.ciudad_servicio))}</span></div>
-                    </div>`}
-                </div>`;
-
-            return bloqueSolicitud + bloqueAuditores + bloqueEmpresa + bloqueSede;
-        }
-
-        function cerrarModalFuturas() {
-            document.getElementById('modalDetalleFuturas').classList.remove('show');
         }
 
         async function cargarReprogramaciones() {
             const tbody = document.getElementById('rowsReprogramaciones');
             if (!tbody) return;
-            tbody.innerHTML = '<tr><td colspan="9" class="empty">Cargando solicitudes...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">Cargando solicitudes...</td></tr>';
             try {
                 const res = await fetch('/agenda-auditor/programaciones', {
                     headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
@@ -1584,39 +1309,38 @@
                     String(b.fecha_inicio || '').localeCompare(String(a.fecha_inicio || ''))
                 );
                 if (!datosReprogramaciones.length) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="empty">No hay solicitudes de reprogramación registradas.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay solicitudes de reprogramación pendientes.</td></tr>';
                 } else {
                     tbody.innerHTML = datosReprogramaciones.map((r, idx) => {
                         const auditores = r.auditores.map(a =>
                             `<div class="cell-line">${escapeHtml(a.nombre)}${a.confirmado ? ' <span class="badge confirmada">Confirmado</span>' : ''}</div>`
                         ).join('') || '<span class="cell-meta">-</span>';
                         return `<tr>
-                            <td><span class="cell-strong">${escapeHtml(r.numero_radicado || '-')}</span><span class="cell-meta">${escapeHtml(r.empresa_nombre || '')}</span></td>
-                            <td>${auditores}</td>
-                            <td>${r.confirmados || 0} de ${r.total || r.auditores.length}</td>
-                            <td>${escapeHtml(formatDateTime(r.fecha_inicio))}<br><span class="cell-meta">${escapeHtml(formatDateTime(r.fecha_fin))}</span></td>
-                            <td>${escapeHtml(r.modalidad || '-')}</td>
-                            <td>${escapeHtml(r.ciudad_servicio || '-')}</td>
-                            <td><span class="badge ${String(r.estado || '').toLowerCase()}">${escapeHtml(r.estado || '-')}</span></td>
                             <td>
                                 <span class="cell-strong">${escapeHtml(r.solicitante_nombre || '-')}</span>
                                 <span class="cell-meta">${escapeHtml(r.solicitante_correo || '')}</span>
-                                <span class="cell-meta">Motivo: ${escapeHtml(r.motivo_reprogramacion || '-')}</span>
                             </td>
+                            <td class="repro-motivo">${escapeHtml(r.motivo_reprogramacion || 'Sin motivo registrado')}</td>
+                            <td>
+                                <span class="cell-strong">${escapeHtml(r.numero_radicado || '-')} · ${escapeHtml(r.empresa_nombre || '')}</span>
+                                <span class="cell-meta">${escapeHtml(formatDateTime(r.fecha_inicio))} – ${escapeHtml(formatDateTime(r.fecha_fin))}</span>
+                                <span class="cell-meta">${escapeHtml(r.modalidad || '-')} · ${escapeHtml(r.ciudad_servicio || '-')}</span>
+                            </td>
+                            <td>${auditores}<span class="cell-meta">${r.confirmados || 0} de ${r.total || r.auditores.length} confirmados</span></td>
                             <td><div class="acciones-celda acciones-tabla">
                                 <button class="btn btn-primario btn-sm mini-btn repro" type="button" onclick="abrirModalAdminRepro(${idx})">Reprogramar</button>
-                                <button class="btn btn-peligro-contorno btn-sm mini-btn rechazar" type="button" onclick="abrirModalRechazo(${idx})">Rechazar reprogramación</button>
+                                <button class="btn btn-peligro-contorno btn-sm mini-btn rechazar" type="button" onclick="abrirModalRechazo(${idx})">Rechazar</button>
                                 <button class="btn btn-secundario btn-sm mini-btn view" type="button" onclick="verDetalleReprogramacion(${idx})">Ver</button>
                             </div></td>
                         </tr>`;
                     }).join('');
                 }
                 const pill = document.getElementById('pillReprogramaciones');
-                if (pill) pill.textContent = `${datosReprogramaciones.length} solicitud(es)`;
+                if (pill) pill.textContent = `${datosReprogramaciones.length} pendiente(s)`;
                 const resumen = document.getElementById('resumenReprogramaciones');
-                if (resumen) resumen.textContent = `Total de solicitudes de reprogramación: ${datosReprogramaciones.length}.`;
+                if (resumen) resumen.textContent = `Solicitudes pendientes de decisión: ${datosReprogramaciones.length}.`;
             } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="9" class="empty">No se pudieron cargar las solicitudes.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="empty">No se pudieron cargar las solicitudes.</td></tr>';
             }
         }
 
@@ -2316,8 +2040,8 @@
             if (!uid) { mostrarMensaje('No se puede identificar el usuario.', 'error'); return; }
             await cargarDatos();
             // Las vistas se abren desde el menú lateral y se pueden enlazar por hash.
-            const vista = (location.hash || '#listado').slice(1).trim();
-            if (['listado', 'reprogramaciones', 'futuras'].includes(vista)) {
+            const vista = vistaValida((location.hash || '#listado').slice(1).trim()) || 'listado';
+            {
                 // La vista queda en la dirección para que el menú lateral la marque.
                 if (location.hash !== '#' + vista) history.replaceState(null, '', '#' + vista);
                 mostrarVistaAdmin(vista);
@@ -2332,9 +2056,22 @@
             });
         }
 
+        // La vista queda en la dirección desde el primer momento, para que el
+        // menú lateral la marque ("#futuras" de enlaces antiguos pasa a "#listado").
+        (function () {
+            const inicial = vistaValida((location.hash || '#listado').slice(1).trim()) || 'listado';
+            if (location.hash !== '#' + inicial) history.replaceState(null, '', '#' + inicial);
+        })();
+
         window.addEventListener('hashchange', () => {
-            const vista = location.hash.slice(1).trim();
-            if (!['listado', 'reprogramaciones', 'futuras'].includes(vista)) return;
+            const vista = vistaValida(location.hash.slice(1).trim());
+            if (!vista) return;
+            if (location.hash !== '#' + vista) {
+                // "#futuras" (enlace antiguo) se normaliza a "#listado"; el
+                // menú se vuelve a marcar con el nuevo hashchange.
+                location.replace('#' + vista);
+                return;
+            }
             mostrarVistaAdmin(vista);
             actualizarMenuVista(vista);
         });

@@ -87,6 +87,26 @@ MENSAJES: dict[int, tuple[str, str, str]] = {
 }
 
 
+MENSAJE_ARCHIVO_NO_DISPONIBLE = (
+    "Archivo no disponible",
+    "El documento o la imagen que intentó abrir no está en el servidor: pudo ser "
+    "reemplazado, eliminado o no se terminó de subir.",
+    "Vuelva a la página anterior. Si el archivo es necesario, pida a quien lo cargó "
+    "que lo suba de nuevo.",
+)
+
+_EXTENSIONES_ARCHIVO = (
+    ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg",
+    ".doc", ".docx", ".xls", ".xlsx", ".csv", ".zip", ".txt",
+)
+
+
+def _es_archivo(ruta: str) -> bool:
+    """Archivos subidos (/uploads) o rutas que terminan en una extensión de archivo."""
+    ruta = (ruta or "").lower()
+    return ruta.startswith("/uploads/") or ruta.endswith(_EXTENSIONES_ARCHIVO)
+
+
 def _mensajes(codigo: int) -> tuple[str, str, str]:
     if codigo in MENSAJES:
         return MENSAJES[codigo]
@@ -112,6 +132,10 @@ def respuesta_pagina_error(
 ) -> HTMLResponse:
     """Rellena la plantilla con textos escapados y responde con `codigo`."""
     titulo, mensaje, sugerencia = _mensajes(codigo)
+    if codigo == 404 and _es_archivo(request.url.path):
+        # Un documento o imagen subido que ya no está en el servidor no es una
+        # "página que no existe": se explica que falta el archivo.
+        titulo, mensaje, sugerencia = MENSAJE_ARCHIVO_NO_DISPONIBLE
     valores = {
         "codigo": str(codigo),
         "titulo": titulo,

@@ -289,11 +289,11 @@
       {
         grupo: "Auditorías",
         opciones: [
-          // La pantalla cambia de vista con la dirección (#listado,
-          // #reprogramaciones, #futuras): ya no tiene pestañas propias.
+          // La pantalla cambia de vista con la dirección (#listado o
+          // #reprogramaciones). "Programaciones futuras" se quitó: repetía
+          // la consulta general.
           { texto: "Consultar auditorías programadas", href: "/consultar-auditorias-programadas-admin#listado" },
-          { texto: "Solicitudes de reprogramación", href: "/consultar-auditorias-programadas-admin#reprogramaciones" },
-          { texto: "Consultar programaciones futuras", href: "/consultar-auditorias-programadas-admin#futuras" }
+          { texto: "Solicitudes de reprogramación", href: "/consultar-auditorias-programadas-admin#reprogramaciones" }
         ]
       },
       {
@@ -310,16 +310,8 @@
           return { texto: s[1], href: "/consultar-agenda-auditor#" + s[0], proxy: '.agenda-menu a[data-seccion="' + s[0] + '"]' };
         })
       },
-      {
-        grupo: "Revisión de solicitudes",
-        opciones: [
-          ["radicadas", "Solicitudes radicadas"],
-          ["revision", "En revisión"],
-          ["todas", "Todas las solicitudes"]
-        ].map(function (f) {
-          return { texto: f[1], href: "/revision-solicitudes#" + f[0], proxy: 'aside.comite-sidebar button[data-filtro="' + f[0] + '"]' };
-        })
-      },
+      // Una sola opción: el estado se filtra dentro de la pantalla.
+      { texto: "Revisión de solicitudes", href: "/revision-solicitudes" },
       {
         grupo: "Banco de auditores",
         opciones: [

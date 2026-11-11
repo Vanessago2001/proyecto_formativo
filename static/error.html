@@ -198,19 +198,32 @@
         window.location.reload();
       });
 
-      // Sin historial (enlace abierto en una pestaña nueva) "Volver" lleva al inicio.
-      document.getElementById("btnVolver").addEventListener("click", function () {
-        if (window.history.length > 1) {
+      // Un documento o imagen se suele abrir en una pestaña nueva: esa pestaña
+      // no tiene historial. Antes "Volver" llevaba al inicio público y parecía
+      // que se había cerrado la sesión.
+      var botonVolver = document.getElementById("btnVolver");
+      var pestañaNueva = window.history.length <= 1;
+      if (pestañaNueva && window.opener) botonVolver.textContent = "Cerrar pestaña";
+      botonVolver.addEventListener("click", function () {
+        if (!pestañaNueva) {
           window.history.back();
-        } else {
-          window.location.href = "/";
+          return;
         }
+        if (window.opener) {
+          window.close();
+          return;
+        }
+        // Sin página anterior: al panel del rol si hay sesión; si no, al inicio.
+        window.location.href = document.getElementById("btnPanel").getAttribute("href") || "/";
       });
 
       // Con sesión iniciada se ofrece volver al panel que corresponde al rol.
       try {
         var token = localStorage.getItem("access_token");
-        if (!token) return;
+        if (!token) {
+          document.getElementById("btnPanel").setAttribute("href", "/");
+          return;
+        }
         var parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
         var datos = JSON.parse(decodeURIComponent(atob(parte).split("").map(function (c) {
           return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);

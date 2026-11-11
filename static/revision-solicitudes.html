@@ -10,6 +10,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261028">
   <link rel="stylesheet" href="/static/styles.css?v=20261028">
+  <style>
+    .filtro-estado-solicitud { min-height: 38px; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; background: #fff; }
+  </style>
 </head>
 
 <body class="comite-page">
@@ -66,6 +69,11 @@
             <label for="searchInput">Buscar solicitud</label>
             <div class="comite-search-row">
               <input id="searchInput" type="search" placeholder="Radicado, empresa o NIT">
+              <select id="filtroEstado" aria-label="Filtrar por estado" class="filtro-estado-solicitud">
+                <option value="radicadas">Radicadas</option>
+                <option value="revision">En revisión</option>
+                <option value="todas">Todas</option>
+              </select>
               <button class="comite-button primary btn btn-primario" type="submit">Buscar</button>
             </div>
           </form>
@@ -362,7 +370,9 @@
       }
 
       function cambiarFiltro(filtro) {
+        if (!FILTROS[filtro]) filtro = "radicadas";
         estado.filtro = filtro;
+        $("#filtroEstado").value = filtro;
         document.querySelectorAll(".comite-nav-link").forEach((boton) => boton.classList.toggle("active", boton.dataset.filtro === filtro));
         $("#viewTitle").textContent = FILTROS[filtro][0];
         $("#viewDescription").textContent = FILTROS[filtro][1];
@@ -377,6 +387,11 @@
         estado.busqueda = $("#searchInput").value.trim();
         renderizarCola();
       });
+      // El estado se elige en la lista (antes eran opciones del menú lateral).
+      $("#filtroEstado").addEventListener("change", (evento) => cambiarFiltro(evento.target.value));
+      // Enlaces antiguos con "#radicadas", "#revision" o "#todas".
+      if (FILTROS[location.hash.slice(1)]) cambiarFiltro(location.hash.slice(1));
+
       // Filtra mientras se escribe.
       $("#searchInput").addEventListener("input", () => {
         estado.busqueda = $("#searchInput").value.trim();
