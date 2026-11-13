@@ -30,11 +30,13 @@ router = APIRouter(
 )
 async def buscar_empresa_por_nit(
     nit: str,
+    exacto: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     """Devuelve la tarjeta pública de la empresa: si está certificada, su
-    última solicitud y los conteos de trámites, sedes y documentos."""
-    return await ConsultasPublicasService(db).buscar_por_nit(nit)
+    última solicitud y los conteos de trámites, sedes y documentos.
+    Con `exacto=true`, no busca coincidencias parciales por NIT o nombre."""
+    return await ConsultasPublicasService(db).buscar_por_nit(nit, exacto=exacto)
 
 
 @router.get(
@@ -86,7 +88,7 @@ async def descargar_constancia_pdf(
     Solo se emite si la empresa está activa y tiene certificados vigentes. Con
     `codigo` incluye únicamente ese certificado; sin él, todos los vigentes.
     """
-    empresas = await ConsultasPublicasService(db).buscar_por_nit(nit)
+    empresas = await ConsultasPublicasService(db).buscar_por_nit(nit, exacto=True)
     if not empresas:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

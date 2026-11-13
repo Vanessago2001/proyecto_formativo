@@ -9,8 +9,8 @@ es otra cosa:
 2. Que no filtren datos de contacto (`correo`, `direccion`) al público.
 3. Que tengan límite de peticiones, porque son la única superficie de la app
    que se puede consumir sin autenticar.
-4. Que el menú "Consulta pública" del nav esté completo en las cuatro páginas
-   públicas y no enlace a rutas inexistentes.
+4. Que el menú "Consulta pública" dirija a la búsqueda pública unificada en
+   todas las páginas públicas.
 """
 
 import base64
@@ -348,6 +348,7 @@ async def test_la_constancia_se_descarga_como_pdf(db, cliente):
     assert respuesta.headers["content-type"] == "application/pdf"
     assert respuesta.content.startswith(b"%PDF")
     assert 'filename="constancia-900123456-7.pdf"' in respuesta.headers["content-disposition"]
+    assert "ILIKE" not in _sql_ejecutados(db)[0].upper()
 
 
 async def test_la_constancia_de_un_nit_inexistente_da_404(db, cliente):
@@ -408,6 +409,19 @@ async def test_la_busqueda_con_nit_completo_tambien_compara_exacto(db, cliente):
     assert parametros["nit_base"] == "900123456"
 
 
+async def test_la_busqueda_unificada_puede_exigir_nit_exacto(db, cliente):
+    _cargar_busqueda_por_nit(db, [])
+
+    async with cliente as ac:
+        await ac.get(
+            f"{BASE}/empresa/900123456-7",
+            params={"exacto": "true"},
+        )
+
+    sql = _sql_ejecutados(db)[0]
+    assert "ILIKE" not in sql.upper()
+
+
 # ============================================================
 # 6. LA PÁGINA Y EL MÓDULO VAN DE LA MANO
 # ============================================================
@@ -433,6 +447,20 @@ async def test_la_pagina_apunta_al_api_del_modulo(cliente):
 
     assert f"{BASE}/empresa/" in html, "buscar_e.html no llama al endpoint del módulo"
     assert f"{BASE}/constancia/" in html, "buscar_e.html no llama a la constancia del módulo"
+    assert f"{BASE}/documentos" in html, "buscar_e.html no incluye estado, norma y vigencia"
+    assert "Autenticidad confirmada" in html
+
+
+async def test_inicio_muestra_la_busqueda_publica_unificada(cliente):
+    async with cliente as ac:
+        html = (await ac.get("/")).text
+
+    assert "<title>CertiSENA - Consulta pública</title>" in html
+    assert "<h2>Consulta pública</h2>" in html
+    assert "Consulta pública unificada" not in html
+    assert "normas evaluadas" in html
+    assert "vigencias y plazos" in html
+    assert "Descargar constancia" in html
     assert "/api/empresas/" not in html, "buscar_e.html sigue apuntando al módulo de empresas"
 
 
@@ -454,12 +482,7 @@ PAGINAS_PUBLICAS = [
 
 ENLACES_DEL_MENU = [
     "/buscar_empresa",
-    "/",
     "/verificar-certificado",
-    "/consulta-norma",
-    "/vigencia",
-    "/validar",
-    "/constancia",
 ]
 
 PANEL = re.compile(

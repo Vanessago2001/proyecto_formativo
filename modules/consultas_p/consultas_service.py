@@ -260,10 +260,12 @@ class ConsultasPublicasService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def buscar_por_nit(self, nit: str) -> list[dict]:
+    async def buscar_por_nit(self, nit: str, exacto: bool = False) -> list[dict]:
         if not (nit or "").strip():
             return []
-        filtro, parametros = filtro_nit_publico("nit", "nombre", nit.strip())
+        filtro, parametros = filtro_nit_publico(
+            "nit", "nombre", nit.strip(), exacto=exacto
+        )
         result = await self.db.execute(text(f"""
             SELECT {COLUMNAS_PUBLICAS_EMPRESA}
             FROM empresa
