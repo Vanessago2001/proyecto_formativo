@@ -284,7 +284,9 @@ def limite_limpio():
 @pytest.mark.parametrize("nit", ["900", "1", "Cafe", "%25"])
 async def test_ficha_y_constancia_exigen_nit_completo(limite_limpio, nit):
     db = AsyncMock()
-    for ruta in (f"/api/consultas-publicas/empresa/{nit}", f"/api/consultas-publicas/constancia/{nit}/pdf"):
+    # La ficha exige NIT completo solo con exacto=true: sin él es el buscador
+    # público unificado del equipo, que admite parte del NIT o el nombre.
+    for ruta in (f"/api/consultas-publicas/empresa/{nit}?exacto=true", f"/api/consultas-publicas/constancia/{nit}/pdf"):
         respuesta = await pedir("get", ruta, db=db)
         assert respuesta.status_code == 422, ruta
     db.execute.assert_not_called()

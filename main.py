@@ -444,8 +444,8 @@ def pagina_interna(ruta: str) -> HTMLResponse:
 
 @app.get("/", response_class=HTMLResponse)
 async def index_page(request: Request):
-    """Sirve la página principal de consulta de documentos."""
-    return FileResponse("static/index.html")
+    """Sirve el buscador público unificado de consultas por NIT."""
+    return FileResponse("static/buscar_e.html")
 
 
 @app.get("/login", response_class=HTMLResponse)

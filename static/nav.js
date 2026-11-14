@@ -883,14 +883,11 @@
      públicas (no había cómo volver) y mostraba un menú lateral con
      una sola opción. Se le pone esa cabecera y se quita el lateral.
      ---------------------------------------------------------- */
+  // Mismo menú que las páginas públicas desde el buscador unificado del
+  // equipo (13/11): vigencia, norma, validar y constancia viven en él.
   var CONSULTAS_PUBLICAS = [
     ["/buscar_empresa", "Buscar empresa por NIT"],
-    ["/", "Consultar estado de vigencia"],
-    ["/verificar-certificado", "Verificar certificado"],
-    ["/consulta-norma", "Consultar norma evaluada"],
-    ["/vigencia", "Consultar vigencia y plazos"],
-    ["/validar", "Validar autenticidad"],
-    ["/constancia", "Descargar constancia pública"]
+    ["/verificar-certificado", "Verificar certificado"]
   ];
 
   function enlacesPublicos() {

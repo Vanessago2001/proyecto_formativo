@@ -265,16 +265,22 @@ class ConsultasPublicasService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def buscar_por_nit(self, nit: str) -> list[dict]:
+    async def buscar_por_nit(self, nit: str, exacto: bool = False) -> list[dict]:
         if not (nit or "").strip():
             return []
-        # Ficha pública y constancia: NIT completo y exacto (retest 13/11:
-        # "900" devolvía Cafe del Eje). 422 si no es un NIT válido.
-        parametros = _nit_o_422(nit.strip())
+        if exacto:
+            # Constancia y ficha exacta: NIT completo (retest 13/11: "900"
+            # devolvía Cafe del Eje). 422 si no es un NIT válido.
+            parametros = _nit_o_422(nit.strip())
+            filtro = condicion_nit("nit")
+        else:
+            # Buscador público unificado (decisión del equipo, 13/11): admite
+            # parte del NIT o el nombre de la empresa.
+            filtro, parametros = filtro_nit_publico("nit", "nombre", nit.strip())
         result = await self.db.execute(text(f"""
             SELECT {COLUMNAS_PUBLICAS_EMPRESA}
             FROM empresa
-            WHERE {condicion_nit("nit")}
+            WHERE {filtro}
             ORDER BY nombre ASC
             LIMIT {MAX_EMPRESAS_POR_BUSQUEDA};
         """), parametros)
