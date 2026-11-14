@@ -4,10 +4,11 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import es_coordinador, get_current_user
 from modules.asignacion_auditores.asignacion_schema import (
     AsignacionAuditorCrear,
     AuditoresElegiblesPagina,
@@ -15,6 +16,10 @@ from modules.asignacion_auditores.asignacion_schema import (
     SolicitudCambioAsignacionResolver,
 )
 from modules.asignacion_auditores.asignacion_service import AsignacionAuditorService
+from modules.permisos_auxiliar.permisos_auxiliar_service import (
+    auxiliar_tiene_permiso,
+    registrar_uso,
+)
 from modules.solicitudes.solicitud_permissions import (
     ROL_ADM,
     ROL_AUX,
@@ -104,13 +109,54 @@ async def listar_auditores_elegibles(
     )
 
 
+# Permiso delegable al Auxiliar para "Asignar de todas formas" (aprobar una
+# asignación que no cumple la elegibilidad).
+PERMISO_FORZAR_ASIGNACION = "SOL-048"
+
+
+@router.get(
+    "/solicitudes/{id_solicitud}/auditores/{id_auditor}/elegibilidad",
+    summary="Razones de no elegibilidad y si la asignación se puede forzar",
+)
+async def elegibilidad_auditor(
+    id_solicitud: UUID,
+    id_auditor: UUID,
+    usuario: dict = Depends(requiere_gestion_asignaciones),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AsignacionAuditorService(db).elegibilidad(id_solicitud, id_auditor)
+
+
 @router.post("/", summary="Asignar auditor a solicitud con un rol individual")
 async def asignar_auditor(
     data: AsignacionAuditorCrear,
     usuario: dict = Depends(requiere_gestion_asignaciones),
     db: AsyncSession = Depends(get_db),
 ):
-    return await AsignacionAuditorService(db).asignar(data=data, usuario=usuario)
+    origen = "Coordinador"
+    if data.forzar:
+        id_usuario = usuario.get("id_usuario") or usuario.get("user_id")
+        if es_coordinador(usuario):
+            origen = "Coordinador"
+        elif normalizar_rol(usuario.get("role_name")) == ROL_AUX and await auxiliar_tiene_permiso(
+            db, id_usuario, PERMISO_FORZAR_ASIGNACION
+        ):
+            origen = f"Auxiliar (permiso {PERMISO_FORZAR_ASIGNACION})"
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Solo el Coordinador (o un Auxiliar con el permiso delegado "
+                    f"{PERMISO_FORZAR_ASIGNACION}) puede asignar un auditor que no es elegible."
+                ),
+            )
+    respuesta = await AsignacionAuditorService(db).asignar(data=data, usuario=usuario, origen_forzado=origen)
+    if data.forzar and origen.startswith("Auxiliar"):
+        await registrar_uso(
+            db, usuario.get("id_usuario"), PERMISO_FORZAR_ASIGNACION,
+            detalle=f"Asignación forzada del auditor {data.id_auditor} en la solicitud {data.id_solicitud}",
+        )
+    return respuesta
 
 
 @router.get("/", summary="Consultar auditores asignados")
@@ -139,6 +185,27 @@ async def cancelar_asignacion(
     db: AsyncSession = Depends(get_db),
 ):
     return await AsignacionAuditorService(db).cancelar_asignacion(id_asignacion, usuario=usuario)
+
+
+class RetiroPorConflicto(BaseModel):
+    motivo: str | None = Field(default=None, max_length=1000)
+
+
+@router.post(
+    "/{id_asignacion}/retirar-por-conflicto",
+    summary="Cancela la asignación de un auditor con conflicto de interés (solo Coordinador)",
+)
+async def retirar_por_conflicto(
+    id_asignacion: UUID,
+    data: RetiroPorConflicto | None = None,
+    usuario: dict = Depends(requiere_administrador),
+    db: AsyncSession = Depends(get_db),
+):
+    """Funciona aunque la solicitud tenga visita programada: quita al auditor
+    de la visita con las reglas de Agenda y deja la asignación cancelada."""
+    return await AsignacionAuditorService(db).retirar_por_conflicto(
+        id_asignacion, usuario=usuario, motivo=(data.motivo if data else None)
+    )
 
 
 # ------------------------------------------------------------

@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Permisos de auxiliares</title>
 
-    <link rel="stylesheet" href="/static/tema.css?v=20261028">
-    <link rel="stylesheet" href="/static/styles.css?v=20261028">
+    <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+    <link rel="stylesheet" href="/static/styles.css?v=20261114a">
 
     <style>
         :root {
@@ -281,6 +281,12 @@
         </nav>
 
         <section class="content">
+            <!-- Pestañas del módulo Usuarios (las mismas del panel /dashboard). -->
+            <div class="pestanas" role="tablist" aria-label="Usuarios">
+                <a role="tab" href="/dashboard">Resumen</a>
+                <a role="tab" href="/dashboard#usuarios">Gestionar usuarios</a>
+                <a role="tab" href="/permisos-auxiliar" class="active" aria-current="page">Permisos de auxiliares</a>
+            </div>
             <nav class="top-navigation comite-page-heading" aria-label="Navegación de la página">
                 <div class="page-context">
                     <span class="comite-kicker">Administración</span>
@@ -579,7 +585,7 @@
     })();
     </script>
     <script src="/static/session.js?v=20261029"></script>
-    <script src="/static/nav.js"></script>
+    <script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

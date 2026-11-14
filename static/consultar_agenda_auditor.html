@@ -358,6 +358,29 @@
             border: 1px solid #c6d5ef;
         }
 
+        .weekly-subtitulo {
+            margin: 22px 0 10px;
+            font-size: 15px;
+            color: var(--sena-green-dark);
+        }
+
+        /* Aviso junto al botón que lo produjo (no arriba de la página). */
+        .notice.junto-accion {
+            margin: 12px 0 0;
+        }
+
+        .notice:focus {
+            outline: 2px solid var(--sena-green-bright, #39a900);
+            outline-offset: 2px;
+        }
+
+        /* Campo con error: borde rojo y anuncio accesible (aria-invalid). */
+        .campo-invalido,
+        .campo-invalido:focus {
+            border-color: #b42318 !important;
+            box-shadow: 0 0 0 3px rgba(180, 35, 24, .15) !important;
+        }
+
         /* =========================================================
            PILLS
         ========================================================= */
@@ -381,298 +404,6 @@
         .pill.audit {
             background: #e8f1ff;
             color: #2b4e93;
-        }
-
-        /* =========================================================
-           BLOQUEO DE FECHAS (3 PASOS)
-        ========================================================= */
-        .paso-bloque {
-            margin-top: 20px;
-            padding: 18px;
-            background: #f8fafc;
-            border: 1px solid var(--line);
-            border-radius: 14px;
-        }
-
-        .paso-cabecera {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            margin-bottom: 14px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--line);
-        }
-
-        .paso-numero {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            flex-shrink: 0;
-            border-radius: 50%;
-            background: var(--sena-green-bright);
-            color: #fff;
-            font-size: 14px;
-            font-weight: 800;
-        }
-
-        .paso-cabecera h3 {
-            margin: 0;
-            font-size: 15px;
-            font-weight: 750;
-            color: var(--sena-green-dark);
-        }
-
-        .paso-cabecera p {
-            margin: 3px 0 0;
-            font-size: 12.5px;
-            color: var(--muted);
-            line-height: 1.5;
-        }
-
-        .lista-fechas {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-            gap: 10px;
-        }
-
-        .fecha-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 11px;
-            padding: 12px 14px;
-            background: #fff;
-            border: 1px solid var(--line);
-            border-radius: 11px;
-            cursor: pointer;
-            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-        }
-
-        .fecha-item:hover {
-            border-color: var(--sena-green);
-            box-shadow: 0 3px 10px rgba(57, 169, 0, .10);
-        }
-
-        .fecha-item.seleccionada {
-            border-color: var(--sena-green-bright);
-            background: var(--sena-green-light);
-        }
-
-        .fecha-item input[type="checkbox"] {
-            width: 18px;
-            min-height: 18px;
-            margin: 2px 0 0;
-            padding: 0;
-            accent-color: var(--sena-green-bright);
-            cursor: pointer;
-        }
-
-        .fecha-item .fecha-dia {
-            display: block;
-            font-size: 13.5px;
-            font-weight: 750;
-            color: var(--ink);
-        }
-
-        .fecha-item .fecha-hora {
-            display: block;
-            margin-top: 2px;
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .opcion-bloqueo {
-            display: flex;
-            align-items: flex-start;
-            gap: 11px;
-            margin-top: 16px;
-            padding: 13px 15px;
-            background: #f8fafc;
-            border: 1px solid #f3d3d0;
-            border-radius: 11px;
-            cursor: pointer;
-        }
-
-        .opcion-bloqueo input[type="checkbox"] {
-            width: 18px;
-            min-height: 18px;
-            margin: 2px 0 0;
-            padding: 0;
-            accent-color: #b42318;
-            cursor: pointer;
-        }
-
-        .opcion-bloqueo strong {
-            display: block;
-            font-size: 13.5px;
-            color: #8a2020;
-        }
-
-        .opcion-bloqueo small {
-            display: block;
-            margin-top: 3px;
-            font-size: 12px;
-            color: var(--muted);
-            line-height: 1.5;
-        }
-
-        .seleccion-actual {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            padding: 5px 11px;
-            background: var(--sena-green-light);
-            border: 1px solid #cfe3c5;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--sena-green-dark);
-        }
-
-        .lista-auditores {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 12px;
-        }
-
-        .auditor-bloqueo {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto;
-            align-items: start;
-            gap: 12px;
-            padding: 13px 15px;
-            background: #fff;
-            border: 1px solid var(--line);
-            border-left: 3px solid var(--sena-green-bright);
-            border-radius: 11px;
-            transition: box-shadow .18s ease, border-color .18s ease;
-        }
-
-        .auditor-bloqueo.solo-datos {
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
-        }
-
-        .auditor-bloqueo:hover {
-            border-color: #cfe3c5;
-            box-shadow: 0 3px 10px rgba(32, 74, 25, .08);
-        }
-
-        .auditor-cabecera {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-
-        .auditor-ident {
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-            min-width: 0;
-        }
-
-        .auditor-bloqueo strong {
-            display: block;
-            font-size: 13.5px;
-            font-weight: 700;
-            color: var(--sena-green-dark);
-            line-height: 1.3;
-        }
-
-        .auditor-bloqueo .cell-meta {
-            display: block;
-            font-size: 11.5px;
-            color: var(--muted);
-            line-height: 1.45;
-        }
-
-        .auditor-check-wrap {
-            display: inline-flex;
-            align-items: center;
-            padding-top: 2px;
-            cursor: pointer;
-        }
-
-        .auditor-check {
-            width: 18px;
-            min-height: 18px;
-            margin: 0;
-            padding: 0;
-            accent-color: var(--sena-green-bright);
-            cursor: pointer;
-        }
-
-        .auditor-datos {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            flex: 1;
-            min-width: 0;
-        }
-
-        .auditor-estado {
-            display: inline-block;
-            margin-top: 5px;
-            padding: 3px 9px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 700;
-            width: fit-content;
-        }
-
-        .auditor-estado.libre {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
-        .auditor-estado.bloqueado {
-            background: #fee2e2;
-            color: #b42318;
-        }
-
-        .auditor-bloqueos-lista {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            margin-top: 7px;
-        }
-
-        .bloqueo-dia {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            grid-template-areas:
-                "fecha boton"
-                "motivo boton";
-            align-items: center;
-            gap: 1px 8px;
-            padding: 6px 9px;
-            background: #f1f5f9;
-            border: 1px solid #fbd5d5;
-            border-radius: 7px;
-            font-size: 11.5px;
-        }
-
-        .bloqueo-fecha {
-            grid-area: fecha;
-            font-weight: 800;
-            color: #b42318;
-            line-height: 1.3;
-        }
-
-        .bloqueo-motivo {
-            grid-area: motivo;
-            color: #7f1d1d;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-size: 11px;
-            line-height: 1.3;
-        }
-
-        .bloqueo-dia .mini-block {
-            grid-area: boton;
-            align-self: center;
         }
 
         /* =========================================================
@@ -772,13 +503,14 @@
             cursor: pointer;
         }
 
+        /* Gris con contraste suficiente (4,76:1) aunque la fila esté deshabilitada. */
         .selector-fila.deshabilitada {
             cursor: not-allowed;
-            color: #94a3b8;
+            color: #64748b;
         }
 
         .selector-fila.deshabilitada .cell-strong {
-            color: #94a3b8;
+            color: #64748b;
         }
 
         .selector-fila.seleccionada,
@@ -1585,40 +1317,22 @@
             .filtro-tabla { grid-template-columns: 1fr; }
         }
 
-        .filtro-mes-barra {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin: 14px 0 16px;
-            padding: 10px 14px;
-            background: var(--sena-green-light);
-            border: 1px solid #cfe3c5;
-            border-radius: 10px;
-        }
-
-        .filtro-mes-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            font-weight: 800;
-            letter-spacing: .02em;
-            text-transform: uppercase;
-            color: var(--sena-green-dark);
-        }
-
-        .filtro-mes-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--sena-green-bright);
-            box-shadow: 0 0 0 3px rgba(59, 170, 1, .18);
-        }
-
-        .filtro-mes-help {
-            font-size: 12.5px;
-            color: #1b4b12;
+        /* Sección 4: calendario de auditorías (el calendario en sí viene de
+           static/mi_disponibilidad.js; aquí solo el acomodo de la sección). */
+        .cal-filtros { margin: 14px 0 16px; align-items: end; }
+        .cal-filtro-check { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .cal-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .cal-check input { width: 16px; height: 16px; accent-color: var(--sena-green); }
+        .cal-coordinador { min-width: 0; }
+        .cal-coordinador .md-celda { min-height: 104px; }
+        .cal-coordinador .md-semana .md-chip { margin-top: 5px; }
+        .cal-equipo { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+        .cal-equipo li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #f8fafc; font-size: 13px; }
+        .cal-equipo .cell-meta { color: #475569; }
+        .cal-acciones-modal { display: flex; flex-wrap: wrap; gap: 9px; }
+        .modal-close:focus-visible { outline: 3px solid var(--sena-green-dark); outline-offset: 2px; }
+        @media (max-width: 640px) {
+            .cal-coordinador .md-celda { min-height: 70px; padding: 3px; }
         }
 
     </style>
@@ -1632,7 +1346,7 @@
 .modal-box.error h3 { color:#dc2626; }
 .modal-box.success h3 { color:#256d00; }
 </style>
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
 </head>
 
 <body>
@@ -1665,12 +1379,8 @@
                     Consultar agenda de auditor
                 </div>
                 <a href="#schedule" data-seccion="schedule" class="active">Programar una auditoría</a>
-                <a href="#assignments" data-seccion="assignments">Solicitudes con auditores asignados</a>
                 <a href="#weekly" data-seccion="weekly">Disponibilidad semanal</a>
-                <a href="#blocked" data-seccion="blocked">Registrar fecha no disponible</a>
                 <a href="#month" data-seccion="month">Disponibilidad mensual y auditorías</a>
-                <a href="#history" data-seccion="history">Historial de disponibilidad</a>
-                <a href="#bitacora" data-seccion="bitacora">Bitácora de validación</a>
             </nav>
 
             <!-- =========================================================
@@ -1824,6 +1534,7 @@
                                 <button type="button" class="btn btn-secundario secondary hidden" id="scheduleCancelEdit">Salir de
                                     edición</button>
                             </div>
+                            <div id="scheduleActionNotice" class="notice junto-accion" role="alert" aria-live="assertive" tabindex="-1"></div>
                         </form>
 
                         <h3
@@ -1867,341 +1578,65 @@
                 <!-- ================================================
                      SECCIÓN 2: DISPONIBILIDAD SEMANAL
                 ================================================= -->
-                <section class="panel panel-section" data-seccion="assignments" id="assignmentsPanel">
-                    <div class="panel-head">
-                        <h2>2. Solicitudes con auditores asignados</h2>
-                        <span class="pill">Listas para programar</span>
-                    </div>
-                    <div class="panel-body">
-                        <div id="assignmentsNotice" class="notice" role="status" aria-live="polite"></div>
-                        <div class="table-wrap record-table-wrap">
-                            <table class="record-table">
-                                <thead>
-                                    <tr>
-                                        <th>Solicitud</th>
-                                        <th>Empresa</th>
-                                        <th>Auditores asignados</th>
-                                        <th>Estado</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="assignmentsRows"></tbody>
-                            </table>
-                        </div>
-                        <p id="assignmentsSummary" class="help-text" style="margin-top:12px;"></p>
-                    </div>
-                </section>
-
                 <section class="panel panel-section" data-seccion="weekly" id="weeklyPanel">
                     <div class="panel-head">
-                        <h2>3. Configurar disponibilidad semanal</h2>
-                        <span class="pill">Recurrente por día</span>
+                        <h2>2. Disponibilidad semanal de los auditores</h2>
+                        <span class="pill">Solo consulta</span>
                     </div>
                     <div class="panel-body">
                         <div class="section-note">
                             <span class="note-icon" aria-hidden="true">ℹ</span>
                             <span>
-                                <strong>¿Cómo funciona?</strong> Marca los días de la semana en los que puedes atender
-                                auditorías y define una franja horaria para cada uno. El rango de vigencia indica desde
-                                cuándo y hasta cuándo se repetirá este patrón. Puedes configurar varios días en una
-                                sola operación.
+                                <strong>¿Quién la configura?</strong> Cada auditor define su horario semanal desde su
+                                perfil (“Mi disponibilidad”), porque solo él decide cuándo puede atender auditorías.
+                                Aquí el Coordinador consulta ese horario, las fechas bloqueadas y las auditorías que
+                                ya ocupan su agenda.
                             </span>
                         </div>
 
+                        <div data-filtro-auditor-slot></div>
                         <div id="weeklyNotice" class="notice" role="status" aria-live="polite"></div>
-                        <form id="weeklyForm">
-                            <div class="field" style="margin-bottom:12px;">
-                                <label>Auditorías programadas vigentes</label>
-                                <div id="weeklyProgramacionTable" class="table-wrap">
-                                    <div class="empty">Cargando programaciones...</div>
-                                </div>
-                            </div>
-                            <div class="grid three">
-                                <div class="field">
-                                    <label for="weeklyFrom">Vigente desde</label>
-                                    <input id="weeklyFrom" type="date" required>
-                                </div>
-                                <div class="field">
-                                    <label for="weeklyUntil">Vigente hasta (opcional)</label>
-                                    <input id="weeklyUntil" type="date">
-                                </div>
-                                <div class="field">
-                                    <label for="weeklyReason">Motivo / observación</label>
-                                    <input id="weeklyReason" maxlength="500" value="Disponibilidad semanal">
-                                </div>
-                            </div>
-                            <div class="weekday-grid" id="weekdayGrid"
-                                style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px;">
-                                <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
-                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
-                                            id="day-lunes" type="checkbox"
-                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
-                                            for="day-lunes"
-                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Lunes</label>
-                                    </div>
-                                    <div class="field"><label for="start-lunes">Desde</label><input id="start-lunes"
-                                            type="time" value="08:00" disabled></div>
-                                    <div class="field" style="margin-top:8px;"><label
-                                            for="end-lunes">Hasta</label><input id="end-lunes" type="time" value="17:00"
-                                            disabled></div>
-                                </div>
-                                <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
-                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
-                                            id="day-martes" type="checkbox"
-                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
-                                            for="day-martes"
-                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Martes</label>
-                                    </div>
-                                    <div class="field"><label for="start-martes">Desde</label><input id="start-martes"
-                                            type="time" value="08:00" disabled></div>
-                                    <div class="field" style="margin-top:8px;"><label
-                                            for="end-martes">Hasta</label><input id="end-martes" type="time"
-                                            value="17:00" disabled></div>
-                                </div>
-                                <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
-                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
-                                            id="day-miercoles" type="checkbox"
-                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
-                                            for="day-miércoles"
-                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Miércoles</label>
-                                    </div>
-                                    <div class="field"><label for="start-miercoles">Desde</label><input
-                                            id="start-miercoles" type="time" value="08:00" disabled></div>
-                                    <div class="field" style="margin-top:8px;"><label
-                                            for="end-miercoles">Hasta</label><input id="end-miercoles" type="time"
-                                            value="17:00" disabled></div>
-                                </div>
-                                <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
-                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
-                                            id="day-jueves" type="checkbox"
-                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
-                                            for="day-jueves"
-                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Jueves</label>
-                                    </div>
-                                    <div class="field"><label for="start-jueves">Desde</label><input id="start-jueves"
-                                            type="time" value="08:00" disabled></div>
-                                    <div class="field" style="margin-top:8px;"><label
-                                            for="end-jueves">Hasta</label><input id="end-jueves" type="time"
-                                            value="17:00" disabled></div>
-                                </div>
-                                <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
-                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
-                                            id="day-viernes" type="checkbox"
-                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
-                                            for="day-viernes"
-                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Viernes</label>
-                                    </div>
-                                    <div class="field"><label for="start-viernes">Desde</label><input id="start-viernes"
-                                            type="time" value="08:00" disabled></div>
-                                    <div class="field" style="margin-top:8px;"><label
-                                            for="end-viernes">Hasta</label><input id="end-viernes" type="time"
-                                            value="17:00" disabled></div>
-                                </div>
-                                <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
-                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
-                                            id="day-sabado" type="checkbox"
-                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
-                                            for="day-sábado"
-                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Sábado</label>
-                                    </div>
-                                    <div class="field"><label for="start-sabado">Desde</label><input id="start-sabado"
-                                            type="time" value="08:00" disabled></div>
-                                    <div class="field" style="margin-top:8px;"><label
-                                            for="end-sabado">Hasta</label><input id="end-sabado" type="time"
-                                            value="12:00" disabled></div>
-                                </div>
-                                <div class="weekday"
-                                    style="border:1px solid var(--line);border-radius:11px;padding:13px;background:#f8fafc;">
-                                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><input
-                                            id="day-domingo" type="checkbox" disabled
-                                            style="width:18px;min-height:18px;margin:0;accent-color:var(--sena-green-bright);"><label
-                                            for="day-domingo"
-                                            style="font-size:13px;font-weight:800;color:var(--sena-green-dark);cursor:pointer;">Domingo</label>
-                                    </div>
-                                    <div class="field"><label for="start-domingo">Desde</label><input id="start-domingo"
-                                            type="time" value="08:00" disabled></div>
-                                    <div class="field" style="margin-top:8px;"><label
-                                            for="end-domingo">Hasta</label><input id="end-domingo" type="time"
-                                            value="12:00" disabled></div>
-                                </div>
-                            </div>
-                            <div class="actions">
-                                <button class="btn btn-primario primary" id="weeklySave" type="submit">Guardar disponibilidad
-                                    semanal</button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-
-                <!-- ================================================
-                     SECCIÓN 3: REGISTRAR FECHA NO DISPONIBLE
-                ================================================= -->
-                <section class="panel panel-section" data-seccion="blocked">
-                    <div class="panel-head">
-                        <h2>4. Registrar fecha no disponible</h2>
-                        <span class="pill blocked">Bloqueo de día completo</span>
-                    </div>
-                    <div class="panel-body">
-                        <div class="section-note">
-                            <span class="note-icon" aria-hidden="true">ℹ</span>
-                            <span>
-                                <strong>Bloquea fechas completas</strong> para indicar que no podrás atender auditorías
-                                (permisos, incapacidades, vacaciones, etc.). Selecciona una auditoría programada,
-                                revisa las fechas ya ocupadas y marca las que deseas bloquear.
-                            </span>
+                        <h3 class="weekly-subtitulo">Horario y fechas declaradas por el auditor</h3>
+                        <div id="weeklyConsultaTable" class="table-wrap">
+                            <div class="empty">Selecciona un auditor para consultar su disponibilidad.</div>
                         </div>
-
-                        <div id="blockedNotice" class="notice" role="status" aria-live="polite"></div>
-
-                        <!-- PASO 1: AUDITORÍAS PROGRAMADAS -->
-                        <div class="paso-bloque">
-                            <div class="paso-cabecera">
-                                <span class="paso-numero">1</span>
-                                <div>
-                                    <h3>Seleccione la auditoría programada</h3>
-                                    <p>Elija la programación cuyas fechas quiere bloquear.</p>
-                                </div>
-                            </div>
-                            <div id="blockedProgramaciones" class="table-wrap">
-                                <div class="empty">Cargando auditorías programadas...</div>
-                            </div>
-                        </div>
-
-                        <!-- PASO 2: FECHAS PROGRAMADAS -->
-                        <div class="paso-bloque" id="pasoFechasBloqueo" style="display:none;">
-                            <div class="paso-cabecera">
-                                <span class="paso-numero">2</span>
-                                <div>
-                                    <h3>Fechas ya programadas</h3>
-                                    <p>Marque las fechas que desea bloquear. Las fechas se copian al formulario.</p>
-                                </div>
-                            </div>
-                            <div id="blockedFechas" class="lista-fechas"></div>
-                        </div>
-
-                        <!-- PASO 3: DATOS DEL BLOQUEO -->
-                        <div class="paso-bloque" id="pasoDatosBloqueo" style="display:none;">
-                            <div class="paso-cabecera">
-                                <span class="paso-numero">3</span>
-                                <div>
-                                    <h3>Datos del bloqueo</h3>
-                                    <p>Confirme el rango de fechas y el motivo del bloqueo.</p>
-                                </div>
-                            </div>
-                            <form id="blockedForm">
-                                <div class="campo-bloque" style="margin-bottom:16px;">
-                                    <div class="paso-cabecera" style="border-bottom:none;padding-bottom:0;margin-bottom:10px;">
-                                        <span class="paso-numero" aria-hidden="true">👥</span>
-                                        <div>
-                                            <h3>Auditores que quedarán bloqueados</h3>
-                                            <p>Se toman de la auditoría programada seleccionada y se les notificará el cambio.</p>
-                                        </div>
-                                    </div>
-                                    <div id="blockedAuditores" class="lista-auditores"></div>
-                                </div>
-
-                                <div class="campo-bloque" style="margin-bottom:16px;">
-                                    <div class="paso-cabecera" style="border-bottom:none;padding-bottom:0;margin-bottom:10px;">
-                                        <span class="paso-numero" aria-hidden="true">🔒</span>
-                                        <div>
-                                            <h3>Auditores con días bloqueados</h3>
-                                            <p>Días ya bloqueados en el sistema. Puede desbloquear y reactivar al auditor.</p>
-                                        </div>
-                                    </div>
-                                    <div id="blockedExistentes" class="lista-auditores">
-                                        <span class="hint">Cargando bloqueos vigentes...</span>
-                                    </div>
-                                </div>
-                                <div class="grid three">
-                                    <div class="field">
-                                        <label for="blockedFrom">Fecha desde</label>
-                                        <input id="blockedFrom" type="date" required>
-                                    </div>
-                                    <div class="field">
-                                        <label for="blockedUntil">Fecha hasta (opcional)</label>
-                                        <input id="blockedUntil" type="date">
-                                    </div>
-                                    <div class="field">
-                                        <label for="blockedReason">Motivo</label>
-                                        <input id="blockedReason" required minlength="3" maxlength="255"
-                                            placeholder="Ej. Permiso, incapacidad, vacaciones">
-                                    </div>
-                                </div>
-                                <label class="opcion-bloqueo">
-                                    <input type="checkbox" id="blockedCancelarProgramacion">
-                                    <span>
-                                        <strong>Cancelar también otras auditorías en conflicto</strong>
-                                        <small>La auditoría programada seleccionada se cancela automáticamente. Marque esta opción si además debe cancelarse otra auditoría que caiga en el mismo rango.</small>
-                                    </span>
-                                </label>
-                                <div class="actions">
-                                    <button class="btn btn-primario primary" type="submit" id="blockedSave">Registrar fecha no
-                                        disponible</button>
-                                    <button class="btn btn-secundario secondary" type="button" id="blockedReset">Limpiar selección</button>
-                                </div>
-                            </form>
+                        <h3 class="weekly-subtitulo">Auditorías que ocupan su agenda</h3>
+                        <div id="weeklyOcupadoTable" class="table-wrap">
+                            <div class="empty">Selecciona un auditor para ver sus auditorías programadas.</div>
                         </div>
                     </div>
                 </section>
 
-
                 <!-- ================================================
-                     SECCIÓN 5: DISPONIBILIDAD MENSUAL Y AUDITORÍAS
+                     SECCIÓN 3: DISPONIBILIDAD MENSUAL Y AUDITORÍAS
+                     Calendario mes/semana (componente de static/mi_disponibilidad.js)
                 ================================================= -->
                 <section class="panel panel-section" data-seccion="month">
                     <div class="panel-head">
-                        <h2>5. Disponibilidad mensual y auditorías</h2>
-                        <span class="pill">Filtros geográficos</span>
+                        <h2>3. Disponibilidad mensual y auditorías</h2>
+                        <span class="pill">Calendario</span>
                     </div>
                     <div class="panel-body">
                         <div class="section-note">
                             <span class="note-icon" aria-hidden="true">ℹ</span>
                             <span>
-                                <strong>Vista mensual en calendario.</strong> Consulta las auditorías programadas y los
-                                registros de disponibilidad de un mes específico. Puedes filtrar por ciudad o modalidad
-                                para enfocarte en una región o tipo de visita.
+                                <strong>Calendario de auditorías.</strong> Cada día muestra las auditorías que lo
+                                ocupan (hora, empresa y sede). Selecciona una para ver su detalle. Si eliges un
+                                auditor, también verás su disponibilidad declarada y sus fechas bloqueadas.
                             </span>
                         </div>
 
                         <div id="monthNotice" class="notice" role="status" aria-live="polite"></div>
-                        <div class="filtro-mes-barra">
-                            <span class="filtro-mes-tag">
-                                <span class="filtro-mes-dot" aria-hidden="true"></span>
-                                Filtro automático
-                            </span>
-                            <span class="filtro-mes-help">Los filtros se aplican solos: no necesitas pulsar “Ver mes”.</span>
-                        </div>
-                        <div class="grid four">
+                        <div class="grid four cal-filtros">
                             <div class="field">
-                                <label for="monthSelect">Mes</label>
-                                <select id="monthSelect">
-                                    <option value="1">Enero</option>
-                                    <option value="2">Febrero</option>
-                                    <option value="3">Marzo</option>
-                                    <option value="4">Abril</option>
-                                    <option value="5">Mayo</option>
-                                    <option value="6">Junio</option>
-                                    <option value="7">Julio</option>
-                                    <option value="8">Agosto</option>
-                                    <option value="9">Septiembre</option>
-                                    <option value="10">Octubre</option>
-                                    <option value="11">Noviembre</option>
-                                    <option value="12">Diciembre</option>
+                                <label for="monthAuditor">Auditor</label>
+                                <select id="monthAuditor">
+                                    <option value="">Todos los auditores</option>
                                 </select>
                             </div>
                             <div class="field">
-                                <label for="yearSelect">Año</label>
-                                <input id="yearSelect" type="number" min="2000" max="2100" required>
-                            </div>
-                            <div class="field">
                                 <label for="cityFilter">Ciudad / municipio</label>
-                                <input id="cityFilter" maxlength="150" placeholder="Todas las ciudades">
+                                <input id="cityFilter" maxlength="150" placeholder="Todas las ciudades" autocomplete="off">
                             </div>
                             <div class="field">
                                 <label for="modalityFilter">Modalidad de auditoría</label>
@@ -2212,60 +1647,13 @@
                                     <option value="Híbrida">Híbrida</option>
                                 </select>
                             </div>
+                            <div class="field cal-filtro-check">
+                                <label class="cal-check"><input type="checkbox" id="monthCanceladas"> Incluir canceladas</label>
+                                <button type="button" class="btn btn-secundario btn-sm" id="clearMonthFilters">Limpiar filtros</button>
+                            </div>
                         </div>
-                        <div class="actions">
-                            <button type="button" class="btn btn-primario primary" id="loadMonth">Ver mes</button>
-                            <button type="button" class="btn btn-secundario secondary" id="clearMonthFilters">Limpiar filtros</button>
-                        </div>
-                        <div id="monthlyCalendar" class="calendar-wrap"
-                            style="margin-top:16px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;">
-                            <div class="empty" style="grid-column:1/-1;">Selecciona un auditor y pulsa "Ver mes".</div>
-                        </div>
-                        <h3 style="margin:25px 0 12px;font-size:15px;color:var(--sena-green-dark);">Auditorías del
-                            periodo filtrado</h3>
-                        <div id="monthlyAuditTable" class="table-wrap">
-                            <div class="empty">No hay datos mensuales consultados.</div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- ================================================
-                     SECCIÓN 6: HISTORIAL DE DISPONIBILIDAD
-                ================================================= -->
-                <section class="panel panel-section" data-seccion="history">
-                    <div class="panel-head">
-                        <h2>6. Historial de disponibilidad</h2>
-                        <button type="button" id="loadHistory" class="btn btn-primario primary" onclick="loadHistory()">Consultar historial</button>
-                    </div>
-                    <div class="panel-body">
-                        <div class="section-note">
-                            <span class="note-icon" aria-hidden="true">ℹ</span>
-                            <span>
-                                <strong>Trazabilidad completa.</strong> Revisa todos los cambios que se han realizado
-                                sobre la disponibilidad del auditor. Cada registro muestra qué acción se realizó,
-                                cuándo, y el estado anterior y posterior del registro.
-                            </span>
-                        </div>
-
-                        <div data-filtro-auditor-slot></div>
-                        <div id="historyNotice" class="notice" role="status" aria-live="polite"></div>
-                        <div class="table-wrap" id="historyTable">
-                            <div class="empty">Selecciona un auditor para consultar su historial.</div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- ================================================
-                     SECCIÓN 8: BITÁCORA DE VALIDACIÓN
-                ================================================= -->
-                <section class="panel panel-section" data-seccion="bitacora">
-                    <div class="panel-head">
-                        <h2>7. Bitácora de validación</h2>
-                        <button type="button" id="loadBitacora" class="btn btn-primario primary" onclick="loadBitacora()">Consultar bitácora</button>
-                    </div>
-                    <div class="panel-body">
-                        <div class="table-wrap" id="bitacoraTable">
-                            <div class="empty">Selecciona un auditor para consultar su bitácora.</div>
+                        <div id="monthlyCalendar" class="cal-coordinador">
+                            <div class="empty">Cargando calendario...</div>
                         </div>
                     </div>
                 </section>
@@ -2318,14 +1706,15 @@
 
     
 <div id="modalOverlay" class="modal-overlay">
-    <div id="modalBox" class="modal-box">
+    <div id="modalBox" class="modal-box" role="alertdialog" aria-live="assertive" aria-labelledby="modalTitle" aria-describedby="modalMessage">
         <h3 id="modalTitle">Mensaje</h3>
         <p id="modalMessage"></p>
         <button class="btn btn-primario btn-close" onclick="closeModal()">Cerrar</button>
     </div>
 </div>
 
-
+<!-- Calendario mes/semana común (sección "Disponibilidad mensual y auditorías") -->
+<script src="/static/mi_disponibilidad.js?v=20261113b"></script>
 <script>
     function showModal(message, type = 'success') {
         const overlay = document.getElementById('modalOverlay');
@@ -2340,6 +1729,12 @@
     }
     function closeModal() {
         document.getElementById('modalOverlay').classList.remove('active');
+        const campo = window.__campoTrasModal ? document.getElementById(window.__campoTrasModal) : null;
+        window.__campoTrasModal = null;
+        if (campo) {
+            try { campo.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) { campo.scrollIntoView(); }
+            try { campo.focus({ preventScroll: true }); } catch (_) { }
+        }
     }
     document.getElementById('modalOverlay').addEventListener('click', (e) => {
         if (e.target.id === 'modalOverlay') closeModal();
@@ -2360,8 +1755,51 @@
             node.className = `notice show ${kind}`;
         }
         function clearNotice(id) {
-            const node = $(id); if (node) { node.textContent = ""; node.className = "notice"; }
+            const node = $(id);
+            if (!node) return;
+            node.textContent = "";
+            node.className = node.classList.contains("junto-accion") ? "notice junto-accion" : "notice";
         }
+        // Marca los campos con error (borde rojo + aria-invalid).
+        function marcarCamposInvalidos(ids) {
+            (ids || []).forEach((id) => {
+                const campo = $(id);
+                if (!campo) return;
+                campo.classList.add("campo-invalido");
+                campo.setAttribute("aria-invalid", "true");
+            });
+        }
+        function limpiarCamposInvalidos(contenedor) {
+            (contenedor || document).querySelectorAll(".campo-invalido").forEach((campo) => {
+                campo.classList.remove("campo-invalido");
+                campo.removeAttribute("aria-invalid");
+            });
+        }
+        // Muestra el aviso junto a la acción que lo produjo y lleva la vista
+        // (y el foco) al primer campo inválido o, si no hay, al propio aviso.
+        function avisoJuntoAccion(id, message, kind = "error", campos = []) {
+            showNotice(id, message, kind);
+            marcarCamposInvalidos(campos);
+            const primero = (campos || []).map((c) => $(c)).find((el) => el && !el.disabled && el.offsetParent !== null);
+            const destino = primero || $(id);
+            if (!destino) return;
+            try { destino.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) { destino.scrollIntoView(); }
+            try { destino.focus({ preventScroll: true }); } catch (_) { }
+        }
+        // Error de validación mostrado en el modal: al cerrarlo, el foco va al campo.
+        function errorEnCampo(message, campoId) {
+            marcarCamposInvalidos([campoId]);
+            window.__campoTrasModal = campoId;
+            showModal(message, "error");
+        }
+        // El borde rojo se quita en cuanto la persona corrige el campo.
+        ["input", "change"].forEach((tipo) => document.addEventListener(tipo, (event) => {
+            const campo = event.target;
+            if (campo && campo.classList && campo.classList.contains("campo-invalido")) {
+                campo.classList.remove("campo-invalido");
+                campo.removeAttribute("aria-invalid");
+            }
+        }, true));
         function setBusy(message = "") { $("busyState").textContent = message; }
         async function api(path, options = {}) {
             const token = localStorage.getItem("access_token") || localStorage.getItem("accessToken") || localStorage.getItem("token");
@@ -2396,11 +1834,7 @@
             if (selected === "") return null;
             const index = Number(selected);
             if (!Number.isInteger(index)) return null;
-            const directo = assignments[index];
-            if (directo && Array.isArray(directo.auditores) && directo.auditores.length) return directo;
-            // Respaldo: usa los grupos ya cargados en la tabla de solicitudes.
-            const alternativa = (window.__solicitudesAsignadas || [])[index];
-            return alternativa || directo || null;
+            return assignments[index] || null;
         }
         // Programaciones vigentes por sede (para bloquear las sedes ya ocupadas).
         function programacionesVigentesPorSede() {
@@ -2505,6 +1939,11 @@
             const control = $(id);
             if (!control) return;
             control.addEventListener("change", async () => {
+                guardarBorradorFechas();
+                if (Array.from(equipoSede.values()).some((a) => a.disponibilidad)) {
+                    limpiarDisponibilidadEquipo();
+                    clearNotice("scheduleActionNotice");
+                }
                 const wrap = $("scheduleCandidatesWrap");
                 if (!wrap || wrap.classList.contains("hidden")) return;
                 if (programacionActual && !programacionEnEdicion) return;
@@ -2558,8 +1997,11 @@
             const cuerpo = enPagina.length
                 ? enPagina.map((fila) => {
                     const activa = String(fila.valor) === seleccion;
+                    // Nombre accesible del radio: el texto de la primera celda.
+                    const nombreFila = String(fila.celdas[0] ?? fila.valor)
+                        .replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
                     return `<tr class="selector-fila${activa ? " seleccionada" : ""}${fila.deshabilitado ? " deshabilitada" : ""}" data-valor="${esc(fila.valor)}">
-                        <td class="selector-celda-radio"><span class="selector-radio"><input class="selector-radio-input" type="radio" name="${esc(config.nombreRadio)}" value="${esc(fila.valor)}"${activa ? " checked" : ""}${fila.deshabilitado ? " disabled" : ""}></span></td>
+                        <td class="selector-celda-radio"><span class="selector-radio"><input class="selector-radio-input" type="radio" name="${esc(config.nombreRadio)}" value="${esc(fila.valor)}" aria-label="Seleccionar ${esc(nombreFila)}"${activa ? " checked" : ""}${fila.deshabilitado ? " disabled" : ""}></span></td>
                         ${fila.celdas.map((celda) => `<td>${celda}</td>`).join("")}
                     </tr>`;
                 }).join("")
@@ -2620,8 +2062,7 @@
             filas: (select) => Array.from(select.options)
                 .filter((opcion) => opcion.value !== "")
                 .map((opcion) => {
-                    const grupo = assignments[Number(opcion.value)] ||
-                        (window.__solicitudesAsignadas || [])[Number(opcion.value)] || {};
+                    const grupo = assignments[Number(opcion.value)] || {};
                     const auditores = grupo.auditores || [];
                     const nombres = auditores.slice(0, 2)
                         .map((auditor) => auditor.auditor_nombre || "Auditor")
@@ -2704,13 +2145,29 @@
             $("scheduleCancelEdit").classList.toggle("hidden", !editing);
             $("scheduleMoreAuditors").disabled = Boolean(locked);
         }
+        let borradorFechas = null;
+        function guardarBorradorFechas() {
+            const grupo = currentAssignment();
+            if (!grupo || (programacionActual && !programacionEnEdicion)) return;
+            borradorFechas = {
+                solicitud: String(grupo.id_solicitud),
+                fecha: $("scheduleDate").value,
+                inicio: $("scheduleStart").value,
+                fin: $("scheduleEnd").value,
+                modalidad: $("scheduleModality").value
+            };
+        }
         function prepareNewScheduleForm(group) {
             programacionActual = null;
             programacionEnEdicion = false;
-            $("scheduleDate").value = "";
-            $("scheduleStart").value = "";
-            $("scheduleEnd").value = "";
-            $("scheduleModality").value = "Presencial";
+            const borrador = group && borradorFechas && borradorFechas.solicitud === String(group.id_solicitud)
+                ? borradorFechas : null;
+            $("scheduleDate").value = borrador ? borrador.fecha : "";
+            $("scheduleStart").value = borrador ? borrador.inicio : "";
+            $("scheduleEnd").value = borrador ? borrador.fin : "";
+            $("scheduleModality").value = borrador ? (borrador.modalidad || "Presencial") : "Presencial";
+            clearNotice("scheduleActionNotice");
+            limpiarCamposInvalidos($("scheduleForm"));
             aplicarDatosSedeSeleccionada(group);
             $("scheduleObservacion").value = "";
             $("schedulePeriodSummary").textContent = "Esta sede no tiene una programación activa. Seleccione fecha y horas para crearla.";
@@ -2735,6 +2192,7 @@
             $("scheduleObservacion").value = row.motivo_reprogramacion || "";
             $("schedulePeriodSummary").textContent = `Periodo actualmente guardado — Fecha/hora de inicio: ${formatDateTime(row.fecha_inicio)} · Fecha/hora de fin: ${formatDateTime(row.fecha_fin)}.`;
             setScheduleFormMode(!editing, editing);
+            clearNotice("scheduleActionNotice");
             prepararEquipoSede(currentAssignment(), row);
             $("scheduleMoreAuditors").disabled = true;
             $("scheduleCandidatesWrap").classList.add("hidden");
@@ -2851,18 +2309,29 @@
             const contenedor = $("scheduleTeam");
             if (!contenedor) return;
             contenedor.innerHTML = "";
-            const activos = Array.from(equipoSede.values()).filter((item) => item.incluido !== false);
-            if (!activos.length) {
+            // Se pintan todos los integrantes, también los desmarcados: antes
+            // un auditor desmarcado (o excluido al recargar) desaparecía.
+            const integrantes = Array.from(equipoSede.values());
+            if (!integrantes.length) {
                 contenedor.innerHTML = '<div class="team-empty">No hay auditores en el equipo de esta sede. Usa “Mostrar más auditores disponibles” para agregarlos.</div>';
                 return;
             }
-            activos.forEach((auditor) => {
+            integrantes.forEach((auditor) => {
+                const incluido = auditor.incluido !== false;
+                const disp = auditor.disponibilidad;
+                const etiquetaDisp = !incluido
+                    ? '<span class="team-tag info">No incluido en esta programación</span>'
+                    : disp
+                        ? (disp.disponible
+                            ? '<span class="team-tag ok">Disponible en el horario</span>'
+                            : `<span class="team-tag fail">No disponible: ${esc(disp.motivo || "horario no disponible")}</span>`)
+                        : "";
                 const card = document.createElement("div");
-                card.className = "team-card selected";
+                card.className = `team-card${incluido ? " selected" : ""}`;
                 card.dataset.auditorId = auditor.id_usuario;
                 card.innerHTML = `
                     <div class="team-head">
-                        <input type="checkbox" class="team-check" checked
+                        <input type="checkbox" class="team-check" ${incluido ? "checked" : ""}
                             ${equipoEditable ? "" : "disabled"}
                             aria-label="Incluir ${esc(auditor.nombre)} en el equipo de esta sede"
                             onchange="alternarEquipoSede('${esc(auditor.id_usuario)}', this.checked)" />
@@ -2874,10 +2343,11 @@
                     </div>
                     <div class="team-checks">
                         <span class="team-tag ${auditor.origen === "adicional" ? "info" : "ok"}">${esc(etiquetaOrigen(auditor.origen))}</span>
+                        ${etiquetaDisp}
                     </div>
                     <div class="team-role">
                         <label for="rolEquipo-${esc(auditor.id_usuario)}">Rol en esta sede</label>
-                        <select id="rolEquipo-${esc(auditor.id_usuario)}" ${equipoEditable ? "" : "disabled"}
+                        <select id="rolEquipo-${esc(auditor.id_usuario)}" aria-label="Rol en el equipo de ${esc(auditor.nombre || auditor.auditor_nombre || "este auditor")}" ${equipoEditable ? "" : "disabled"}
                             onchange="establecerRolEquipo('${esc(auditor.id_usuario)}', this.value, 'equipo')">
                             ${opcionesRol(auditor.rol_auditor)}
                         </select>
@@ -2942,21 +2412,22 @@
          * excluidos del equipo.
          */
         function reconciliarEquipoConDisponibles(disponibles) {
+            // Ya no se saca a nadie del equipo: la selección de la persona se
+            // respeta. Solo se cuenta cuántos integrantes no figuran como
+            // disponibles para que lo revise con "Comprobar disponibilidad".
             const ids = new Set((disponibles || []).map((item) => String(item.id_usuario)));
-            let excluidos = 0;
+            let noDisponibles = 0;
             equipoSede.forEach((auditor, id) => {
-                if (auditor.excluidoManual) {
-                    auditor.incluido = false;
-                    return;
-                }
-                if (ids.has(id)) {
-                    auditor.incluido = true;
-                } else {
-                    auditor.incluido = false;
-                    excluidos += 1;
-                }
+                if (auditor.incluido === false) return;
+                if (!ids.has(id)) noDisponibles += 1;
             });
-            return excluidos;
+            return noDisponibles;
+        }
+        // Resultado de "Comprobar disponibilidad" por auditor (se borra al
+        // cambiar sede, fecha u horas porque deja de ser válido).
+        function limpiarDisponibilidadEquipo() {
+            equipoSede.forEach((auditor) => { delete auditor.disponibilidad; });
+            renderEquipoSede();
         }
 
         function renderCandidatosSede() {
@@ -3002,7 +2473,7 @@
                     <div class="team-checks">${etiquetas.join("")}</div>
                     ${incluido ? `<div class="team-role">
                         <label>Rol en esta sede</label>
-                        <select onchange="establecerRolEquipo('${esc(id)}', this.value, 'candidatos')">${opcionesRol(rolActual)}</select>
+                        <select aria-label="Rol en esta sede" onchange="establecerRolEquipo('${esc(id)}', this.value, 'candidatos')">${opcionesRol(rolActual)}</select>
                     </div>` : ""}
                     <div class="team-toolbar" style="margin-top:8px;">
                         <button type="button" class="btn btn-secundario btn-sm secondary"
@@ -3061,7 +2532,7 @@
                 if (excluidos > 0) {
                     showNotice(
                         "scheduleCandidatesNotice",
-                        `Se excluyeron ${excluidos} auditor(es) del equipo de esta sede porque ya tienen una auditoría programada, están asignados a otra sede o no cumplen las validaciones.`,
+                        `${excluidos} auditor(es) del equipo no figuran como disponibles para esta sede${$("scheduleDate").value ? " en la fecha y horas indicadas" : ""}. Siguen seleccionados: pulse "Comprobar disponibilidad" para ver el motivo de cada uno.`,
                         "info"
                     );
                 } else if (noDisponibles > 0) {
@@ -3210,12 +2681,12 @@
                     <div class="filtro-auditor">
                         <div class="filtro-campo">
                             <label>Nombre o documento del auditor</label>
-                            <input type="text" data-filtro-texto placeholder="Ej. Leonel o 987654321" autocomplete="off">
+                            <input type="text" data-filtro-texto aria-label="Nombre o documento del auditor" placeholder="Ej. Leonel o 987654321" autocomplete="off">
                             <div class="filtro-resultados" data-filtro-resultados></div>
                         </div>
                         <div class="filtro-campo">
                             <label>Rol</label>
-                            <select data-filtro-rol>
+                            <select data-filtro-rol aria-label="Rol del auditor">
                                 <option value="">Todos los roles</option>
                                 <option value="Auditor líder">Auditor líder</option>
                                 <option value="Observador">Observador</option>
@@ -3370,7 +2841,7 @@
         async function onAuditorChanged() {
             const id = selectedAuditorId(); $("auditorUuid").value = id;
             if (!id) return;
-            await Promise.all([loadHistory(), loadBitacora(), loadWeeklyProgramaciones()]);
+            await loadWeeklyProgramaciones();
         }
         function availabilityTypeName(row) {
             const type = String(row.tipo_registro || "").toLowerCase();
@@ -3425,846 +2896,269 @@
             $("editAvailabilityPanel").classList.remove("hidden");
             $("editAvailabilityPanel").scrollIntoView({ behavior: "smooth", block: "start" });
         }
-        async function loadHistory() {
-            const id = selectedAuditorId();
-            clearNotice("historyNotice");
-            if (!id) {
-                $("historyTable").innerHTML = '<div class="empty">Selecciona un auditor para consultar su historial.</div>';
-                showNotice("historyNotice", "Selecciona un auditor para consultar su historial.", "error");
-                return;
-            }
-            try {
-                const data = await api(`/${encodeURIComponent(id)}/historial-disponibilidad`);
-                const rows = data.historial || [];
-                if (!rows.length) { $("historyTable").innerHTML = '<div class="empty">No hay historial registrado.</div>'; return; }
-                const estadoDato = (valor) => (valor === null || valor === undefined || valor === "") ? "—" : valor;
-                const flecha = (antes, despues) => {
-                    const a = esc(String(estadoDato(antes)));
-                    const d = esc(String(estadoDato(despues)));
-                    return `${a} <span style="color:#256d00;font-weight:700;">→</span> ${d}`;
-                };
-                const cuerpo = rows.map(row => {
-                    const antes = row.antes || null;
-                    const despues = row.despues || row;
-                    const tipoAntes = antes ? (availabilityTypeName(antes) === "No disponible" ? "Fecha completa" : (antes.dia_semana !== null && antes.dia_semana !== undefined ? dayLabel(antes.dia_semana) : "—")) : "—";
-                    const tipoDespues = availabilityTypeName(despues) === "No disponible" ? "Fecha completa" : (despues.dia_semana !== null && despues.dia_semana !== undefined ? dayLabel(despues.dia_semana) : "—");
-                    return `<tr>
-        <td>${esc(row.fecha_evento ? formatDateTime(row.fecha_evento) : "Registro anterior a la trazabilidad")}</td>
-        <td><span class="pill ${/CANCELAD|INACTIV/.test(String(row.accion || "")) ? "blocked" : "audit"}">${esc(row.accion || "—")}</span></td>
-        <td>${esc(row.tipo_registro || "—")}</td>
-        <td>${flecha(tipoAntes, tipoDespues)}</td>
-        <td>${flecha(antes ? asDateInput(antes.fecha_inicio) : null, asDateInput(despues.fecha_inicio))}</td>
-        <td>${flecha(antes ? asDateInput(antes.fecha_fin) : null, despues.fecha_fin ? asDateInput(despues.fecha_fin) : null)}</td>
-        <td>${flecha(antes ? asTimeInput(antes.hora_inicio) : null, asTimeInput(despues.hora_inicio))}</td>
-        <td>${flecha(antes ? asTimeInput(antes.hora_fin) : null, asTimeInput(despues.hora_fin))}</td>
-        <td>${flecha(antes ? antes.motivo : null, despues.motivo)}</td>
-        <td>${flecha(antes ? antes.estado : null, despues.estado)}</td>
-      </tr>`;
-                }).join("");
-                $("historyTable").innerHTML = `<table><thead><tr><th>Cuándo</th><th>Acción</th><th>Tipo</th><th>Día</th><th>Vigencia desde</th><th>Vigencia hasta</th><th>Hora inicio</th><th>Hora fin</th><th>Motivo</th><th>Estado</th></tr></thead><tbody>${cuerpo}</tbody></table>`;
-            } catch (error) {
-                showNotice("historyNotice", `No se pudo consultar el historial: ${error.message}`, "error");
-            }
-        }
-        async function loadBitacora() {
-            const id = selectedAuditorId();
-            if (!id) {
-                $("bitacoraTable").innerHTML = '<div class="empty">Selecciona un auditor para consultar su bitácora.</div>';
-                return;
-            }
-            try {
-                const data = await api(`/${encodeURIComponent(id)}/bitacora-validacion`);
-                const rows = Array.isArray(data) ? data : [];
-                if (!rows.length) { $("bitacoraTable").innerHTML = '<div class="empty">No hay registros en la bitácora.</div>'; return; }
-                const body = rows.map(row => `<tr>
-                    <td>${esc(row.fecha_validacion ? formatDateTime(row.fecha_validacion) : "-")}</td>
-                    <td>${esc(row.tipo_validacion || "-")}</td>
-                    <td>${row.resultado_validacion ? "\u2713" : "\u2717"}</td>
-                    <td>${esc(row.detalle_resultado || "-")}</td>
-                    <td>${esc(row.id_programacion || "-")}</td>
-                </tr>`).join("");
-                $("bitacoraTable").innerHTML = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Resultado</th><th>Detalle</th><th>Programación</th></tr></thead><tbody>${body}</tbody></table>`;
-            } catch (error) {
-                $("bitacoraTable").innerHTML = `<div class="empty">No se pudo consultar la bitácora: ${esc(error.message)}</div>`;
-            }
-        }
-
+        // "Disponibilidad semanal": solo consulta. El auditor la configura desde
+        // su perfil; el Coordinador ve lo declarado y lo ya ocupado.
         async function loadWeeklyProgramaciones() {
-            const cont = $("weeklyProgramacionTable");
-            if (!cont) return;
-            cont.innerHTML = '<div class="empty">Cargando programaciones...</div>';
-            try {
-                const data = await api(`/programaciones`);
-                let rows = Array.isArray(data.programaciones) ? data.programaciones : (Array.isArray(data.auditorias) ? data.auditorias : (Array.isArray(data) ? data : []));
-                // Filtrar solo vigentes (no canceladas)
-                rows = rows.filter(r => String(r.estado || '').toLowerCase() !== 'cancelada' && String(r.estado || '').toLowerCase() !== 'cancelado');
-                // Eliminar duplicados por id_programacion
-                const seen = new Set();
-                rows = rows.filter(r => {
-                    const key = r.id_programacion || r.id_solicitud + '|' + r.fecha_inicio;
-                    if (seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
-                });
-                if (!rows.length) {
-                    cont.innerHTML = '<div class="empty">No hay programaciones vigentes.</div>';
-                    return;
-                }
-                let html = '<table><thead><tr><th>Seleccionar</th><th>Solicitud</th><th>Inicio</th><th>Fin</th><th>Ciudad</th><th>Modalidad</th><th>Estado</th></tr></thead><tbody>';
-                html += rows.map(r => `
-                    <tr>
-                        <td><input type="radio" name="weeklyProgRadio" value="${r.id_programacion || ''}" data-inicio="${r.fecha_inicio || ''}" data-fin="${r.fecha_fin || ''}" data-auditor="${r.id_usuario || (r.auditores && r.auditores[0] ? r.auditores[0].id_usuario : '')}" onchange="onWeeklyProgSelect(this)"></td>
-                        <td>${esc(r.numero_radicado || r.id_solicitud || '-')}</td>
-                        <td>${esc(formatDateTime(r.fecha_inicio))}</td>
-                        <td>${esc(formatDateTime(r.fecha_fin))}</td>
-                        <td>${esc(r.ciudad_servicio || '-')}</td>
-                        <td>${esc(r.modalidad || '-')}</td>
-                        <td>${esc(r.estado || '-')}</td>
-                    </tr>
-                `).join('');
-                html += '</tbody></table>';
-                cont.innerHTML = html;
-            } catch (e) {
-                console.error('Error cargando programaciones:', e);
-                cont.innerHTML = '<div class="empty">Error cargando programaciones.</div>';
-            }
-        }
-        /* =========================================================
-           BLOQUEO DE FECHAS: PASOS 1, 2 Y 3
-        ========================================================= */
-        let programacionBloqueoActual = null;
-
-        function fechaIsoLocal(d) {
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        }
-
-        async function cargarProgramacionesBloqueo() {
-            const cont = $("blockedProgramaciones");
-            if (!cont) return;
-            cont.innerHTML = '<div class="empty">Cargando auditorías programadas...</div>';
-            try {
-                const data = await api(`/programaciones`);
-                let rows = Array.isArray(data.programaciones) ? data.programaciones : (Array.isArray(data.auditorias) ? data.auditorias : (Array.isArray(data) ? data : []));
-                rows = rows.filter(r => {
-                    const est = String(r.estado || "").toLowerCase();
-                    return !["cancelada", "cancelado", "finalizada", "finalizado"].includes(est);
-                });
-                // Agrupar por programacion para reunir todos sus auditores
-                // (una fila por auditor en la respuesta; el agrupado evita duplicados)
-                const grupos = {};
-                rows.forEach(r => {
-                    const key = r.id_programacion || r.id_solicitud + "|" + r.fecha_inicio;
-                    if (!grupos[key]) grupos[key] = { ...r, auditores: [] };
-                    grupos[key].auditores.push({
-                        id_usuario: r.id_usuario,
-                        nombre: r.auditor_nombre,
-                        correo: r.auditor_correo,
-                        tipo_doc: r.auditor_tipo_doc,
-                        num_doc: r.auditor_num_doc,
-                        rol: r.rol_auditor
-                    });
-                });
-                const agrupadas = Object.values(grupos);
-                window.__programacionesBloqueo = agrupadas;
-                if (!agrupadas.length) {
-                    cont.innerHTML = '<div class="empty">No hay auditorías programadas vigentes.</div>';
-                    return;
-                }
-                let html = '<table><thead><tr><th>Seleccionar</th><th>Solicitud</th><th>Empresa</th><th>Inicio</th><th>Fin</th><th>Ciudad</th><th>Auditores</th><th>Modalidad</th><th>Estado</th></tr></thead><tbody>';
-                html += agrupadas.map(r => `
-                    <tr>
-                        <td><input type="radio" name="blockedProgRadio" value="${r.id_programacion || ""}" onchange="seleccionarProgramacionBloqueo(this)"></td>
-                        <td>${esc(r.numero_radicado || r.id_solicitud || "-")}</td>
-                        <td>${esc(r.empresa_nombre || "-")}</td>
-                        <td>${esc(formatDateTime(r.fecha_inicio))}</td>
-                        <td>${esc(formatDateTime(r.fecha_fin))}</td>
-                        <td>${esc(r.ciudad_servicio || "-")}</td>
-                        <td>${(r.auditores || []).map(a => esc(a.nombre || "-")).join("<br>") || "-"}</td>
-                        <td>${esc(r.modalidad || "-")}</td>
-                        <td><span class="pill audit">${esc(r.estado || "-")}</span></td>
-                    </tr>
-                `).join("");
-                html += "</tbody></table>";
-                cont.innerHTML = html;
-            } catch (e) {
-                console.error("Error cargando programaciones para bloqueo:", e);
-                cont.innerHTML = '<div class="empty">Error cargando auditorías programadas.</div>';
-            }
-        }
-
-        function seleccionarProgramacionBloqueo(radio) {
-            const id = radio.value;
-            if (!id) return;
-            const rows = window.__programacionesBloqueo || [];
-            const row = rows.find(r => String(r.id_programacion) === String(id));
-            if (!row) return;
-            programacionBloqueoActual = row;
-
-            const inicio = new Date(row.fecha_inicio);
-            const fin = new Date(row.fecha_fin || row.fecha_inicio);
-            const fechas = [];
-            for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
-                const iso = fechaIsoLocal(d);
-                const esInicio = fechaIsoLocal(d) === fechaIsoLocal(inicio);
-                const esFin = fechaIsoLocal(d) === fechaIsoLocal(fin);
-                let hora = "Todo el día";
-                if (esInicio) hora = timeFromDateTime(row.fecha_inicio) + " - " + timeFromDateTime(row.fecha_fin);
-                else if (esFin) hora = timeFromDateTime(row.fecha_fin);
-                fechas.push({ iso, dia: dayLabel(d.getDay()), hora });
-            }
-
-            const cont = $("blockedFechas");
-            cont.innerHTML = fechas.map(f => `
-                <label class="fecha-item" data-fecha="${f.iso}">
-                    <input type="checkbox" class="fecha-check" value="${f.iso}" onchange="actualizarRangoBloqueo()">
-                    <span>
-                        <span class="fecha-dia">${esc(f.dia)} · ${esc(f.iso.split("-").reverse().join("/"))}</span>
-                        <span class="fecha-hora">${esc(f.hora)}</span>
-                    </span>
-                </label>
-            `).join("");
-
-            $("pasoFechasBloqueo").style.display = "block";
-            $("pasoDatosBloqueo").style.display = "block";
-            actualizarRangoBloqueo();
-            renderAuditoresBloqueo(row.auditores || []);
-            clearNotice("blockedNotice");
-            showNotice("blockedNotice", "Auditoría seleccionada. Marque las fechas que desea bloquear.", "ok");
-        }
-
-        function renderAuditoresBloqueo(auditores) {
-            const cont = $("blockedAuditores");
-            if (!cont) return;
-            if (!auditores.length) {
-                cont.innerHTML = '<span class="hint">La programación no tiene auditores asignados.</span>';
+            const tabla = $("weeklyConsultaTable");
+            const ocupado = $("weeklyOcupadoTable");
+            if (!tabla || !ocupado) return;
+            const id = selectedAuditorId();
+            if (!id) {
+                tabla.innerHTML = '<div class="empty">Selecciona un auditor para consultar su disponibilidad.</div>';
+                ocupado.innerHTML = '<div class="empty">Selecciona un auditor para ver sus auditorías programadas.</div>';
                 return;
             }
-            cont.innerHTML = auditores.map(a => `
-                <div class="auditor-bloqueo" data-auditor="${esc(a.id_usuario || "")}" data-nombre="${esc(a.nombre || "Auditor")}">
-                    <div class="auditor-datos">
-                        <div class="auditor-cabecera">
-                            <label class="auditor-check-wrap" title="Marque para bloquear a este auditor">
-                                <input type="checkbox" class="auditor-check" data-id="${esc(a.id_usuario || "")}" checked>
-                            </label>
-                            <div class="auditor-ident">
-                                <strong>${esc(a.nombre || "-")}</strong>
-                                <span class="cell-meta">${esc(a.tipo_doc || "")} ${esc(a.num_doc || "")}</span>
-                                <span class="cell-meta">${esc(a.correo || "")}</span>
-                                <span class="cell-meta">Rol: ${esc(a.rol || "Auditor")}</span>
-                                <span class="auditor-estado libre">Sin días bloqueados</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="auditor-bloqueos-lista"></div>
-                    <button type="button" class="btn btn-peligro-contorno btn-sm mini-block btn-desbloquear" disabled
-                        onclick="desbloquearTodos('${esc(a.id_usuario || "")}', '${esc(a.nombre || "Auditor")}')">
-                        Desbloquear todos
-                    </button>
-                </div>
-            `).join("");
-            cargarEstadoBloqueos();
-        }
-
-        function cubreRangoBloqueo(reg, desde, hasta) {
-            const fi = asDateInput(reg.fecha_inicio);
-            const ff = asDateInput(reg.fecha_fin) || fi;
-            if (!fi) return false;
-            return fi <= desde && (!ff || ff >= hasta);
-        }
-
-        async function cargarEstadoBloqueos() {
-            const hoy = localDateNow();
-            const checks = Array.from(document.querySelectorAll(".auditor-check"));
-            for (const chk of checks) {
-                const uid = chk.dataset.id;
-                const fila = chk.closest(".auditor-bloqueo");
-                if (!fila || !uid) continue;
-                const badge = fila.querySelector(".auditor-estado");
-                const btn = fila.querySelector(".btn-desbloquear");
-                const lista = fila.querySelector(".auditor-bloqueos-lista");
-                try {
-                    const data = await api(`/${encodeURIComponent(uid)}/disponibilidades?incluir_inactivos=false`);
-                    const regs = Array.isArray(data.disponibilidad) ? data.disponibilidad : [];
-                    // Solo los días bloqueados que aún no han pasado.
-                    const bloqueos = regs.filter(r =>
-                        String(r.tipo_registro || "").toLowerCase() === "bloqueo fecha" &&
-                        asDateInput(r.fecha_inicio) >= hoy
-                    ).sort((a, b) => asDateInput(a.fecha_inicio).localeCompare(asDateInput(b.fecha_inicio)));
-                    if (bloqueos.length) {
-                        if (badge) {
-                            badge.textContent = `${bloqueos.length} día(s) bloqueado(s)`;
-                            badge.className = "auditor-estado bloqueado";
-                        }
-                        if (btn) btn.disabled = false;
-                        if (lista) {
-                            lista.innerHTML = bloqueos.map(b => {
-                                const dia = asDateInput(b.fecha_inicio);
-                                return `<div class="bloqueo-dia">
-                                    <span class="bloqueo-fecha">${esc(dia)}</span>
-                                    <span class="bloqueo-motivo">${esc(b.motivo || "sin motivo")}</span>
-                                    <button type="button" class="btn btn-peligro-contorno btn-sm mini-block"
-                                        onclick="desbloquearAuditor('${esc(uid)}', '${esc(fila.dataset.nombre || "Auditor")}', '${esc(dia)}')">Desbloquear</button>
-                                </div>`;
-                            }).join("");
-                        }
-                    } else {
-                        if (badge) { badge.textContent = "Sin días bloqueados"; badge.className = "auditor-estado libre"; }
-                        if (btn) btn.disabled = true;
-                        if (lista) lista.innerHTML = "";
-                    }
-                } catch (e) {
-                    if (badge) { badge.textContent = "No se pudo consultar el estado"; badge.className = "auditor-estado"; }
-                    if (btn) btn.disabled = true;
-                }
-            }
-        }
-
-        async function cargarBloqueosVigentes() {
-            const cont = $("blockedExistentes");
-            if (!cont) return;
-            try {
-                const data = await api(`/bloqueos/vigentes`);
-                const bloqueos = Array.isArray(data.bloqueos) ? data.bloqueos : [];
-                if (!bloqueos.length) {
-                    cont.innerHTML = '<span class="hint">No hay días bloqueados registrados.</span>';
-                    return;
-                }
-                // Agrupar por auditor: una sola tarjeta con todos sus días bloqueados
-                const grupos = {};
-                bloqueos.forEach(b => {
-                    const key = b.id_usuario || b.nombre;
-                    if (!grupos[key]) {
-                        grupos[key] = {
-                            id_usuario: b.id_usuario,
-                            nombre: b.nombre,
-                            correo: b.correo,
-                            tipo_doc: b.tipo_doc,
-                            num_doc: b.num_doc,
-                            dias: []
-                        };
-                    }
-                    grupos[key].dias.push(b);
-                });
-                const lista = Object.values(grupos);
-                cont.innerHTML = lista.map(g => {
-                    const dias = g.dias
-                        .slice()
-                        .sort((a, b) => String(a.fecha_inicio).localeCompare(String(b.fecha_inicio)))
-                        .map(b => {
-                            const desde = String(b.fecha_inicio || "").slice(0, 10);
-                            const hasta = String(b.fecha_fin || "").slice(0, 10);
-                            const rango = desde === hasta ? desde : `${desde} al ${hasta}`;
-                            return `<div class="bloqueo-dia">
-                                <span class="bloqueo-fecha">${esc(rango)}</span>
-                                <span class="bloqueo-motivo">${esc(b.motivo || "sin motivo")}</span>
-                                <button type="button" class="btn btn-peligro-contorno btn-sm mini-block"
-                                    onclick="desbloquearVigente('${esc(g.id_usuario || "")}', '${esc(g.nombre || "Auditor")}', '${esc(desde)}')">
-                                    Desbloquear
-                                </button>
-                            </div>`;
-                        }).join("");
-                    return `
-                    <div class="auditor-bloqueo solo-datos">
-                        <div class="auditor-datos">
-                            <strong>${esc(g.nombre || "-")}</strong>
-                            <span class="cell-meta">${esc(g.tipo_doc || "")} ${esc(g.num_doc || "")}</span>
-                            <span class="cell-meta">${esc(g.correo || "")}</span>
-                            <span class="auditor-estado bloqueado">${g.dias.length} día(s) bloqueado(s)</span>
-                        </div>
-                        <div class="auditor-bloqueos-lista">${dias}</div>
-                    </div>`;
-                }).join("");
-            } catch (e) {
-                cont.innerHTML = '<span class="hint">No se pudieron cargar los bloqueos vigentes.</span>';
-            }
-        }
-
-        async function desbloquearVigente(idUsuario, nombre, fecha) {
-            if (!fecha) { showModal("El bloqueo no tiene fecha de referencia.", "error"); return; }
-            if (!confirm(`¿Desbloquear a ${nombre} el ${fecha}?`)) return;
-            try {
-                await api(`/${encodeURIComponent(idUsuario)}/no-disponible?fecha=${encodeURIComponent(fecha)}`, {
-                    method: "DELETE"
-                });
-                showModal("Día desbloqueado correctamente.", "success");
-                await cargarBloqueosVigentes();
-                await cargarEstadoBloqueos();
-                await loadAvailability();
-            } catch (error) {
-                showModal("No fue posible desbloquear: " + (error.message || ""), "error");
-            }
-        }
-
-        async function desbloquearAuditor(idUsuario, nombre, fecha) {
-            const dia = fecha || $("blockedFrom").value;
-            if (!dia) { showModal("Seleccione primero la fecha a desbloquear.", "error"); return; }
-            if (!confirm(`¿Desbloquear a ${nombre} el ${dia}?`)) return;
-            try {
-                await api(`/${encodeURIComponent(idUsuario)}/no-disponible?fecha=${encodeURIComponent(dia)}`, {
-                    method: "DELETE"
-                });
-                showModal("Día desbloqueado correctamente.", "success");
-                await cargarEstadoBloqueos();
-                await cargarBloqueosVigentes();
-                await loadAvailability();
-            } catch (error) {
-                showModal("No fue posible desbloquear: " + (error.message || ""), "error");
-            }
-        }
-
-        async function desbloquearTodos(idUsuario, nombre) {
-            const hoy = localDateNow();
-            try {
-                const data = await api(`/${encodeURIComponent(idUsuario)}/disponibilidades?incluir_inactivos=false`);
-                const regs = Array.isArray(data.disponibilidad) ? data.disponibilidad : [];
-                const bloqueos = regs.filter(r =>
-                    String(r.tipo_registro || "").toLowerCase() === "bloqueo fecha" &&
-                    asDateInput(r.fecha_inicio) >= hoy
-                );
-                if (!bloqueos.length) { showModal("No hay días bloqueados para desbloquear.", "error"); return; }
-                if (!confirm(`¿Desbloquear todos los días bloqueados de ${nombre} (${bloqueos.length})?`)) return;
-                for (const b of bloqueos) {
-                    await api(`/${encodeURIComponent(idUsuario)}/no-disponible?fecha=${encodeURIComponent(asDateInput(b.fecha_inicio))}`, {
-                        method: "DELETE"
-                    });
-                }
-                showModal("Días bloqueados eliminados correctamente.", "success");
-                await cargarEstadoBloqueos();
-                await cargarBloqueosVigentes();
-                await loadAvailability();
-            } catch (error) {
-                showModal("No fue posible desbloquear: " + (error.message || ""), "error");
-            }
-        }
-
-        function actualizarRangoBloqueo() {
-            const marcadas = Array.from(document.querySelectorAll(".fecha-check:checked")).map(c => c.value).sort();
-            const desde = $("blockedFrom");
-            const hasta = $("blockedUntil");
-            if (!desde || !hasta) return;
-            if (!marcadas.length) {
-                desde.value = "";
-                hasta.value = "";
-                return;
-            }
-            desde.value = marcadas[0];
-            hasta.value = marcadas[marcadas.length - 1];
-            document.querySelectorAll(".fecha-item").forEach(item => {
-                const cb = item.querySelector(".fecha-check");
-                item.classList.toggle("seleccionada", Boolean(cb && cb.checked));
-            });
-            // Refrescar el estado de bloqueo de cada auditor segun el rango.
-            if (typeof cargarEstadoBloqueos === "function") cargarEstadoBloqueos();
-        }
-
-        function limpiarBloqueo() {
-            programacionBloqueoActual = null;
-            $("pasoFechasBloqueo").style.display = "none";
-            $("pasoDatosBloqueo").style.display = "none";
-            const cont = $("blockedFechas");
-            if (cont) cont.innerHTML = "";
-            ["blockedFrom", "blockedUntil", "blockedReason"].forEach(id => { const el = $(id); if (el) el.value = ""; });
-            const check = $("blockedCancelarProgramacion");
-            if (check) check.checked = false;
-            document.querySelectorAll('input[name="blockedProgRadio"]').forEach(r => { r.checked = false; });
-        }
-
-        $("blockedForm").addEventListener("submit", async (event) => {
-            event.preventDefault();
-            // Los auditores se toman de la auditoría programada seleccionada
-            // y solo se bloquean los que estén marcados.
-            const auditores = (programacionBloqueoActual && programacionBloqueoActual.auditores) || [];
-            const fallback = selectedAuditorId();
-            let destinos = [];
-            if (auditores.length) {
-                destinos = auditores.filter(a => {
-                    const chk = document.querySelector(`.auditor-check[data-id="${a.id_usuario}"]`);
-                    return chk && chk.checked;
-                }).map(a => a.id_usuario).filter(Boolean);
-                if (!destinos.length) {
-                    showModal("Seleccione al menos un auditor para bloquear.", "error");
-                    return;
-                }
-            } else if (fallback) {
-                destinos = [fallback];
+            tabla.innerHTML = '<div class="empty">Consultando disponibilidad...</div>';
+            ocupado.innerHTML = '<div class="empty">Consultando auditorías...</div>';
+            clearNotice("weeklyNotice");
+            const [disp, aud] = await Promise.allSettled([
+                api(`/${encodeURIComponent(id)}/disponibilidades?incluir_inactivos=false`),
+                api(`/${encodeURIComponent(id)}/auditorias-programadas`)
+            ]);
+            if (disp.status === "fulfilled") {
+                const filas = (disp.value.disponibilidad || []).slice().sort((a, b) =>
+                    (Number(a.dia_semana) || 99) - (Number(b.dia_semana) || 99) ||
+                    String(a.fecha_inicio || "").localeCompare(String(b.fecha_inicio || "")));
+                tabla.innerHTML = filas.length
+                    ? `<table><thead><tr><th>Tipo</th><th>Día</th><th>Horario</th><th>Vigencia</th><th>Motivo</th></tr></thead><tbody>${filas.map((row) => {
+                        const bloqueo = availabilityTypeName(row) === "No disponible";
+                        return `<tr>
+                            <td><span class="pill ${bloqueo ? "blocked" : ""}">${esc(row.tipo_registro || availabilityTypeName(row))}</span></td>
+                            <td>${esc(bloqueo ? "Fecha completa" : (row.dia_semana !== null && row.dia_semana !== undefined ? dayLabel(row.dia_semana) : "Todos los días"))}</td>
+                            <td>${esc(asTimeInput(row.hora_inicio) || "Todo el día")}${row.hora_fin ? " – " + esc(asTimeInput(row.hora_fin)) : ""}</td>
+                            <td>${esc(asDateInput(row.fecha_inicio) || "—")} → ${esc(asDateInput(row.fecha_fin) || "sin fecha final")}</td>
+                            <td>${esc(row.motivo || "—")}</td>
+                        </tr>`;
+                    }).join("")}</tbody></table>`
+                    : '<div class="empty">El auditor no ha declarado disponibilidad vigente.</div>';
             } else {
-                showModal("Seleccione una auditoría programada para registrar el bloqueo.", "error");
-                return;
+                tabla.innerHTML = `<div class="empty">No se pudo consultar la disponibilidad: ${esc(disp.reason?.message || "")}</div>`;
             }
-            const desde = $("blockedFrom").value;
-            const hasta = $("blockedUntil").value || null;
-            const motivo = $("blockedReason").value.trim();
-            if (!desde) { showModal("Indique la fecha desde del bloqueo.", "error"); return; }
-            if (motivo.length < 3) { showModal("Indique el motivo del bloqueo.", "error"); return; }
-            const cancelar = $("blockedCancelarProgramacion").checked;
-            const idProgramacion = programacionBloqueoActual ? programacionBloqueoActual.id_programacion : null;
-            $("blockedSave").disabled = true;
-            const resultados = [];
-            try {
-                for (const idUsuario of destinos) {
-                    const body = {
-                        fecha_inicio: desde,
-                        fecha_fin: hasta,
-                        motivo: motivo,
-                        id_programacion: idProgramacion,
-                        cancelar_programacion: cancelar
-                    };
-                    try {
-                        const res = await api(`/${encodeURIComponent(idUsuario)}/no-disponible`, {
-                            method: "POST",
-                            body: JSON.stringify(body)
-                        });
-                        resultados.push({ ok: true, mensaje: (res && res.mensaje) || "Bloqueo registrado." });
-                    } catch (error) {
-                        let detalle = error.message || "Error al bloquear.";
-                        try {
-                            const parsed = JSON.parse(detalle);
-                            if (parsed && parsed.mensaje) {
-                                detalle = parsed.mensaje +
-                                    (parsed.conflicto ? ` (Auditoría: ${parsed.conflicto.empresa_nombre || ""} ${parsed.conflicto.fecha_inicio ? formatDateTime(parsed.conflicto.fecha_inicio) : ""})` : "");
-                            }
-                        } catch (e) { /* mensaje simple */ }
-                        resultados.push({ ok: false, mensaje: detalle });
-                    }
-                }
-                const ok = resultados.filter(r => r.ok).length;
-                const fallidos = resultados.length - ok;
-                if (ok > 0) {
-                    showModal(
-                        `Bloqueo registrado para ${ok} auditor(es)${fallidos ? ` · ${fallidos} con error` : ""}.`,
-                        fallidos ? "error" : "success"
-                    );
-                } else {
-                    showModal("No fue posible registrar el bloqueo: " + (resultados[0] ? resultados[0].mensaje : ""), "error");
-                }
-                limpiarBloqueo();
-                await cargarProgramacionesBloqueo();
-            await cargarBloqueosVigentes();
-                await loadAvailability();
-            } catch (error) {
-                showModal("No fue posible registrar el bloqueo: " + (error.message || ""), "error");
-            } finally {
-                $("blockedSave").disabled = false;
+            if (aud.status === "fulfilled") {
+                const filas = (aud.value.auditorias || []).filter((row) => !isTerminalSchedule({ estado: row.estado_programacion || row.estado }));
+                ocupado.innerHTML = filas.length
+                    ? `<table><thead><tr><th>Solicitud</th><th>Empresa</th><th>Inicio</th><th>Fin</th><th>Modalidad</th><th>Estado</th></tr></thead><tbody>${filas.map((row) => `<tr>
+                        <td>${esc(row.numero_radicado || row.id_solicitud || "—")}</td>
+                        <td>${esc(row.empresa_nombre || "—")}</td>
+                        <td>${esc(formatDateTime(row.fecha_inicio))}</td>
+                        <td>${esc(formatDateTime(row.fecha_fin))}</td>
+                        <td>${esc(row.modalidad || "—")}</td>
+                        <td><span class="pill audit">${esc(row.estado_programacion || row.estado || "—")}</span></td>
+                    </tr>`).join("")}</tbody></table>`
+                    : '<div class="empty">No tiene auditorías vigentes.</div>';
+            } else {
+                ocupado.innerHTML = `<div class="empty">No se pudieron consultar las auditorías: ${esc(aud.reason?.message || "")}</div>`;
             }
-        });
-
-        $("loadMonth").addEventListener("click", () => { loadMonth(); });
-        $("clearMonthFilters").addEventListener("click", () => {
-            $("cityFilter").value = "";
-            $("modalityFilter").value = "";
-            inicializarFiltrosMes(true);
-            loadMonth();
-        });
-        // Aplicación automática de filtros
-        ["monthSelect", "yearSelect", "modalityFilter"].forEach(id => {
-            const el = $(id);
-            if (el) el.addEventListener("change", loadMonthAuto);
-        });
-        const cityInput = $("cityFilter");
-        if (cityInput) cityInput.addEventListener("input", loadMonthAuto);
-
-        $("blockedReset").addEventListener("click", () => {
-            limpiarBloqueo();
-            clearNotice("blockedNotice");
-        });
-
-        const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
-        const DIAS_LABORABLES = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
-        const MAX_DIAS_RANGO = 7;
-
-        function limitarRangoSemanal(desde, hasta) {
-            if (!desde) return hasta || "";
-            const d = new Date(desde + "T12:00:00");
-            const limite = new Date(d);
-            limite.setDate(limite.getDate() + (MAX_DIAS_RANGO - 1));
-            const limiteIso = limite.toISOString().slice(0, 10);
-            if (!hasta) return limiteIso;
-            const h = new Date(hasta + "T12:00:00");
-            return h > limite ? limiteIso : hasta;
         }
+        /* ==========================================================
+           SECCIÓN 3: CALENDARIO DE AUDITORÍAS (Coordinador)
+           El calendario (mes/semana, anterior/hoy/siguiente, "+N más")
+           es el componente común de static/mi_disponibilidad.js; aquí
+           solo se cargan los datos y se pintan las auditorías.
+           ========================================================== */
+        const ESTADOS_TERMINALES_CAL = ["CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO"];
+        const auditoriasCalendario = new Map(); // id_programacion -> auditoría
+        let calendarioMes = null;
+        let temporizadorCiudad = null;
 
-        function diasDeLaSemanaEnRango(desde, hasta) {
-            const enRango = new Set();
-            if (!desde) return enRango;
-            const start = new Date(desde + "T12:00:00");
-            const end = new Date((hasta || desde) + "T12:00:00");
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                enRango.add(DIAS_SEMANA[(d.getDay() + 6) % 7]);
-            }
-            return enRango;
-        }
-
-        function actualizarDiasPorRango() {
-            const desde = $("weeklyFrom").value;
-            let hasta = $("weeklyUntil").value || desde;
-            if (!desde) return;
-            // El rango no puede superar una semana (siempre se deja acotado).
-            const hastaLimitado = limitarRangoSemanal(desde, $("weeklyUntil").value);
-            if (hastaLimitado !== $("weeklyUntil").value) {
-                $("weeklyUntil").value = hastaLimitado;
-            }
-            hasta = hastaLimitado;
-            const diasEnRango = diasDeLaSemanaEnRango(desde, hasta);
-            DIAS_SEMANA.forEach(dia => {
-                const cb = document.getElementById(`day-${dia}`);
-                const startInput = document.getElementById(`start-${dia}`);
-                const endInput = document.getElementById(`end-${dia}`);
-                if (!cb) return;
-                // El domingo esta siempre deshabilitado.
-                if (dia === "domingo") {
-                    cb.checked = false;
-                    cb.disabled = true;
-                    if (startInput) startInput.disabled = true;
-                    if (endInput) endInput.disabled = true;
-                    return;
-                }
-                if (!diasEnRango.has(dia)) {
-                    cb.checked = false;
-                    cb.disabled = true;
-                    if (startInput) startInput.disabled = true;
-                    if (endInput) endInput.disabled = true;
-                    return;
-                }
-                cb.disabled = false;
-                if (startInput) startInput.disabled = false;
-                if (endInput) endInput.disabled = false;
-                // Sábado y domingo nunca se marcan automáticamente.
-                if (DIAS_LABORABLES.includes(dia)) {
-                    cb.checked = true;
-                } else {
-                    cb.checked = false;
-                }
-            });
-        }
-
-        function onWeeklyProgSelect(radio) {
-            const inicio = radio.dataset.inicio;
-            const fin = radio.dataset.fin;
-            if (inicio) $("weeklyFrom").value = asDateInput(inicio);
-            if (fin) $("weeklyUntil").value = asDateInput(fin);
-
-            // Limitar el rango a una semana
-            if (inicio) {
-                const desdeIso = asDateInput(inicio);
-                const hastaIso = fin ? asDateInput(fin) : "";
-                const limitado = limitarRangoSemanal(desdeIso, hastaIso);
-                $("weeklyFrom").value = desdeIso;
-                $("weeklyUntil").value = limitado;
-            }
-            // Calcular días dentro del rango (fin de semana no se marca solo)
-            const diasEnRango = diasDeLaSemanaEnRango(
-                inicio ? asDateInput(inicio) : "",
-                fin ? asDateInput(fin) : ""
-            );
-            // Establecer horas desde la programación
-            let horaInicio = '';
-            let horaFin = '';
-            if (inicio) {
-                const t = new Date(inicio);
-                horaInicio = t.toTimeString().slice(0,5);
-            }
-            if (fin) {
-                const t = new Date(fin);
-                horaFin = t.toTimeString().slice(0,5);
-            }
-
-            DIAS_SEMANA.forEach(dia => {
-                const cb = document.getElementById(`day-${dia}`);
-                const startInput = document.getElementById(`start-${dia}`);
-                const endInput = document.getElementById(`end-${dia}`);
-                if (!cb) return;
-                // El domingo esta siempre deshabilitado.
-                if (dia === "domingo") {
-                    cb.checked = false;
-                    cb.disabled = true;
-                    if (startInput) { startInput.disabled = true; }
-                    if (endInput) { endInput.disabled = true; }
-                    return;
-                }
-                if (!diasEnRango.has(dia)) {
-                    cb.checked = false;
-                    cb.disabled = true;
-                    if (startInput) { startInput.disabled = true; }
-                    if (endInput) { endInput.disabled = true; }
-                    return;
-                }
-                cb.disabled = false;
-                if (startInput) { startInput.disabled = false; if (horaInicio) startInput.value = horaInicio; }
-                if (endInput) { endInput.disabled = false; if (horaFin) endInput.value = horaFin; }
-                if (DIAS_LABORABLES.includes(dia)) {
-                    cb.checked = true;
-                } else {
-                    cb.checked = false;
-                }
-            });
-        }
-
-        $("weeklyForm").addEventListener("submit", async (event) => {
-            event.preventDefault();
-            let id = selectedAuditorId();
-            const radio = document.querySelector('input[name="weeklyProgRadio"]:checked');
-            if (!id && radio && radio.dataset.auditor) {
-                id = radio.dataset.auditor;
-            }
-            if (!id) { showModal("Selecciona un auditor o una programación con auditor.", "error"); return; }
-            const desde = $("weeklyFrom").value;
-            const hasta = $("weeklyUntil").value || null;
-            const motivo = $("weeklyReason").value || "Disponibilidad semanal";
-            const dias = [];
-            ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].forEach(dia => {
-                const cb = document.getElementById(`day-${dia}`);
-                if (cb && cb.checked) {
-                    dias.push({
-                        dia_semana: dia,
-                        hora_inicio: document.getElementById(`start-${dia}`).value || "08:00",
-                        hora_fin: document.getElementById(`end-${dia}`).value || "17:00",
-                    });
-                }
-            });
-            if (!desde) { showModal("La fecha Vigente desde es obligatoria.", "error"); return; }
-            if (dias.length === 0) { showModal("Selecciona al menos un día.", "error"); return; }
-            try {
-                await api(`/${encodeURIComponent(id)}/disponibilidad-semanal`, {
-                    method: "POST",
-                    body: JSON.stringify({ fecha_inicio: desde, fecha_fin: hasta, dias, motivo }),
-                });
-                showModal("Disponibilidad guardada correctamente.", "success");
-                // Si hay programación seleccionada, actualizar y notificar
-                const radio = document.querySelector('input[name="weeklyProgRadio"]:checked');
-                if (radio && radio.value) {
-                    const progId = radio.value;
-                    const inicio = radio.dataset.inicio;
-                    const fin = radio.dataset.fin;
-                    const horaInicio = inicio ? new Date(inicio).toTimeString().slice(0,8) : "08:00:00";
-                    const horaFin = fin ? new Date(fin).toTimeString().slice(0,8) : "17:00:00";
-                    const fechaInicio = `${desde}T${horaInicio}`;
-                    const fechaFin = `${(hasta || desde)}T${horaFin}`;
-                    try {
-                        await api(`/programacion/${progId}`, {
-                            method: "PUT",
-                            body: JSON.stringify({
-                                fecha_inicio: fechaInicio,
-                                fecha_fin: fechaFin,
-                                observacion: motivo,
-                            }),
-                        });
-                        showModal("Disponibilidad guardada, programación actualizada y auditores notificados.", "success");
-                    } catch (e) {
-                        showModal("Disponibilidad guardada, pero no se pudo actualizar la programación: " + e.message, "error");
-                    }
-                }
-                await loadWeeklyProgramaciones();
-            } catch (error) {
-                showModal(`Error: ${error.message}`, "error");
-            }
-        });
-
-        function renderAudits(items) {
-            if (!items.length) { $("monthlyAuditTable").innerHTML = '<div class="empty">No hay auditorías para los filtros seleccionados.</div>'; return; }
-            const rows = items.map(item => `<tr><td>${esc(item.numero_radicado || item.id_solicitud || "—")}</td><td>${esc(item.empresa_nombre || "—")}</td><td>${esc(item.auditor_nombre || "—")}<br><span class="hint">${esc(item.rol_auditor || "Auditor")}</span></td><td>${esc(item.direccion_servicio || "—")}<br><span class="hint">${esc(item.ciudad_servicio || "")}</span></td><td>${esc(formatDateTime(item.fecha_inicio))}</td><td>${esc(formatDateTime(item.fecha_fin))}</td><td>${esc(item.modalidad || "—")}</td><td><span class="pill audit">${esc(item.estado_programacion || item.estado || "—")}</span></td></tr>`).join("");
-            $("monthlyAuditTable").innerHTML = `<table><thead><tr><th>Solicitud</th><th>Empresa</th><th>Auditor</th><th>Lugar</th><th>Inicio</th><th>Fin</th><th>Modalidad</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
-        }
-        function renderMonth(data) {
-            const days = data.dias || [];
-            if (!days.length) { $("monthlyCalendar").innerHTML = '<div class="empty" style="grid-column:1/-1;">No hay información mensual.</div>'; renderAudits([]); return; }
-            const firstDay = new Date(`${days[0].fecha}T12:00:00`).getDay();
-            const mondayOffset = (firstDay + 6) % 7;
-            let html = '<div class="calendar" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;grid-column:1/-1;"><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Lun</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Mar</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Mié</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Jue</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Vie</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Sáb</div><div class="dayname" style="text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:6px 4px;text-transform:uppercase;">Dom</div>';
-            for (let i = 0; i < mondayOffset; i++) html += '<div class="day blank" style="border:0;background:transparent;"></div>';
-            const allAudits = [];
-            const hoyIso = localDateNow();
-            // Expansión de auditorías en el frontend (compatible con cualquier backend):
-            // una visita cubre todos los días entre su fecha de inicio y fin.
-            const todasAud = data.auditorias || [];
-            const cubreFecha = (a, iso) => {
-                const ini = String(a.fecha_inicio || "").slice(0, 10);
-                const fin = String(a.fecha_fin || "").slice(0, 10) || ini;
-                return ini && fin && ini <= iso && iso <= fin;
+        function filtrosCalendario() {
+            return {
+                auditor: $("monthAuditor").value,
+                ciudad: $("cityFilter").value.trim(),
+                modalidad: $("modalityFilter").value,
+                canceladas: $("monthCanceladas").checked
             };
-            const auditoriasDelDia = d => {
-                if ((d.auditorias || []).length) return d.auditorias;
-                return todasAud.filter(a => cubreFecha(a, d.fecha));
-            };
-            days.forEach(d => {
-                const auditoriasDia = auditoriasDelDia(d);
-                const esFuturo = String(d.fecha) >= hoyIso;
-                const tieneAuditoria = auditoriasDia.length > 0;
-                const marcar = esFuturo && tieneAuditoria;
-                const estiloDia = marcar
-                    ? "min-height:126px;border:1px solid #f0a9a9;border-radius:9px;padding:8px;background:#f8fafc;"
-                    : "min-height:126px;border:1px solid var(--line);border-radius:9px;padding:8px;background:#fff;";
-                html += `<div class="day" style="${estiloDia}"><div class="num" style="font-weight:800;font-size:13px;margin-bottom:6px;color:${marcar ? "#b42318" : "var(--sena-green-dark)"};">${Number(d.fecha.slice(-2))}</div>`;
-                // Las auditorías que cubren el día se registran (sin repetir) para la tabla.
-                auditoriasDelDia(d).forEach(a => {
-                    const clave = `${a.id_programacion}|${a.id_usuario}`;
-                    if (!allAudits.some(x => `${x.id_programacion}|${x.id_usuario}` === clave)) allAudits.push(a);
-                });
-                if (marcar) {
-                    // Día con auditoría asignada: solo se muestra ese mensaje.
-                    html += `<div style="font-size:10px;font-weight:800;color:#b42318;background:#fee2e2;border:1px solid #fbd5d5;border-radius:5px;padding:3px 7px;margin-bottom:5px;display:inline-block;">Con auditoría asignada</div>`;
-                } else {
-                    // Días sin auditoría: un único estado de disponibilidad.
-                    const registros = d.disponibilidad || [];
-                    const hayBloqueo = registros.some(r => availabilityTypeName(r) === "No disponible");
-                    const hayDisponible = registros.length > 0;
-                    if (hayBloqueo) {
-                        html += `<div class="event" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 7px;border-radius:6px;background:#f1f5f9;color:#8a2020;border:1px solid #f6d4d1;">No disponible</div>`;
-                    } else if (hayDisponible) {
-                        html += `<div class="event" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 7px;border-radius:6px;background:#f1f5f9;color:#3f7d4a;border:1px solid #e4f1dc;">Disponible</div>`;
-                    }
-                    auditoriasDelDia(d).forEach(a => {
-                        html += `<div class="event visit" style="font-size:11px;line-height:1.35;margin:4px 0;padding:5px 7px;border-radius:6px;background:#e8f1ff;color:#2b4e93;">Auditoría<small style="display:block;opacity:.85;margin-top:2px;">${esc(timeFromDateTime(a.fecha_inicio) || formatDateTime(a.fecha_inicio))} · ${esc(a.modalidad || "")}</small></div>`;
-                    });
-                }
-                html += '</div>';
-            });
-            html += '</div>';
-            $("monthlyCalendar").innerHTML = html;
-            renderAudits(allAudits);
         }
-        function inicializarFiltrosMes(forzar = false) {
-            const ahora = new Date();
-            const mes = $("monthSelect");
-            const anio = $("yearSelect");
-            if (mes && (forzar || !mes.value)) mes.value = String(ahora.getMonth() + 1);
-            if (anio && (forzar || !anio.value)) anio.value = String(ahora.getFullYear());
+        function llenarAuditoresCalendario() {
+            const select = $("monthAuditor");
+            const actual = select.value;
+            select.innerHTML = '<option value="">Todos los auditores</option>' + (auditors || [])
+                .map(a => `<option value="${esc(a.id_usuario)}">${esc(a.nombre || "Auditor")}</option>`).join("");
+            if (actual && [...select.options].some(o => o.value === actual)) select.value = actual;
         }
-
-        let monthTimer = null;
-
-        function loadMonthAuto() {
-            clearTimeout(monthTimer);
-            monthTimer = setTimeout(() => { loadMonth(); }, 350);
+        function horaCal(valor) {
+            const t = String(valor || "");
+            return t.length >= 16 ? t.slice(11, 16) : "";
         }
-
-        async function loadMonth() {
-            clearNotice("monthNotice");
-            const month = Number($("monthSelect").value), year = Number($("yearSelect").value);
-            if (!month || !year) {
-                showNotice("monthNotice", "Indica el mes y el año a consultar.", "error");
-                return;
-            }
-            const query = new URLSearchParams({ mes: String(month), anio: String(year) });
-            if ($("cityFilter").value.trim()) query.set("ciudad", $("cityFilter").value.trim());
-            if ($("modalityFilter").value) query.set("modalidad", $("modalityFilter").value);
-            const btn = $("loadMonth");
-            if (btn) { btn.disabled = true; btn.textContent = "Consultando..."; }
+        function claseEstadoCal(estado) {
+            const e = String(estado || "").trim().toUpperCase();
+            if (e.startsWith("CANCELAD")) return "md-bloqueado";
+            if (e.startsWith("FINALIZAD")) return "md-finalizada";
+            return "md-ocupado";
+        }
+        async function cargarMesCalendario(anio, mes) {
+            const f = filtrosCalendario();
+            const query = new URLSearchParams({ anio: String(anio), mes: String(mes) });
+            if (f.auditor) query.set("id_usuario", f.auditor);
+            if (f.ciudad) query.set("ciudad", f.ciudad);
+            if (f.modalidad) query.set("modalidad", f.modalidad);
+            if (f.canceladas) query.set("incluir_canceladas", "true");
             try {
                 const data = await api(`/disponibilidad-mensual-general?${query}`);
-                renderMonth(data);
-                const totalAud = Array.isArray(data.auditorias) ? data.auditorias.length : 0;
-                showNotice("monthNotice", `Mostrando ${monthLabel(month)} ${year} · ${totalAud} asignación(es) de auditoría.`, "ok");
+                (data.auditorias || []).forEach(a => auditoriasCalendario.set(String(a.id_programacion), a));
+                const porFecha = new Map();
+                (data.dias || []).forEach(d => porFecha.set(d.fecha, d));
+                const total = (data.auditorias || []).length;
+                const nombreMes = new Date(anio, mes - 1, 1).toLocaleDateString("es-CO", { month: "long", year: "numeric" });
+                showNotice("monthNotice", `${nombreMes}: ${total} auditoría(s) con los filtros aplicados.`, "ok");
+                return porFecha;
             } catch (error) {
-                showNotice("monthNotice", `No se pudo cargar el mes: ${error.message}`, "error");
-            } finally {
-                if (btn) { btn.disabled = false; btn.textContent = "Ver mes"; }
+                showNotice("monthNotice", `No se pudo cargar el calendario: ${error.message}`, "error");
+                throw error;
             }
         }
-
-        function monthLabel(mes) {
-            const nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-            return nombres[Number(mes) - 1] || "";
+        // Chips de un día: primero las auditorías (botones que abren el
+        // detalle), luego bloqueos y disponibilidad.
+        function chipsCalendario(dia, detallado, fecha) {
+            const partes = [];
+            const conAuditor = Boolean(filtrosCalendario().auditor);
+            (dia.auditorias || []).map(id => auditoriasCalendario.get(String(id))).filter(Boolean).forEach(a => {
+                const ini = String(a.fecha_inicio || "").slice(0, 10);
+                const fin = String(a.fecha_fin || "").slice(0, 10) || ini;
+                let cuando, corto;
+                if (ini === fecha && fin === fecha) { cuando = `${horaCal(a.fecha_inicio)}–${horaCal(a.fecha_fin)}`; corto = horaCal(a.fecha_inicio); }
+                else if (ini === fecha) { cuando = `Desde ${horaCal(a.fecha_inicio)} (continúa)`; corto = horaCal(a.fecha_inicio); }
+                else if (fin === fecha) { cuando = `Hasta ${horaCal(a.fecha_fin)}`; corto = `→${horaCal(a.fecha_fin)}`; }
+                else { cuando = "Todo el día (en curso)"; corto = "↔"; }
+                const lugar = [a.empresa_nombre || "Empresa", a.sede_nombre].filter(Boolean).join(" · ");
+                const estado = a.estado_programacion || "";
+                const equipo = (a.equipo || []).map(e => e.nombre).filter(Boolean).join(", ");
+                const descripcion = `${a.numero_radicado || "Auditoría"} · ${lugar} · ${cuando} · ${a.ciudad || ""} · ${a.modalidad || ""} · ${estado}`;
+                const texto = detallado
+                    ? `${cuando} · ${lugar}${a.ciudad ? " · " + a.ciudad : ""}${a.modalidad ? " · " + a.modalidad : ""} · ${estado}${equipo ? " · Equipo: " + equipo : ""}`
+                    : `${corto} ${lugar}`;
+                partes.push(`<button type="button" class="md-chip ${claseEstadoCal(estado)}" data-cal-aud="${esc(a.id_programacion)}" aria-haspopup="dialog" title="${esc(descripcion)}" aria-label="${esc("Ver detalle: " + descripcion)}">${esc(texto)}</button>`);
+            });
+            if (conAuditor) {
+                if (dia.bloqueado) {
+                    const motivo = (dia.disponibilidad || [])[0]?.motivo || "";
+                    partes.push(`<span class="md-chip md-bloqueado" title="${esc("Fecha bloqueada " + motivo)}">Bloqueado${detallado && motivo ? ": " + esc(motivo) : ""}</span>`);
+                } else {
+                    (dia.disponibilidad || []).forEach(r => {
+                        const franja = r.hora_inicio ? `${asTimeInput(r.hora_inicio)}–${asTimeInput(r.hora_fin)}` : "Todo el día";
+                        partes.push(`<span class="md-chip md-libre" title="${esc((r.tipo_registro || "Disponible") + " " + franja)}">${esc(detallado ? `Disponible ${franja} (${r.tipo_registro || "declarado"})` : franja)}</span>`);
+                    });
+                }
+            } else {
+                if (dia.auditores_bloqueados) {
+                    const nombres = (dia.nombres_bloqueados || []).join(", ");
+                    partes.push(`<span class="md-chip md-bloqueado" title="${esc("Fecha bloqueada por: " + nombres)}">${esc(detallado ? `Fecha bloqueada por: ${nombres}` : `${dia.auditores_bloqueados} bloq.`)}</span>`);
+                }
+                if (dia.auditores_disponibles) {
+                    partes.push(`<span class="md-chip md-libre" title="${esc(dia.auditores_disponibles + " auditor(es) con disponibilidad declarada")}">${esc(detallado ? `${dia.auditores_disponibles} auditor(es) con disponibilidad declarada` : `${dia.auditores_disponibles} disp.`)}</span>`);
+                }
+            }
+            if (!partes.length && detallado) partes.push('<span class="md-vacio">Sin auditorías</span>');
+            return partes;
         }
+
+        function abrirDetalleAuditoria(id, origen) {
+            const a = auditoriasCalendario.get(String(id));
+            if (!a) return;
+            const estado = a.estado_programacion || "—";
+            const terminal = ESTADOS_TERMINALES_CAL.includes(String(estado).trim().toUpperCase());
+            const equipo = a.equipo || [];
+            const item = (etiqueta, valor, completo) =>
+                `<div class="detail-item${completo ? " full" : ""}"><span>${esc(etiqueta)}</span><strong>${esc(valor || "—")}</strong></div>`;
+            const observaciones = [
+                ["Observación de la programación", a.motivo_reprogramacion],
+                ["Solicitud de reprogramación del auditor", a.estado_solicitud_reprogramacion
+                    ? `${a.estado_solicitud_reprogramacion}${a.motivo_solicitud_reprogramacion ? ": " + a.motivo_solicitud_reprogramacion : ""}` : ""],
+                ["Motivo de cancelación", a.motivo_cancelacion],
+                ["Observaciones de cierre", a.observaciones_finalizacion]
+            ].filter(([, v]) => v);
+            $("programacionModalBody").innerHTML = `
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Datos de la solicitud</h4>
+                    <div class="detail-grid three">
+                        ${item("Solicitud / radicado", a.numero_radicado || a.id_solicitud)}
+                        ${item("Empresa", a.empresa_nombre)}
+                        ${item("NIT", a.empresa_nit)}
+                    </div>
+                </div>
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Lugar y modalidad</h4>
+                    <div class="detail-grid">
+                        ${item("Sede", a.sede_nombre || "Sin sede registrada")}
+                        ${item("Ciudad / municipio", a.ciudad)}
+                        ${item("Dirección", a.direccion, true)}
+                        ${item("Modalidad", a.modalidad)}
+                    </div>
+                </div>
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Fecha y horario</h4>
+                    <div class="detail-grid">
+                        ${item("Inicio", formatDateTime(a.fecha_inicio))}
+                        ${item("Fin", formatDateTime(a.fecha_fin))}
+                        <div class="detail-item full"><span>Estado</span><strong><span class="pill ${terminal ? "blocked" : "audit"}">${esc(estado)}</span></strong></div>
+                    </div>
+                </div>
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Equipo auditor (${equipo.length})</h4>
+                    ${equipo.length
+                        ? `<ul class="cal-equipo">${equipo.map(e => `<li><span><strong>${esc(e.nombre || "Auditor")}</strong> <span class="cell-meta">${esc(e.correo || "")}</span></span><span>${esc(e.rol_auditor || "Auditor")} · ${e.confirmado ? "Confirmó" : "Sin confirmar"}</span></li>`).join("")}</ul>`
+                        : '<p class="cell-meta">Sin auditores registrados.</p>'}
+                </div>
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Observaciones</h4>
+                    ${observaciones.length
+                        ? `<div class="detail-grid">${observaciones.map(([e, v]) => item(e, v, true)).join("")}</div>`
+                        : '<p class="cell-meta">Sin observaciones registradas.</p>'}
+                </div>
+                ${!terminal && a.id_solicitud ? `
+                <div class="modal-section-group">
+                    <h4 class="modal-section-label">Acciones</h4>
+                    <div class="cal-acciones-modal">
+                        <a class="btn btn-primario btn-sm" href="/consultar-agenda-auditor?solicitud=${encodeURIComponent(a.id_solicitud)}#schedule">Ir a la programación (editar o cancelar)</a>
+                    </div>
+                </div>` : ""}`;
+            $("programacionModalTitle").textContent = `Auditoría · ${a.numero_radicado || a.empresa_nombre || ""}`;
+            abrirModalProgramacion(origen);
+        }
+
+        $("monthlyCalendar").addEventListener("click", (event) => {
+            const chip = event.target.closest("[data-cal-aud]");
+            if (chip) abrirDetalleAuditoria(chip.dataset.calAud, chip);
+        });
+        ["monthAuditor", "modalityFilter", "monthCanceladas"].forEach(id => $(id).addEventListener("change", () => loadMonth()));
+        $("cityFilter").addEventListener("input", () => {
+            clearTimeout(temporizadorCiudad);
+            temporizadorCiudad = setTimeout(() => loadMonth(), 350);
+        });
+        $("clearMonthFilters").addEventListener("click", () => {
+            $("monthAuditor").value = "";
+            $("cityFilter").value = "";
+            $("modalityFilter").value = "";
+            $("monthCanceladas").checked = false;
+            loadMonth();
+        });
+
+        function loadMonth() {
+            if (!window.MiDisponibilidad || !window.MiDisponibilidad.calendario) {
+                showNotice("monthNotice", "No se pudo cargar el calendario (static/mi_disponibilidad.js).", "error");
+                return Promise.resolve();
+            }
+            // La lista de auditores puede llegar después de abrir la sección (#month).
+            if ($("monthAuditor").options.length !== (auditors || []).length + 1) llenarAuditoresCalendario();
+            if (!calendarioMes) {
+                calendarioMes = window.MiDisponibilidad.calendario($("monthlyCalendar"), {
+                    leyenda: [
+                        ["md-ocupado", "Auditoría programada"],
+                        ["md-finalizada", "Auditoría finalizada"],
+                        ["md-libre", "Disponibilidad declarada"],
+                        ["md-bloqueado", "Fecha bloqueada o auditoría cancelada"]
+                    ],
+                    vistaInicial: window.matchMedia("(max-width: 640px)").matches ? "semana" : "mes",
+                    maxPorDia: 3,
+                    cargarMes: cargarMesCalendario,
+                    chips: chipsCalendario
+                });
+                return Promise.resolve();
+            }
+            auditoriasCalendario.clear();
+            return calendarioMes.recargar();
+        }
+
         function normalizarTexto(valor) {
             return String(valor || "").trim().toLowerCase()
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -4482,7 +3376,7 @@
                 showNotice("scheduleNotice", result.mensaje || "Programación cancelada correctamente.", "ok");
                 const group = currentAssignment();
                 // Al cancelar, la sede vuelve a quedar disponible.
-                await cargarAsignaciones();
+                await cargarProgramacionesAgenda();
                 if (group) {
                     await cargarSedes(group?.id_empresa, group?.id_solicitud);
                     await loadScheduleList(group);
@@ -4511,18 +3405,7 @@
                 window.__programacionesActuales = [];
                 $("scheduleList").innerHTML = '<div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>';
                 prepareNewScheduleForm(null);
-            // Habilitar/deshabilitar inputs de hora al marcar/desmarcar día
-            ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].forEach(dia => {
-                const cb = document.getElementById(`day-${dia}`);
-                const start = document.getElementById(`start-${dia}`);
-                const end = document.getElementById(`end-${dia}`);
-                if (cb && start && end) {
-                    cb.addEventListener('change', () => {
-                        start.disabled = !cb.checked;
-                        end.disabled = !cb.checked;
-                    });
-                }
-            });            }
+            }
         });
 
         $("scheduleCancelEdit").addEventListener("click", () => {
@@ -4533,68 +3416,104 @@
 
         $("checkScheduleAvailability").addEventListener("click", async () => {
             if (programacionActual && !programacionEnEdicion) {
-                showNotice("scheduleNotice", "La solicitud ya está programada. Use Editar para modificar el periodo y luego compruebe la disponibilidad.", "info");
+                avisoJuntoAccion("scheduleActionNotice", "La solicitud ya está programada en esta sede. Use Editar en la tabla de programaciones para modificar el periodo y luego compruebe la disponibilidad.", "info");
                 return;
             }
             await checkCurrentScheduleAvailability();
         });
 
-        async function checkCurrentScheduleAvailability() {
-            clearNotice("scheduleNotice");
-            const group = currentAssignment();
-            if (!group) { showNotice("scheduleNotice", "Selecciona la solicitud que vas a programar.", "error"); return false; }
+        // Valida fecha y horas; devuelve el mensaje y los campos con error.
+        function validarFechasProgramacion() {
             const fecha = $("scheduleDate").value, inicio = $("scheduleStart").value, fin = $("scheduleEnd").value;
-            if (!fecha || !inicio || !fin || fin <= inicio) {
-                showNotice("scheduleNotice", "Verifica la fecha y que la hora final sea posterior a la inicial.", "error");
-                return false;
-            }
+            const campos = [];
+            if (!fecha) campos.push("scheduleDate");
+            if (!inicio) campos.push("scheduleStart");
+            if (!fin) campos.push("scheduleEnd");
+            if (campos.length) return { mensaje: "Complete la fecha, la hora de inicio y la hora final de la visita.", campos };
+            if (fecha < localDateNow()) return { mensaje: "La fecha de la visita no puede ser anterior a hoy.", campos: ["scheduleDate"] };
+            if (fin <= inicio) return { mensaje: "La hora final debe ser posterior a la hora de inicio.", campos: ["scheduleEnd"] };
+            return null;
+        }
+
+        async function checkCurrentScheduleAvailability(opciones = {}) {
+            clearNotice("scheduleActionNotice");
+            limpiarCamposInvalidos($("scheduleForm"));
+            const group = currentAssignment();
+            if (!group) { avisoJuntoAccion("scheduleActionNotice", "Selecciona la solicitud que vas a programar.", "error", ["assignmentTabla"]); return false; }
+            const error = validarFechasProgramacion();
+            if (error) { avisoJuntoAccion("scheduleActionNotice", error.mensaje, "error", error.campos); return false; }
+            const fecha = $("scheduleDate").value, inicio = $("scheduleStart").value, fin = $("scheduleEnd").value;
             const equipo = equipoActivo();
             if (!equipo.length) {
-                showNotice("scheduleNotice", "Selecciona al menos un auditor para el equipo de esta sede.", "error");
+                avisoJuntoAccion("scheduleActionNotice", "Selecciona al menos un auditor para el equipo de esta sede.", "error", ["scheduleTeam"]);
                 return false;
             }
+            const boton = $("checkScheduleAvailability");
+            const textoBoton = boton.textContent;
+            boton.disabled = true;
+            boton.textContent = "Comprobando...";
             const query = new URLSearchParams({ fecha, hora_inicio: inicio, hora_fin: fin });
+            // Al editar, la propia visita no cuenta como choque consigo misma.
+            if (programacionActual && programacionEnEdicion && programacionActual.id_programacion) {
+                query.set("excluir_programacion", String(programacionActual.id_programacion));
+            }
             try {
+                // Un fallo de un auditor no oculta el resultado de los demás.
                 const results = await Promise.all(equipo.map(async auditor => {
-                    const result = await api(`/${encodeURIComponent(auditor.id_usuario)}/disponibilidad?${query}`);
-                    return { auditor, result };
+                    try {
+                        const result = await api(`/${encodeURIComponent(auditor.id_usuario)}/disponibilidad?${query}`);
+                        return { auditor, result };
+                    } catch (fallo) {
+                        return { auditor, result: { disponible: false, motivo: `no se pudo consultar (${fallo.message})` } };
+                    }
                 }));
+                results.forEach(({ auditor, result }) => {
+                    const integrante = equipoSede.get(String(auditor.id_usuario));
+                    if (integrante) integrante.disponibilidad = { disponible: Boolean(result.disponible), motivo: result.motivo || "" };
+                });
+                renderEquipoSede();
+                const lineas = results.map(({ auditor, result }) =>
+                    `• ${auditor.nombre}: ${result.disponible ? "disponible" : "NO disponible — " + (result.motivo || "horario no disponible")}`
+                ).join("\n");
                 const unavailable = results.filter(item => !item.result.disponible);
                 if (unavailable.length) {
-                    const details = unavailable.map(item => `${item.auditor.nombre}: ${item.result.motivo || "horario no disponible"}`).join("\n");
-                    showNotice("scheduleNotice", `No se puede programar a todos los auditores en este horario:\n${details}`, "error");
+                    avisoJuntoAccion("scheduleActionNotice", `No se puede programar a todo el equipo el ${fecha} de ${inicio} a ${fin}:\n${lineas}\n\nCambie la fecha u horas, o desmarque a quien no esté disponible.`, "error");
                     return false;
                 }
-                showNotice("scheduleNotice", "Todos los auditores del equipo tienen disponibilidad para el horario seleccionado.", "ok");
+                const texto = `Todo el equipo tiene disponibilidad el ${fecha} de ${inicio} a ${fin}:\n${lineas}`;
+                if (opciones.silencioso) showNotice("scheduleActionNotice", texto, "ok");
+                else avisoJuntoAccion("scheduleActionNotice", texto, "ok");
                 return true;
-            } catch (error) {
-                showNotice("scheduleNotice", `No se pudo verificar la disponibilidad de todos los auditores: ${error.message}`, "error");
-                return false;
+            } finally {
+                boton.disabled = false;
+                boton.textContent = textoBoton;
             }
         }
 
         $("scheduleForm").addEventListener("submit", async (event) => {
             event.preventDefault();
-            clearNotice("scheduleNotice");
+            clearNotice("scheduleActionNotice");
+            limpiarCamposInvalidos($("scheduleForm"));
             const group = currentAssignment();
-            if (!group) { showNotice("scheduleNotice", "Selecciona una solicitud / empresa.", "error"); return; }
+            if (!group) { avisoJuntoAccion("scheduleActionNotice", "Selecciona una solicitud / empresa.", "error", ["assignmentTabla"]); return; }
             const editing = Boolean(programacionActual && programacionEnEdicion);
             if (programacionActual && !editing) {
-                showNotice("scheduleNotice", "La sede seleccionada ya tiene una programación. Los datos están bloqueados; use el botón Editar de la tabla para modificarlos.", "error");
+                avisoJuntoAccion("scheduleActionNotice", "La sede seleccionada ya tiene una programación. Los datos están bloqueados; use el botón Editar de la tabla para modificarlos.", "error");
                 return;
             }
             const equipo = equipoActivo();
-            if (!equipo.length) { showNotice("scheduleNotice", "La solicitud no tiene auditores asignados para esta sede.", "error"); return; }
-            if (!$('scheduleDate').value || !$('scheduleStart').value || !$('scheduleEnd').value || $('scheduleEnd').value <= $('scheduleStart').value) {
-                showNotice("scheduleNotice", "Verifica la fecha y que la hora final sea posterior a la inicial.", "error");
+            if (!equipo.length) { avisoJuntoAccion("scheduleActionNotice", "Selecciona al menos un auditor para el equipo de esta sede.", "error", ["scheduleTeam"]); return; }
+            const errorFechas = validarFechasProgramacion();
+            if (errorFechas) {
+                avisoJuntoAccion("scheduleActionNotice", errorFechas.mensaje, "error", errorFechas.campos);
                 return;
             }
             if (editing && !programacionActual.id_programacion) {
-                showNotice("scheduleNotice", "No se encontró el identificador de la programación para guardar los cambios.", "error");
+                avisoJuntoAccion("scheduleActionNotice", "No se encontró el identificador de la programación para guardar los cambios.", "error");
                 return;
             }
             if (!editing) {
-                const available = await checkCurrentScheduleAvailability();
+                const available = await checkCurrentScheduleAvailability({ silencioso: true });
                 if (!available) return;
             }
             const incluyeAdicionales = equipo.some((auditor) => auditor.origen === "adicional");
@@ -4627,18 +3546,26 @@
                 ...commonPayload
             };
             $("scheduleSave").disabled = true;
+            let guardado = false;
             try {
                 const result = editing
                     ? await api(`/programacion/${encodeURIComponent(programacionActual.id_programacion)}`, { method: "PUT", body: JSON.stringify(payload) })
                     : await api("/", { method: "POST", body: JSON.stringify(payload) });
-                showNotice("scheduleNotice", result.mensaje || (editing ? "Programación actualizada correctamente." : "Programación registrada correctamente."), "ok");
+                guardado = true;
+                const mensajeOk = result.mensaje || (editing ? "Programación actualizada correctamente." : "Programación registrada correctamente.");
                 programacionEnEdicion = false;
-                await cargarAsignaciones();
+                borradorFechas = null;
+                await cargarProgramacionesAgenda();
                 await loadScheduleList(group);
+                // loadScheduleList deja el formulario en modo lectura: el
+                // resultado se anuncia después, junto al botón.
+                avisoJuntoAccion("scheduleActionNotice", mensajeOk, "ok");
             } catch (error) {
-                showNotice("scheduleNotice", `No fue posible ${editing ? "editar" : "programar"}: ${error.message}`, "error");
+                avisoJuntoAccion("scheduleActionNotice", `No fue posible ${editing ? "editar" : "programar"}: ${error.message}`, "error");
             } finally {
-                if (programacionEnEdicion) $("scheduleSave").disabled = false;
+                // Antes el botón quedaba deshabilitado tras un error y la
+                // persona no podía volver a intentarlo.
+                if (!guardado || programacionEnEdicion) $("scheduleSave").disabled = false;
             }
         });
 
@@ -4677,11 +3604,8 @@
             });
             actualizarAuditorSeleccionadoEnFiltros();
             // Cada sección carga sus datos al mostrarse.
-            if (clave === "history") loadHistory();
-            if (clave === "bitacora") loadBitacora();
             if (clave === "month") loadMonth();
             if (clave === "weekly") loadWeeklyProgramaciones();
-            if (clave === "blocked") { cargarProgramacionesBloqueo(); cargarBloqueosVigentes(); }
         }
 
         document.querySelectorAll(".agenda-menu a[data-seccion]").forEach((enlace) => {
@@ -4691,108 +3615,65 @@
             });
         });
 
-        async function cargarAsignaciones() {
-            const tbody = $("assignmentsRows");
-            if (!tbody) return;
+        // Programaciones vigentes de la agenda: el formulario de "Programar una
+        // auditoría" las usa para marcar las sedes ya programadas y mostrar la
+        // visita existente. (Antes las cargaba la tabla "Solicitudes con
+        // auditores asignados", que se retiró: esa información ya está en
+        // Asignación de auditores.)
+        async function cargarProgramacionesAgenda() {
             try {
-                const [data, programacionesData] = await Promise.all([
-                    api("/solicitudes-disponibles"),
-                    api("/programaciones").catch(() => ({ programaciones: [] }))
-                ]);
-                const sourceRows = Array.isArray(data.asignaciones) ? data.asignaciones : [];
-                window.__programacionesAgenda = Array.isArray(programacionesData.programaciones) ? programacionesData.programaciones : [];
-                const programadas = new Set(window.__programacionesAgenda.map((item) => String(item.id_solicitud)));
-                const grouped = new Map();
-                sourceRows.forEach((row, index) => {
-                    const requestId = row.id_solicitud || row.solicitud_id || row.idSolicitud || "";
-                    const key = requestId ? String(requestId) : `sin-solicitud-${index}`;
-                    if (!grouped.has(key)) {
-                        grouped.set(key, { ...row, id_solicitud: requestId || row.id_solicitud, auditores: [] });
-                    }
-                    const group = grouped.get(key);
-                    const nestedAuditors = Array.isArray(row.auditores) ? row.auditores : [row];
-                    nestedAuditors.forEach((auditor) => {
-                        const idUsuario = auditor.id_usuario || auditor.id_auditor || auditor.id_usuario_auditor;
-                        if (!idUsuario) return;
-                        if (!group.auditores.some((existing) => String(existing.id_usuario) === String(idUsuario))) {
-                            group.auditores.push({
-                                ...auditor,
-                                id_usuario: idUsuario,
-                                auditor_nombre: auditor.auditor_nombre || auditor.nombre || "Auditor sin nombre",
-                                auditor_correo: auditor.auditor_correo || auditor.correo || "",
-                                auditor_tipo_doc: auditor.auditor_tipo_doc || auditor.tipo_doc || auditor.tipo_documento || auditor.tipo_identificacion || "",
-                                auditor_num_doc: auditor.auditor_num_doc || auditor.num_doc || auditor.numero_documento || auditor.numero_doc || auditor.documento_identidad || auditor.documento || "",
-                                rol_auditor: auditor.rol_auditor || auditor.rol || "Auditor"
-                            });
-                        }
-                    });
-                });
-                const groups = Array.from(grouped.values()).filter(group => group.auditores.length > 0);
-                window.__solicitudesAsignadas = groups;
-                if (!groups.length) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay solicitudes con auditores asignados.</td></tr>';
-                    $("assignmentsSummary").textContent = "";
-                    return;
-                }
-                tbody.innerHTML = groups.map((group, index) => {
-                    const auditores = (group.auditores || [])
-                        .map((auditor) => esc(`${auditor.auditor_nombre || auditor.nombre || "Auditor"} (${auditor.rol_auditor || "Auditor"})${auditor.auditor_tipo_doc || auditor.auditor_num_doc ? ` · Doc: ${auditor.auditor_tipo_doc || ""} ${auditor.auditor_num_doc || ""}`.trim() : ""}`))
-                        .join("<br>");
-                    const yaProgramada = programadas.has(String(group.id_solicitud));
-                    const estado = yaProgramada ? "Programada" : (group.auditores?.[0]?.estado_asignacion || "Agendada");
-                    // Si la solicitud ya tiene sedes programadas se puede abrir
-                    // el formulario para programar otra sede de la misma empresa.
-                    const accion = yaProgramada ? "Programar otra sede" : "Programar";
-                    return `<tr>
-                        <td>${esc(group.numero_radicado || group.id_solicitud || "-")}</td>
-                        <td>${esc(group.empresa_nombre || "-")}</td>
-                        <td>${auditores || "Sin auditores"}</td>
-                        <td>${esc(estado)}</td>
-                        <td>
-                            <div class="row-actions">
-                                <button class="btn btn-primario btn-sm mini-btn" type="button" onclick="programarSolicitud(${index})" title="${yaProgramada ? "Elige otra sede de la empresa para programar una visita adicional" : "Programar la auditoría de esta solicitud"}">${accion}</button>
-                            </div>
-                        </td>
-                    </tr>`;
-                }).join("");
-                $("assignmentsSummary").textContent = `Total: ${groups.length} solicitud(es) con auditores asignados.`;
+                const data = await api("/programaciones");
+                window.__programacionesAgenda = Array.isArray(data.programaciones) ? data.programaciones : [];
             } catch (error) {
-                console.error("No fue posible cargar las asignaciones:", error);
-                tbody.innerHTML = '<tr><td colspan="5" class="empty">No se pudieron cargar las asignaciones.</td></tr>';
+                console.error("No fue posible cargar las programaciones:", error);
+                window.__programacionesAgenda = window.__programacionesAgenda || [];
             }
-        }
-
-        function programarSolicitud(index) {
-            const groups = window.__solicitudesAsignadas || [];
-            const group = groups[index];
-            if (!group) return;
-            const assignmentIndex = assignments.findIndex(
-                (item) => String(item.id_solicitud) === String(group.id_solicitud)
-            );
-            if (assignmentIndex === -1) return;
-            assignmentSelect.value = String(assignmentIndex);
-            assignmentSelect.dispatchEvent(new Event("change"));
-            mostrarSeccionAgenda("schedule");
         }
 
         (async function init() {
             const today = localDateNow();
             ["scheduleDate"].forEach(id => { const el = $(id); if (el) el.min = today; });
-            inicializarFiltrosMes(true);
             construirFiltroAuditor();
             await loadAuditors();
             await loadMonth();
             await loadAssignments();
-            await cargarAsignaciones();
+            await cargarProgramacionesAgenda();
             await loadWeeklyProgramaciones();
-            await cargarProgramacionesBloqueo();
-            await cargarBloqueosVigentes();
-            const weeklyFromInput = $("weeklyFrom");
-            const weeklyUntilInput = $("weeklyUntil");
-            if (weeklyFromInput) weeklyFromInput.addEventListener("change", actualizarDiasPorRango);
-            if (weeklyUntilInput) weeklyUntilInput.addEventListener("change", actualizarDiasPorRango);
             prepareNewScheduleForm(null);
+            await abrirSolicitudDeLaDireccion();
         })();
+
+        // Acceso directo desde "Asignación de auditores":
+        // /consultar-agenda-auditor?solicitud=<id>#schedule abre "Programar una
+        // auditoría" con esa solicitud ya elegida en el formulario de siempre.
+        async function abrirSolicitudDeLaDireccion() {
+            const idSolicitud = new URLSearchParams(window.location.search).get("solicitud");
+            if (!idSolicitud) return;
+            mostrarSeccionAgenda("schedule");
+            const indice = assignments.findIndex((item) => String(item.id_solicitud) === String(idSolicitud));
+            const irAlFormulario = () => {
+                const destino = $("scheduleForm");
+                try { destino.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (_) { destino.scrollIntoView(); }
+            };
+            if (indice === -1) {
+                showNotice(
+                    "scheduleNotice",
+                    "La solicitud indicada no está disponible para programar: no está aprobada o no tiene auditores activos asignados. Elija otra solicitud de la lista.",
+                    "error"
+                );
+                // nav.js lleva la página arriba al abrir el "#": se espera a que termine.
+                setTimeout(() => { $("scheduleNotice").scrollIntoView({ block: "center" }); }, 400);
+                return;
+            }
+            const select = $("assignmentSelect");
+            select.value = String(indice);
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            setTimeout(() => {
+                irAlFormulario();
+                const fila = document.querySelector('#assignmentTabla .selector-fila.seleccionada input');
+                try { (fila || select).focus({ preventScroll: true }); } catch (_) { }
+            }, 400);
+        }
 
     </script>
 
@@ -4884,12 +3765,30 @@
             `;
 
             document.getElementById('programacionModalTitle').textContent = 'Programación · ' + solicitud;
-            document.getElementById('programacionModal').classList.add('show');
+            abrirModalProgramacion();
+        }
+
+        // Abre el modal de detalle con el foco dentro (botón cerrar) y
+        // recuerda qué elemento lo abrió para devolverle el foco al cerrar.
+        let focoAntesDelModal = null;
+        function abrirModalProgramacion(origen) {
+            const modal = document.getElementById('programacionModal');
+            if (!modal) return;
+            focoAntesDelModal = origen || document.activeElement;
+            modal.classList.add('show');
+            const cerrar = modal.querySelector('.modal-close');
+            if (cerrar) cerrar.focus();
         }
 
         function cerrarProgramacionModal() {
             const modal = document.getElementById('programacionModal');
-            if (modal) modal.classList.remove('show');
+            if (!modal || !modal.classList.contains('show')) return;
+            modal.classList.remove('show');
+            const destino = focoAntesDelModal;
+            focoAntesDelModal = null;
+            if (destino && document.contains(destino)) {
+                try { destino.focus({ preventScroll: true }); } catch (_) { }
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -4901,12 +3800,22 @@
             }
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') cerrarProgramacionModal();
+                // El foco no sale del modal abierto (Tab / Mayús+Tab).
+                if (e.key === 'Tab' && modal && modal.classList.contains('show')) {
+                    const foco = [...modal.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+                        .filter(el => !el.disabled && el.offsetParent !== null);
+                    if (!foco.length) return;
+                    const primero = foco[0], ultimo = foco[foco.length - 1];
+                    if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+                    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+                    else if (!modal.contains(document.activeElement)) { e.preventDefault(); primero.focus(); }
+                }
             });
         });
     </script>
 
     <script src="/static/session.js?v=20261029"></script>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

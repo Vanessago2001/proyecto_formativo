@@ -637,7 +637,26 @@ async def aprobar_otorgamiento(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_DECISION_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para aprobar otorgamiento.")
-    return await ComiteService(db).registrar_accion("aprobar", payload, current_user)
+    resultado = await ComiteService(db).registrar_accion("aprobar", payload, current_user)
+    # La aprobación ya quedó guardada; ahora se crea solo el borrador del
+    # certificado para que llegue al panel del líder para la firma.
+    from modules.certificados.certificados_service import CertificadosService
+
+    borrador = await CertificadosService(db).crear_borrador_automatico(
+        UUID(str(resultado["expediente_id"])), current_user
+    )
+    resultado["certificado"] = borrador
+    if borrador.get("creado"):
+        resultado["mensaje"] = (
+            f"Solicitud aprobada. Se creó el borrador del certificado {borrador['codigo_verificacion']} "
+            "y quedó en el panel del líder del Comité para su firma."
+        )
+    else:
+        resultado["mensaje"] = (
+            "Solicitud aprobada. No se pudo crear el borrador del certificado: "
+            f"{borrador['motivo']} El Coordinador puede generarlo desde Gestión de certificados."
+        )
+    return resultado
 
 
 @router.post("/rechazar")
@@ -753,6 +772,123 @@ async def consultar_decisiones_historicas(
         "permiso": "Consultar decisiones históricas",
         "roles_autorizados": ["ADM", "AUX"],
         "decisiones": [dict(fila) for fila in resultado.mappings().all()],
+    }
+
+
+def _estado_firma_dictamen(estado_acta: str | None) -> str:
+    estado = (estado_acta or "").strip().upper()
+    if estado == "FIRMADA":
+        return "Firmado"
+    if estado == "GENERADA":
+        return "Pendiente de firma"
+    return "Sin acta"
+
+
+def _estado_firma_certificado(decision: str, estado_certificado: str | None, firmado: bool | None) -> str:
+    if decision != "Aprobada":
+        return "No aplica"
+    estado = (estado_certificado or "").strip().upper()
+    if not estado:
+        return "Sin certificado"
+    if firmado:
+        return "Firmado"
+    return "Pendiente de firma"
+
+
+@router.get("/historial-dictamenes")
+async def consultar_historial_dictamenes(
+    decision: str | None = Query(default=None, description="aprobada o rechazada"),
+    firma: str | None = Query(default=None, description="firmado o pendiente"),
+    q: str | None = Query(default=None, max_length=120, description="Radicado, empresa o NIT"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Historial de decisiones (COM-019) con una fila por expediente decidido:
+    decisión final, quién y cuándo, y si el dictamen (acta) y el certificado
+    ya están firmados. Con filtro y paginación.
+    """
+    role_name = _normalize_role_name(current_user.get("role_name"))
+    if role_name not in COMITE_CONSULTA_PERMISOS:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar decisiones históricas.")
+    resultado = await db.execute(text("""
+        WITH decision AS (
+            SELECT DISTINCT ON (a.id_solicitud)
+                a.id_solicitud, a.accion, a.datos->>'comentario' AS comentario, a.fecha,
+                COALESCE(u.nombre, u.correo, a.id_usuario) AS decidio
+            FROM comite_accion a
+            LEFT JOIN usuario u ON u.id_usuario::TEXT = a.id_usuario
+            WHERE a.accion IN ('aprobar', 'rechazar')
+            ORDER BY a.id_solicitud, a.fecha DESC, a.id_accion DESC
+        ),
+        acta AS (
+            SELECT DISTINCT ON (id_solicitud) id_solicitud, estado AS estado_acta, fecha_firma
+            FROM comite_acta
+            ORDER BY id_solicitud, version DESC
+        )
+        SELECT
+            s.id_solicitud AS expediente_id,
+            COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo_expediente,
+            e.nombre AS empresa, e.nit,
+            s.estado AS estado_expediente,
+            d.accion, d.comentario, COALESCE(d.fecha, s.fecha) AS fecha, d.decidio,
+            acta.estado_acta, acta.fecha_firma,
+            cert.codigo_verificacion, cert.estado_certificado, cert.certificado_firmado
+        FROM solicitud s
+        LEFT JOIN decision d ON d.id_solicitud = s.id_solicitud
+        LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+        LEFT JOIN acta ON acta.id_solicitud = s.id_solicitud
+        -- Un certificado se liga por id_solicitud o por solicitud.id_certificado.
+        LEFT JOIN LATERAL (
+            SELECT c.codigo_verificacion, TRIM(c.estado_certificado) AS estado_certificado,
+                   (c.id_firmante IS NOT NULL AND c.huella_firmante IS NOT NULL
+                    AND c.codigo_hash IS NOT NULL AND c.huella_pdf IS NOT NULL) AS certificado_firmado
+            FROM certificado c
+            WHERE c.id_solicitud = s.id_solicitud OR c.id_certificado = s.id_certificado
+            ORDER BY c.fecha_registro DESC NULLS LAST
+            LIMIT 1
+        ) cert ON TRUE
+        -- Decididas por el Comité o ya aprobadas/rechazadas en la base.
+        WHERE s.deleted_at IS NULL
+          AND (d.id_solicitud IS NOT NULL OR s.estado IN ('Aprobada', 'Rechazada'))
+        ORDER BY COALESCE(d.fecha, s.fecha) DESC NULLS LAST
+        LIMIT 2000;
+    """))
+    filas = []
+    for fila in resultado.mappings().all():
+        item = dict(fila)
+        if item["accion"]:
+            item["decision"] = "Aprobada" if item["accion"] == "aprobar" else "Rechazada"
+        else:
+            item["decision"] = "Aprobada" if str(item["estado_expediente"]).lower().startswith("aprob") else "Rechazada"
+        item["firma_dictamen"] = _estado_firma_dictamen(item.get("estado_acta"))
+        item["firma_certificado"] = _estado_firma_certificado(
+            item["decision"], item.get("estado_certificado"), item.get("certificado_firmado")
+        )
+        # Pendiente si a lo que le corresponde firma todavía le falta.
+        item["pendiente_firma"] = item["firma_dictamen"] != "Firmado" or item["firma_certificado"] in ("Pendiente de firma", "Sin certificado")
+        filas.append(item)
+
+    if decision:
+        filas = [f for f in filas if f["decision"].lower().startswith(decision.strip().lower()[:6])]
+    if firma == "firmado":
+        filas = [f for f in filas if not f["pendiente_firma"]]
+    elif firma == "pendiente":
+        filas = [f for f in filas if f["pendiente_firma"]]
+    if q and q.strip():
+        texto = q.strip().lower()
+        filas = [f for f in filas if any(texto in str(f.get(c) or "").lower() for c in ("codigo_expediente", "empresa", "nit"))]
+
+    total = len(filas)
+    inicio = (page - 1) * page_size
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "paginas": max(1, -(-total // page_size)),
+        "dictamenes": filas[inicio:inicio + page_size],
     }
 
 

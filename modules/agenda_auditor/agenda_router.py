@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
+from core.security import es_coordinador
 from modules.agenda_auditor.agenda_schema import (
     CancelarProgramacion,
     DisponibilidadEditar,
@@ -56,6 +57,32 @@ async def _validar_admin_o_propio_auditor(
     return usuario
 
 
+async def _validar_propio_auditor(
+    id_usuario: UUID,
+    usuario: dict = Depends(requiere_permiso("SOL-006")),
+):
+    """La disponibilidad semanal solo la crea, edita o elimina el propio auditor.
+
+    El Coordinador la consulta, pero no la configura: solo el auditor sabe
+    cuándo puede atender auditorías (403 también para el Coordinador).
+    """
+    id_autenticado = usuario.get("id_usuario") or usuario.get("user_id")
+    if (
+        es_coordinador(usuario)
+        or _es_administrador(usuario)
+        or not id_autenticado
+        or str(id_autenticado) != str(id_usuario)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Solo el propio auditor puede configurar su disponibilidad semanal, "
+                "desde su perfil (Mi disponibilidad). El Coordinador solo la consulta."
+            ),
+        )
+    return usuario
+
+
 # Las rutas literales van antes de /{id_usuario} para evitar conflictos.
 @router.get("/bloqueos/vigentes")
 async def listar_bloqueos_vigentes(
@@ -71,11 +98,14 @@ async def disponibilidad_mensual_general(
     mes: int = Query(..., ge=1, le=12),
     ciudad: str | None = Query(None, max_length=150),
     modalidad: str | None = Query(None, max_length=30),
+    id_usuario: UUID | None = Query(None, description="Limita el calendario a un auditor"),
+    incluir_canceladas: bool = Query(False),
     usuario: dict = Depends(requiere_permiso("SOL-006")),
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).ver_disponibilidad_mensual_general(
-        anio=anio, mes=mes, ciudad=ciudad, modalidad=modalidad
+        anio=anio, mes=mes, ciudad=ciudad, modalidad=modalidad,
+        id_usuario=id_usuario, incluir_canceladas=incluir_canceladas,
     )
 
 
@@ -282,19 +312,24 @@ async def consultar_disponibilidad(
     fecha: date,
     hora_inicio: time = Query(..., description="Hora local HH:MM"),
     hora_fin: time = Query(..., description="Hora local HH:MM"),
+    excluir_programacion: UUID | None = Query(
+        None, description="Al editar una visita: no contarla como choque consigo misma"
+    ),
     usuario: dict = Depends(_validar_admin_o_propio_auditor),
     db: AsyncSession = Depends(get_db),
 ):
     inicio = datetime.combine(fecha, hora_inicio)
     fin = datetime.combine(fecha, hora_fin)
-    return await AgendaAuditorService(db).consultar_disponibilidad(id_usuario, fecha, inicio, fin)
+    return await AgendaAuditorService(db).consultar_disponibilidad(
+        id_usuario, fecha, inicio, fin, excluir_programacion=excluir_programacion
+    )
 
 
 @router.post("/{id_usuario}/disponibilidad-semanal", status_code=status.HTTP_201_CREATED)
 async def configurar_disponibilidad_semanal(
     id_usuario: UUID,
     data: DisponibilidadSemanalCrear,
-    usuario: dict = Depends(_validar_admin_o_propio_auditor),
+    usuario: dict = Depends(_validar_propio_auditor),
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).configurar_disponibilidad_semanal(id_usuario, data)
@@ -354,7 +389,7 @@ async def editar_disponibilidad(
     id_usuario: UUID,
     id_disponibilidad: UUID,
     data: DisponibilidadEditar,
-    usuario: dict = Depends(_validar_admin_o_propio_auditor),
+    usuario: dict = Depends(_validar_propio_auditor),
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).editar_disponibilidad(id_usuario, id_disponibilidad, data)
@@ -364,7 +399,7 @@ async def editar_disponibilidad(
 async def eliminar_disponibilidad(
     id_usuario: UUID,
     id_disponibilidad: UUID,
-    usuario: dict = Depends(_validar_admin_o_propio_auditor),
+    usuario: dict = Depends(_validar_propio_auditor),
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).eliminar_disponibilidad(id_usuario, id_disponibilidad)

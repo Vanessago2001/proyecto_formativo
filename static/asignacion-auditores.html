@@ -7,8 +7,8 @@
 
   <title>CertiSENA | Asignación de Auditores</title>
 
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a" />
 
   <style>
     /* =========================================================
@@ -282,7 +282,7 @@
       height: 38px;
       min-height: 38px;
       padding: 8px 10px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--campo-borde, #7f8b9e);
       border-radius: 6px;
       letter-spacing: 0;
       text-align: left;
@@ -290,7 +290,7 @@
       color: #263238;
       font: inherit;
       font-size: 13px;
-      outline: none;
+      /* foco: ver regla :focus */
       box-sizing: border-box;
       transition: border-color .15s ease, box-shadow .15s ease;
     }
@@ -305,6 +305,8 @@
     .form-group select:focus,
     .form-control:focus {
       border-color: #3baa01;
+      outline: 2px solid var(--foco-color, #256d00);
+      outline-offset: 1px;
       box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
     }
 
@@ -523,6 +525,19 @@
       color: #896500;
     }
 
+    /* Conflicto de interés activo con la empresa: debe reasignarse. */
+    tr.fila-conflicto td {
+      background: #fef3f2;
+    }
+
+    .status.conflicto {
+      display: inline-block;
+      margin-top: 4px;
+      background: #fee4e2;
+      color: #912018;
+      border: 1px solid #fda29b;
+    }
+
     .status.inactive {
       background: #f1f5f9;
       color: #68706b;
@@ -553,6 +568,11 @@
     /* Botones del filtro de solicitudes: alineados con los campos, sin estirarse */
     #solicitudesContainer .btn {
       align-self: end;
+    }
+
+    .campo-invalido {
+      border-color: #b42318 !important;
+      box-shadow: 0 0 0 3px rgba(180, 35, 24, .15) !important;
     }
 
     .action-hint {
@@ -660,7 +680,7 @@
       height: 38px;
       min-height: 38px;
       padding: 8px 10px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--campo-borde, #7f8b9e);
       border-radius: 6px;
       letter-spacing: 0;
       text-align: left;
@@ -668,7 +688,7 @@
       color: #263238;
       font: inherit;
       font-size: 13px;
-      outline: none;
+      /* foco: ver regla :focus */
       box-sizing: border-box;
       transition: border-color .15s ease, box-shadow .15s ease;
     }
@@ -681,6 +701,8 @@
     .auditor-filters input:focus,
     .auditor-filters select:focus {
       border-color: #3baa01;
+      outline: 2px solid var(--foco-color, #256d00);
+      outline-offset: 1px;
       box-shadow: 0 0 0 3px rgba(59, 170, 1, .10);
     }
 
@@ -790,7 +812,7 @@
     .auditor-card .auditor-role-picker select {
       width: 100%;
       min-height: 35px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--campo-borde, #7f8b9e);
       border-radius: 6px;
       background: #fff;
     }
@@ -842,6 +864,20 @@
       font-weight: 700;
       line-height: 1.25;
     }
+
+    /* El nombre es el boton que abre el detalle del auditor (accesible con
+       teclado); se ve igual que el texto de antes. El clic sube a la tarjeta. */
+    .auditor-name-btn {
+      display: block;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: none;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .auditor-name-btn:hover { text-decoration: underline; }
 
     .auditor-email {
       margin-top: 3px;
@@ -1389,7 +1425,7 @@
 
     .pager-ellipsis {
       padding: 0 4px;
-      color: #94a3b8;
+      color: #64748b;
       font-weight: 700;
     }
 
@@ -1505,10 +1541,10 @@
                     <div style="padding:10px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
                       <div
                         style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:8px;">
-                        <input id="solBuscar" class="form-control" placeholder="Buscar..." autocomplete="off">
-                        <input id="solCiudad" class="form-control" placeholder="Ciudad" autocomplete="off">
-                        <input id="solNorma" class="form-control" placeholder="Norma ISO" autocomplete="off">
-                        <input id="solSector" class="form-control" placeholder="Sector IAF" autocomplete="off">
+                        <input id="solBuscar" class="form-control" aria-label="Buscar solicitudes" placeholder="Buscar..." autocomplete="off">
+                        <input id="solCiudad" class="form-control" aria-label="Filtrar por ciudad" placeholder="Ciudad" autocomplete="off">
+                        <input id="solNorma" class="form-control" aria-label="Filtrar por norma ISO" placeholder="Norma ISO" autocomplete="off">
+                        <input id="solSector" class="form-control" aria-label="Filtrar por sector IAF" placeholder="Sector IAF" autocomplete="off">
                       </div>
                       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
                         <label for="solDesde" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
@@ -1783,10 +1819,24 @@
               -
             </p>
 
+            <p id="assignmentResultNext" class="help-text" style="display:none;margin-top:10px;">
+              Siguiente paso: programe la visita en Agenda. La solicitud se abrirá ya seleccionada.
+            </p>
+
             <div class="modal-actions">
+
+              <a
+                id="assignmentResultProgramar"
+                class="btn btn-primario primary-action"
+                href="/consultar-agenda-auditor#schedule"
+                style="display:none;"
+              >
+                Programar visita
+              </a>
 
               <button
                 type="button"
+                id="assignmentResultAceptar"
                 class="btn btn-primario primary-action"
                 onclick="cerrarResultadoAsignacion()"
               >
@@ -1824,12 +1874,43 @@
       <div class="modal">
         <h3>Advertencia: <span style="color:#c00;">auditor no elegible</span></h3>
         <p id="advertenciaTexto">Este auditor no cumple las condiciones automáticas de asignación.</p>
+        <p style="margin:12px 0 6px;font-weight:700;">No es elegible por estas razones:</p>
+        <ul id="advertenciaMotivos" style="margin:0 0 8px 18px;"><li>Consultando...</li></ul>
         <h4 style="color:#256d00;margin:18px 0 8px;">Competencia del auditor</h4>
         <div id="advertenciaCompetencias" class="audit-empty">Cargando competencias...</div>
+        <div id="advertenciaForzar" style="display:none;margin-top:16px;">
+          <p style="margin:0 0 8px;"><strong>¿Está seguro de asignarlo de todas formas?</strong> Quedará registrado
+            quién lo asignó, cuándo, las razones y su justificación.</p>
+          <label for="advertenciaJustificacion" style="font-weight:600;font-size:13px;">Justificación (obligatoria)</label>
+          <textarea id="advertenciaJustificacion" class="form-control" rows="3" maxlength="1000"
+            placeholder="Explique por qué se asigna a pesar de no ser elegible (mínimo 10 caracteres)"
+            style="width:100%;margin-top:6px;"></textarea>
+          <p id="advertenciaError" role="alert" aria-live="assertive" style="display:none;color:#b42318;font-size:13px;margin:6px 0 0;"></p>
+        </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secundario secondary-action" onclick="cerrarModalAdvertencia()">Cancelar</button>
-          <button type="button" class="btn btn-primario primary-action" onclick="confirmarAsignacionNoElegible()">Asignar de todas
-            formas</button>
+          <button type="button" id="advertenciaConfirmar" class="btn btn-peligro" style="display:none;"
+            onclick="confirmarAsignacionNoElegible()">Sí, asignar de todas formas</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL RETIRO POR CONFLICTO DE INTERÉS -->
+    <div id="retiroConflictoModal" class="modal-overlay" role="dialog" aria-modal="true"
+      aria-labelledby="retiroConflictoTitulo" aria-describedby="retiroConflictoTexto">
+      <div class="modal">
+        <h3 id="retiroConflictoTitulo">Conflicto de interés: debe reasignarse</h3>
+        <p id="retiroConflictoTexto"></p>
+        <p style="margin:8px 0;">Se cancelará la asignación aunque haya visita programada. Si el auditor está en
+          una visita, se le retira de ella (se libera su bloqueo de agenda y se le notifica) y la visita se conserva
+          para agregar otro auditor desde Agenda.</p>
+        <label for="retiroConflictoMotivo" style="font-weight:600;font-size:13px;">Observación (opcional)</label>
+        <textarea id="retiroConflictoMotivo" class="form-control" rows="3" maxlength="1000"
+          style="width:100%;margin-top:6px;" placeholder="Detalle adicional para el historial"></textarea>
+        <p id="retiroConflictoError" role="alert" style="display:none;color:#b42318;font-size:13px;margin:6px 0 0;"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secundario" id="retiroConflictoCancelar">Cancelar</button>
+          <button type="button" class="btn btn-peligro" id="retiroConflictoConfirmar">Cancelar asignación por conflicto</button>
         </div>
       </div>
     </div>
@@ -1933,6 +2014,8 @@
     let auditorAdvertenciaActual = null;
     const auditoresSeleccionados = new Map();
     const auditoresForzados = new Set();
+    // Justificación escrita al confirmar "Sí, asignar de todas formas".
+    const justificacionesForzado = new Map();
     const auditorRolesAsignados = new Map();
 
     let asignaciones = [];
@@ -2216,7 +2299,7 @@
               ${seleccionado ? "checked" : ""}
               onchange="toggleAuditorCheckedById(this.dataset.auditorId, this.checked)" />
             <div>
-              <div class="auditor-name">${escapeHTML(auditor.nombre || "Sin nombre")}</div>
+              <button type="button" class="auditor-name auditor-name-btn" aria-haspopup="dialog" title="Ver detalle del auditor">${escapeHTML(auditor.nombre || "Sin nombre")}</button>
               <div class="auditor-email">${escapeHTML(auditor.correo || "Sin correo")}</div>
               <div class="auditor-meta">Documento: ${escapeHTML([auditor.tipo_doc, auditor.num_doc].filter(Boolean).join(" ") || "No registrado")}</div>
               <div class="auditor-meta">Ciudad: ${escapeHTML(auditor.ciudad_residencia || "No registrada")} · Modalidad: ${escapeHTML(auditor.modalidad_preferida || "No definida")}</div>
@@ -2232,7 +2315,7 @@
           ${auditor.elegible ? "" : `<div class="eligibility-note">${escapeHTML(auditor.motivo || "No cumple las condiciones de asignación.")}</div>`}
           <div class="auditor-role-picker" style="display:${seleccionado ? "block" : "none"};margin-top:12px;" onclick="event.stopPropagation();">
             <label style="display:block;font-weight:700;color:#256d00;margin-bottom:6px;">Rol para este auditor</label>
-            <select class="form-control role-select" data-auditor-role-id="${escapeHTML(id)}"
+            <select class="form-control role-select" aria-label="Rol para este auditor" data-auditor-role-id="${escapeHTML(id)}"
               onclick="event.stopPropagation();" onchange="setAuditorRoleById(this.dataset.auditorRoleId, this.value)">
               <option value="">Seleccione un rol</option>
               <option value="Auditor líder" ${rolActual === "Auditor líder" ? "selected" : ""}>Auditor líder</option>
@@ -2268,7 +2351,12 @@
        MODAL RESULTADO
     ========================================================= */
 
-    function mostrarResultadoAsignacion(texto, tipo) {
+    // Enlace a Agenda con la solicitud ya elegida en "Programar una auditoría".
+    function urlProgramarVisita(idSolicitud) {
+      return "/consultar-agenda-auditor?solicitud=" + encodeURIComponent(String(idSolicitud)) + "#schedule";
+    }
+
+    function mostrarResultadoAsignacion(texto, tipo, idSolicitudProgramar = null) {
       const modal = document.getElementById("assignmentResultModal");
       const title = document.getElementById("assignmentResultTitle");
       const body = document.getElementById("assignmentResultBody");
@@ -2285,7 +2373,18 @@
             ? "#b42318"
             : "#1d4ed8";
       body.textContent = texto;
+      // Acceso directo: tras asignar con éxito se ofrece programar la visita.
+      const programar = document.getElementById("assignmentResultProgramar");
+      const siguiente = document.getElementById("assignmentResultNext");
+      const aceptar = document.getElementById("assignmentResultAceptar");
+      const ofrecer = Boolean(idSolicitudProgramar);
+      programar.style.display = ofrecer ? "" : "none";
+      siguiente.style.display = ofrecer ? "" : "none";
+      if (ofrecer) programar.href = urlProgramarVisita(idSolicitudProgramar);
+      aceptar.textContent = ofrecer ? "Programar después" : "Aceptar";
+      aceptar.className = ofrecer ? "btn btn-secundario secondary-action" : "btn btn-primario primary-action";
       modal.classList.add("show");
+      (ofrecer ? programar : aceptar).focus();
     }
 
     function cerrarResultadoAsignacion() {
@@ -2371,6 +2470,7 @@
         auditoresSeleccionados.delete(id);
         auditorRolesAsignados.delete(id);
         auditoresForzados.delete(id);
+        justificacionesForzado.delete(id);
         if (picker) picker.style.display = 'none';
         if (auditorSeleccionado && String(auditorSeleccionado.id_usuario) === id) {
           auditorSeleccionado = null;
@@ -2387,8 +2487,36 @@
         auditor.motivo || 'Este auditor no cumple las condiciones automáticas de asignación.';
       const lista = document.getElementById('advertenciaCompetencias');
       lista.innerHTML = 'Cargando competencias...';
+      const motivosLista = document.getElementById('advertenciaMotivos');
+      const bloqueForzar = document.getElementById('advertenciaForzar');
+      const botonForzar = document.getElementById('advertenciaConfirmar');
+      const justificacion = document.getElementById('advertenciaJustificacion');
+      motivosLista.innerHTML = '<li>Consultando...</li>';
+      bloqueForzar.style.display = 'none';
+      botonForzar.style.display = 'none';
+      justificacion.value = justificacionesForzado.get(id) || '';
+      justificacion.classList.remove('campo-invalido');
+      document.getElementById('advertenciaError').style.display = 'none';
       document.getElementById('modalAdvertencia').classList.add('show');
       auditorAdvertenciaActual = auditor;
+      // Razones concretas y si se puede forzar (el conflicto de interés no).
+      const solicitud = getSelectedSolicitud();
+      try {
+        const res = await fetch(`/asignacion-auditores/solicitudes/${encodeURIComponent(solicitud.id_solicitud)}/auditores/${encodeURIComponent(id)}/elegibilidad`, { headers: headers() });
+        const info = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(typeof info.detail === 'string' ? info.detail : 'No se pudo consultar la elegibilidad.');
+        const motivos = Array.isArray(info.motivos) && info.motivos.length ? info.motivos : [auditor.motivo || 'No cumple las condiciones de asignación.'];
+        motivosLista.innerHTML = motivos.map(m => `<li>${escapeHTML(m)}</li>`).join('');
+        if (info.forzable) {
+          bloqueForzar.style.display = '';
+          botonForzar.style.display = '';
+          setTimeout(() => justificacion.focus(), 50);
+        } else if (info.bloqueante) {
+          motivosLista.insertAdjacentHTML('beforeend', '<li><strong>Esta condición no se puede forzar.</strong></li>');
+        }
+      } catch (error) {
+        motivosLista.innerHTML = `<li>${escapeHTML(error.message)}</li>`;
+      }
       try {
         const response = await fetch(`/auditores/registro/${encodeURIComponent(id)}`, {
           headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
@@ -2419,6 +2547,18 @@
       const auditor = auditorAdvertenciaActual;
       if (!auditor) return;
       const id = String(auditor.id_usuario);
+      const campo = document.getElementById('advertenciaJustificacion');
+      const texto = campo.value.trim();
+      if (texto.length < 10) {
+        const error = document.getElementById('advertenciaError');
+        error.textContent = 'Escriba una justificación de al menos 10 caracteres para asignarlo de todas formas.';
+        error.style.display = 'block';
+        campo.classList.add('campo-invalido');
+        campo.setAttribute('aria-invalid', 'true');
+        campo.focus();
+        return;
+      }
+      justificacionesForzado.set(id, texto);
       auditoresSeleccionados.set(id, auditor);
       auditoresForzados.add(id);
       auditorRolesAsignados.set(id, auditorRolesAsignados.get(id) || 'Observador');
@@ -2547,14 +2687,24 @@
       assignBtn.disabled = true;
       assignBtn.textContent = "Asignando...";
       const resultados = [];
+      // El auditor líder se registra al final: con él la solicitud queda con
+      // el equipo completo y el servidor ya no admite más asignaciones.
+      const esLider = (auditor) => auditorRolesAsignados.get(String(auditor.id_usuario)) === "Auditor líder" ? 1 : 0;
+      const enOrden = seleccionados.slice().sort((a, b) => esLider(a) - esLider(b));
 
       try {
-        for (const selected of seleccionados) {
+        for (const selected of enOrden) {
           const payload = {
             id_solicitud: solicitud.id_solicitud,
             id_auditor: selected.id_usuario,
             rol_auditor: auditorRolesAsignados.get(String(selected.id_usuario))
           };
+          // Antes no se enviaba ninguna marca: el servidor volvía a validar y
+          // rechazaba siempre al auditor "asignado de todas formas".
+          if (auditoresForzados.has(String(selected.id_usuario))) {
+            payload.forzar = true;
+            payload.justificacion = justificacionesForzado.get(String(selected.id_usuario)) || "";
+          }
           try {
             const response = await fetch("/asignacion-auditores/", {
               method: "POST",
@@ -2576,7 +2726,8 @@
         const fallidos = resultados.length - correctos;
         mostrarResultadoAsignacion(
           resultados.map(item => item.text).join("\n"),
-          fallidos ? (correctos ? "info" : "error") : "success"
+          fallidos ? (correctos ? "info" : "error") : "success",
+          correctos ? solicitud.id_solicitud : null
         );
 
         auditoresSeleccionados.clear();
@@ -2585,7 +2736,16 @@
         auditorSeleccionado = null;
         validationBox.classList.remove("show");
         await loadAsignaciones();
-        await loadAuditores(paginaAuditores);
+        // La lista se recarga: si la solicitud quedó con su equipo completo
+        // deja de ofrecerse y el formulario se limpia.
+        await cargarSolicitudes(paginaSolicitudes);
+        if (solicitudes.some(item => String(item.id_solicitud) === String(solicitud.id_solicitud))) {
+          await loadAuditores(paginaAuditores);
+        } else {
+          resetForm();
+          solicitudSeleccionada = null;
+          updateAssignButton();
+        }
       } catch (error) {
         console.error(error);
         showMessage(error?.message || String(error), "error");
@@ -2757,6 +2917,8 @@
 
       pagina.forEach((asignacion) => {
         const row = document.createElement("tr");
+        const enConflicto = asignacion.conflicto_interes === true;
+        if (enConflicto) row.classList.add("fila-conflicto");
         let statusClass = "assigned";
         const estado = asignacion.tiene_programacion
           ? (asignacion.estado_programacion || "Programada")
@@ -2775,20 +2937,32 @@
           <td>${escapeHTML(asignacion.fecha_inicio_planificada ? formatDateTime(asignacion.fecha_inicio_planificada) : "Pendiente en Agenda")}</td>
           <td>${escapeHTML(asignacion.fecha_fin_planificada ? formatDateTime(asignacion.fecha_fin_planificada) : "Pendiente en Agenda")}</td>
           <td>${escapeHTML(asignacion.especialidad || "-")}</td>
-          <td><span class="status ${statusClass}">${escapeHTML(estadoVisible)}</span></td>
+          <td><span class="status ${statusClass}">${escapeHTML(estadoVisible)}</span>${enConflicto
+            ? '<br><span class="status conflicto" title="El auditor tiene un conflicto de interés activo con la empresa de esta solicitud">Conflicto de interés: debe reasignarse</span>'
+            : ''}</td>
           <td>
             <div class="actions">
               <button type="button" class="btn btn-secundario btn-sm action-btn action-view">Ver</button>
-              <button type="button" class="btn btn-peligro-contorno btn-sm action-btn action-cancel" ${asignacion.tiene_programacion ? 'disabled title="La visita ya está programada: cancélela o reprográmela desde Agenda antes de cancelar la asignación."' : ''}>Cancelar asignación</button>
+              ${asignacion.tiene_programacion
+                ? `<a class="btn btn-secundario btn-sm action-btn" href="${escapeHTML(urlProgramarVisita(asignacion.id_solicitud))}" title="Abre Agenda con esta solicitud: verá la visita ya programada y podrá elegir otra sede de la empresa para programarla">Programar otra sede</a>`
+                : `<a class="btn btn-primario btn-sm action-btn" href="${escapeHTML(urlProgramarVisita(asignacion.id_solicitud))}" title="Abre Agenda con esta solicitud seleccionada para programar la visita">Programar visita</a>`}
+              ${enConflicto
+                ? `<button type="button" class="btn btn-peligro btn-sm action-btn action-conflicto" title="Cancela la asignación por conflicto de interés, aunque tenga visita programada">Cancelar por conflicto</button>`
+                : `<button type="button" class="btn btn-peligro-contorno btn-sm action-btn action-cancel" ${asignacion.tiene_programacion ? 'disabled title="La visita ya está programada: cancélela o reprográmela desde Agenda antes de cancelar la asignación."' : ''}>Cancelar asignación</button>`}
             </div>
-            ${asignacion.tiene_programacion ? '<span class="action-hint">Tiene visita programada: para cancelarla use Agenda (cancelar o reprogramar la visita).</span>' : ''}
+            ${asignacion.tiene_programacion && !enConflicto ? '<span class="action-hint">Tiene visita programada: para cancelarla use Agenda (cancelar o reprogramar la visita).</span>' : ''}
           </td>`;
 
         const viewButton = row.querySelector(".action-view");
         viewButton.addEventListener("click", () => viewAssignment(asignacion));
 
+        const conflictoButton = row.querySelector(".action-conflicto");
+        if (conflictoButton) {
+          conflictoButton.addEventListener("click", () => abrirRetiroConflicto(asignacion, conflictoButton));
+        }
+
         const cancelButton = row.querySelector(".action-cancel");
-        cancelButton.addEventListener("click", async () => {
+        if (cancelButton) cancelButton.addEventListener("click", async () => {
           if (!confirm(`¿Desea cancelar la asignación de ${asignacion.auditor_nombre || "este auditor"} en la solicitud ${asignacion.numero_radicado || asignacion.id_solicitud}? Esta acción no se puede deshacer.`)) return;
           try {
             const response = await fetch(`/asignacion-auditores/${encodeURIComponent(asignacion.id)}`, {
@@ -2815,6 +2989,61 @@
     /* =========================================================
        VER DETALLES
     ========================================================= */
+
+    /* =========================================================
+       RETIRO POR CONFLICTO DE INTERÉS
+    ========================================================= */
+
+    let retiroConflictoPendiente = null;
+    let retiroConflictoOrigen = null;
+
+    function abrirRetiroConflicto(asignacion, origen) {
+      retiroConflictoPendiente = asignacion;
+      retiroConflictoOrigen = origen || null;
+      document.getElementById("retiroConflictoTexto").textContent =
+        `${asignacion.auditor_nombre || "El auditor"} tiene un conflicto de interés activo con la empresa de la solicitud ${asignacion.numero_radicado || asignacion.id_solicitud}. No puede seguir asignado.`;
+      document.getElementById("retiroConflictoMotivo").value = "";
+      document.getElementById("retiroConflictoError").style.display = "none";
+      document.getElementById("retiroConflictoModal").classList.add("show");
+      setTimeout(() => document.getElementById("retiroConflictoCancelar").focus(), 50);
+    }
+
+    function cerrarRetiroConflicto() {
+      document.getElementById("retiroConflictoModal").classList.remove("show");
+      retiroConflictoPendiente = null;
+      if (retiroConflictoOrigen && document.body.contains(retiroConflictoOrigen)) retiroConflictoOrigen.focus();
+      retiroConflictoOrigen = null;
+    }
+
+    document.getElementById("retiroConflictoCancelar").addEventListener("click", cerrarRetiroConflicto);
+    document.getElementById("retiroConflictoModal").addEventListener("keydown", (event) => {
+      if (event.key === "Escape") cerrarRetiroConflicto();
+    });
+    document.getElementById("retiroConflictoConfirmar").addEventListener("click", async () => {
+      if (!retiroConflictoPendiente) return;
+      const boton = document.getElementById("retiroConflictoConfirmar");
+      const error = document.getElementById("retiroConflictoError");
+      boton.disabled = true;
+      try {
+        const response = await fetch(`/asignacion-auditores/${encodeURIComponent(retiroConflictoPendiente.id)}/retirar-por-conflicto`, {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify({ motivo: document.getElementById("retiroConflictoMotivo").value.trim() || null })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(typeof data.detail === "string" ? data.detail : "No fue posible cancelar la asignación.");
+        }
+        cerrarRetiroConflicto();
+        showMessage(data.mensaje || "Asignación cancelada por conflicto de interés.", "success");
+        await loadAsignaciones();
+      } catch (e) {
+        error.textContent = e.message;
+        error.style.display = "block";
+      } finally {
+        boton.disabled = false;
+      }
+    });
 
     function viewAssignment(assignment) {
       document.getElementById("detailSolicitud").textContent = assignment.numero_radicado || assignment.id_solicitud || "-";
@@ -2892,8 +3121,14 @@
         const normaCodigo = solicitud.norma_codigo || '-';
         const normaNombre = solicitud.norma_nombre || '-';
         const fecha = solicitud.fecha ? new Date(solicitud.fecha).toLocaleDateString('es-CO') : '-';
+        // Solo llegan solicitudes sin auditor líder activo; si ya tienen otros
+        // integrantes se indica cuántos y qué falta para completar el equipo.
+        const asignados = Number(solicitud.auditores_asignados || 0);
+        const equipo = asignados
+          ? `<br><span class="help-text">Tiene ${asignados} auditor(es) · falta el auditor líder</span>`
+          : '';
         return `<tr>
-          <td>${escapeHTML(radicado)}</td>
+          <td>${escapeHTML(radicado)}${equipo}</td>
           <td>${escapeHTML(empresa)}</td>
           <td>${escapeHTML(normaCodigo)}<br><span class="help-text">${escapeHTML(normaNombre)}</span></td>
           <td>${escapeHTML(fecha)}</td>
@@ -3100,7 +3335,7 @@
           </div>
           <div class="modal-section">
             <h3>Documentos adjuntos</h3>
-            ${documentos.length ? documentos.map(d => '<div class="doc-item"><div style="flex:1;"><strong>' + escapeHTML(d.tipo_documento || '-') + '</strong> — ' + escapeHTML(d.estado_revision || '-') + ' — ' + escapeHTML(d.nombre_archivo || '-') + '</div>' + (d.url_archivo ? '<a class="doc-open-link" href="' + escapeHTML(d.url_archivo) + '" target="_blank" rel="noopener">👁️</a>' : '') + '</div>').join('') : '<div class="audit-empty">Sin documentos registrados.</div>'}
+            ${documentos.length ? documentos.map(d => '<div class="doc-item"><div style="flex:1;"><strong>' + escapeHTML(d.tipo_documento || '-') + '</strong> — ' + escapeHTML(d.estado_revision || '-') + ' — ' + escapeHTML(d.nombre_archivo || '-') + '</div>' + (d.url_archivo ? '<a class="btn btn-secundario btn-sm" href="' + escapeHTML(d.url_archivo) + '" target="_blank" rel="noopener" title="Ver documento" aria-label="Ver ' + escapeHTML(d.tipo_documento || 'documento') + '"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Ver</a>' : '') + '</div>').join('') : '<div class="audit-empty">Sin documentos registrados.</div>'}
           </div>
         `;
       } catch {
@@ -3111,7 +3346,7 @@
     function cerrarModalAuditor() { document.getElementById('auditorModal').classList.remove('show'); }
   </script>
  <script src="/static/session.js?v=20261029"></script>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

@@ -5,8 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CertiSENA | Estado del registro</title>
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028">
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
 
   <style>
     :root {
@@ -1018,8 +1018,8 @@
               <span class="value" id="estadoUsuario">-</span>
             </div>
             <div class="status-item observacion-resumen">
-              <span class="label">Observación del rechazo</span>
-              <span class="value" id="observacionRechazoResumen" title="Observación del rechazo">No aplica para este
+              <span class="label">Motivo del rechazo</span>
+              <span class="value" id="observacionRechazoResumen" title="Motivo del rechazo">No aplica para este
                 estado.</span>
             </div>
           </div>
@@ -1085,8 +1085,9 @@
 
             <section id="rechazoCard" class="rechazo-card">
               <h3>Solicitud rechazada</h3>
-              <p>Revise la observación registrada para esta postulación. Puede iniciar una nueva postulación conservando
-                el historial anterior.</p>
+              <p>Este es el motivo del rechazo que registró el coordinador. Puede iniciar una nueva postulación
+                conservando el historial anterior.</p>
+              <h4 class="rechazo-motivo-titulo">Motivo del rechazo</h4>
               <div id="observacionRechazo" class="rechazo-observacion">No se registró una observación de rechazo.</div>
             </section>
 
@@ -1376,7 +1377,7 @@
 
       const observacion = obtenerValor(
         postulacion,
-        ["observaciones_rechazo", "observacion_rechazo", "observacion", "observaciones"],
+        ["observaciones_rechazo", "motivo_rechazo", "observacion_rechazo", "observacion", "observaciones"],
         ""
       ) || obtenerValor(
         data,
@@ -1466,6 +1467,26 @@
       }
     }
 
+    /* El historial oculta los borradores; si el auditor dejó una postulación
+       sin enviar se avisa para que la complete en "Registro de auditor". */
+    function agregarAvisoBorrador() {
+      const data = window.__estadoAuditorData || {};
+      if (!data.borrador_pendiente) return;
+      const aviso = document.createElement("div");
+      aviso.className = "aviso-borrador";
+      aviso.style.marginTop = "8px";
+      const fuerte = document.createElement("strong");
+      fuerte.textContent = "Tiene una postulación en borrador sin enviar.";
+      aviso.appendChild(fuerte);
+      aviso.appendChild(document.createElement("br"));
+      const enlace = document.createElement("a");
+      enlace.href = "/auditor";
+      enlace.textContent = "Ir al formulario de registro";
+      aviso.appendChild(document.createTextNode("Complétela y envíela para que el Coordinador pueda revisarla. "));
+      aviso.appendChild(enlace);
+      elementos.alerta.appendChild(aviso);
+    }
+
     function renderizarPostulacionActual() {
       const postulacion = postulaciones[indicePostulacion];
       contraerDetalles();
@@ -1475,6 +1496,7 @@
         elementos.estadoPostulacion.replaceChildren(crearEstadoBadge(null));
         elementos.alerta.className = "notice";
         elementos.alerta.textContent = "No hay postulaciones enviadas ni rechazadas para mostrar. Cuando envíe una postulación, podrá consultar aquí su estado.";
+        agregarAvisoBorrador();
         mostrarCorrecciones(null);
         mostrarRechazo(null, {});
         mostrarInformacionAcordada(null, {});
@@ -1509,6 +1531,7 @@
       } else {
         elementos.alerta.textContent = "No hay consultas enviadas o rechazadas para mostrar.";
       }
+      agregarAvisoBorrador();
 
       actualizarBotones(estado);
       actualizarPaginacion();
@@ -1766,7 +1789,7 @@
     })();
   </script>
   <script src="/static/session.js?v=20261029"></script>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

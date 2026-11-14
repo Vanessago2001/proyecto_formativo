@@ -7,8 +7,8 @@
 
     <title>CertiSENA | Banco de Auditores</title>
 
-    <link rel="stylesheet" href="/static/tema.css?v=20261028">
-    <link rel="stylesheet" href="/static/styles.css?v=20261030" />
+    <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+    <link rel="stylesheet" href="/static/styles.css?v=20261114a" />
 
     <style>
         .app-shell {
@@ -330,6 +330,29 @@
             gap: 10px;
         }
 
+        .modal-field-error {
+            margin: 6px 0 0;
+            color: #b42318;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .modal-alerta {
+            margin: 0 0 12px;
+            padding: 12px 14px;
+            border-left: 4px solid #b42318;
+            background: #fef3f2;
+            color: #7a271a;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .modal-nota {
+            margin: 0 0 12px;
+            color: #475569;
+            font-size: 13px;
+        }
+
         .modal-label {
             display: block;
             font-size: 13px;
@@ -554,6 +577,10 @@
                                     Rechazado
                                 </option>
 
+                                <option value="Cancelado">
+                                    Cancelado
+                                </option>
+
                             </select>
 
                         </div>
@@ -675,7 +702,8 @@
          MODAL DE ACCIONES
     ====================================================== -->
 
-    <div id="actionModal" class="modal-overlay">
+    <div id="actionModal" class="modal-overlay" role="dialog" aria-modal="true"
+        aria-labelledby="modalTitle" aria-describedby="modalSubtitle">
 
         <div class="modal">
 
@@ -695,12 +723,16 @@
 
             <div class="modal-body">
 
-                <label for="modalObservaciones" class="modal-label">
+                <label for="modalObservaciones" class="modal-label" id="modalObservacionesLabel">
                     Observaciones
                 </label>
 
                 <textarea id="modalObservaciones" class="modal-textarea"
+                    aria-describedby="modalObservacionesError"
                     placeholder="Escribe las observaciones de la decisión..."></textarea>
+
+                <!-- Error junto al campo (motivo de rechazo obligatorio). -->
+                <p id="modalObservacionesError" class="modal-field-error" role="alert" hidden></p>
 
             </div>
 
@@ -715,6 +747,53 @@
                     Confirmar
                 </button>
 
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         CONFIRMAR APROBACIÓN SIN COMPETENCIAS VALIDADAS
+         El backend responde 409 (cabecera X-Requiere-Confirmacion)
+         cuando el auditor no tiene competencias validadas y vigentes.
+    ====================================================== -->
+
+    <div id="sinCompetenciasModal" class="modal-overlay" role="dialog" aria-modal="true"
+        aria-labelledby="sinCompetenciasTitulo" aria-describedby="sinCompetenciasMotivo">
+
+        <div class="modal">
+
+            <div class="modal-header">
+                <h3 id="sinCompetenciasTitulo">Aprobar sin competencias validadas</h3>
+                <p id="sinCompetenciasNombre"></p>
+            </div>
+
+            <div class="modal-body">
+
+                <p id="sinCompetenciasMotivo" class="modal-alerta"></p>
+
+                <p class="modal-nota">
+                    Quedará registrado en el historial de la postulación quién confirmó
+                    la aprobación y su justificación.
+                </p>
+
+                <label for="sinCompetenciasJustificacion" class="modal-label">
+                    Justificación (obligatoria, mínimo 10 caracteres)
+                </label>
+
+                <textarea id="sinCompetenciasJustificacion" class="modal-textarea" required
+                    aria-required="true" aria-describedby="sinCompetenciasError" maxlength="1000"
+                    placeholder="Explique por qué aprueba al auditor sin competencias validadas..."></textarea>
+
+                <p id="sinCompetenciasError" class="modal-field-error" role="alert" hidden></p>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secundario" id="sinCompetenciasCancelar">Cancelar</button>
+                <button type="button" class="btn btn-peligro" id="sinCompetenciasConfirmar">Sí, aprobar de todas formas</button>
             </div>
 
         </div>
@@ -1440,28 +1519,12 @@
 
             try {
 
-                const estado =
-                    document
-                        .getElementById(
-                            "estado"
-                        )
-                        .value;
-
-
                 // El backend registra estas rutas en /administradores/auditores.
-                let url =
+                // Se trae la lista completa: el estado y la búsqueda se
+                // filtran en el navegador (renderPaginaBanco), así cambiar el
+                // filtro no vuelve a consultar el servidor.
+                const url =
                     "/administradores/auditores/solicitudes";
-
-
-                if (estado) {
-
-                    url +=
-                        "?estado=" +
-                        encodeURIComponent(
-                            estado
-                        );
-
-                }
 
 
                 const response =
@@ -1803,6 +1866,19 @@
 
             modalObservaciones.value = "";
 
+            // Rechazar exige el motivo (mínimo 10 caracteres): el auditor lo
+            // verá en Consultar estado de registro y en su notificación.
+            const esRechazo = accion === "rechazar";
+            modalObservacionesLabel.textContent = esRechazo
+                ? "Motivo del rechazo (obligatorio, mínimo 10 caracteres)"
+                : "Observaciones";
+            modalObservaciones.required = esRechazo;
+            modalObservaciones.setAttribute("aria-required", esRechazo ? "true" : "false");
+            modalObservaciones.placeholder = esRechazo
+                ? "Explique al auditor las razones del rechazo..."
+                : "Escribe las observaciones de la decisión...";
+            limpiarErrorObservaciones();
+
             modalConfirmBtn.textContent =
                 configuracion.titulo;
 
@@ -1827,6 +1903,78 @@
                 modalObservaciones.focus();
             }, 50);
         }
+
+        /* ====================================================
+           ERRORES DEL CAMPO DE OBSERVACIONES
+        ==================================================== */
+
+        const modalObservacionesLabel = document.getElementById("modalObservacionesLabel");
+        const modalObservacionesError = document.getElementById("modalObservacionesError");
+
+        function mostrarErrorObservaciones(texto) {
+            modalObservacionesError.textContent = texto;
+            modalObservacionesError.hidden = false;
+            modalObservaciones.setAttribute("aria-invalid", "true");
+            modalObservaciones.focus();
+        }
+
+        function limpiarErrorObservaciones() {
+            modalObservacionesError.textContent = "";
+            modalObservacionesError.hidden = true;
+            modalObservaciones.removeAttribute("aria-invalid");
+        }
+
+        /* ====================================================
+           MODAL: APROBAR SIN COMPETENCIAS VALIDADAS
+        ==================================================== */
+
+        const sinCompetenciasModal = document.getElementById("sinCompetenciasModal");
+        const sinCompetenciasMotivo = document.getElementById("sinCompetenciasMotivo");
+        const sinCompetenciasNombre = document.getElementById("sinCompetenciasNombre");
+        const sinCompetenciasJustificacion = document.getElementById("sinCompetenciasJustificacion");
+        const sinCompetenciasError = document.getElementById("sinCompetenciasError");
+        const sinCompetenciasCancelar = document.getElementById("sinCompetenciasCancelar");
+        const sinCompetenciasConfirmar = document.getElementById("sinCompetenciasConfirmar");
+
+        function abrirModalSinCompetencias(motivo) {
+            if (!accionPendiente) return;
+            actionModal.classList.remove("show");
+            sinCompetenciasNombre.textContent = accionPendiente.nombre || "";
+            sinCompetenciasMotivo.textContent = motivo ||
+                "El auditor no tiene competencias validadas y vigentes. No será elegible para asignaciones hasta que tenga una competencia vigente.";
+            sinCompetenciasJustificacion.value = "";
+            sinCompetenciasError.hidden = true;
+            sinCompetenciasJustificacion.removeAttribute("aria-invalid");
+            sinCompetenciasModal.classList.add("show");
+            setTimeout(() => sinCompetenciasCancelar.focus(), 50);
+        }
+
+        function cerrarModalSinCompetencias() {
+            sinCompetenciasModal.classList.remove("show");
+            cerrarModal();
+        }
+
+        sinCompetenciasCancelar.addEventListener("click", cerrarModalSinCompetencias);
+
+        sinCompetenciasModal.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") cerrarModalSinCompetencias();
+        });
+
+        sinCompetenciasConfirmar.addEventListener("click", async () => {
+            const justificacion = sinCompetenciasJustificacion.value.trim();
+            if (justificacion.length < 10) {
+                sinCompetenciasError.textContent =
+                    "La justificación es obligatoria (mínimo 10 caracteres).";
+                sinCompetenciasError.hidden = false;
+                sinCompetenciasJustificacion.setAttribute("aria-invalid", "true");
+                sinCompetenciasJustificacion.focus();
+                return;
+            }
+            if (!accionPendiente) return;
+            accionPendiente.confirmacionSinCompetencias = { justificacion };
+            sinCompetenciasModal.classList.remove("show");
+            await ejecutarAccion();
+        });
 
         /* ====================================================
            CERRAR MODAL
@@ -1940,19 +2088,19 @@
              * se requieren observaciones.
              */
 
-            if (
-                (
-                    accion === "correcciones" ||
-                    accion === "rechazar"
-                ) &&
-                !observaciones
-            ) {
-                showMessage(
+            limpiarErrorObservaciones();
+
+            if (accion === "rechazar" && observaciones.length < 10) {
+                mostrarErrorObservaciones(
+                    "El motivo del rechazo es obligatorio: escriba al menos 10 caracteres explicando las razones."
+                );
+                return;
+            }
+
+            if (accion === "correcciones" && !observaciones) {
+                mostrarErrorObservaciones(
                     "Debes registrar las observaciones antes de continuar."
                 );
-
-                modalObservaciones.focus();
-
                 return;
             }
 
@@ -1975,8 +2123,12 @@
                 return;
             }
 
-            const confirmar =
-                window.confirm(
+            // Si ya se confirmó en el modal "sin competencias" no se pregunta otra vez.
+            const confirmacionSinCompetencias = accionPendiente.confirmacionSinCompetencias || null;
+
+            const confirmar = confirmacionSinCompetencias
+                ? true
+                : window.confirm(
                     `¿Confirmas la acción "${configuracion.titulo}"?`
                 );
 
@@ -2018,7 +2170,15 @@
 
                                         observaciones:
                                             observaciones ||
-                                            null
+                                            null,
+
+                                        ...(confirmacionSinCompetencias
+                                            ? {
+                                                confirmar_sin_competencias: true,
+                                                justificacion_sin_competencias:
+                                                    confirmacionSinCompetencias.justificacion
+                                            }
+                                            : {})
                                     }
                                 )
                         }
@@ -2031,10 +2191,20 @@
                             () => null
                         );
 
+                // Aprobar sin competencias validadas: el backend pide una
+                // confirmación explícita con justificación.
                 if (
-                    response.status === 401 ||
-                    response.status === 403
+                    response.status === 409 &&
+                    response.headers.get("X-Requiere-Confirmacion") === "sin-competencias"
                 ) {
+                    modalConfirmBtn.disabled = false;
+                    modalConfirmBtn.textContent = configuracion.titulo;
+                    abrirModalSinCompetencias(data?.detail || "");
+                    return;
+                }
+
+                // 403 = falta el permiso delegado (Auxiliar): se informa sin cerrar la sesión.
+                if (response.status === 401) {
 
                     localStorage
                         .removeItem(
@@ -2136,60 +2306,9 @@
             );
 
 
-        /* ====================================================
-           CAMBIO DE ESTADO
-        ==================================================== */
-
-        document
-            .getElementById(
-                "estado"
-            )
-            .addEventListener(
-                "change",
-                () => {
-
-                    /*
-                     * El estado se consulta
-                     * directamente al backend.
-                     */
-
-                    loadSolicitudes();
-
-                }
-            );
-
-
-        /* ====================================================
-           LIMPIAR
-        ==================================================== */
-
-        document
-            .getElementById(
-                "limpiarBtn"
-            )
-            .addEventListener(
-                "click",
-                () => {
-
-                    document
-                        .getElementById(
-                            "buscar"
-                        )
-                        .value = "";
-
-
-                    document
-                        .getElementById(
-                            "estado"
-                        )
-                        .value = "";
-
-
-                    loadSolicitudes();
-
-                }
-            );
-
+        /* El cambio de estado y "Limpiar" ya tienen su listener junto a los
+           filtros (más arriba). Aquí se registraban por segunda vez y cada
+           acción pedía la lista dos veces al servidor. */
 
         /* ====================================================
            LOGOUT
@@ -2233,7 +2352,7 @@
 
     <script src="/static/session.js?v=20261029"></script>
 
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

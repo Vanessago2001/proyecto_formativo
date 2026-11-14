@@ -7,8 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Portal auditor</title>
 
-    <link rel="stylesheet" href="/static/tema.css?v=20261028">
-    <link rel="stylesheet" href="/static/styles.css?v=20261028">
+    <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+    <link rel="stylesheet" href="/static/styles.css?v=20261114a">
 
     <style>
         .portal {
@@ -106,16 +106,18 @@
 
         .form-control {
             padding: 10px 12px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid var(--campo-borde, #7f8b9e);
             border-radius: 4px;
             font-size: 14px;
             color: #0f172a;
-            outline: none;
+            /* foco: ver .form-control:focus */
             background: #fff;
         }
 
         .form-control:focus {
             border-color: #3baa01;
+            outline: 2px solid var(--foco-color, #256d00);
+            outline-offset: 1px;
             box-shadow: 0 0 0 2px rgba(59, 170, 1, 0.15);
         }
 
@@ -514,7 +516,7 @@
             box-sizing: border-box;
             min-height: 42px;
             padding: 10px 12px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid var(--campo-borde, #7f8b9e);
             border-radius: 9px;
             font-size: 13.5px;
             transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
@@ -2969,6 +2971,11 @@
         // Estado de la postulación que se está editando y permisos derivados.
         let estadoPostulacionCargada = '';
         let estadoAuditorCargado = '';
+        // Correcciones pendientes que encienden el punto rojo del menú. Se
+        // declaran aquí porque actualizarPuntoFormularioRegistro() puede
+        // ejecutarse antes de cargar documentos o competencias.
+        let tieneRechazoDocumentos = false;
+        let tieneRechazoCompetencia = false;
         let permisosAdjuntarDocumentos = { permitido: true, motivo: '' };
 
         const token = localStorage.getItem('access_token');
@@ -4657,7 +4664,8 @@
                 const botonVer = document.createElement('button');
                 botonVer.type = 'button';
                 botonVer.className = 'btn btn-secundario btn-sm btn-mini btn-mini-ver';
-                botonVer.textContent = '👁 Ver';
+                // Icono de línea, como el de "Mi perfil" de la cabecera.
+                botonVer.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Ver';
                 botonVer.disabled = !url;
                 botonVer.title = url ? 'Ver documento' : 'El documento no tiene una URL disponible';
                 botonVer.addEventListener('click', () => verDocumentoSoporte(url));
@@ -5114,16 +5122,38 @@
 
             try {
                 registroCanceladoORechazado = false;
-                const res =
-                    await fetch(
-                        `/auditores/registro/${userId}`,
-                        {
-                            headers: {
-                                'Authorization':
-                                    `Bearer ${token}`
-                            }
+                const consultarRegistro = () => fetch(
+                    `/auditores/registro/${userId}`,
+                    {
+                        headers: {
+                            'Authorization':
+                                `Bearer ${token}`
                         }
-                    );
+                    }
+                );
+                let res = await consultarRegistro();
+
+                // La consulta ya no crea el borrador: la primera vez se inicia
+                // la postulación de forma explícita (el backend exige rol
+                // Auditor) y se vuelve a consultar.
+                if (res.status === 404) {
+                    const inicio = await fetch('/auditores/registro/nueva-postulacion', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ id_usuario: userId })
+                    });
+                    if (!inicio.ok) {
+                        const detalle = await inicio.json().catch(() => ({}));
+                        throw new Error(
+                            detalle.detail || 'No fue posible iniciar su postulación como auditor.'
+                        );
+                    }
+                    res = await consultarRegistro();
+                }
 
                 if (!res.ok) {
                     throw new Error(
@@ -5516,6 +5546,12 @@
                     '❌ Error cargando borrador:',
                     err
                 );
+
+                // Sin postulación (p. ej. una cuenta que no es Auditor) el
+                // formulario no puede usarse: se explica en lugar de quedar vacío.
+                if (!idPostulacionCargada && err && err.message) {
+                    alert(err.message);
+                }
 
             }
 
@@ -6004,7 +6040,7 @@
               ${observacion ? `<div class="documento-observacion"><strong>${clase === 'rechazado' ? 'Observación de rechazo:' : 'Observación de revisión:'}</strong> ${escapeHtml(observacion)}</div>` : (clase === 'rechazado' ? '<div class="documento-observacion"><strong>Observación de rechazo:</strong> No se registró una observación de revisión.</div>' : '')}
             </div>
             <div class="documento-relacionado-acciones">
-              <button type="button" class="btn btn-secundario btn-sm btn-mini btn-mini-ver" ${url ? `onclick="verDocumentoSoporte('${url}')"` : 'disabled'}>👁 Ver</button>
+              <button type="button" class="btn btn-secundario btn-sm btn-mini btn-mini-ver" ${url ? `onclick="verDocumentoSoporte('${url}')"` : 'disabled'} title="Ver documento"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Ver</button>
               <button type="button" class="btn btn-secundario btn-sm btn-mini btn-mini-reemplazar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoReemplazar)}"` : `onclick="reemplazarDocumentoSoporte('${id}')"`}>🔄 Reemplazar</button>
               <button type="button" class="btn btn-peligro-contorno btn-sm btn-mini btn-mini-eliminar" ${bloqueado || !id ? `disabled title="${escaparAtributo(motivoEliminar)}"` : `onclick="eliminarDocumentoSoporte('${id}')"`}>🗑 Eliminar</button>
             </div>
@@ -6278,7 +6314,7 @@
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_titulo || item.id }, 'id_titulo')}
           <div class="upload-relacionado">
             <div class="form-group">
-              <label>Agregar o reemplazar soporte</label>
+              <label for="archivoTitulo_${escaparAtributo(item.id_titulo || item.id)}">Agregar o reemplazar soporte</label>
               <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoTitulo_${escaparAtributo(item.id_titulo || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
             <button type="button" class="btn btn-primario btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('titulo', '${escaparAtributo(item.id_titulo || item.id)}')">Adjuntar</button>
@@ -6317,7 +6353,7 @@
           <div class="help-text" style="margin-top:10px;">El soporte de esta experiencia es opcional.</div>
           <div class="upload-relacionado">
             <div class="form-group">
-              <label>Soporte de la experiencia</label>
+              <label for="archivoLab_${escaparAtributo(item.id_experiencia || item.id)}">Soporte de la experiencia</label>
               <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoLab_${escaparAtributo(item.id_experiencia || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
             <button type="button" class="btn btn-primario btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('laboral', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
@@ -6357,7 +6393,7 @@
           ${renderizarDocumentosRelacionados({ ...item, id: item.id_experiencia || item.id }, 'id_experiencia_auditoria')}
           <div class="upload-relacionado">
             <div class="form-group">
-              <label>Soporte de la experiencia</label>
+              <label for="archivoAud_${escaparAtributo(item.id_experiencia || item.id)}">Soporte de la experiencia</label>
               <input class="form-control" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" id="archivoAud_${escaparAtributo(item.id_experiencia || item.id)}" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`}>
             </div>
             <button type="button" class="btn btn-primario btn-save-section" ${permisoAdjuntarDocumentos().permitido ? "" : `disabled title="${escaparAtributo(permisoAdjuntarDocumentos().motivo)}"`} onclick="adjuntarSoporteDesdeRegistro('auditoria', '${escaparAtributo(item.id_experiencia || item.id)}')">Adjuntar</button>
@@ -7346,7 +7382,7 @@
 
 
 </body>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

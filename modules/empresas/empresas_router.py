@@ -32,7 +32,10 @@ router = APIRouter(prefix="/api/empresas", tags=["Empresas"])
 
 # EMP-003 consultar, EMP-009 historial, EMP-014/015 documentos, EMP-024/030 sedes
 ROLES_CONSULTA = ["admin", "auxiliar", "empresa", "auditor", "comite"]
-# EMP-004 buscar / EMP-005 filtrar (la empresa usa /mias)
+# EMP-004 buscar / EMP-005 filtrar (la empresa usa /mias). El listado completo
+# (con correo y dirección) es para quien gestiona o decide (Coordinador,
+# Auxiliar y Comité, según la hoja M3); el auditor recibe solo datos mínimos
+# de las empresas de sus auditorías asignadas (retest 13/11).
 ROLES_BUSQUEDA = ["admin", "auxiliar", "auditor", "comite"]
 # EMP-001/002 empresa, EMP-021/022/025/026 sedes, EMP-027/028 contactos
 ROLES_GESTION = ["admin", "auxiliar", "empresa"]
@@ -153,6 +156,8 @@ async def get_empresas(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_role(ROLES_BUSQUEDA))
 ):
+    if _normalize_role_name(current_user.get("role_name")) == "auditor":
+        return await EmpresasService(db).get_empresas_de_auditor(str(current_user.get("id_usuario")))
     return await EmpresasService(db).get_all_empresas()
 
 
@@ -193,6 +198,8 @@ async def get_empresa(
     empresa = await servicio.get_empresa_by_id(id_empresa)
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
+    if _normalize_role_name(current_user.get("role_name")) == "auditor":
+        return servicio.datos_para_auditor(dict(empresa))
     return empresa
 
 

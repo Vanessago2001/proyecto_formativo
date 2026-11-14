@@ -5,8 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CertiSENA | Administracion</title>
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a" />
   <style>
     .acceso-form { display: grid; gap: 10px; text-align: left; }
     .acceso-form label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
@@ -297,14 +297,14 @@
       transform: translateY(-50%);
       width: 16px;
       height: 16px;
-      color: #94a3b8;
+      color: #64748b;
       pointer-events: none;
     }
 
     .users-filter input {
       width: 100%;
       padding: 10px 14px 10px 38px;
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--campo-borde, #7f8b9e);
       border-radius: 10px;
       background: #fff;
       color: #1f2937;
@@ -314,11 +314,11 @@
     }
 
     .users-filter input::placeholder {
-      color: #94a3b8;
+      color: #64748b;
     }
 
     .users-filter input:focus {
-      outline: none;
+      outline: 2px solid var(--foco-color, #256d00);
       border-color: #3baa01;
       box-shadow: 0 0 0 3px rgba(59, 170, 1, .15);
     }
@@ -395,7 +395,7 @@
 
     .pager-ellipsis {
       padding: 0 4px;
-      color: #94a3b8;
+      color: #64748b;
       font-weight: 700;
     }
 
@@ -462,7 +462,6 @@
     <a href="/revision-solicitudes">Revisión de solicitudes</a>
     <a href="/banco-auditores">Banco de auditores</a>
     <a href="/conflictos-administrador">Conflictos de interés</a>
-    <a href="/empresas-restringidas">Consultar empresas restringidas</a>
     <a href="/gestion-certificados">Gestión de certificados</a>
     <a href="/apelacion">Apelaciones</a>
     <a href="/comite">Ir al Comité de certificación</a>
@@ -473,7 +472,15 @@
   </nav>
 
       <div>
-        <section class="metrics">
+        <!-- Módulo Usuarios: una sola opción del menú con tres pestañas.
+             Resumen y Gestionar usuarios cambian sin recargar; Permisos de
+             auxiliares es otra pantalla que repite estas mismas pestañas. -->
+        <div id="vistasDashboard" class="pestanas" role="tablist" aria-label="Usuarios">
+          <button type="button" role="tab" data-view="resumen" class="active">Resumen</button>
+          <button type="button" role="tab" data-view="usuarios">Gestionar usuarios</button>
+          <a role="tab" href="/permisos-auxiliar">Permisos de auxiliares</a>
+        </div>
+        <section class="metrics" id="vistaResumen">
           <div class="metric">
             <b id="totalUsers">-</b><span>Cuentas registradas</span>
           </div>
@@ -539,7 +546,7 @@
                 <circle cx="11" cy="11" r="7"></circle>
                 <path d="m21 21-4.3-4.3"></path>
               </svg>
-              <input type="search" id="usersFilter" placeholder="Buscar por usuario, correo, rol o estado..."
+              <input type="search" id="usersFilter" aria-label="Buscar usuarios" placeholder="Buscar por usuario, correo, rol o estado..."
                 autocomplete="off" />
             </div>
           </div>
@@ -667,7 +674,7 @@
 
         <div class="form-group">
 
-          <label>
+          <label for="codigoInput">
 
             Código
 
@@ -744,6 +751,37 @@
       companyLink.href = isCompany ? "/empresa" : "/profile";
       companyLink.textContent = isCompany ? "Ir a mi empresa" : "Ir a mi perfil";
     }
+    // Resumen (tarjetas) y Usuarios (crear cuenta y control de usuarios) son
+    // dos vistas del mismo panel; "#usuarios" abre la segunda.
+    function mostrarVistaDashboard(vista) {
+      const usuarios = vista === "usuarios";
+      const mostrar = (el, si) => { if (el) el.style.display = si ? "" : "none"; };
+      mostrar(document.getElementById("vistaResumen"), !usuarios);
+      mostrar(document.getElementById("usuarios"), usuarios);
+      mostrar(document.querySelector("#adminView .users-section"), usuarios);
+      document.querySelectorAll("#vistasDashboard button[data-view]").forEach((boton) => {
+        const activa = boton.dataset.view === vista;
+        boton.classList.toggle("active", activa);
+        boton.setAttribute("aria-selected", activa ? "true" : "false");
+      });
+    }
+    document.querySelectorAll("#vistasDashboard button[data-view]").forEach((boton) => {
+      boton.addEventListener("click", () => {
+        mostrarVistaDashboard(boton.dataset.view);
+        // La dirección refleja la vista, para que al recargar se abra la misma.
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, "", location.pathname + (boton.dataset.view === "usuarios" ? "#usuarios" : ""));
+        }
+      });
+    });
+    // "Usuarios" del menú lateral vuelve a la primera pestaña (Resumen).
+    document.addEventListener("click", (evento) => {
+      if (evento.target.closest('.menu-acordeon a[href="/dashboard"]')) mostrarVistaDashboard("resumen");
+    });
+    window.addEventListener("hashchange", () => {
+      mostrarVistaDashboard(location.hash === "#usuarios" ? "usuarios" : "resumen");
+    });
+    mostrarVistaDashboard(location.hash === "#usuarios" ? "usuarios" : "resumen");
     function headers() {
       return {
         "Content-Type": "application/json",
@@ -1184,6 +1222,7 @@
           true,
         ));
       }
+      roleSelect.setAttribute("aria-label", "Rol de " + (u.nombre || u.correo || "usuario"));
       roleSelect.addEventListener("change", () =>
         updateUser(u.id, { rol: roleSelect.value }),
       );
@@ -1196,6 +1235,7 @@
       state.add(
         new Option("Inactivo", "Inactivo", false, u.estado === "Inactivo"),
       );
+      state.setAttribute("aria-label", "Estado de " + (u.nombre || u.correo || "usuario"));
       state.addEventListener("change", () =>
         updateUser(u.id, { estado: state.value }),
       );
@@ -1472,7 +1512,7 @@
 
 
   <script src="/static/session.js?v=20261029"></script>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

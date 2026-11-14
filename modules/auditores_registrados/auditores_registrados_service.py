@@ -75,6 +75,38 @@ def _decorar_archivo(item: dict[str, Any], campo: str = "url_archivo") -> dict[s
     return item
 
 
+def clasificar_estado_registro(
+    estado_auditor: str | None, estado_postulacion: str | None
+) -> dict[str, str]:
+    """Estado del auditor en el registro (no el de su cuenta Activo/Inactivo).
+
+    Devuelve ``estado_registro`` (Aprobado, Postulante, Rechazado, Cancelado o
+    Sin postulación) y ``estado_registro_detalle`` con el matiz que ve el
+    Coordinador en la insignia.
+    """
+    auditor = str(estado_auditor or "").strip().lower()
+    postulacion = str(estado_postulacion or "").strip().lower()
+    if auditor in ("activo", "aprobado", "aprobada"):
+        return {"estado_registro": "Aprobado", "estado_registro_detalle": "Auditor aprobado"}
+    if not postulacion:
+        return {"estado_registro": "Sin postulación", "estado_registro_detalle": "No ha iniciado su postulación"}
+    if postulacion in ("aprobado", "aprobada"):
+        return {
+            "estado_registro": "Aprobado",
+            "estado_registro_detalle": f"Postulación aprobada; estado de auditor: {estado_auditor or 'sin dato'}",
+        }
+    if postulacion in ("rechazado", "rechazada"):
+        return {"estado_registro": "Rechazado", "estado_registro_detalle": "Última postulación rechazada"}
+    if postulacion in ("cancelado", "cancelada"):
+        return {"estado_registro": "Cancelado", "estado_registro_detalle": "Última postulación cancelada"}
+    if postulacion == "borrador":
+        return {"estado_registro": "Postulante", "estado_registro_detalle": "Borrador sin enviar"}
+    return {
+        "estado_registro": "Postulante",
+        "estado_registro_detalle": f"Postulación {estado_postulacion}",
+    }
+
+
 class AuditoresRegistradosService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -116,7 +148,10 @@ class AuditoresRegistradosService:
                     SELECT COUNT(*)
                     FROM certificacion_auditor ca
                     WHERE ca.id_usuario = u.id_usuario
-                ) AS total_certificaciones
+                ) AS total_certificaciones,
+                ult.estado AS estado_postulacion,
+                rev.id_postulacion AS id_postulacion,
+                rev.estado AS estado_postulacion_revisar
             FROM usuario u
             INNER JOIN rol r
                 ON r.id_rol = u.rol_id
@@ -134,6 +169,27 @@ class AuditoresRegistradosService:
                     p.id_perfil DESC
                 LIMIT 1
             ) p ON TRUE
+            -- Última postulación (incluye Borrador) para saber si es
+            -- postulante, aprobado o rechazado.
+            LEFT JOIN LATERAL (
+                SELECT pa.estado
+                FROM postulacion_auditor pa
+                WHERE pa.id_usuario = u.id_usuario
+                ORDER BY pa.fecha_postulacion DESC NULLS LAST,
+                         pa.fecha_revision DESC NULLS LAST
+                LIMIT 1
+            ) ult ON TRUE
+            -- Última postulación enviada (el Banco no revisa borradores):
+            -- es la que abre "Revisar solicitud".
+            LEFT JOIN LATERAL (
+                SELECT pa.id_postulacion, pa.estado
+                FROM postulacion_auditor pa
+                WHERE pa.id_usuario = u.id_usuario
+                  AND LOWER(TRIM(COALESCE(pa.estado, ''))) <> 'borrador'
+                ORDER BY pa.fecha_postulacion DESC NULLS LAST,
+                         pa.fecha_revision DESC NULLS LAST
+                LIMIT 1
+            ) rev ON TRUE
             WHERE LOWER(TRIM(r.nombre)) = 'auditor'
         """
         parametros: dict[str, Any] = {}
@@ -156,7 +212,14 @@ class AuditoresRegistradosService:
         consulta += " ORDER BY LOWER(COALESCE(u.nombre, '')) ASC, u.num_doc ASC"
 
         resultado = await self.db.execute(text(consulta), parametros)
-        return [dict(fila) for fila in resultado.mappings().all()]
+        auditores = []
+        for fila in resultado.mappings().all():
+            auditor = dict(fila)
+            auditor.update(clasificar_estado_registro(
+                auditor.get("estado_auditor"), auditor.get("estado_postulacion")
+            ))
+            auditores.append(auditor)
+        return auditores
 
     # ------------------------------------------------------------------
     # HOJA DE VIDA

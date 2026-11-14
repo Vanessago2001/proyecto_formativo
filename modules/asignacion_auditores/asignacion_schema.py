@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class RolAuditor(str, Enum):
@@ -20,6 +20,18 @@ class AsignacionAuditorCrear(BaseModel):
     id_solicitud: UUID = Field(..., description="Solicitud de certificación aprobada.")
     id_auditor: UUID = Field(..., description="Usuario auditor que se asignará.")
     rol_auditor: RolAuditor = Field(..., description="Rol individual del auditor en esta solicitud.")
+    # "Asignar de todas formas": solo Coordinador (o Auxiliar con permiso
+    # delegado SOL-048). El conflicto de interés nunca se puede forzar.
+    forzar: bool = Field(False, description="Asignar aunque no cumpla la competencia vigente.")
+    justificacion: str | None = Field(None, max_length=1000, description="Obligatoria al forzar.")
+
+    @model_validator(mode="after")
+    def exigir_justificacion(self):
+        if self.forzar and len((self.justificacion or "").strip()) < 10:
+            raise ValueError(
+                "Para asignar un auditor no elegible escriba una justificación (mínimo 10 caracteres)."
+            )
+        return self
 
 
 class AuditorElegibleRespuesta(BaseModel):

@@ -27,6 +27,52 @@ ESTADOS_ASIGNACION_ACTIVOS = (
     "Activo",
 )
 
+# Fragmentos SQL sobre el alias ``a`` (auditores_solicitud). Se comparan sin
+# importar mayúsculas ni espacios: una asignación cancelada o reasignada no
+# cuenta, sin importar cómo se haya escrito su estado.
+SQL_ASIGNACION_ACTIVA = (
+    "UPPER(TRIM(COALESCE(a.estado_asignacion, ''))) IN "
+    "('AGENDADA', 'PROGRAMADA', 'CONFIRMADO', 'CONFIRMADA', 'ASIGNADO', 'ASIGNADA', 'ACTIVO', 'ACTIVA')"
+)
+SQL_ROL_LIDER = (
+    "LOWER(TRIM(COALESCE(a.especialidad, ''))) IN ('auditor líder', 'auditor lider')"
+)
+# Regla de equipo: una solicitud admite varios auditores (líder, experto
+# técnico, auditor integral, observador) pero un solo auditor líder, y es el
+# único rol obligatorio. Por eso el equipo queda "completo" en cuanto tiene un
+# auditor líder activo: la solicitud deja de ofrecerse para asignar y los
+# demás integrantes se suman desde Agenda al programar la visita.
+SQL_SOLICITUD_CON_EQUIPO_COMPLETO = f"""EXISTS (
+    SELECT 1
+    FROM auditores_solicitud a
+    WHERE a.id_solicitud = s.id_solicitud
+      AND {SQL_ASIGNACION_ACTIVA}
+      AND {SQL_ROL_LIDER}
+)"""
+
+
+# Conflicto de interés activo y bloqueante entre el auditor de la asignación
+# (alias ``a``) y la empresa de su solicitud (alias ``s``). Un auditor no puede
+# seguir asignado a una empresa con la que declaró conflicto.
+SQL_CONFLICTO_ASIGNACION = """EXISTS (
+    SELECT 1
+    FROM conflicto_interes ci
+    WHERE ci.id_usuario = a.id_auditor
+      AND ci.id_empresa = s.id_empresa
+      AND ci.bloquea_asignacion = TRUE
+      AND UPPER(TRIM(COALESCE(ci.estado, ''))) = 'ACTIVO'
+)"""
+
+ESTADOS_VISITA_TERMINALES = (
+    "CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO", "EJECUTADA", "EJECUTADO",
+)
+SQL_VISITA_NO_TERMINAL = (
+    "UPPER(TRIM(COALESCE(pv.estado, ''))) NOT IN ("
+    + ", ".join(f"'{e}'" for e in ESTADOS_VISITA_TERMINALES)
+    + ")"
+)
+ACCION_RETIRO_CONFLICTO = "RETIRO_POR_CONFLICTO_INTERES"
+
 
 # Se consulta el perfil, las competencias y los conflictos de la postulación aprobada más reciente.
 CTE_AUDITORES = """
@@ -63,23 +109,24 @@ WITH postulaciones_aprobadas AS (
               AND CURRENT_DATE >= ca.fecha_inicio
               AND CURRENT_DATE <= ca.fecha_fin
         ) AS competencia_norma,
+        -- El conflicto de interés es de la persona, no de una postulación:
+        -- los que se declaran después de aprobado el registro (pantalla
+        -- "Conflictos registrados") quedan sin id_postulacion o enlazados a
+        -- otra postulación, y aun así deben bloquear la asignación.
         EXISTS (
             SELECT 1
             FROM conflicto_interes ci
             WHERE ci.id_usuario = u.id_usuario
-              AND ci.id_postulacion = pa.id_postulacion
               AND ci.id_empresa = :id_empresa
               AND ci.bloquea_asignacion = TRUE
-              AND ci.estado = 'Activo'
+              AND UPPER(TRIM(COALESCE(ci.estado, ''))) = 'ACTIVO'
         ) AS conflicto_interes,
         EXISTS (
             SELECT 1
-            FROM auditores_solicitud asignado
-            WHERE asignado.id_solicitud = :id_solicitud
-              AND asignado.id_auditor = u.id_usuario
-              AND asignado.estado_asignacion = ANY(
-                  CAST(:estados_activos AS VARCHAR[])
-              )
+            FROM auditores_solicitud a
+            WHERE a.id_solicitud = :id_solicitud
+              AND a.id_auditor = u.id_usuario
+              AND """ + SQL_ASIGNACION_ACTIVA + """
         ) AS ya_asignado
     FROM usuario u
     INNER JOIN postulaciones_aprobadas pa
@@ -130,7 +177,13 @@ class AsignacionAuditorService:
         # El estado se compara contra el catalogo de M5: la tabla llego a
         # tener 'APROBADO' y 'Aprobada', y un literal exacto dejaba fuera a
         # las solicitudes escritas con la otra grafia.
-        filtros = [f"s.estado = '{estados.APROBADA}'", "s.deleted_at IS NULL"]
+        filtros = [
+            f"s.estado = '{estados.APROBADA}'",
+            "s.deleted_at IS NULL",
+            # Las que ya tienen el equipo completo (auditor líder activo) no se
+            # vuelven a ofrecer. Las que solo tienen asignaciones canceladas sí.
+            "NOT " + SQL_SOLICITUD_CON_EQUIPO_COMPLETO,
+        ]
         params: dict = {}
         if buscar:
             filtros.append(
@@ -205,6 +258,12 @@ class AsignacionAuditorService:
                     n.nombre AS norma_nombre,
                     n.version AS norma_version,
                     s.fecha,
+                    (
+                        SELECT COUNT(*)
+                        FROM auditores_solicitud a
+                        WHERE a.id_solicitud = s.id_solicitud
+                          AND {SQL_ASIGNACION_ACTIVA}
+                    ) AS auditores_asignados,
                     EXISTS (
                         SELECT 1
                         FROM programacion_visita pv
@@ -421,11 +480,65 @@ class AsignacionAuditorService:
             "total_pages": total_pages,
         }
 
+    async def motivos_competencia(self, id_auditor: UUID, solicitud: dict) -> list[str]:
+        """Razones concretas por las que no hay competencia vigente en la norma."""
+        norma = solicitud.get("norma_codigo") or solicitud.get("norma_nombre") or "de la solicitud"
+        resultado = await self.db.execute(
+            text(
+                """
+                SELECT ca.estado_validacion, ca.es_vigente, ca.fecha_inicio, ca.fecha_fin,
+                       ca.codigo_sector_iaf
+                FROM competencia_auditor ca
+                WHERE ca.id_usuario = :id_auditor
+                  AND ca.id_norma = :id_norma
+                ORDER BY ca.fecha_fin DESC NULLS LAST
+                """
+            ),
+            {"id_auditor": str(id_auditor), "id_norma": str(solicitud["id_norma"])},
+        )
+        filas = [dict(f) for f in resultado.mappings().all()]
+        if not filas:
+            return [f"No tiene ninguna competencia registrada en la norma {norma}."]
+        hoy = date.today()
+        motivos = []
+        for fila in filas:
+            sector = f" (sector IAF {fila['codigo_sector_iaf']})" if fila.get("codigo_sector_iaf") else ""
+            inicio = fila.get("fecha_inicio")
+            fin = fila.get("fecha_fin")
+            inicio = inicio.date() if hasattr(inicio, "date") and callable(inicio.date) else inicio
+            fin = fin.date() if hasattr(fin, "date") and callable(fin.date) else fin
+            if (fila.get("estado_validacion") or "") != "Validado":
+                motivos.append(
+                    f"Su competencia en la norma {norma}{sector} no está validada "
+                    f"(estado: {fila.get('estado_validacion') or 'sin validar'})."
+                )
+            elif fin and fin < hoy:
+                motivos.append(f"Su competencia en la norma {norma}{sector} venció el {fin.strftime('%d/%m/%Y')}.")
+            elif inicio and inicio > hoy:
+                motivos.append(
+                    f"Su competencia en la norma {norma}{sector} empieza a regir el {inicio.strftime('%d/%m/%Y')}."
+                )
+            elif not fila.get("es_vigente"):
+                motivos.append(f"Su competencia en la norma {norma}{sector} está marcada como no vigente.")
+        return motivos or [f"No tiene competencia vigente y validada en la norma {norma}."]
+
+    async def elegibilidad(self, id_solicitud: UUID, id_auditor: UUID) -> dict:
+        """Detalle para el modal "Asignar de todas formas": razones y si es forzable."""
+        try:
+            await self.validar_auditor(id_solicitud, id_auditor)
+            return {"elegible": True, "forzable": False, "motivos": [], "bloqueante": None}
+        except HTTPException as error:
+            info = getattr(error, "elegibilidad", None)
+            if info is None:
+                return {"elegible": False, "forzable": False, "motivos": [str(error.detail)], "bloqueante": str(error.detail)}
+            return info
+
     async def validar_auditor(
         self,
         id_solicitud: UUID,
         id_auditor: UUID,
         ignorar_ya_asignado: bool = False,
+        forzar: bool = False,
     ) -> dict:
         solicitud = await self.obtener_solicitud(id_solicitud)
         result = await self.db.execute(
@@ -453,30 +566,84 @@ class AsignacionAuditorService:
             elegible = elegible and not ya_asignado
         auditor = {
             "id_usuario": fila["id_usuario"],
+            "nombre": fila.get("nombre"),
             "competencia_norma": competencia_norma,
             "conflicto_interes": conflicto,
             "ya_asignado": ya_asignado,
             "elegible": elegible,
+            "forzado": False,
+            "motivos": [],
         }
-        if not auditor["elegible"]:
-            motivos = []
-            if not competencia_norma:
-                motivos.append("No tiene competencia vigente y validada para la norma.")
-            if conflicto:
-                motivos.append("Tiene un conflicto de interés activo con la empresa.")
-            if ya_asignado:
-                motivos.append("Ya está asignado a esta solicitud.")
+        if auditor["elegible"]:
+            return auditor
+
+        # Bloqueantes: nunca se pueden forzar.
+        bloqueante = None
+        if conflicto:
+            bloqueante = (
+                "Tiene un conflicto de interés activo con la empresa. Por imparcialidad no se "
+                "puede asignar, ni siquiera de forma excepcional."
+            )
+        elif ya_asignado and not ignorar_ya_asignado:
+            bloqueante = "Ya está asignado a esta solicitud."
+        motivos = [] if competencia_norma else await self.motivos_competencia(id_auditor, solicitud)
+        if bloqueante:
+            motivos.append(bloqueante)
+        info = {"elegible": False, "forzable": bloqueante is None, "motivos": motivos, "bloqueante": bloqueante}
+
+        if bloqueante is None and forzar:
+            # Solo falta la competencia: el Coordinador decidió asignarlo igual.
+            auditor["forzado"] = True
+            auditor["motivos"] = motivos
+            return auditor
+
+        error = HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "El auditor no cumple las condiciones para ser asignado. " + " ".join(motivos)
+                + ("" if bloqueante else " Si aun así desea asignarlo, use \"Asignar de todas formas\" con una justificación.")
+            ),
+        )
+        error.elegibilidad = info
+        raise error
+
+    async def validar_equipo_incompleto(self, id_solicitud: UUID) -> None:
+        """409 si la solicitud ya tiene su equipo completo (auditor líder activo).
+
+        Así el backend no depende de que la pantalla oculte la solicitud.
+        """
+        resultado = await self.db.execute(
+            text(
+                f"""
+                SELECT s.numero_radicado, u.nombre AS lider_nombre
+                FROM auditores_solicitud a
+                INNER JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+                LEFT JOIN usuario u ON u.id_usuario = a.id_auditor
+                WHERE a.id_solicitud = :id_solicitud
+                  AND {SQL_ASIGNACION_ACTIVA}
+                  AND {SQL_ROL_LIDER}
+                LIMIT 1
+                """
+            ),
+            {"id_solicitud": str(id_solicitud)},
+        )
+        fila = resultado.mappings().first()
+        if fila:
+            radicado = fila.get("numero_radicado") or "seleccionada"
+            lider = fila.get("lider_nombre") or "ya registrado"
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="El auditor no cumple las condiciones para ser asignado. " + " ".join(motivos),
+                detail=(
+                    f"La solicitud {radicado} ya tiene su equipo asignado "
+                    f"(auditor líder: {lider}). Para sumar auditores hágalo desde "
+                    "Agenda al programar la visita, o cancele primero la asignación actual."
+                ),
             )
-        return auditor
 
     # ------------------------------------------------------------------
     # CREAR ASIGNACIÓN SIN FECHAS
     # ------------------------------------------------------------------
-    async def asignar(self, data: AsignacionAuditorCrear, usuario: dict) -> dict:
-        del usuario  # El usuario autenticado se mantiene en la firma de la ruta.
+    async def asignar(self, data: AsignacionAuditorCrear, usuario: dict, origen_forzado: str = "Coordinador") -> dict:
 
         programacion_result = await self.db.execute(
             text(
@@ -501,30 +668,8 @@ class AsignacionAuditorService:
                 ),
             )
 
-        await self.validar_auditor(data.id_solicitud, data.id_auditor)
-
-        if data.rol_auditor.value == "Auditor líder":
-            resultado_lider = await self.db.execute(
-                text(
-                    """
-                    SELECT 1
-                    FROM auditores_solicitud
-                    WHERE id_solicitud = :id_solicitud
-                      AND especialidad = 'Auditor líder'
-                      AND estado_asignacion = ANY(CAST(:estados_activos AS VARCHAR[]))
-                    LIMIT 1;
-                    """
-                ),
-                {
-                    "id_solicitud": str(data.id_solicitud),
-                    "estados_activos": list(ESTADOS_ASIGNACION_ACTIVOS),
-                },
-            )
-            if resultado_lider.first():
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="La solicitud ya tiene un auditor líder.",
-                )
+        await self.validar_equipo_incompleto(data.id_solicitud)
+        validado = await self.validar_auditor(data.id_solicitud, data.id_auditor, forzar=data.forzar)
 
         id_asignacion = uuid4()
         try:
@@ -571,6 +716,38 @@ class AsignacionAuditorService:
                 },
             )
             asignacion = dict(resultado.mappings().one())
+            if validado.get("forzado"):
+                # Trazabilidad: quién forzó, cuándo, por qué no era elegible y
+                # la justificación (tabla existente historial_asignacion_auditor).
+                await self.db.execute(
+                    text(
+                        """
+                        INSERT INTO historial_asignacion_auditor (
+                            id_historial, id_solicitud, id_auditor, accion, motivo,
+                            estado_anterior, estado_nuevo, id_usuario_accion, fecha,
+                            id_asignacion, origen
+                        ) VALUES (
+                            :id, :id_solicitud, :id_auditor, 'ASIGNACION_FORZADA', :motivo,
+                            NULL, :estado_nuevo, :id_usuario, CURRENT_TIMESTAMP,
+                            :id_asignacion, :origen
+                        )
+                        """
+                    ),
+                    {
+                        "id": str(uuid4()),
+                        "id_solicitud": str(data.id_solicitud),
+                        "id_auditor": str(data.id_auditor),
+                        "motivo": (
+                            "Asignado sin cumplir la elegibilidad. Razones: "
+                            + " ".join(validado.get("motivos") or [])
+                            + " Justificación: " + (data.justificacion or "").strip()
+                        ),
+                        "estado_nuevo": ESTADO_ASIGNACION_INICIAL,
+                        "id_usuario": str(usuario.get("id_usuario")) if usuario.get("id_usuario") else None,
+                        "id_asignacion": str(asignacion["id"]),
+                        "origen": origen_forzado[:60],
+                    },
+                )
             info_result = await self.db.execute(
                 text("SELECT nombre, correo FROM usuario WHERE id_usuario = :id_auditor LIMIT 1"),
                 {"id_auditor": str(data.id_auditor)},
@@ -608,7 +785,11 @@ class AsignacionAuditorService:
             "fecha_inicio_planificada": None,
             "fecha_fin_planificada": None,
             "estado_asignacion": asignacion["estado_asignacion"],
-            "mensaje": "Auditor asignado correctamente. La fecha y el horario se definirán desde Agenda.",
+            "forzado": bool(validado.get("forzado")),
+            "mensaje": (
+                "Auditor asignado de forma excepcional (no elegible); quedó registrado con su justificación. "
+                if validado.get("forzado") else "Auditor asignado correctamente. "
+            ) + "La fecha y el horario se definirán desde Agenda.",
         }
 
     # ------------------------------------------------------------------
@@ -648,7 +829,10 @@ class AsignacionAuditorService:
                     a.estado_asignacion,
                     s.numero_radicado,
                     u.nombre AS auditor_nombre,
-                    u.correo AS auditor_correo
+                    u.correo AS auditor_correo,
+                    -- Conflicto de interés activo con la empresa: la asignación
+                    -- debe reasignarse (se marca en la pantalla).
+                    {SQL_CONFLICTO_ASIGNACION} AS conflicto_interes
                 FROM auditores_solicitud a
                 INNER JOIN solicitud s ON s.id_solicitud = a.id_solicitud
                 INNER JOIN usuario u ON u.id_usuario = a.id_auditor
@@ -660,6 +844,10 @@ class AsignacionAuditorService:
                     WHERE dpa.id_usuario = a.id_auditor
                       AND pv.id_solicitud = a.id_solicitud
                       AND COALESCE(pv.estado, '') NOT IN ('Cancelada', 'Cancelado')
+                      -- Una asignación cancelada no hereda la visita de otro
+                      -- equipo (se mostraba como "Confirmada").
+                      AND UPPER(TRIM(COALESCE(a.estado_asignacion, ''))) NOT IN
+                          ('CANCELADA', 'CANCELADO', 'REASIGNADO', 'REASIGNADA')
                     ORDER BY pv.fecha_inicio DESC NULLS LAST
                     LIMIT 1
                 ) agenda ON TRUE
@@ -737,6 +925,243 @@ class AsignacionAuditorService:
         if confirmar:
             await self.db.commit()
         return {"mensaje": "Asignación cancelada correctamente."}
+
+    # ------------------------------------------------------------
+    # Conflicto de interés sobre asignaciones ya hechas
+    # ------------------------------------------------------------
+
+    async def asignaciones_activas_con_empresa(self, id_auditor, id_empresa) -> list[dict]:
+        """Asignaciones activas del auditor en solicitudes de esa empresa."""
+        resultado = await self.db.execute(
+            text(f"""
+                SELECT a.id, a.id_solicitud, s.numero_radicado, a.especialidad,
+                       u.nombre AS auditor_nombre, e.nombre AS empresa_nombre
+                FROM auditores_solicitud a
+                INNER JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+                INNER JOIN usuario u ON u.id_usuario = a.id_auditor
+                LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+                WHERE a.id_auditor = :id_auditor
+                  AND s.id_empresa = :id_empresa
+                  AND {SQL_ASIGNACION_ACTIVA}
+                ORDER BY s.numero_radicado
+            """),
+            {"id_auditor": str(id_auditor), "id_empresa": str(id_empresa)},
+        )
+        return [dict(fila) for fila in resultado.mappings().all()]
+
+    async def avisar_conflicto_en_asignaciones(self, id_auditor, id_empresa) -> list[dict]:
+        """Al registrar un conflicto activo, avisa al Coordinador si el auditor
+        ya está asignado en solicitudes de esa empresa.
+
+        Crea una notificación (tabla ``notificacion``) para cada Coordinador
+        activo. No hace commit: lo hace quien registra el conflicto.
+        """
+        afectadas = await self.asignaciones_activas_con_empresa(id_auditor, id_empresa)
+        if not afectadas:
+            return []
+        radicados = ", ".join(
+            str(fila.get("numero_radicado") or fila["id_solicitud"]) for fila in afectadas
+        )
+        auditor = afectadas[0].get("auditor_nombre") or "Un auditor"
+        empresa = afectadas[0].get("empresa_nombre") or "la empresa"
+        mensaje = (
+            f"Conflicto de interés: {auditor} tiene un conflicto activo con {empresa} "
+            f"y sigue asignado en {radicados}. Debe reasignarse desde Asignación de auditores."
+        )
+        if len(mensaje) > 255:  # notificacion.mensaje es VARCHAR(255)
+            mensaje = mensaje[:252].rstrip() + "..."
+        await self.db.execute(
+            text("""
+                INSERT INTO notificacion (id_notificacion, id_usuario, asunto, mensaje, estado, fecha_envio)
+                SELECT gen_random_uuid(), u.id_usuario, :asunto, :mensaje, 'Pendiente', CURRENT_DATE
+                FROM usuario u
+                INNER JOIN rol r ON r.id_rol = u.rol_id
+                WHERE LOWER(TRIM(r.nombre)) = 'coordinador'
+                  AND UPPER(TRIM(COALESCE(u.estado, ''))) = 'ACTIVO'
+            """),
+            {"asunto": "Conflicto de interés en asignaciones", "mensaje": mensaje},
+        )
+        return afectadas
+
+    async def retirar_por_conflicto(
+        self,
+        id_asignacion: UUID,
+        usuario: dict,
+        motivo: str | None = None,
+    ) -> dict:
+        """Cancela la asignación de un auditor con conflicto de interés activo
+        con la empresa, aunque la solicitud ya tenga visita programada.
+
+        Si el auditor está en visitas no terminadas de la solicitud, lo quita
+        de ellas con las reglas de Agenda: libera sus bloqueos de fecha de esa
+        visita (con historial de disponibilidad), le notifica y recalcula el
+        estado de la visita. La visita se conserva para agregar otro auditor
+        desde Agenda. Queda registro en historial_asignacion_auditor.
+        """
+        from modules.agenda_auditor.agenda_service import AgendaAuditorService
+
+        actor = str(usuario["id_usuario"]) if usuario and usuario.get("id_usuario") else None
+        try:
+            fila = (await self.db.execute(
+                text(f"""
+                    SELECT a.id, a.id_solicitud, a.id_auditor, a.estado_asignacion,
+                           s.numero_radicado, e.nombre AS empresa_nombre,
+                           {SQL_CONFLICTO_ASIGNACION} AS conflicto_interes,
+                           {SQL_ASIGNACION_ACTIVA} AS activa
+                    FROM auditores_solicitud a
+                    INNER JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+                    LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+                    WHERE a.id = :id
+                    FOR UPDATE OF a
+                """),
+                {"id": str(id_asignacion)},
+            )).mappings().first()
+            if not fila:
+                raise HTTPException(status_code=404, detail="La asignación no existe.")
+            if not fila["activa"]:
+                raise HTTPException(status_code=409, detail="La asignación ya no está activa.")
+            if not fila["conflicto_interes"]:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "El auditor no tiene un conflicto de interés activo con la empresa. "
+                        "Use 'Cancelar asignación'."
+                    ),
+                )
+
+            motivo_final = f"Conflicto de interés con {fila['empresa_nombre'] or 'la empresa'}."
+            if motivo and motivo.strip():
+                motivo_final += " " + motivo.strip()
+
+            id_solicitud = str(fila["id_solicitud"])
+            id_auditor = str(fila["id_auditor"])
+            agenda = AgendaAuditorService(self.db)
+
+            visitas = (await self.db.execute(
+                text(f"""
+                    SELECT d.id_detalle, d.id_programacion, pv.estado
+                    FROM detalle_programacion_auditor d
+                    INNER JOIN programacion_visita pv ON pv.id_programacion = d.id_programacion
+                    WHERE pv.id_solicitud = :id_solicitud
+                      AND d.id_usuario = :id_auditor
+                      AND {SQL_VISITA_NO_TERMINAL}
+                    FOR UPDATE OF d
+                """),
+                {"id_solicitud": id_solicitud, "id_auditor": id_auditor},
+            )).mappings().all()
+
+            visitas_sin_auditores = []
+            bloqueos_liberados = 0
+            for visita in visitas:
+                id_programacion = str(visita["id_programacion"])
+                await self.db.execute(
+                    text("DELETE FROM detalle_programacion_auditor WHERE id_detalle = :id_detalle"),
+                    {"id_detalle": str(visita["id_detalle"])},
+                )
+                # Misma regla que cancelar una visita en Agenda: los bloqueos
+                # de fecha que originó la visita quedan liberados.
+                liberados = (await self.db.execute(
+                    text("""
+                        UPDATE disponibilidad_auditor
+                        SET estado = 'Cancelado'
+                        WHERE id_programacion = :id_programacion
+                          AND id_usuario = :id_auditor
+                          AND UPPER(TRIM(COALESCE(estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                        RETURNING id_disponibilidad, id_usuario, fecha_inicio, fecha_fin, motivo
+                    """),
+                    {"id_programacion": id_programacion, "id_auditor": id_auditor},
+                )).mappings().all()
+                for bloqueo in liberados:
+                    bloqueos_liberados += 1
+                    await agenda._registrar_historial_disponibilidad(
+                        {**dict(bloqueo), "tipo_registro": "Bloqueo Fecha", "estado": "Cancelado"},
+                        "LIBERADA_POR_RETIRO_CONFLICTO",
+                    )
+                restantes = (await self.db.execute(
+                    text("SELECT COUNT(*) FROM detalle_programacion_auditor WHERE id_programacion = :id"),
+                    {"id": id_programacion},
+                )).scalar() or 0
+                if restantes:
+                    nuevo_estado = await agenda._estado_final_programacion(id_programacion)
+                    await self.db.execute(
+                        text(f"""
+                            UPDATE programacion_visita pv
+                            SET estado = :estado
+                            WHERE pv.id_programacion = :id
+                              AND {SQL_VISITA_NO_TERMINAL}
+                        """),
+                        {"estado": nuevo_estado, "id": id_programacion},
+                    )
+                else:
+                    # Igual que al desactivar un auditor: la visita se conserva
+                    # para agregar otro auditor desde Agenda.
+                    visitas_sin_auditores.append(id_programacion)
+                await agenda._crear_notificacion(
+                    id_programacion,
+                    UUID(id_auditor),
+                    "Retirado de la auditoría",
+                    f"Fue retirado de la visita de {fila['numero_radicado'] or 'la solicitud'} "
+                    "por conflicto de interés con la empresa.",
+                )
+                await self._registrar_retiro_conflicto(fila, motivo_final, actor, id_programacion, visita["estado"])
+
+            await self.db.execute(
+                text("""
+                    UPDATE auditores_solicitud
+                    SET estado_asignacion = 'Cancelada',
+                        fecha_cancelacion = CURRENT_TIMESTAMP,
+                        usuario_cancela = COALESCE(:usuario_cancela, usuario_cancela),
+                        motivo_cancelacion = :motivo
+                    WHERE id = :id
+                """),
+                {"id": str(id_asignacion), "usuario_cancela": actor, "motivo": motivo_final},
+            )
+            if not visitas:
+                await self._registrar_retiro_conflicto(fila, motivo_final, actor, None, fila["estado_asignacion"])
+            await self.db.commit()
+        except HTTPException:
+            await self.db.rollback()
+            raise
+
+        mensaje = "Asignación cancelada por conflicto de interés."
+        if visitas:
+            mensaje += f" El auditor fue retirado de {len(visitas)} visita(s)."
+        if visitas_sin_auditores:
+            mensaje += (
+                " La visita quedó sin auditores: agregue otro auditor desde Agenda "
+                "o cancele la visita."
+            )
+        return {
+            "mensaje": mensaje,
+            "visitas_afectadas": len(visitas),
+            "visitas_sin_auditores": visitas_sin_auditores,
+            "bloqueos_liberados": bloqueos_liberados,
+        }
+
+    async def _registrar_retiro_conflicto(self, fila, motivo, actor, id_programacion, estado_anterior) -> None:
+        await self.db.execute(
+            text("""
+                INSERT INTO historial_asignacion_auditor (
+                    id_historial, id_solicitud, id_auditor, accion, motivo,
+                    estado_anterior, estado_nuevo, id_usuario_accion, fecha,
+                    id_asignacion, id_programacion, origen
+                ) VALUES (
+                    gen_random_uuid(), :id_solicitud, :id_auditor, :accion, :motivo,
+                    :estado_anterior, 'Cancelada', :id_usuario, CURRENT_TIMESTAMP,
+                    :id_asignacion, :id_programacion, 'Coordinador'
+                )
+            """),
+            {
+                "id_solicitud": str(fila["id_solicitud"]),
+                "id_auditor": str(fila["id_auditor"]),
+                "accion": ACCION_RETIRO_CONFLICTO,
+                "motivo": motivo,
+                "estado_anterior": str(estado_anterior or ""),
+                "id_usuario": actor,
+                "id_asignacion": str(fila["id"]),
+                "id_programacion": id_programacion,
+            },
+        )
 
     # ------------------------------------------------------------
     # Solicitudes de cambio de la empresa

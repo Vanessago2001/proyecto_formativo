@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta
 import calendar
+import unicodedata
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -394,11 +395,14 @@ class AgendaAuditorService(AuditorService):
               AND (da.fecha_fin IS NULL OR CAST(da.fecha_fin AS DATE) >= :fecha)
               AND (
                   da.dia_semana IS NULL
+                  -- La disponibilidad extraordinaria cubre todo su rango de fechas;
+                  -- su dia_semana es solo el del primer día y no debe filtrar.
+                  OR LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN ('disponibilidad extra', 'disponibilidad_extra')
                   OR da.dia_semana = :dia_numero
                   OR (:dia_numero = 7 AND da.dia_semana = 0)
               )
               AND LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN
-                  ('disponible', 'disponibilidad', 'horario disponible', 'availability', 'semanal', 'disponibilidad extra', 'disponibilidad_extra')
+                  ('disponible', 'disponibilidad', 'horario disponible', 'availability', 'semanal', 'horario semanal', 'disponibilidad extra', 'disponibilidad_extra')
               {disp_time_clause}
               AND NOT EXISTS (
                   SELECT 1
@@ -894,6 +898,7 @@ class AgendaAuditorService(AuditorService):
                     e.nombre AS empresa_nombre,
                     e.direccion AS direccion_servicio,
                     p.id_sede,
+                    sede.nombre_sede AS sede_nombre,
                     p.fecha_inicio,
                     p.fecha_fin,
                     p.modalidad,
@@ -927,6 +932,8 @@ class AgendaAuditorService(AuditorService):
                     ON s.id_solicitud = p.id_solicitud
                 LEFT JOIN empresa e
                     ON e.id_empresa = s.id_empresa
+                LEFT JOIN sede_empresa sede
+                    ON sede.id_sede = p.id_sede
                 LEFT JOIN LATERAL (
                     SELECT da.id_disponibilidad, da.motivo
                     FROM disponibilidad_auditor da
@@ -951,6 +958,7 @@ class AgendaAuditorService(AuditorService):
         fecha: date,
         hora_inicio: datetime,
         hora_fin: datetime,
+        excluir_programacion: UUID | None = None,
     ) -> dict:
         if hora_fin <= hora_inicio:
             raise HTTPException(
@@ -976,6 +984,17 @@ class AgendaAuditorService(AuditorService):
         ).strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
             return {"disponible": False, "motivo": "El auditor no está activo/aprobado."}
 
+        # Primero el choque con otra auditoría: un hueco ocupado nunca se
+        # ofrece como libre, aunque el auditor haya declarado disponibilidad.
+        cruce = await self._buscar_cruce(id_usuario, hora_inicio, hora_fin, excluir_programacion)
+        if cruce:
+            return {
+                "disponible": False,
+                "ocupado": True,
+                "motivo": "Ocupado: " + self._describir_cruce("El auditor", cruce),
+                "conflicto": cruce,
+            }
+
         tiene_disponibilidad = await self._tiene_disponibilidad_fecha(
             id_usuario, fecha, hora_inicio.time(), hora_fin.time()
         )
@@ -983,14 +1002,6 @@ class AgendaAuditorService(AuditorService):
             return {
                 "disponible": False,
                 "motivo": "El auditor no tiene un intervalo de disponibilidad que cubra la fecha y las horas indicadas, o registró ese día como no disponible.",
-            }
-
-        cruce = await self._buscar_cruce(id_usuario, hora_inicio, hora_fin)
-        if cruce:
-            return {
-                "disponible": False,
-                "motivo": "El auditor tiene otra auditoría en ese intervalo.",
-                "conflicto": cruce,
             }
         return {"disponible": True, "motivo": "El auditor está disponible en el intervalo."}
 
@@ -1058,11 +1069,14 @@ class AgendaAuditorService(AuditorService):
                   AND (da.fecha_fin IS NULL OR CAST(da.fecha_fin AS DATE) >= :fecha)
                   AND (
                       da.dia_semana IS NULL
+                      -- La disponibilidad extraordinaria cubre todo su rango de fechas;
+                      -- su dia_semana es solo el del primer día y no debe filtrar.
+                      OR LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN ('disponibilidad extra', 'disponibilidad_extra')
                       OR da.dia_semana = :dia_numero
                       OR (:dia_numero = 7 AND da.dia_semana = 0)
                   )
                   AND LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN
-                      ('disponible', 'disponibilidad', 'horario disponible', 'availability', 'semanal', 'disponibilidad extra', 'disponibilidad_extra')
+                      ('disponible', 'disponibilidad', 'horario disponible', 'availability', 'semanal', 'horario semanal', 'disponibilidad extra', 'disponibilidad_extra')
                   {disp_time_clause}
             )
             AND NOT EXISTS (
@@ -1115,8 +1129,11 @@ class AgendaAuditorService(AuditorService):
             LEFT JOIN solicitud s ON s.id_solicitud = p.id_solicitud
             WHERE UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN
                   ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')
-              AND (CAST(:id_sede AS UUID) IS NULL AND p.id_sede IS NULL
-                   OR p.id_sede = CAST(:id_sede AS UUID))
+              AND (
+                    (CAST(:id_sede AS UUID) IS NULL AND p.id_sede IS NULL
+                     AND p.id_solicitud = CAST(:id_solicitud AS UUID))
+                    OR p.id_sede = CAST(:id_sede AS UUID)
+              )
               AND (CAST(:excluir AS UUID) IS NULL OR p.id_programacion <> CAST(:excluir AS UUID))
             ORDER BY p.fecha_inicio
             LIMIT 1
@@ -1177,6 +1194,23 @@ class AgendaAuditorService(AuditorService):
         row = result.mappings().first()
         return dict(row) if row else None
 
+    @staticmethod
+    def _describir_cruce(nombre_auditor: str, cruce: dict) -> str:
+        """Texto del choque: quién, cuándo y con qué empresa."""
+        inicio, fin = cruce.get("fecha_inicio"), cruce.get("fecha_fin")
+        cuando = ""
+        if isinstance(inicio, datetime) and isinstance(fin, datetime):
+            if inicio.date() == fin.date():
+                cuando = f" el {inicio.strftime('%d/%m/%Y')} de {inicio.strftime('%H:%M')} a {fin.strftime('%H:%M')}"
+            else:
+                cuando = f" del {inicio.strftime('%d/%m/%Y %H:%M')} al {fin.strftime('%d/%m/%Y %H:%M')}"
+        empresa = cruce.get("empresa_nombre")
+        return (
+            f"{nombre_auditor} ya tiene otra auditoría{cuando}"
+            + (f" ({empresa})" if empresa else "")
+            + " que se cruza con el horario elegido."
+        )
+
     async def _registrar_asignacion_auditor(
         self,
         id_solicitud: UUID,
@@ -1230,7 +1264,7 @@ class AgendaAuditorService(AuditorService):
             solicitud = solicitud_result.mappings().first()
             if not solicitud:
                 raise HTTPException(status_code=404, detail="La solicitud no existe.")
-            if str(solicitud["estado"] or "").strip().upper() != "APROBADO":
+            if not estados.es(solicitud["estado"], estados.APROBADA):
                 raise HTTPException(status_code=409, detail="Solo se puede programar una solicitud aprobada.")
 
             # Una sede no puede recibir dos visitas vigentes: si ya tiene una
@@ -1250,7 +1284,7 @@ class AgendaAuditorService(AuditorService):
 
                 auditor_result = await self.db.execute(
                     text("""
-                        SELECT id_usuario, estado, estado_auditor
+                        SELECT id_usuario, nombre, estado, estado_auditor
                         FROM usuario
                         WHERE id_usuario = :id_usuario
                         FOR UPDATE
@@ -1260,6 +1294,7 @@ class AgendaAuditorService(AuditorService):
                 auditor = auditor_result.mappings().first()
                 if not auditor:
                     raise HTTPException(status_code=404, detail=f"El auditor {id_usuario} no existe.")
+                nombre_auditor = (auditor.get("nombre") if hasattr(auditor, "get") else None) or f"El auditor {id_usuario}"
                 if str(auditor["estado"] or "").strip().upper() != "ACTIVO":
                     raise HTTPException(status_code=409, detail=f"El auditor {id_usuario} fue desactivado y no puede programarse.")
                 if str(auditor["estado_auditor"] or "").strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
@@ -1299,17 +1334,18 @@ class AgendaAuditorService(AuditorService):
                 if not tiene_disponibilidad:
                     raise HTTPException(
                         status_code=409,
-                        detail=f"El auditor {id_usuario} no tiene disponibilidad activa para la fecha seleccionada.",
+                        detail=(
+                            f"No se puede programar: {nombre_auditor} no tiene disponibilidad el "
+                            f"{data.fecha_inicio.strftime('%d/%m/%Y')} de {data.fecha_inicio.strftime('%H:%M')} "
+                            f"a {data.fecha_fin.strftime('%H:%M')} (fuera de su horario o día bloqueado)."
+                        ),
                     )
 
                 cruce = await self._buscar_cruce(id_usuario, data.fecha_inicio, data.fecha_fin)
                 if cruce:
                     raise HTTPException(
                         status_code=409,
-                        detail={
-                            "mensaje": f"El auditor {id_usuario} ya tiene otra auditoría en ese horario.",
-                            "conflicto": cruce,
-                        },
+                        detail=f"No se puede programar: {self._describir_cruce(nombre_auditor, cruce)}",
                     )
 
                 rol_final = rol_solicitado or (asignacion.get("especialidad") if isinstance(asignacion, dict) else asignacion["especialidad"]) or "Auditor"
@@ -1690,8 +1726,15 @@ class AgendaAuditorService(AuditorService):
                 row = dict(result.mappings().one())
                 await self._registrar_historial_disponibilidad(row, "CREADA")
                 creados.append(row)
+            ocupados = await self._franjas_ocupadas_en_horario(id_usuario, data)
             await self.db.commit()
-            return {"mensaje": "Disponibilidad semanal configurada.", "registros": creados}
+            mensaje = "Disponibilidad semanal configurada."
+            if ocupados:
+                mensaje += (
+                    f" Atención: {len(ocupados)} franja(s) de ese horario ya están ocupadas por auditorías; "
+                    "se muestran como ocupadas en el calendario y no se ofrecerán para programar."
+                )
+            return {"mensaje": mensaje, "registros": creados, "ocupados": ocupados}
         except HTTPException:
             await self.db.rollback()
             raise
@@ -1699,6 +1742,45 @@ class AgendaAuditorService(AuditorService):
             await self.db.rollback()
             print(f"Error al configurar disponibilidad semanal: {type(exc).__name__}: {exc}")
             raise HTTPException(status_code=500, detail="No fue posible configurar la disponibilidad semanal.") from exc
+
+    async def _franjas_ocupadas_en_horario(
+        self, id_usuario: UUID, data: DisponibilidadSemanalCrear
+    ) -> list[dict]:
+        """Auditorías vigentes que caen dentro del horario semanal declarado."""
+        hasta = data.fecha_fin or (data.fecha_inicio + timedelta(days=365))
+        auditorias = await self.consultar_auditorias_programadas(
+            id_usuario, desde=data.fecha_inicio, hasta=hasta
+        )
+        franjas = {}
+        for dia in data.dias:
+            numero = self._numero_dia_semana(normalizar_dia(dia.dia_semana))
+            if numero:
+                franjas[numero] = (dia.hora_inicio, dia.hora_fin)
+        ocupados = []
+        for item in auditorias:
+            inicio, fin = item.get("fecha_inicio"), item.get("fecha_fin")
+            if not isinstance(inicio, datetime) or not isinstance(fin, datetime):
+                continue
+            if str(item.get("estado") or "").strip().upper() in (
+                "CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO"
+            ):
+                continue
+            dia_actual = max(inicio.date(), data.fecha_inicio)
+            while dia_actual <= min(fin.date(), hasta):
+                franja = franjas.get(dia_actual.isoweekday())
+                if franja:
+                    desde_h = inicio.time() if dia_actual == inicio.date() else time.min
+                    hasta_h = fin.time() if dia_actual == fin.date() else time.max
+                    if desde_h < franja[1] and hasta_h > franja[0]:
+                        ocupados.append({
+                            "fecha": dia_actual.isoformat(),
+                            "hora_inicio": desde_h.strftime("%H:%M"),
+                            "hora_fin": hasta_h.strftime("%H:%M") if hasta_h != time.max else "23:59",
+                            "empresa_nombre": item.get("empresa_nombre"),
+                            "numero_radicado": item.get("numero_radicado"),
+                        })
+                dia_actual += timedelta(days=1)
+        return ocupados
 
     @staticmethod
     def _serializar_conflicto(conflicto: dict | None) -> dict | None:
@@ -2223,93 +2305,163 @@ class AgendaAuditorService(AuditorService):
         )
         return procesado
 
+    TIPOS_BLOQUEO = {"no disponible", "no_disponible", "indisponible", "bloqueo", "bloqueo fecha"}
+
+    @staticmethod
+    def _texto_comparable(valor) -> str:
+        """Minúsculas y sin tildes: 'Bogotá' coincide con 'bogota'."""
+        texto = unicodedata.normalize("NFD", str(valor or "").strip().lower())
+        return "".join(c for c in texto if unicodedata.category(c) != "Mn")
+
     async def ver_disponibilidad_mensual_general(
         self,
         anio: int,
         mes: int,
         ciudad: str | None = None,
         modalidad: str | None = None,
+        id_usuario: UUID | None = None,
+        incluir_canceladas: bool = False,
     ) -> dict:
-        """Vista administrativa: auditorías y disponibilidad de todo el sistema en un mes."""
+        """Calendario mensual del Coordinador.
+
+        Devuelve una entrada por programación (antes salía una por auditor y el
+        calendario repetía la visita) con el equipo completo, la sede, la
+        empresa y las observaciones; y por cada día del mes los
+        ``id_programacion`` que lo cubren. Con ``id_usuario`` se limita a ese
+        auditor y cada día trae su disponibilidad declarada y sus bloqueos;
+        sin él, cada día trae cuántos auditores declararon disponibilidad y
+        cuántos bloquearon la fecha. Ciudad y modalidad se comparan sin
+        distinguir mayúsculas ni tildes.
+        """
         if mes < 1 or mes > 12:
             raise HTTPException(status_code=422, detail="El mes debe estar entre 1 y 12.")
         if anio < 2000 or anio > 2100:
             raise HTTPException(status_code=422, detail="El año debe estar entre 2000 y 2100.")
         primer_dia = date(anio, mes, 1)
         ultimo_dia = date(anio, mes, calendar.monthrange(anio, mes)[1])
+        params: dict = {"primer": primer_dia, "ultimo": ultimo_dia}
+        if id_usuario:
+            params["id_usuario"] = str(id_usuario)
 
-        filtros = [
+        # ---------------------------------------------- disponibilidad del mes
+        filtros_disp = [
             "UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')",
             "CAST(da.fecha_inicio AS DATE) <= :ultimo",
             "CAST(COALESCE(da.fecha_fin, da.fecha_inicio) AS DATE) >= :primer",
         ]
-        params = {
-            "primer": primer_dia,
-            "ultimo": ultimo_dia,
-            "ciudad": f"%{ciudad.strip().lower()}%" if ciudad and ciudad.strip() else None,
-            "modalidad": modalidad.strip() if modalidad and modalidad.strip() else None,
-        }
-        where = " AND ".join(filtros)
-
-        # Disponibilidad de todos los auditores dentro del mes
+        if id_usuario:
+            filtros_disp.append("da.id_usuario = :id_usuario")
         result = await self.db.execute(text(f"""
             SELECT da.id_disponibilidad, da.id_usuario, da.tipo_registro, da.dia_semana,
                    da.fecha_inicio, da.fecha_fin, da.hora_inicio, da.hora_fin,
                    da.motivo, da.estado,
-                   u.nombre AS auditor_nombre, u.correo AS auditor_correo
+                   u.nombre AS auditor_nombre
             FROM disponibilidad_auditor da
             INNER JOIN usuario u ON u.id_usuario = da.id_usuario
-            WHERE {where}
+            WHERE {' AND '.join(filtros_disp)}
             ORDER BY da.fecha_inicio, u.nombre
         """), params)
         disponibilidades = [dict(row) for row in result.mappings().all()]
 
-        # Auditorías programadas del mes con sus auditores
+        # ------------------------------------------- programaciones del mes
         filtros_aud = [
             "CAST(p.fecha_inicio AS DATE) <= :ultimo",
-            "CAST(p.fecha_fin AS DATE) >= :primer",
-            "UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'FINALIZADA', 'FINALIZADO')",
+            "CAST(COALESCE(p.fecha_fin, p.fecha_inicio) AS DATE) >= :primer",
         ]
-        if ciudad and ciudad.strip():
-            filtros_aud.append("LOWER(COALESCE(p.ciudad_servicio, '')) LIKE :ciudad")
-        if modalidad and modalidad.strip():
-            filtros_aud.append("LOWER(COALESCE(p.modalidad, '')) = LOWER(:modalidad)")
+        if not incluir_canceladas:
+            filtros_aud.append(
+                "UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN ('CANCELADA', 'CANCELADO')"
+            )
+        if id_usuario:
+            filtros_aud.append(
+                "EXISTS (SELECT 1 FROM detalle_programacion_auditor dx"
+                " WHERE dx.id_programacion = p.id_programacion AND dx.id_usuario = :id_usuario)"
+            )
         result_aud = await self.db.execute(text(f"""
-            SELECT p.id_programacion, p.id_solicitud, p.fecha_inicio, p.fecha_fin,
+            SELECT p.id_programacion, p.id_solicitud, p.id_sede, p.fecha_inicio, p.fecha_fin,
                    p.modalidad, p.ciudad_servicio, p.estado AS estado_programacion,
                    p.direccion_servicio, p.motivo_reprogramacion, p.motivo_cancelacion,
-                   d.id_usuario, d.rol_auditor,
-                   s.numero_radicado, e.nombre AS empresa_nombre, e.nit AS empresa_nit,
+                   p.observaciones_finalizacion, p.estado_solicitud_reprogramacion,
+                   p.motivo_solicitud_reprogramacion, p.notificacion_enviada,
+                   s.numero_radicado, s.estado AS estado_solicitud,
+                   e.id_empresa, e.nombre AS empresa_nombre, e.nit AS empresa_nit,
+                   e.direccion AS empresa_direccion, e.ciudad AS empresa_ciudad,
+                   sede.nombre_sede AS sede_nombre, sede.direccion AS sede_direccion,
+                   sede.ciudad AS sede_ciudad,
+                   d.id_usuario, d.rol_auditor, COALESCE(d.confirmado, FALSE) AS confirmado,
                    u.nombre AS auditor_nombre, u.correo AS auditor_correo
             FROM programacion_visita p
-            INNER JOIN detalle_programacion_auditor d ON d.id_programacion = p.id_programacion
-            INNER JOIN usuario u ON u.id_usuario = d.id_usuario
+            LEFT JOIN detalle_programacion_auditor d ON d.id_programacion = p.id_programacion
+            LEFT JOIN usuario u ON u.id_usuario = d.id_usuario
             LEFT JOIN solicitud s ON s.id_solicitud = p.id_solicitud
-            LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
+            LEFT JOIN empresa e ON e.id_empresa = COALESCE(s.id_empresa, p.id_empresa)
+            LEFT JOIN sede_empresa sede ON sede.id_sede = p.id_sede
             WHERE {' AND '.join(filtros_aud)}
-            ORDER BY p.fecha_inicio, u.nombre
+            ORDER BY p.fecha_inicio, p.id_programacion, u.nombre
         """), params)
-        auditorias = [dict(row) for row in result_aud.mappings().all()]
 
-        # Armar el calendario día por día
-        nombres_dia = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
-        por_dia_aud = {}
-        for item in auditorias:
-            if not isinstance(item.get("fecha_inicio"), datetime):
+        campos_auditor = {"id_usuario", "rol_auditor", "confirmado", "auditor_nombre", "auditor_correo"}
+        por_programacion: dict[str, dict] = {}
+        for fila in result_aud.mappings().all():
+            fila = dict(fila)
+            clave = str(fila["id_programacion"])
+            item = por_programacion.get(clave)
+            if item is None:
+                item = {k: v for k, v in fila.items() if k not in campos_auditor}
+                item["ciudad"] = (
+                    fila.get("ciudad_servicio") or fila.get("sede_ciudad") or fila.get("empresa_ciudad")
+                )
+                item["direccion"] = (
+                    fila.get("direccion_servicio") or fila.get("sede_direccion") or fila.get("empresa_direccion")
+                )
+                item["equipo"] = []
+                por_programacion[clave] = item
+            if fila.get("id_usuario"):
+                item["equipo"].append({
+                    "id_usuario": fila["id_usuario"],
+                    "nombre": fila.get("auditor_nombre"),
+                    "correo": fila.get("auditor_correo"),
+                    "rol_auditor": fila.get("rol_auditor") or "Auditor",
+                    "confirmado": bool(fila.get("confirmado")),
+                })
+
+        ciudad_buscada = self._texto_comparable(ciudad)
+        modalidad_buscada = self._texto_comparable(modalidad)
+        auditorias = []
+        for item in por_programacion.values():
+            if ciudad_buscada and ciudad_buscada not in self._texto_comparable(item.get("ciudad")):
                 continue
-            inicio = item["fecha_inicio"].date()
+            if modalidad_buscada and modalidad_buscada != self._texto_comparable(item.get("modalidad")):
+                continue
+            # El líder primero; luego el resto por nombre.
+            item["equipo"].sort(key=lambda a: (
+                "lider" not in self._texto_comparable(a.get("rol_auditor")),
+                self._texto_comparable(a.get("nombre")),
+            ))
+            auditorias.append(item)
+
+        # ------------------------------------------------ calendario por día
+        # Una visita de varios días ocupa cada día entre su inicio y su fin
+        # (recortado al mes consultado).
+        por_dia_aud: dict[str, list[str]] = {}
+        for item in auditorias:
+            inicio = item.get("fecha_inicio")
+            if not isinstance(inicio, datetime):
+                continue
             fin = item.get("fecha_fin")
-            fin = fin.date() if isinstance(fin, datetime) else inicio
-            dia_actual = inicio
-            while dia_actual <= fin:
-                por_dia_aud.setdefault(dia_actual.isoformat(), []).append(item)
+            fin = fin.date() if isinstance(fin, datetime) else inicio.date()
+            dia_actual = max(inicio.date(), primer_dia)
+            while dia_actual <= min(fin, ultimo_dia):
+                por_dia_aud.setdefault(dia_actual.isoformat(), []).append(str(item["id_programacion"]))
                 dia_actual += timedelta(days=1)
+
+        nombres_dia = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
         dias = []
         for numero in range(1, ultimo_dia.day + 1):
             fecha_actual = date(anio, mes, numero)
             iso = fecha_actual.isoformat()
             dia_nombre = nombres_dia[fecha_actual.weekday()]
-            aplican = []
+            declarados, bloqueos = [], []
             for registro in disponibilidades:
                 inicio = registro.get("fecha_inicio")
                 fin = registro.get("fecha_fin")
@@ -2321,21 +2473,34 @@ class AgendaAuditorService(AuditorService):
                     continue
                 tipo = str(registro.get("tipo_registro") or "").strip().lower()
                 dia_registro = self._etiqueta_dia_semana(registro.get("dia_semana"))
-                if tipo in {"no disponible", "no_disponible", "indisponible", "bloqueo", "bloqueo fecha"}:
-                    aplican.append(registro)
+                if tipo in self.TIPOS_BLOQUEO:
+                    bloqueos.append(registro)
                 elif not dia_registro or normalizar_dia(dia_registro) == dia_nombre:
-                    aplican.append(registro)
-            dias.append({
-                "fecha": iso,
-                "dia_semana": dia_nombre,
-                "disponibilidad": aplican,
-                "auditorias": por_dia_aud.get(iso, []),
-            })
+                    declarados.append(registro)
+            ids_aud = por_dia_aud.get(iso, [])
+            dia = {"fecha": iso, "dia_semana": dia_nombre, "auditorias": ids_aud, "ocupado": bool(ids_aud)}
+            if id_usuario:
+                # Igual que la vista del propio auditor: el bloqueo manda.
+                dia.update({
+                    "disponibilidad": bloqueos or declarados,
+                    "bloqueado": bool(bloqueos),
+                    "declarado": bool(declarados) and not bloqueos,
+                })
+            else:
+                bloqueados = {str(r["id_usuario"]) for r in bloqueos}
+                disponibles = {str(r["id_usuario"]) for r in declarados} - bloqueados
+                dia.update({
+                    "auditores_disponibles": len(disponibles),
+                    "auditores_bloqueados": len(bloqueados),
+                    "nombres_bloqueados": sorted({r.get("auditor_nombre") or "" for r in bloqueos} - {""}),
+                })
+            dias.append(dia)
         return {
             "anio": anio,
             "mes": mes,
             "ciudad": ciudad,
             "modalidad": modalidad,
+            "id_usuario": id_usuario,
             "dias": dias,
             "auditorias": auditorias,
         }
@@ -2403,11 +2568,16 @@ class AgendaAuditorService(AuditorService):
                 and str(item.get("estado") or "").strip().upper()
                 not in ("CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO")
             ]
+            # Un día con auditoría queda ocupado aunque el auditor haya
+            # declarado disponibilidad en él: nunca se trata como libre.
             dias.append({
                 "fecha": fecha_actual.isoformat(),
                 "dia_semana": dia_nombre,
                 "disponibilidad": aplican,
                 "auditorias": auditorias_dia,
+                "bloqueado": bool(bloqueos),
+                "ocupado": bool(auditorias_dia),
+                "declarado": bool(aplican) and not bloqueos,
             })
         return {
             "id_usuario": id_usuario,
@@ -2481,7 +2651,7 @@ class AgendaAuditorService(AuditorService):
                 {"id_solicitud": str(id_solicitud)},
             )
             solicitud = solicitud_result.mappings().first()
-            if not solicitud or str(solicitud.get("estado") or "").strip().upper() != "APROBADO":
+            if not solicitud or not estados.es(solicitud.get("estado"), estados.APROBADA):
                 raise HTTPException(
                     status_code=409,
                     detail="Solo se puede reasignar una solicitud aprobada.",

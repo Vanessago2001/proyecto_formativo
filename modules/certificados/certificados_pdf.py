@@ -2,7 +2,7 @@ from core.pdf import construir_pdf
 
 
 def generar_pdf_certificado(certificado: dict, modo: str = "consulta") -> bytes:
-    pendiente_firma = str(certificado.get("estado_certificado", "")).upper() == "PENDIENTE_FIRMA"
+    pendiente_firma = str(certificado.get("estado_certificado") or "").strip().upper() == "PENDIENTE_FIRMA"
     if modo == "firma" and pendiente_firma:
         raise ValueError("El PDF destinado a firma debe tener los datos de emisión preparados.")
     if pendiente_firma:

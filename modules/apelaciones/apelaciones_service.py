@@ -437,7 +437,9 @@ class ApelacionesService:
         query = text("""
             SELECT a.id, a.id_solicitud,
                    a.id_empresa, a.estado, a.radicado, a.fecha, a.motivo,
-                   a.razones_rechazo, a.fallo
+                   a.razones_rechazo, a.fallo,
+                   -- Para la lista "Por asignar comité" del Coordinador.
+                   (SELECT COUNT(*) FROM apelacion_comite ac2 WHERE ac2.id_apelacion = a.id) AS comite_asignados
             FROM apelacion a
             WHERE (NOT :filtro_empresa OR a.id_solicitud IN (
                 SELECT s.id_solicitud

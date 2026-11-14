@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028">
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
   <style>
     /* ==========================================================
        MÓDULO DE AUDITORES REGISTRADOS
@@ -106,6 +106,17 @@
 
     .audit-toolbar .audit-search {
       flex: 1 1 420px;
+    }
+
+    .audit-registro {
+      display: grid;
+      gap: 3px;
+      justify-items: start;
+    }
+
+    .audit-registro-detalle {
+      color: #64748b;
+      font-size: 12px;
     }
 
     .audit-toolbar .audit-filter {
@@ -680,7 +691,7 @@
     }
 
     .audit-muted {
-      color: #94a3b8;
+      color: #64748b;
       font-weight: 500;
     }
 
@@ -1028,7 +1039,7 @@
     .audit-toast .cerrar {
       border: 0;
       background: transparent;
-      color: #94a3b8;
+      color: #64748b;
       cursor: pointer;
       font-size: 17px;
       line-height: 1;
@@ -1301,11 +1312,22 @@
             </div>
           </div>
           <div class="audit-filter">
-            <label for="filtroEstado">Estado</label>
+            <label for="filtroRegistro">Estado del auditor</label>
+            <select id="filtroRegistro">
+              <option value="">Todos</option>
+              <option value="Postulante">Postulantes</option>
+              <option value="Aprobado">Aprobados</option>
+              <option value="Rechazado">Rechazados</option>
+              <option value="Cancelado">Cancelados</option>
+              <option value="Sin postulación">Sin postulación</option>
+            </select>
+          </div>
+          <div class="audit-filter">
+            <label for="filtroEstado">Cuenta</label>
             <select id="filtroEstado">
-              <option value="">Todos los estados</option>
-              <option value="Activo">Activos</option>
-              <option value="Inactivo">Inactivos</option>
+              <option value="">Todas las cuentas</option>
+              <option value="Activo">Activas</option>
+              <option value="Inactivo">Inactivas</option>
             </select>
           </div>
         </section>
@@ -1325,13 +1347,14 @@
                   <th scope="col">Nombre</th>
                   <th scope="col">Documento</th>
                   <th scope="col">Número de documento</th>
-                  <th scope="col">Estado</th>
+                  <th scope="col">Estado del auditor</th>
+                  <th scope="col">Cuenta</th>
                   <th scope="col">Acciones</th>
                 </tr>
               </thead>
               <tbody id="auditoresBody">
                 <tr>
-                  <td colspan="5" class="audit-table-empty">Cargando auditores...</td>
+                  <td colspan="6" class="audit-table-empty">Cargando auditores...</td>
                 </tr>
               </tbody>
             </table>
@@ -1412,7 +1435,7 @@
 
 <script src="/static/session.js?v=20261029"></script>
     <script src="/static/session-guard.js"></script>
-  <script src="/static/nav.js"></script>
+  <script src="/static/nav.js?v=20261114a"></script>
   <script>
     (() => {
       "use strict";
@@ -1473,6 +1496,7 @@
         porPagina: 8,
         texto: "",
         estado: "",
+        registro: "",
         cargando: false,
         detalle: null,
         detalleId: null,
@@ -1491,6 +1515,7 @@
       const resumenListado = $("#resumenListado");
       const busqueda = $("#busquedaAuditor");
       const filtroEstado = $("#filtroEstado");
+      const filtroRegistro = $("#filtroRegistro");
       const modalDetalle = $("#modalDetalle");
       const detalleCuerpo = $("#detalleCuerpo");
       const detalleIdentidad = $("#detalleIdentidad");
@@ -1589,6 +1614,33 @@
       function badgeEstado(estado) {
         const activo = normalizarTexto(estado) === "activo";
         return `<span class="audit-badge ${activo ? "activo" : "inactivo"}"><span class="dot"></span>${activo ? "Activo" : "Inactivo"}</span>`;
+      }
+
+      // Postulante / Aprobado / Rechazado... (estado_registro lo calcula el
+      // backend con estado_auditor y la última postulación).
+      function badgeRegistro(auditor) {
+        const estado = auditor.estado_registro || "Sin postulación";
+        const clases = {
+          "aprobado": "aprobado",
+          "postulante": "pendiente",
+          "rechazado": "rechazado",
+        };
+        const clase = clases[normalizarTexto(estado)] || "neutral";
+        const detalle = auditor.estado_registro_detalle || "";
+        return `<span class="audit-badge ${clase}" title="${escapar(detalle)}">${escapar(estado)}</span>` +
+          (detalle ? `<small class="audit-registro-detalle">${escapar(detalle)}</small>` : "");
+      }
+
+      function botonRevisarSolicitud(auditor) {
+        if (auditor.id_postulacion) {
+          return `<a class="btn btn-secundario btn-sm audit-action" href="/banco-auditores/solicitud/${encodeURIComponent(auditor.id_postulacion)}"
+                     title="Abre la solicitud del auditor en Banco de auditores">Revisar solicitud</a>`;
+        }
+        const motivo = normalizarTexto(auditor.estado_postulacion) === "borrador"
+          ? "El auditor aún no ha enviado su postulación (está en borrador)."
+          : "El auditor no tiene una postulación registrada.";
+        return `<button class="btn btn-secundario btn-sm audit-action" type="button" disabled aria-disabled="true"
+                  title="${escapar(motivo)}">Revisar solicitud</button>`;
       }
 
       function badgeValidacion(estado) {
@@ -1772,7 +1824,7 @@
           actualizarEstadisticas();
           tbody.innerHTML = `
             <tr>
-              <td colspan="5" class="audit-table-empty">
+              <td colspan="6" class="audit-table-empty">
                 <div class="audit-empty-box">
                   <span class="icono">!</span>
                   <strong>No se pudo cargar el listado</strong>
@@ -1792,10 +1844,13 @@
       function filtrarAuditores() {
         const texto = normalizarTexto(app.texto);
         const estado = normalizarTexto(app.estado);
+        const registro = normalizarTexto(app.registro);
 
         app.filtrados = app.auditores.filter((auditor) => {
           const coincideEstado = !estado || normalizarTexto(auditor.estado) === estado;
           if (!coincideEstado) return false;
+          const coincideRegistro = !registro || normalizarTexto(auditor.estado_registro) === registro;
+          if (!coincideRegistro) return false;
           if (!texto) return true;
 
           const campos = [
@@ -1824,7 +1879,7 @@
         if (!app.auditores.length) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="5" class="audit-table-empty">
+              <td colspan="6" class="audit-table-empty">
                 <div class="audit-empty-box">
                   <span class="icono">○</span>
                   <strong>No hay auditores registrados</strong>
@@ -1839,10 +1894,10 @@
         }
 
         if (!app.filtrados.length) {
-          const hayFiltros = app.texto.trim() || app.estado;
+          const hayFiltros = app.texto.trim() || app.estado || app.registro;
           tbody.innerHTML = `
             <tr>
-              <td colspan="5" class="audit-table-empty">
+              <td colspan="6" class="audit-table-empty">
                 <div class="audit-empty-box">
                   <span class="icono">⌕</span>
                   <strong>No se encontraron coincidencias</strong>
@@ -1893,10 +1948,12 @@
                   </div>
                 </td>
                 <td><div class="audit-doc"><strong>${mostrar(auditor.num_doc, "No registrado")}</strong></div></td>
+                <td><div class="audit-registro">${badgeRegistro(auditor)}</div></td>
                 <td>${badgeEstado(auditor.estado)}</td>
                 <td>
                   <div class="audit-actions">
                     <button class="btn btn-secundario btn-sm audit-action" type="button" data-accion="detalle" data-id="${id}">Detalles</button>
+                    ${botonRevisarSolicitud(auditor)}
                     ${puedeGestionar
                       ? `<button class="btn btn-sm audit-action ${estado ? "btn-peligro-contorno danger" : "btn-secundario success"}" type="button"
                            data-accion="estado" data-id="${id}" data-nombre="${escapar(auditor.nombre || "")}"
@@ -2735,11 +2792,18 @@
         aplicarFiltros(true);
       });
 
+      filtroRegistro.addEventListener("change", () => {
+        app.registro = filtroRegistro.value;
+        aplicarFiltros(true);
+      });
+
       $("#btnLimpiar").addEventListener("click", () => {
         busqueda.value = "";
         filtroEstado.value = "";
+        filtroRegistro.value = "";
         app.texto = "";
         app.estado = "";
+        app.registro = "";
         aplicarFiltros(true);
         busqueda.focus();
       });
@@ -2757,8 +2821,10 @@
         if (botonLimpiar) {
           busqueda.value = "";
           filtroEstado.value = "";
+          filtroRegistro.value = "";
           app.texto = "";
           app.estado = "";
+          app.registro = "";
           aplicarFiltros(true);
           busqueda.focus();
           return;

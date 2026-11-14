@@ -91,6 +91,9 @@ class SesionConflictos:
                     c["descripcion"] = params["descripcion"]
                     return ResultadoFalso([{"id_conflicto": c["id_conflicto"]}])
             return ResultadoFalso([])
+        # Aviso al Coordinador de asignaciones activas con la empresa (14/11).
+        if "FROM auditores_solicitud a" in sql and "s.id_empresa = :id_empresa" in sql:
+            return ResultadoFalso([])
         raise AssertionError(f"Consulta no esperada: {sql}")
 
     async def commit(self):
@@ -239,6 +242,9 @@ class SesionDisponibilidad:
                 "estado": "Activo",
             }])
         if sql.startswith("INSERT INTO historial_disponibilidad_auditor"):
+            return ResultadoFalso([])
+        # Aviso al Coordinador de asignaciones activas con la empresa (14/11).
+        if "FROM auditores_solicitud a" in sql and "s.id_empresa = :id_empresa" in sql:
             return ResultadoFalso([])
         raise AssertionError(f"Consulta no esperada: {sql}")
 

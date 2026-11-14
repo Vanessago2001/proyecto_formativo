@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261030">
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
 </head>
 
 <body class="comite-page">
@@ -286,7 +286,7 @@
       if (puede("listar")) opcionesMenu.push(["listado", "Empresas registradas"]);
       if (esEmpresa) opcionesMenu.push(["detalle", VISTAS.detalle[0]]);
       if (puede("gestionar")) opcionesMenu.push(["registrar", "Registrar empresa"]);
-      if (puede("verAprobaciones")) opcionesMenu.push(["aprobaciones", VISTAS.aprobaciones[0]]);
+      // La vista "Aprobaciones" se quitó del menú (no se usaba).
       $("#menu").innerHTML = opcionesMenu.map(([vista, texto]) =>
         '<button class="comite-nav-link" type="button" data-view="' + vista + '">' + texto + "</button>").join("") +
         (esEmpresa ? '<a class="comite-nav-link" style="text-decoration:none" href="/empresa">Solicitudes de certificación</a>' : "");
@@ -824,7 +824,7 @@
     })();
   </script>
   <script src="/static/session.js?v=20261029"></script>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

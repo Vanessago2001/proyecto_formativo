@@ -5,9 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CertiSENA | Gestión de PQRS</title>
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
-  <link rel="stylesheet" href="/static/pqrs.css?v=20261104" />
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a" />
+  <link rel="stylesheet" href="/static/pqrs.css?v=20261111" />
 </head>
 
 <body>
@@ -147,8 +147,17 @@
 
   <dialog id="dialogo" class="pq-dialogo" aria-label="Detalle de la PQRS">
     <div class="pq-dialogo-cuerpo">
-      <button type="button" class="btn btn-secundario btn-sm pq-btn sec chico pq-dialogo-cierre" id="cerrarDialogo">Cerrar</button>
-      <div id="msgDialogo" class="pq-msg" role="status" aria-live="polite"></div>
+      <div class="pq-dialogo-barra">
+        <div class="pq-dialogo-barra-fila">
+          <span class="pq-dialogo-barra-titulo" id="dialogoTitulo">Gestionar PQRS</span>
+          <div class="pq-dialogo-barra-botones">
+            <button type="button" class="btn btn-primario btn-sm pq-btn chico" id="btnAsignar" hidden>Asignar responsable</button>
+            <button type="button" class="btn btn-secundario btn-sm pq-btn sec chico" id="cerrarDialogo">Cerrar</button>
+          </div>
+        </div>
+        <div id="panelAsignar" class="pq-asignar-panel" hidden></div>
+        <div id="msgDialogo" class="pq-msg" role="status" aria-live="polite"></div>
+      </div>
       <div id="dialogoContenido"></div>
       <div id="dialogoAcciones"></div>
     </div>
@@ -268,25 +277,25 @@
         var f = FORMULARIOS[accion];
         var cuerpo = "";
         if (accion === "asignar") {
-          cuerpo = '<div class="pq-field"><label>Responsable</label><select name="id_responsable" required><option value="">Cargando...</option></select></div>' +
-            '<div class="pq-field pq-full"><label>Nota interna (opcional)</label><textarea name="comentario" maxlength="2000"></textarea></div>';
+          cuerpo = '<div class="pq-field"><label for="pqf-' + accion + '-id_responsable">Responsable</label><select id="pqf-' + accion + '-id_responsable" name="id_responsable" required><option value="">Cargando...</option></select></div>' +
+            '<div class="pq-field pq-full"><label for="pqf-' + accion + '-comentario">Nota interna (opcional)</label><textarea id="pqf-' + accion + '-comentario" name="comentario" maxlength="2000"></textarea></div>';
         } else if (accion === "responder") {
-          cuerpo = '<div class="pq-field pq-full"><label>Respuesta al peticionario</label><textarea name="respuesta" required minlength="20" maxlength="10000"></textarea></div>';
+          cuerpo = '<div class="pq-field pq-full"><label for="pqf-' + accion + '-respuesta">Respuesta al peticionario</label><textarea id="pqf-' + accion + '-respuesta" name="respuesta" required minlength="20" maxlength="10000"></textarea></div>';
         } else if (accion === "solicitar_informacion") {
-          cuerpo = '<div class="pq-field pq-full"><label>¿Qué información necesitas?</label><textarea name="comentario" required minlength="10" maxlength="2000"></textarea></div>';
+          cuerpo = '<div class="pq-field pq-full"><label for="pqf-' + accion + '-comentario">¿Qué información necesitas?</label><textarea id="pqf-' + accion + '-comentario" name="comentario" required minlength="10" maxlength="2000"></textarea></div>';
         } else if (accion === "reabrir") {
-          cuerpo = '<div class="pq-field pq-full"><label>Motivo</label><textarea name="motivo" required minlength="10" maxlength="2000"></textarea></div>';
+          cuerpo = '<div class="pq-field pq-full"><label for="pqf-' + accion + '-motivo">Motivo</label><textarea id="pqf-' + accion + '-motivo" name="motivo" required minlength="10" maxlength="2000"></textarea></div>';
         } else if (accion === "adjuntar") {
-          cuerpo = '<div class="pq-field pq-full"><label>Archivos (PDF, JPG, PNG o DOCX · máx. 5 MB)</label><input name="archivos" type="file" multiple required accept=".pdf,.jpg,.jpeg,.png,.docx"></div>' +
-            '<div class="pq-field pq-full"><label>Comentario (opcional)</label><textarea name="comentario" maxlength="2000"></textarea></div>';
+          cuerpo = '<div class="pq-field pq-full"><label for="pqf-' + accion + '-archivos">Archivos (PDF, JPG, PNG o DOCX · máx. 5 MB)</label><input id="pqf-' + accion + '-archivos" name="archivos" type="file" multiple required accept=".pdf,.jpg,.jpeg,.png,.docx"></div>' +
+            '<div class="pq-field pq-full"><label for="pqf-' + accion + '-comentario">Comentario (opcional)</label><textarea id="pqf-' + accion + '-comentario" name="comentario" maxlength="2000"></textarea></div>';
         } else {
           var obligatorio = accion === "cerrar" && p.estado === "Información solicitada";
-          cuerpo = '<div class="pq-field pq-full"><label>Comentario' + (obligatorio ? " (motivo del cierre sin respuesta)" : " (opcional)") + "</label>" +
-            '<textarea name="comentario" maxlength="2000"' + (obligatorio ? " required minlength=\"10\"" : "") + "></textarea></div>";
+          cuerpo = '<div class="pq-field pq-full"><label for="pqf-' + accion + '-comentario">Comentario' + (obligatorio ? " (motivo del cierre sin respuesta)" : " (opcional)") + "</label>" +
+            '<textarea id="pqf-' + accion + '-comentario" name="comentario" maxlength="2000"' + (obligatorio ? " required minlength=\"10\"" : "") + "></textarea></div>";
         }
-        return '<details class="pq-seccion pq-panel" data-accion="' + accion + '"><summary style="cursor:pointer;font-weight:700">' + P.esc(f.titulo) +
-          '</summary><form class="pq-form" style="margin-top:14px">' + cuerpo +
-          '<div class="pq-acciones pq-full"><button class="btn pq-btn' + (accion === "cerrar" ? " btn-peligro peligro" : " btn-primario") + '" type="submit">' + P.esc(f.boton) + "</button></div></form></details>";
+        return '<div class="pq-seccion pq-panel" data-accion="' + accion + '" hidden><strong>' + P.esc(f.titulo) +
+          '</strong><form class="pq-form" style="margin-top:14px">' + cuerpo +
+          '<div class="pq-acciones pq-full"><button class="btn pq-btn' + (accion === "cerrar" ? " btn-peligro peligro" : " btn-primario") + '" type="submit">' + P.esc(f.boton) + "</button></div></form></div>";
       }
 
       async function abrirDetalle(id) {
@@ -294,19 +303,46 @@
           abierta = await P.api("/api/pqrs/" + encodeURIComponent(id));
           P.mostrar($("#msgDialogo"), "", "");
           pintarDetalle();
+          document.querySelector(".pq-dialogo-cuerpo").scrollTop = 0;
           if (!$("#dialogo").open) $("#dialogo").showModal();
         } catch (e) { P.mostrar($("#msgGeneral"), "error", e.message); }
       }
 
+      // Asignar/reasignar va en la barra superior; el resto son los pasos
+      // que permite el estado actual y se abre uno a la vez.
       function pintarDetalle() {
+        $("#dialogoTitulo").textContent = abierta.radicado || "Gestionar PQRS";
         $("#dialogoContenido").innerHTML = P.fichaHTML(abierta, { interno: true });
         var acciones = abierta.acciones || [];
-        $("#dialogoAcciones").innerHTML = acciones.length
-          ? '<div class="pq-seccion"><h4>Acciones</h4>' + acciones.map(function (a) { return formularioHTML(a, abierta); }).join("") + "</div>"
-          : '<p style="margin-top:16px;color:var(--gris-500);font-size:13px">No tienes acciones disponibles sobre esta PQRS en su estado actual.</p>';
-        var asignar = $("#dialogoAcciones [data-accion=asignar] select");
-        if (asignar) cargarResponsables(asignar);
+        var puedeAsignar = acciones.indexOf("asignar") !== -1;
+        $("#btnAsignar").hidden = !puedeAsignar;
+        $("#btnAsignar").textContent = abierta.responsable ? "Reasignar responsable" : "Asignar responsable";
+        $("#panelAsignar").hidden = true;
+        $("#panelAsignar").innerHTML = puedeAsignar ? formularioHTML("asignar", abierta) : "";
+        var pasos = acciones.filter(function (a) { return a !== "asignar"; });
+        $("#dialogoAcciones").innerHTML = pasos.length
+          ? '<div class="pq-seccion"><h4>Siguiente paso</h4><div class="pq-pasos">' + pasos.map(function (a) {
+              return '<button type="button" class="btn btn-sm pq-btn chico ' + (a === "cerrar" ? "btn-peligro peligro" : "btn-secundario sec") + '" data-paso="' + a + '">' + P.esc(FORMULARIOS[a].titulo) + "</button>";
+            }).join("") + "</div>" + pasos.map(function (a) { return formularioHTML(a, abierta); }).join("") + "</div>"
+          : (puedeAsignar ? "" : '<p style="margin-top:16px;color:var(--gris-500);font-size:13px">No tienes acciones disponibles sobre esta PQRS en su estado actual.</p>');
       }
+
+      $("#btnAsignar").addEventListener("click", function () {
+        var panel = $("#panelAsignar");
+        panel.hidden = !panel.hidden;
+        var bloque = panel.querySelector("[data-accion=asignar]");
+        if (bloque) bloque.hidden = panel.hidden;
+        var select = panel.querySelector("select");
+        if (!panel.hidden && select && select.options.length <= 1) cargarResponsables(select);
+      });
+
+      $("#dialogoAcciones").addEventListener("click", function (ev) {
+        var b = ev.target.closest("[data-paso]");
+        if (!b) return;
+        var abrir = !b.classList.contains("activo");
+        $("#dialogoAcciones").querySelectorAll("[data-paso]").forEach(function (x) { x.classList.toggle("activo", abrir && x === b); });
+        $("#dialogoAcciones").querySelectorAll("[data-accion]").forEach(function (f) { f.hidden = !(abrir && f.dataset.accion === b.dataset.paso); });
+      });
 
       async function cargarResponsables(select) {
         try {
@@ -326,7 +362,7 @@
         } catch (e) { P.mostrar($("#msgDialogo"), "error", e.message); }
       });
 
-      $("#dialogoAcciones").addEventListener("submit", async function (ev) {
+      async function enviarAccion(ev) {
         ev.preventDefault();
         var form = ev.target;
         if (!form.checkValidity()) { form.reportValidity(); return; }
@@ -360,13 +396,23 @@
           }
           abierta = await P.api(base);
           pintarDetalle();
-          P.mostrar($("#msgDialogo"), "ok", "Listo: " + FORMULARIOS[accion].titulo.toLowerCase() + ".");
+          avisar("ok", "Listo: " + FORMULARIOS[accion].titulo.toLowerCase() + ".");
           if (vista === "bandeja") cargarBandeja();
         } catch (e) {
-          P.mostrar($("#msgDialogo"), "error", e.message);
+          avisar("error", e.message);
           boton.disabled = false;
         }
-      });
+      }
+      $("#dialogoAcciones").addEventListener("submit", enviarAccion);
+      $("#panelAsignar").addEventListener("submit", enviarAccion);
+
+      // El aviso vive en la barra fija; los de éxito se quitan solos.
+      var temporizadorAviso = null;
+      function avisar(tipo, texto) {
+        clearTimeout(temporizadorAviso);
+        P.mostrar($("#msgDialogo"), tipo, texto);
+        if (tipo === "ok") temporizadorAviso = setTimeout(function () { P.mostrar($("#msgDialogo"), "", ""); }, 5000);
+      }
       $("#cerrarDialogo").addEventListener("click", function () { $("#dialogo").close(); });
 
       // ---------------- tiempos ----------------
@@ -465,7 +511,7 @@
           P.mostrar($("#msgGeneral"), "error", e.message);
         }
         document.querySelectorAll("button[data-view]").forEach(function (b) { b.hidden = !permitida(b.dataset.view); });
-        $("#enlaceRadicar").hidden = !permisos["PQR-001"] || !/admin|auxiliar/.test(rol);
+        $("#enlaceRadicar").hidden = !permisos["PQR-001"] || !/admin|coordinador|auxiliar/.test(rol);
         try {
           catalogos = await P.api("/api/pqrs/catalogos");
           $("#fEstado").innerHTML += opciones(catalogos.estados);
@@ -480,7 +526,7 @@
     })();
   </script>
   <script src="/static/session.js?v=20261029"></script>
-  <script src="/static/nav.js"></script>
+  <script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

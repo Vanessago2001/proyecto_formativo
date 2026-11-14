@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028">
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
   <style>
     body { background: #f1f5f9; }
     .empresa-solicitudes-toolbar {
@@ -875,7 +875,7 @@
               return "<tr><td><strong>" + esc(tipo) + "</strong></td><td>" +
                 (actual ? esc(actual.nombre_archivo) + " (v" + esc(actual.version) + ") " + chip(actual.estado) : "Sin cargar") + "</td><td>" +
                 (bloqueado ? '<span class="comite-muted">Aprobado: ya no se puede cambiar.</span>'
-                  : '<input type="file" data-tipo="' + esc(tipo) + '"' + (actual ? ' data-reemplazar="' + esc(actual.id_documento) + '"' : "") +
+                  : '<input type="file" aria-label="' + esc('Archivo: ' + tipo) + '" data-tipo="' + esc(tipo) + '"' + (actual ? ' data-reemplazar="' + esc(actual.id_documento) + '"' : "") +
                   ' accept="' + esc(reglas.extensiones_permitidas.join(",")) + '">') +
                 "</td></tr>";
             }).join("") +
@@ -992,7 +992,7 @@
     })();
   </script>
   <script src="/static/session.js?v=20261029"></script>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

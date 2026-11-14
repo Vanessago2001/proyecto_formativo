@@ -162,7 +162,9 @@ async def test_un_id_invalido_no_llega_a_la_base():
     assert db.sentencias == []
 
 
-@pytest.mark.parametrize("rol", ["Administrador", "Auxiliar", "Auditor", "Comité"])
+# El Auditor ya no: solo ve las empresas de sus auditorías asignadas
+# (tests/test_seguridad_retest_13_11.py).
+@pytest.mark.parametrize("rol", ["Administrador", "Auxiliar", "Comité"])
 async def test_los_demas_roles_no_dependen_del_vinculo(rol):
     db = BaseFalsa(vinculada=False)
 

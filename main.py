@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import os
+import re
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +16,8 @@ from core.arranque import debe_preparar_la_base, guardar_huella, huella
 from core.database import AsyncSessionLocal
 from core.logger import logger
 from core.paginas_error import registrar_paginas_error
+from core.archivos_firmados import FirmarUploadsMiddleware
+from modules.archivos.archivos_router import router as archivos_router
 from core.security import hash_password
 from modules.security_policy.policy_router import router as security_router
 from modules.empresas.empresas_router import router as empresas_router
@@ -350,12 +353,12 @@ app = FastAPI(
 # que falla (404, 403, 500...). El API sigue respondiendo JSON.
 registrar_paginas_error(app)
 
-# Montaje de directorio para archivos subidos por los usuarios (PDF, imágenes, etc.)
-app.mount(
-    "/uploads",
-    StaticFiles(directory="uploads"),
-    name="uploads",
-)
+# Los archivos subidos (uploads/) ya NO se publican como carpeta estática: se
+# entregan por /archivos/<exp>/<firma>/<ruta> con enlaces firmados de corta
+# duración (core/archivos_firmados.py). El middleware firma al vuelo las rutas
+# "/uploads/..." que traen las respuestas JSON de los endpoints con sesión.
+app.add_middleware(FirmarUploadsMiddleware)
+app.include_router(archivos_router)
 
 # Montaje de archivos estáticos (CSS, JS, imágenes)
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -422,6 +425,23 @@ app.include_router(administrar_auditores_router)
 # RUTAS DE INTERFAZ DE USUARIO
 # ============================================================
 
+
+# Páginas internas: se sirven con la guardia de sesión al inicio del <head>
+# (static/requiere-sesion.js). Sin sesión en el navegador redirigen a /login
+# antes de mostrarse. Las públicas (inicio, acceso, registro, consultas
+# públicas, PQRS, verificar certificado, constancia...) siguen con FileResponse.
+_GUARDIA_SESION = '<script src="/static/requiere-sesion.js"></script>'
+
+
+def pagina_interna(ruta: str) -> HTMLResponse:
+    with open(ruta, encoding="utf-8") as archivo:
+        html = archivo.read()
+    con_guardia, cambios = re.subn(r"(<head(?:\s[^>]*)?>)", lambda m: m.group(1) + _GUARDIA_SESION, html, count=1, flags=re.IGNORECASE)
+    if not cambios:
+        con_guardia = _GUARDIA_SESION + html
+    return HTMLResponse(con_guardia)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index_page(request: Request):
     """Sirve la página principal de consulta de documentos."""
@@ -447,22 +467,20 @@ async def reset_password_page(request: Request):
 
 @app.get("/asignacion-auditores")
 async def asignacion_auditores_page():
-    return FileResponse(
-        "static/asignacion-auditores.html"
-    )
+    return pagina_interna("static/asignacion-auditores.html")
 
 
 @app.get("/comite", response_class=HTMLResponse)
 async def comite_page(request: Request):
-    return FileResponse("static/comite.html")
+    return pagina_interna("static/comite.html")
 
 @app.get("/consultar-estado")
 async def consultar_estado():
-    return FileResponse("static/consultar_estado_registro.html")
+    return pagina_interna("static/consultar_estado_registro.html")
 
 @app.get("/gestion-certificados", response_class=HTMLResponse)
 async def gestion_certificados_page(request: Request):
-    return FileResponse("static/certificados.html")
+    return pagina_interna("static/certificados.html")
 
 
 @app.get("/verificar-certificado", response_class=HTMLResponse)
@@ -479,17 +497,17 @@ async def pqrs_page(request: Request):
 @app.get("/pqrs-gestion", response_class=HTMLResponse)
 async def pqrs_gestion_page(request: Request):
     """PQRS: bandeja de gestión, tiempos de atención y reportes."""
-    return FileResponse("static/pqrs_gestion.html")
+    return pagina_interna("static/pqrs_gestion.html")
 
 
 @app.get("/permisos-auxiliar", response_class=HTMLResponse)
 async def permisos_auxiliar_page(request: Request):
-    return FileResponse("static/permisos_auxiliar.html")
+    return pagina_interna("static/permisos_auxiliar.html")
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
-    return FileResponse("static/dashboard.html")
+    return pagina_interna("static/dashboard.html")
     # La antigua plantilla se conserva debajo como referencia no ejecutable.
     """Página de inicio después de iniciar sesión (placeholder)."""
     html_content = """
@@ -558,12 +576,12 @@ async def dashboard_page(request: Request):
 
 @app.get("/empresas", response_class=HTMLResponse)
 async def empresas_page(request: Request):
-    return FileResponse("static/empresas.html")
+    return pagina_interna("static/empresas.html")
 
 
 @app.get("/auditores-registrados", response_class=HTMLResponse)
 async def auditores_registrados_page(request: Request):
-    return FileResponse("static/auditores_registrados.html")
+    return pagina_interna("static/auditores_registrados.html")
 
 
 @app.get("/cuenta-inactiva", response_class=HTMLResponse)
@@ -573,30 +591,30 @@ async def cuenta_inactiva_page(request: Request):
 
 @app.get("/perfil-auditor", response_class=HTMLResponse)
 async def perfil_auditor_page():
-    return FileResponse("static/perfil_auditor.html")
+    return pagina_interna("static/perfil_auditor.html")
 
 @app.get("/profile", response_class=HTMLResponse)
 async def profile_page(request: Request):
-    return FileResponse("static/profile.html")
+    return pagina_interna("static/profile.html")
 
 
 @app.get("/auditor", response_class=HTMLResponse)
 async def auditor_page(request: Request):
-    return FileResponse("static/auditor.html")
+    return pagina_interna("static/auditor.html")
 
 # banco de auditores
 @app.get("/banco-auditores", response_class=HTMLResponse)
 async def banco_auditores_page(request: Request):
-    return FileResponse("static/banco_auditores.html")
+    return pagina_interna("static/banco_auditores.html")
 
 # detalle de una solicitud
 @app.get("/conflictos-auditor", response_class=HTMLResponse)
 async def conflictos_auditor():
-    return FileResponse("static/conflictos_auditor.html")
+    return pagina_interna("static/conflictos_auditor.html")
 
 @app.get("/catalogo-competencias-auditor", response_class=HTMLResponse)
 async def catalogo_competencias_auditor():
-    return FileResponse("static/catalogo_competencias_auditor.html")
+    return pagina_interna("static/catalogo_competencias_auditor.html")
 
 # Esta ruta servia "consultar_agenda_auditor_vista.html", un archivo que no
 # existe (devolvia error). Se mantiene para no romper enlaces guardados, pero
@@ -607,55 +625,53 @@ async def consultar_agenda_auditor_vista():
 
 @app.get("/notificaciones-auditor", response_class=HTMLResponse)
 async def notificaciones_auditor():
-    return FileResponse("static/notificaciones_auditor.html")
+    return pagina_interna("static/notificaciones_auditor.html")
 
 @app.get("/disponibilidad-auditor", response_class=HTMLResponse)
 async def disponibilidad_auditor():
-    return FileResponse("static/disponibilidad_auditor.html")
+    return pagina_interna("static/disponibilidad_auditor.html")
 
 @app.get("/programaciones-futuras-auditor", response_class=HTMLResponse)
 async def programaciones_futuras_auditor_page():
-    return FileResponse("static/programaciones_futuras_auditor.html")
+    return pagina_interna("static/programaciones_futuras_auditor.html")
 
 @app.get("/consultar-auditorias-programadas", response_class=HTMLResponse)
 async def consultar_auditorias_programadas_page():
     """Vista del auditor: solo las auditorías que le fueron asignadas."""
-    return FileResponse("static/consultar_auditorias_programadas.html")
+    return pagina_interna("static/consultar_auditorias_programadas.html")
 
 
 @app.get("/consultar-auditorias-programadas-admin", response_class=HTMLResponse)
 async def consultar_auditorias_programadas_admin_page():
     """Vista del administrador: todas las auditorías programadas del sistema."""
-    return FileResponse("static/consultar_auditorias_programadas_admin.html")
+    return pagina_interna("static/consultar_auditorias_programadas_admin.html")
 
 @app.get("/consultar-agenda-auditor", response_class=HTMLResponse)
 async def consultar_agenda_auditor():
-    return FileResponse("static/consultar_agenda_auditor.html")
+    return pagina_interna("static/consultar_agenda_auditor.html")
 
 @app.get("/conflictos-administrador", response_class=HTMLResponse)
 async def conflictos_administrador():
-    return FileResponse("static/conflictos_administrador.html")
+    return pagina_interna("static/conflictos_administrador.html")
 
 @app.get("/empresas-restringidas", response_class=HTMLResponse)
 async def empresas_restringidas_page():
-    return FileResponse("static/empresas_restringidas.html")
+    return pagina_interna("static/empresas_restringidas.html")
 
 @app.get("/banco-auditores/solicitud/{id_postulacion}")
 async def banco_auditores_solicitud(
     id_postulacion: UUID,
 ):
-    return FileResponse(
-        "static/banco_auditores_solicitud.html"
-    )
+    return pagina_interna("static/banco_auditores_solicitud.html")
 
 @app.get("/empresa", response_class=HTMLResponse)
 async def empresa_page(request: Request):
-    return FileResponse("static/empresa.html")
+    return pagina_interna("static/empresa.html")
 
 
 @app.get("/apelacion", response_class=HTMLResponse)
 async def apelacion_page(request: Request):
-    return FileResponse("static/apelacion.html")
+    return pagina_interna("static/apelacion.html")
 
 
 @app.get("/buscar_empresa", response_class=HTMLResponse)
@@ -664,13 +680,13 @@ async def buscar_empresa_page(request: Request):
 @app.get("/revision-solicitudes", response_class=HTMLResponse)
 async def revision_solicitudes_page(request: Request):
     """M5: Administración revisa las solicitudes radicadas y valida sus sedes."""
-    return FileResponse("static/revision-solicitudes.html")
+    return pagina_interna("static/revision-solicitudes.html")
 
 
 @app.get("/reportes", response_class=HTMLResponse)
 async def reportes_page(request: Request):
     """M12: el catálogo de reportes lo arma la API según el rol de la sesión."""
-    return FileResponse("static/reportes.html")
+    return pagina_interna("static/reportes.html")
 
 
 # /buscar_empresa lo sirve modules/consultas_p/paginas_router.py: la página del

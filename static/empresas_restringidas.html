@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CertiSENA | Empresas restringidas</title>
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028">
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
   <style>
     .surface { min-width: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; }
     .surface h2 { color: #256d00; margin: 0 0 8px; }
@@ -173,8 +173,8 @@
     </nav>
 
     <section class="surface content">
-      <h2>Empresas restringidas</h2>
-      <p class="help-text">Listado real de empresas con conflictos de interés activos que bloquean asignación.</p>
+      <h2>Mis empresas restringidas</h2>
+      <p class="help-text">Empresas con las que tienes un conflicto de interés activo. Mientras siga activo, no podrás ser asignado a auditorías de estas empresas.</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -205,6 +205,24 @@
     const token = localStorage.getItem("access_token");
     if (!token) window.location.replace("/login");
 
+    // Esta consulta es solo del auditor (sus propias restricciones). El
+    // Coordinador y los demás roles administrativos las ven todas en
+    // "Conflictos de interés".
+    (function soloAuditor() {
+      try {
+        const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const datos = JSON.parse(decodeURIComponent(atob(parte).split("").map((c) =>
+          "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")));
+        const rol = String(datos.role_name || datos.rol || "")
+          .normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+        if (!/auditor/.test(rol) || /administrar/.test(rol)) {
+          window.location.replace("/conflictos-administrador");
+        }
+      } catch (_) {
+        window.location.replace("/login");
+      }
+    })();
+
     function escapeHtml(value) {
       return String(value ?? "")
         .replace(/&/g, "&amp;")
@@ -226,7 +244,7 @@
         const empresas = Array.isArray(data.empresas) ? data.empresas : [];
         if (!empresas.length) {
           tbody.innerHTML = "";
-          mensaje.textContent = "No hay empresas restringidas registradas.";
+          mensaje.textContent = "No tienes empresas restringidas: no has declarado conflictos de interés activos.";
           mensaje.style.display = "block";
           return;
         }
@@ -255,7 +273,6 @@
         <div class="modal-field"><strong>Tipo de conflicto</strong><span>${escapeHtml(empresa.tipo_conflicto || "-")}</span></div>
         <div class="modal-field"><strong>Descripción</strong><span>${escapeHtml(empresa.descripcion || "-")}</span></div>
         <div class="modal-field"><strong>Estado</strong><span>${escapeHtml(empresa.estado || "-")}</span></div>
-        <div class="modal-field"><strong>Identificador</strong><span>${escapeHtml(empresa.id_empresa || "-")}</span></div>
       `;
       document.getElementById("modalEmpresa").classList.add("active");
     }
@@ -281,7 +298,7 @@
 
     cargarEmpresas();
   </script>
-  <script src="/static/nav.js"></script>
+  <script src="/static/nav.js?v=20261114a"></script>
 <script src="/static/session.js?v=20261029"></script>
 </body>
 </html>

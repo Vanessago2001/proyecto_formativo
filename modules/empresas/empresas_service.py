@@ -21,6 +21,11 @@ ESTADO_EMPRESA_INACTIVA = "Inactiva"
 UBICACION_FIJA_SEDE = ("ciudad", "departamento", "pais")
 
 COLUMNAS_EMPRESA = "id_empresa, nombre, nit, ciudad, direccion, correo, estado"
+# Lo único que ve un auditor de las empresas que tiene asignadas: sin correo
+# ni dirección de la empresa (la dirección de la visita está en la sede).
+COLUMNAS_EMPRESA_AUDITOR = "id_empresa, nombre, nit, ciudad, estado"
+# Asignaciones que ya no dan acceso a la empresa.
+ASIGNACIONES_SIN_ACCESO = "('Cancelada', 'Reasignado', 'Rechazada')"
 COLUMNAS_CONTACTO = "id_contacto, id_sede, nombre, cargo, telefono, correo, fecha_registro"
 
 
@@ -83,6 +88,27 @@ class EmpresasService:
 
         await self.db.commit()
         return empresa
+
+    async def get_empresas_de_auditor(self, id_auditor: str) -> list[dict]:
+        """Datos mínimos de las empresas de las solicitudes asignadas al auditor."""
+        result = await self.db.execute(
+            text(f"""
+                SELECT DISTINCT {", ".join("e." + c.strip() for c in COLUMNAS_EMPRESA_AUDITOR.split(","))}
+                FROM empresa e
+                JOIN solicitud s ON s.id_empresa = e.id_empresa
+                JOIN auditores_solicitud a ON a.id_solicitud = s.id_solicitud
+                WHERE a.id_auditor = :id_auditor
+                  AND a.estado_asignacion NOT IN {ASIGNACIONES_SIN_ACCESO}
+                ORDER BY e.nombre ASC;
+            """),
+            {"id_auditor": id_auditor},
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    @staticmethod
+    def datos_para_auditor(empresa: dict) -> dict:
+        campos = [c.strip() for c in COLUMNAS_EMPRESA_AUDITOR.split(",")]
+        return {c: empresa.get(c) for c in campos}
 
     async def get_empresas_de_usuario(self, id_usuario: str) -> list[dict]:
         result = await self.db.execute(
@@ -376,7 +402,8 @@ class EmpresasService:
         vinculada en `user_empresa`. Si pide otra se responde 404, igual que
         en M5, para no revelar que existe. Los demás roles no se restringen.
         """
-        if _normalize_role_name(usuario.get("role_name")) != "empresa":
+        rol = _normalize_role_name(usuario.get("role_name"))
+        if rol not in ("empresa", "auditor"):
             return
 
         no_encontrada = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa no encontrada")
@@ -384,6 +411,25 @@ class EmpresasService:
             uuid.UUID(str(id_empresa))
         except ValueError:
             raise no_encontrada
+
+        if rol == "auditor":
+            # Un auditor solo accede a las empresas de las solicitudes que
+            # tiene asignadas (retest 13/11: veía las 11 empresas).
+            result = await self.db.execute(
+                text(f"""
+                    SELECT 1
+                    FROM auditores_solicitud a
+                    JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+                    WHERE a.id_auditor = :id_usuario
+                      AND s.id_empresa = :id_empresa
+                      AND a.estado_asignacion NOT IN {ASIGNACIONES_SIN_ACCESO}
+                    LIMIT 1;
+                """),
+                {"id_usuario": str(usuario.get("id_usuario")), "id_empresa": str(id_empresa)},
+            )
+            if not result.first():
+                raise no_encontrada
+            return
 
         result = await self.db.execute(
             text("""

@@ -183,6 +183,10 @@ class AuditorSolicitudService:
                       AND c.id_norma = :id_norma
                       AND c.es_vigente = TRUE
                       AND c.estado_validacion = 'Validado'
+                      -- Mismo criterio que Asignación de auditores: una
+                      -- competencia vencida o aún no vigente no cuenta.
+                      AND (c.fecha_inicio IS NULL OR c.fecha_inicio <= CURRENT_DATE)
+                      AND (c.fecha_fin IS NULL OR c.fecha_fin >= CURRENT_DATE)
                 ) AS competente_en_norma,
                 EXISTS (
                     SELECT 1 FROM competencia_auditor c
@@ -203,7 +207,12 @@ class AuditorSolicitudService:
                     SELECT 1 FROM disponibilidad_auditor d
                     WHERE d.id_usuario = u.id_usuario
                       AND d.estado = 'Activo'
-                      AND d.tipo_registro = 'Disponibilidad'
+                      -- La base guarda 'Horario Semanal' y 'Disponibilidad
+                      -- Extra'; el literal 'Disponibilidad' no existía y el
+                      -- filtro "solo disponibles" descartaba a todos.
+                      AND LOWER(TRIM(COALESCE(d.tipo_registro, ''))) IN
+                          ('disponibilidad', 'horario semanal', 'disponibilidad extra')
+                      AND (d.fecha_fin IS NULL OR CAST(d.fecha_fin AS DATE) >= CURRENT_DATE)
                 ) AS tiene_disponibilidad,
                 EXISTS (
                     SELECT 1 FROM auditores_solicitud asig

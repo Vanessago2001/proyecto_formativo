@@ -5,8 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CertiSENA | PQRS</title>
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a" />
   <link rel="stylesheet" href="/static/pqrs.css?v=20261104" />
 </head>
 
@@ -224,8 +224,9 @@
       var $ = function (s) { return document.querySelector(s); };
       var rol = P.rolSesion();
       var esEmpresa = /empresa/.test(rol);
-      var esInterno = /admin|auxiliar/.test(rol);       // radica en nombre de un ciudadano
-      var esGestor = /admin|auxiliar|auditor/.test(rol);
+      var esInterno = /admin|coordinador|auxiliar/.test(rol);       // radica en nombre de un ciudadano
+      // El auditor ya no gestiona PQRS: solo el Coordinador y el Auxiliar.
+      var esGestor = /admin|coordinador|auxiliar/.test(rol);
       // Comité, aprendiz u otros: usan el formulario como cualquier ciudadano.
       var modoPublico = !esEmpresa && !esInterno;
       var catalogos = null;
@@ -545,7 +546,7 @@
     })();
   </script>
   <script src="/static/session.js?v=20261029"></script>
-  <script src="/static/nav.js"></script>
+  <script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

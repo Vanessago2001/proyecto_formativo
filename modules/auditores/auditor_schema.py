@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
+from core.archivos_firmados import url_canonica
 from pydantic import (
     BaseModel,
     Field,
@@ -93,6 +94,13 @@ class PerfilAuditorCrear(BaseModel):
     def limpiar_texto(cls, value):
         return value.strip()
 
+    @field_validator("foto_url")
+    @classmethod
+    def foto_sin_firma(cls, value):
+        # La pantalla reenvía la foto que recibió como enlace firmado
+        # (/archivos/...); en la base se guarda la ruta /uploads/... original.
+        return url_canonica(value) or ""
+
 
 class PerfilAuditorRespuesta(BaseModel):
     ciudad_residencia: str
@@ -159,6 +167,18 @@ class CompetenciaAuditorRespuesta(BaseModel):
 # CONFLICTOS DE INTERÉS
 # ============================================================
 
+# Valores que admite la restricción chk_tipo_conflicto de conflicto_interes.
+TIPOS_CONFLICTO = ("Exempleado", "Asesoría Previa", "Parentesco")
+
+
+def _clave_tipo_conflicto(valor: str) -> str:
+    import unicodedata
+
+    sin_tildes = unicodedata.normalize("NFKD", valor)
+    sin_tildes = "".join(c for c in sin_tildes if not unicodedata.combining(c))
+    return " ".join(sin_tildes.lower().split())
+
+
 class ConflictoInteresCrear(BaseModel):
     id_empresa: UUID
     tipo_conflicto: str
@@ -172,6 +192,19 @@ class ConflictoInteresCrear(BaseModel):
     @classmethod
     def limpiar_texto(cls, value):
         return value.strip()
+
+    @field_validator("tipo_conflicto")
+    @classmethod
+    def validar_tipo_conflicto(cls, value):
+        # Sin esta validación un tipo desconocido llegaba a la base y la
+        # restricción respondía con un 500 (IntegrityError) en lugar de 422.
+        canonicos = {_clave_tipo_conflicto(t): t for t in TIPOS_CONFLICTO}
+        tipo = canonicos.get(_clave_tipo_conflicto(value or ""))
+        if tipo is None:
+            raise ValueError(
+                "Tipo de conflicto no válido. Use: " + ", ".join(TIPOS_CONFLICTO) + "."
+            )
+        return tipo
 
 
 class ConflictoInteresActualizar(ConflictoInteresCrear):
@@ -203,6 +236,11 @@ class DocumentoAuditorCrear(BaseModel):
     @classmethod
     def limpiar_texto(cls, value):
         return value.strip()
+
+    @field_validator("url_archivo")
+    @classmethod
+    def url_sin_firma(cls, value):
+        return url_canonica(value) or ""
 
 
 class DocumentoAuditorRespuesta(BaseModel):

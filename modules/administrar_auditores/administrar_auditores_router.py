@@ -7,6 +7,31 @@ from modules.administrar_auditores.administrar_auditores_service import Administ
 
 router = APIRouter(prefix="/administradores/auditores", tags=["Administración de Auditores"])
 
+# Acciones del banco que el Auxiliar solo puede hacer con permiso delegado
+# (REQ en documentacion/permisos.xlsx; catálogo de permisos_auxiliar).
+PERMISO_POR_ESTADO = {
+    "Aprobado": "AUD-013",
+    "Rechazado": "AUD-014",
+}
+PERMISO_VALIDAR_COMPETENCIA = "AUD-030"
+
+
+async def _exigir_permiso_delegado(usuario: dict, db: AsyncSession, codigo: str, detalle: str) -> None:
+    """El Coordinador siempre puede; el Auxiliar solo con el permiso vigente."""
+    from fastapi import HTTPException
+    from core.security import es_coordinador
+    from modules.permisos_auxiliar.permisos_auxiliar_service import usar_permiso_delegado
+
+    if es_coordinador(usuario):
+        return
+    if await usar_permiso_delegado(db, usuario, codigo, detalle):
+        return
+    raise HTTPException(
+        403,
+        f"Esta acción requiere el permiso delegado {codigo}. "
+        "Solicítelo al Coordinador.",
+    )
+
 
 @router.get("/conflictos")
 async def listar_conflictos_general(
@@ -66,6 +91,11 @@ async def revisar_competencia(
         raise HTTPException(401, "No fue posible identificar al coordinador.")
     estado = str(data.get("estado_validacion", "")).strip()
     observacion = str(data.get("observacion", "") or "")
+    if estado in ("Aprobado", "Validado", "Rechazado"):
+        await _exigir_permiso_delegado(
+            usuario, db, PERMISO_VALIDAR_COMPETENCIA,
+            f"{PERMISO_VALIDAR_COMPETENCIA} competencia {id_competencia}",
+        )
     return await AdministrarAuditoresService(db).revisar_validacion_competencia(
         id_competencia=id_competencia,
         estado_validacion=estado,
@@ -145,12 +175,36 @@ async def _ejecutar_alias_estado(
         from fastapi import HTTPException
         raise HTTPException(401, "No fue posible identificar al coordinador.")
     observaciones = str(data.get("observaciones") or "")
+    if nuevo_estado in PERMISO_POR_ESTADO:
+        codigo = PERMISO_POR_ESTADO[nuevo_estado]
+        await _exigir_permiso_delegado(usuario, db, codigo, f"{codigo} postulación {id_postulacion}")
     return await AdministrarAuditoresService(db).cambiar_estado(
         id_postulacion=id_postulacion,
         nuevo_estado=nuevo_estado,
         observaciones=observaciones,
         id_usuario_actor=UUID(str(actor)),
+        **_confirmacion_sin_competencias(data, usuario),
     )
+
+
+def _confirmacion_sin_competencias(data: dict, usuario: dict) -> dict:
+    """Marca explícita para aprobar un auditor sin competencias validadas.
+
+    Quien llega aquí con estado Aprobado ya pasó el permiso AUD-013 (el
+    Coordinador siempre; el Auxiliar solo con el permiso delegado), así que
+    se registra con qué rol se confirmó.
+    """
+    from core.security import es_coordinador
+
+    confirmar = data.get("confirmar_sin_competencias") is True
+    return {
+        "confirmar_sin_competencias": confirmar,
+        "justificacion_sin_competencias": str(data.get("justificacion_sin_competencias") or ""),
+        "rol_confirmacion": (
+            "Coordinador" if es_coordinador(usuario)
+            else f"Auxiliar con permiso delegado {PERMISO_POR_ESTADO['Aprobado']}"
+        ),
+    }
 
 @router.post("/solicitudes/{id_postulacion}/estado")
 async def cambiar_estado(
@@ -163,9 +217,14 @@ async def cambiar_estado(
     if not actor:
         from fastapi import HTTPException
         raise HTTPException(401, "No fue posible identificar al coordinador.")
+    nuevo_estado = str(data.get("nuevo_estado", "")).strip()
+    if nuevo_estado in PERMISO_POR_ESTADO:
+        codigo = PERMISO_POR_ESTADO[nuevo_estado]
+        await _exigir_permiso_delegado(usuario, db, codigo, f"{codigo} postulación {id_postulacion}")
     return await AdministrarAuditoresService(db).cambiar_estado(
         id_postulacion=id_postulacion,
-        nuevo_estado=str(data.get("nuevo_estado", "")).strip(),
+        nuevo_estado=nuevo_estado,
         observaciones=str(data.get("observaciones", "") or ""),
         id_usuario_actor=UUID(str(actor)),
+        **_confirmacion_sin_competencias(data, usuario),
     )

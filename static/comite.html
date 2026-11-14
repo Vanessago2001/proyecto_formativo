@@ -8,8 +8,39 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028">
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
+  <style>
+    .historial-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 6px 0 14px; }
+    .historial-filtro { display: flex; flex-direction: column; gap: 5px; min-width: 170px; }
+    .historial-buscar { flex: 1 1 260px; }
+    .historial-filtro label { font-size: 12px; font-weight: 600; color: #374151; }
+    .historial-filtro input, .historial-filtro select { min-height: 38px; padding: 7px 10px; border: 1px solid var(--campo-borde, #7f8b9e); border-radius: 6px; font: inherit; background: #fff; }
+    .historial-paginador { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .historial-paginas { display: flex; gap: 8px; }
+    .dictamen-dialog { width: min(620px, 92vw); border: 1px solid #e2e8f0; border-radius: 10px; padding: 22px 24px; margin: auto; }
+    .dictamen-dialog::backdrop { background: rgba(15, 23, 42, .35); }
+    .dictamen-dialog h2 { margin: 0 0 14px; font-size: 19px; color: #1f2937; }
+    .dictamen-dialog .comite-decision-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+    .firma-config { display: grid; gap: 8px; margin: 4px 0 16px; padding: 14px 16px; border: 1px solid #dbe7d4; border-radius: 8px; background: #fbfdf9; }
+    .firma-config-campos { display: flex; flex-wrap: wrap; gap: 10px; }
+    .firma-config-campos label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #374151; flex: 1 1 200px; }
+    .firma-config input, .firma-fila input { min-height: 36px; padding: 6px 10px; border: 1px solid var(--campo-borde, #7f8b9e); border-radius: 6px; font: inherit; }
+    .firma-config button { justify-self: start; }
+    .firma-fila { display: flex; gap: 8px; align-items: center; }
+    .firma-fila input { width: 170px; }
+    /* Expediente abierto: el detalle ocupa todo el ancho y la cola se oculta. */
+    .comite-workspace.detalle-abierto { grid-template-columns: minmax(0, 1fr) !important; }
+    .comite-workspace.detalle-abierto .comite-list-panel { display: none; }
+    .detalle-volver { all: unset; cursor: pointer; display: block; width: fit-content; margin-bottom: 8px; color: #256d00; font-size: 13px; font-weight: 600; }
+    .detalle-volver:hover { text-decoration: underline; }
+    .detalle-pestanas { display: flex; gap: 4px; border-bottom: 1px solid #e2e8f0; margin: 14px 0 16px; flex-wrap: wrap; }
+    .detalle-pestana { all: unset; cursor: pointer; padding: 9px 14px; font-size: 13px; font-weight: 600; color: #475569; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+    .detalle-pestana.activa { color: #256d00; border-bottom-color: #3baa01; }
+    .detalle-botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .detalle-mas { margin-top: 14px; }
+    .detalle-mas summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #256d00; }
+  </style>
 </head>
 
 <body class="comite-page">
@@ -40,6 +71,7 @@
         <nav>
           <button class="comite-nav-link active" type="button" data-view="expedientes">Expedientes pendientes</button>
           <button class="comite-nav-link" type="button" data-view="historico">Historial de Decisiones</button>
+          <button class="comite-nav-link" type="button" data-view="firmas" id="firmasNav" hidden>Pendientes de firma</button>
           <a class="comite-nav-link certificados-nav-anchor" href="/gestion-certificados">Gestión de certificados</a>
           <a class="comite-nav-link" href="/apelacion">Apelaciones asignadas</a>
         </nav>
@@ -148,11 +180,66 @@
               <button id="exportPdfButton" class="comite-button secondary btn btn-secundario" type="button" data-formato="pdf">Exportar decisiones (PDF)</button>
             </div>
           </div>
+          <div class="historial-filtros">
+            <div class="historial-filtro historial-buscar">
+              <label for="historialBuscar">Buscar</label>
+              <input id="historialBuscar" type="search" placeholder="Radicado, empresa o NIT" autocomplete="off">
+            </div>
+            <div class="historial-filtro">
+              <label for="historialDecision">Decisión</label>
+              <select id="historialDecision">
+                <option value="">Todas</option>
+                <option value="aprobada">Aprobadas</option>
+                <option value="rechazada">Rechazadas</option>
+              </select>
+            </div>
+            <div class="historial-filtro">
+              <label for="historialFirma">Firma</label>
+              <select id="historialFirma">
+                <option value="">Todas</option>
+                <option value="pendiente">Falta firma</option>
+                <option value="firmado">Firmadas</option>
+              </select>
+            </div>
+          </div>
           <div id="historyContent" class="comite-history-content">Cargando historial...</div>
+          <div class="historial-paginador" id="historyPager"></div>
+        </section>
+
+        <!-- Panel del líder: certificados de solicitudes aprobadas que esperan su firma. -->
+        <section id="firmasView" class="comite-panel comite-view-hidden" hidden>
+          <div class="comite-panel-heading">
+            <div>
+              <h3>Certificados pendientes de firma</h3>
+              <p>Cuando el Comité aprueba una solicitud se crea el borrador del certificado y llega aquí. Al firmarlo queda vigente y publicado.</p>
+            </div>
+            <button id="firmasActualizar" class="comite-button secondary btn btn-secundario" type="button">Actualizar</button>
+          </div>
+          <form id="firmaConfigForm" class="firma-config" hidden>
+            <strong>Antes de firmar, cree su contraseña de firma</strong>
+            <p class="comite-muted">Es distinta a la de inicio de sesión y solo usted la conoce. Se la pedirá cada vez que firme.</p>
+            <div class="firma-config-campos">
+              <label>Contraseña de inicio de sesión<input id="firmaLogin" type="password" autocomplete="current-password" required></label>
+              <label>Nueva contraseña de firma<input id="firmaNueva" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+              <label>Repita la contraseña de firma<input id="firmaRepetir" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+            </div>
+            <button class="comite-button primary btn btn-primario" type="submit">Guardar contraseña de firma</button>
+          </form>
+          <div id="firmasContent" class="comite-history-content">Cargando...</div>
         </section>
       </section>
     </div>
   </main>
+
+  <dialog id="dictamenDialog" class="dictamen-dialog" aria-labelledby="dictamenTitulo">
+    <h2 id="dictamenTitulo">Dictamen final</h2>
+    <div id="dictamenContenido"></div>
+    <div class="comite-decision-actions">
+      <button id="dictamenDescargar" class="comite-button secondary btn btn-secundario" type="button" hidden>Descargar acta firmada</button>
+      <button id="dictamenExpediente" class="comite-button secondary btn btn-secundario" type="button">Ver expediente</button>
+      <button id="dictamenCerrar" class="comite-button primary btn btn-primario" type="button">Cerrar</button>
+    </div>
+  </dialog>
 
   <dialog id="actaSignDialog" aria-labelledby="actaSignTitle">
     <form id="actaSignForm">
@@ -344,8 +431,16 @@
         });
       }
 
+      function cerrarDetalle() {
+        state.selectedId = null;
+        document.querySelector(".comite-workspace").classList.remove("detalle-abierto");
+        $("#detailPanel").innerHTML = '<div class="comite-empty-state"><span class="comite-empty-icon">+</span><h3>Selecciona un expediente</h3><p>Pulsa Revisar en la cola para ver su detalle.</p></div>';
+      }
+
       async function loadDetail(id) {
         state.selectedId = id;
+        document.querySelector(".comite-workspace").classList.add("detalle-abierto");
+        window.scrollTo({ top: 0, behavior: "smooth" });
         const panel = $("#detailPanel");
         panel.innerHTML = '<div class="comite-loading">Cargando expediente...</div>';
         try {
@@ -381,41 +476,72 @@
           '<button class="comite-button primary btn btn-primario" data-decision="/comite/aprobar">Aprobar otorgamiento</button>' +
           '</div>' : '<p class="comite-readonly-note">Tu rol tiene permisos de consulta. Las acciones de decisión están restringidas.</p>';
 
-        $("#detailPanel").innerHTML =
-          '<div class="comite-detail-heading"><div><span class="comite-kicker">Expediente seleccionado</span><h3>' + escapeHtml(expediente.id || id) + '</h3></div>' +
-          '<span class="comite-status ' + statusClass(expediente.estado) + '">' + escapeHtml(expediente.estado || "Pendiente") + '</span></div>' +
+        // Detalle organizado en pestañas: antes eran 7 secciones y ~15 botones
+        // seguidos, con códigos internos (COM-0xx) y consultas que no
+        // mostraban nada. Ahora: Resumen, Hallazgos y Dictamen y acta.
+        const pestañas = '<div class="detalle-pestanas" role="tablist">' +
+          '<button type="button" role="tab" class="detalle-pestana activa" data-pestana="resumen">Resumen</button>' +
+          '<button type="button" role="tab" class="detalle-pestana" data-pestana="hallazgos">Hallazgos (' + (nonconformityItems.length + observationItems.length) + ')</button>' +
+          '<button type="button" role="tab" class="detalle-pestana" data-pestana="dictamen">Dictamen y acta</button>' +
+          '</div>';
+
+        const resumen = '<div class="detalle-seccion" data-seccion="resumen">' +
           '<dl class="comite-facts">' +
           fact("Solicitante", expediente.solicitante || "No informado") +
-          fact("Auditor", auditor && auditor.auditor || "No asignado") +
-          fact("Resultado auditor", reportData.resultado || "Sin informe disponible") +
-          fact("Fecha informe", reportData.fecha || "No disponible") +
+          fact("Auditor responsable", auditor && auditor.auditor || "No asignado") +
+          fact("Resultado del auditor", reportData.resultado || "Sin informe disponible") +
+          fact("Fecha del informe", reportData.fecha || "No disponible") +
           '</dl>' +
-          '<div class="comite-detail-section"><h4>Documentos y evidencias</h4><div class="comite-detail-list">' +
-          '<button class="comite-resource" data-resource="/comite/expediente-descargar/' + escapeHtml(id) + '">Descargar expediente digital <span>COM-003</span></button>' +
-          '<button class="comite-resource" data-resource="/comite/acta-firmada/' + escapeHtml(id) + '"' + (actaFirmada ? "" : " disabled") + '>Descargar acta firmada <span>COM-026</span></button>' +
+          '<div class="comite-detail-section"><h4>Documentos</h4><div class="detalle-botones">' +
+          '<button class="comite-button secondary btn btn-secundario btn-sm" data-resource="/comite/expediente-descargar/' + escapeHtml(id) + '">Descargar expediente digital</button>' +
+          (actaFirmada ? '<button class="comite-button secondary btn btn-secundario btn-sm" data-resource="/comite/acta-firmada/' + escapeHtml(id) + '">Descargar acta firmada</button>' : '') +
           '</div></div>' +
-          '<div class="comite-detail-section"><h4>Evidencias físicas</h4>' + (evidence && evidence.disponible ? renderItems(evidenceItems, "No hay evidencias registradas.") : '<p class="comite-muted">No se pudieron consultar las evidencias físicas.</p>') + '</div>' +
-          '<div class="comite-detail-section"><h4>Consultas relacionadas</h4><div class="comite-detail-list">' +
-          '<button class="comite-resource" data-resource="/comite/empresa-evaluada/' + escapeHtml(expediente.id_empresa || "") + '">Consultar datos de la empresa <span>COM-023</span></button>' +
-          '<button class="comite-resource" data-resource="/comite/historial-por-empresa/' + escapeHtml(expediente.id_empresa || "") + '">Consultar historial por empresa <span>COM-021</span></button>' +
-          '<button class="comite-resource" data-resource="/comite/historial-solicitudes-previas/' + escapeHtml(expediente.usuario_creador || "") + '">Consultar solicitudes previas <span>COM-007</span></button>' +
-          '</div></div>' +
-          '<div class="comite-detail-section"><h4>No conformidades</h4>' + (nonconformities && nonconformities.disponible ? renderItems(nonconformityItems, "No hay no conformidades registradas.") : '<p class="comite-muted">No se pudieron consultar las no conformidades.</p>') + '</div>' +
-          '<div class="comite-detail-section"><h4>Observaciones técnicas</h4>' + (observations && observations.disponible ? renderItems(observationItems, "No hay observaciones registradas.") : '<p class="comite-muted">No se pudieron consultar las observaciones técnicas.</p>') + '</div>' +
-          '<div class="comite-detail-section"><h4>Dictamen del comité</h4><label for="decisionComment">Comentario de la decisión</label><textarea id="decisionComment" rows="3" placeholder="Registra la justificación o las observaciones del comité"></textarea>' + decisionActions + '</div>' +
-          (canDecide ? '<div class="comite-detail-section"><h4>Acta y seguimiento</h4><div class="comite-decision-actions">' +
-            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/decisiones">Registrar decisión</button>' +
-            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/solicitar-info-adicional">Solicitar información</button>' +
-            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/observaciones-acta">Agregar observación al acta</button>' +
-            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/restricciones-alcance">Registrar restricción</button>' +
-            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/comentarios-debate">Comentar debate</button>' +
-            '<p class="comite-muted">' + escapeHtml(acta ? "Acta v" + acta.version + ": " + acta.estado : "No se ha generado el acta definitiva.") + '</p>' +
-            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/acta-definitiva" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Generar acta definitiva</button>' +
-            '<button class="comite-button secondary btn btn-secundario" data-decision="/comite/firmar-acta" ' + (actaGenerada && actaStatus.puede_firmar ? "" : "disabled") + '>Firmar acta PAdES</button>' +
-            '<button class="comite-button danger btn btn-peligro" data-decision="/comite/cerrar-expediente" data-requires-acta-signed ' + (actaFirmada ? "" : "disabled") + '>Cerrar expediente</button>' +
-            (isSuperAdmin ? '<button class="comite-button danger btn btn-peligro" data-decision="/comite/reabrir-dictamen">Reabrir dictamen</button>' : '') +
-            '</div></div>' : '');
+          '<div class="comite-detail-section"><h4>Evidencias físicas</h4>' +
+          (evidence && evidence.disponible ? renderItems(evidenceItems, "No hay evidencias registradas.") : '<p class="comite-muted">No se pudieron consultar las evidencias físicas.</p>') +
+          '</div></div>';
 
+        const hallazgos = '<div class="detalle-seccion" data-seccion="hallazgos" hidden>' +
+          '<div class="comite-detail-section"><h4>No conformidades</h4>' +
+          (nonconformities && nonconformities.disponible ? renderItems(nonconformityItems, "No hay no conformidades registradas.") : '<p class="comite-muted">No se pudieron consultar las no conformidades.</p>') + '</div>' +
+          '<div class="comite-detail-section"><h4>Observaciones técnicas</h4>' +
+          (observations && observations.disponible ? renderItems(observationItems, "No hay observaciones registradas.") : '<p class="comite-muted">No se pudieron consultar las observaciones.</p>') + '</div>' +
+          '</div>';
+
+        const estadoActa = acta ? "Acta versión " + acta.version + ": " + (acta.estado === "FIRMADA" ? "firmada" : acta.estado === "GENERADA" ? "generada, falta la firma" : acta.estado.toLowerCase()) : "Todavía no se ha generado el acta definitiva.";
+        const dictamen = '<div class="detalle-seccion" data-seccion="dictamen" hidden>' +
+          '<div class="comite-detail-section"><h4>Dictamen del comité</h4>' +
+          '<label for="decisionComment">Comentario (obligatorio para cualquier acción)</label>' +
+          '<textarea id="decisionComment" rows="3" placeholder="Justificación u observaciones del comité"></textarea>' +
+          decisionActions +
+          (canDecide ? '<details class="detalle-mas"><summary>Más acciones</summary><div class="detalle-botones">' +
+            '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/solicitar-info-adicional">Solicitar información</button>' +
+            '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/observaciones-acta">Agregar observación al acta</button>' +
+            '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/restricciones-alcance">Registrar restricción de alcance</button>' +
+            '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/comentarios-debate">Comentar debate</button>' +
+            '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/decisiones">Registrar decisión</button>' +
+            '</div></details>' : '') +
+          '</div>' +
+          (canDecide ? '<div class="comite-detail-section"><h4>Acta</h4><p class="comite-muted">' + escapeHtml(estadoActa) + '</p><div class="detalle-botones">' +
+            '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/acta-definitiva" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Generar acta definitiva</button>' +
+            '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/firmar-acta" ' + (actaGenerada && actaStatus.puede_firmar ? "" : "disabled") + '>Firmar acta</button>' +
+            '<button class="comite-button danger btn btn-peligro btn-sm" data-decision="/comite/cerrar-expediente" data-requires-acta-signed ' + (actaFirmada ? "" : "disabled") + '>Cerrar expediente</button>' +
+            (isSuperAdmin ? '<button class="comite-button danger btn btn-peligro btn-sm" data-decision="/comite/reabrir-dictamen">Reabrir dictamen</button>' : '') +
+            '</div></div>' : '') +
+          '</div>';
+
+        $("#detailPanel").innerHTML =
+          '<div class="comite-detail-heading"><div>' +
+          '<button type="button" class="detalle-volver" id="volverCola">← Volver a la cola</button>' +
+          '<span class="comite-kicker">Expediente</span><h3>' + escapeHtml(expediente.codigo || expediente.id || id) + '</h3>' +
+          '<p class="comite-muted">' + escapeHtml(expediente.solicitante ? expediente.solicitante + (expediente.nit ? " · NIT " + expediente.nit : "") : "") + '</p></div>' +
+          '<span class="comite-status ' + statusClass(expediente.estado) + '">' + escapeHtml(expediente.estado || "Pendiente") + '</span></div>' +
+          pestañas + resumen + hallazgos + dictamen;
+
+        $("#detailPanel").querySelectorAll("[data-pestana]").forEach((boton) => boton.addEventListener("click", () => {
+          $("#detailPanel").querySelectorAll("[data-pestana]").forEach((b) => b.classList.toggle("activa", b === boton));
+          $("#detailPanel").querySelectorAll("[data-seccion]").forEach((seccion) => { seccion.hidden = seccion.dataset.seccion !== boton.dataset.pestana; });
+        }));
+        $("#volverCola").addEventListener("click", cerrarDetalle);
         $("#detailPanel").querySelectorAll("[data-decision]").forEach((button) => button.addEventListener("click", () => submitDecision(button.dataset.decision)));
         if (hasFinalDecision) bloquearAccionesDeDictamen(true);
         $("#detailPanel").querySelectorAll("[data-resource]").forEach((button) => button.addEventListener("click", () => loadResource(button.dataset.resource)));
@@ -534,59 +660,236 @@
         }
       }
 
-      function renderHistory(decisions, vacio) {
-        if (!decisions.length) {
-          $("#historyContent").innerHTML = '<div class="comite-table-empty">' + escapeHtml(vacio) + "</div>";
+      // Historial de decisiones: una fila por expediente decidido, con su
+      // decisión final y si el dictamen y el certificado ya están firmados.
+      const historial = { pagina: 1, porPagina: 10, filas: [] };
+
+      function chipFirma(texto) {
+        const clase = texto === "Firmado" ? "approved" : (texto === "No aplica" ? "" : "pending");
+        return '<span class="comite-status ' + clase + '">' + escapeHtml(texto) + "</span>";
+      }
+
+      function renderHistory(datos) {
+        historial.filas = datos.dictamenes || [];
+        if (!historial.filas.length) {
+          $("#historyContent").innerHTML = '<div class="comite-table-empty">No hay decisiones que coincidan con los filtros.</div>';
+          $("#historyPager").innerHTML = "";
           return;
         }
         $("#historyContent").innerHTML =
           '<div class="comite-table-wrap"><table><thead><tr>' +
-          "<th>Fecha</th><th>Expediente</th><th>Empresa</th><th>Acción</th><th>Comentario</th><th>Registrada por</th>" +
+          "<th>Expediente</th><th>Empresa</th><th>Decisión</th><th>Fecha</th><th>Dictamen</th><th>Certificado</th><th>Acción</th>" +
           "</tr></thead><tbody>" +
-          decisions.map(function (d) {
-            var accion = NOMBRE_ACCION[d.accion] || d.accion || "--";
+          historial.filas.map(function (d, i) {
             return "<tr>" +
-              "<td>" + escapeHtml(fechaLegible(d.fecha)) + "</td>" +
-              "<td><strong>" + escapeHtml(d.codigo_expediente || d.expediente_id || "--") + "</strong>" +
-              (d.estado_expediente ? '<br><span class="comite-status ' + statusClass(d.estado_expediente) + '">' + escapeHtml(d.estado_expediente) + "</span>" : "") +
-              "</td>" +
+              "<td><strong>" + escapeHtml(d.codigo_expediente || "--") + "</strong></td>" +
               "<td>" + escapeHtml(d.empresa || "--") + "</td>" +
-              "<td>" + escapeHtml(accion) + "</td>" +
-              "<td>" + escapeHtml(comentarioDe(d) || "--") + "</td>" +
-              "<td>" + escapeHtml(d.usuario || "--") + "</td>" +
+              '<td><span class="comite-status ' + statusClass(d.decision) + '">' + escapeHtml(d.decision) + "</span></td>" +
+              "<td>" + escapeHtml(fechaLegible(d.fecha)) + "</td>" +
+              "<td>" + chipFirma(d.firma_dictamen) + "</td>" +
+              "<td>" + chipFirma(d.firma_certificado) +
+              (d.codigo_verificacion ? '<br><span class="comite-muted">' + escapeHtml(d.codigo_verificacion) + "</span>" : "") + "</td>" +
+              '<td><button class="comite-button secondary btn btn-secundario btn-sm" type="button" data-dictamen="' + i + '">Ver dictamen final</button></td>' +
               "</tr>";
           }).join("") +
           "</tbody></table></div>";
+        const paginas = datos.paginas || 1;
+        $("#historyPager").innerHTML = paginas <= 1
+          ? '<span class="comite-muted">' + datos.total + " expediente(s)</span>"
+          : '<span class="comite-muted">Página ' + datos.page + " de " + paginas + " · " + datos.total + " expediente(s)</span>" +
+            '<div class="historial-paginas">' +
+            '<button class="comite-button secondary btn btn-secundario btn-sm" type="button" data-pagina="' + (datos.page - 1) + '"' + (datos.page <= 1 ? " disabled" : "") + ">Anterior</button>" +
+            '<button class="comite-button secondary btn btn-secundario btn-sm" type="button" data-pagina="' + (datos.page + 1) + '"' + (datos.page >= paginas ? " disabled" : "") + ">Siguiente</button>" +
+            "</div>";
       }
 
       async function loadHistory() {
         $("#historyContent").textContent = "Cargando historial...";
+        const parametros = new URLSearchParams({ page: historial.pagina, page_size: historial.porPagina });
+        const texto = $("#historialBuscar").value.trim();
+        if (texto) parametros.set("q", texto);
+        if ($("#historialDecision").value) parametros.set("decision", $("#historialDecision").value);
+        if ($("#historialFirma").value) parametros.set("firma", $("#historialFirma").value);
         try {
-          const response = await api("/comite/decisiones-historicas");
-          const decisions = response && response.decisiones || [];
-          renderHistory(decisions, "Todavía no hay decisiones registradas.");
+          renderHistory(await api("/comite/historial-dictamenes?" + parametros.toString()) || {});
         } catch (error) {
           $("#historyContent").textContent = error.message;
         }
       }
 
-      function showView(viewName) {
-        const historical = viewName === "historico";
-        const expedientesView = $("#expedientesView");
-        const historicoView = $("#historicoView");
-        if (!expedientesView || !historicoView) return;
+      function verDictamen(d) {
+        const dato = (etiqueta, valor) => "<div><dt>" + escapeHtml(etiqueta) + "</dt><dd>" + escapeHtml(valor || "--") + "</dd></div>";
+        $("#dictamenTitulo").textContent = "Dictamen final · " + (d.codigo_expediente || "");
+        $("#dictamenContenido").innerHTML = '<dl class="comite-facts">' +
+          dato("Empresa", d.empresa) + dato("Decisión", d.decision) + dato("Fecha", fechaLegible(d.fecha)) +
+          dato("Decidió", d.decidio) + dato("Fundamento", d.comentario) +
+          dato("Firma del dictamen (acta)", d.firma_dictamen) +
+          dato("Certificado", d.decision === "Aprobada"
+            ? d.firma_certificado + (d.codigo_verificacion ? " · " + d.codigo_verificacion : "")
+            : "No aplica") +
+          "</dl>";
+        $("#dictamenDescargar").hidden = d.firma_dictamen !== "Firmado";
+        $("#dictamenDescargar").onclick = () => descargarActa(d.expediente_id, d.codigo_expediente);
+        $("#dictamenExpediente").onclick = () => {
+          $("#dictamenDialog").close();
+          showView("expedientes");
+          loadDetail(d.expediente_id);
+        };
+        $("#dictamenDialog").showModal();
+      }
 
+      async function descargarActa(id, codigo) {
+        try {
+          const respuesta = await fetch("/comite/acta-firmada/" + encodeURIComponent(id), { headers: { Authorization: "Bearer " + token } });
+          if (!respuesta.ok) {
+            const cuerpo = await respuesta.json().catch(() => null);
+            throw new Error(cuerpo && typeof cuerpo.detail === "string" ? cuerpo.detail : "No se pudo descargar el acta.");
+          }
+          const url = URL.createObjectURL(await respuesta.blob());
+          const enlace = document.createElement("a");
+          enlace.href = url;
+          enlace.download = "acta-" + (codigo || id) + ".pdf";
+          enlace.click();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (error) {
+          showFeedback(error.message, "error");
+        }
+      }
+
+      $("#historyContent").addEventListener("click", (evento) => {
+        const boton = evento.target.closest("[data-dictamen]");
+        if (boton) verDictamen(historial.filas[Number(boton.dataset.dictamen)]);
+      });
+      $("#historyPager").addEventListener("click", (evento) => {
+        const boton = evento.target.closest("[data-pagina]");
+        if (!boton || boton.disabled) return;
+        historial.pagina = Number(boton.dataset.pagina);
+        loadHistory();
+      });
+      let esperaBusqueda = null;
+      $("#historialBuscar").addEventListener("input", () => {
+        clearTimeout(esperaBusqueda);
+        esperaBusqueda = setTimeout(() => { historial.pagina = 1; loadHistory(); }, 300);
+      });
+      ["#historialDecision", "#historialFirma"].forEach((selector) =>
+        $(selector).addEventListener("change", () => { historial.pagina = 1; loadHistory(); }));
+      $("#dictamenCerrar").addEventListener("click", () => $("#dictamenDialog").close());
+
+      const VISTAS_COMITE = {
+        expedientes: ["Expedientes pendientes", "Consulta los expedientes y revisa la información necesaria para emitir un dictamen."],
+        historico: ["Historial de decisiones", "Decisión final de cada expediente y si el dictamen y el certificado ya están firmados."],
+        firmas: ["Pendientes de firma", "Certificados de solicitudes aprobadas que esperan la firma del líder del Comité."]
+      };
+
+      function showView(viewName) {
+        if (!VISTAS_COMITE[viewName] || (viewName === "firmas" && $("#firmasNav").hidden)) viewName = "expedientes";
         document.querySelectorAll(".comite-nav-link").forEach((item) => {
           item.classList.toggle("active", item.dataset.view === viewName);
         });
-        expedientesView.hidden = historical;
-        historicoView.hidden = !historical;
-        expedientesView.classList.toggle("comite-view-hidden", historical);
-        historicoView.classList.toggle("comite-view-hidden", !historical);
-        $("#viewTitle").textContent = historical ? "Historial de decisiones" : "Expedientes pendientes";
-        $("#viewDescription").textContent = historical ? "Consulta el registro consolidado de decisiones del comité." : "Consulta los expedientes y revisa la información necesaria para emitir un dictamen.";
-        if (historical) loadHistory();
+        Object.keys(VISTAS_COMITE).forEach((nombre) => {
+          const vista = $("#" + nombre + "View");
+          if (!vista) return;
+          const oculta = nombre !== viewName;
+          vista.hidden = oculta;
+          vista.classList.toggle("comite-view-hidden", oculta);
+        });
+        $("#viewTitle").textContent = VISTAS_COMITE[viewName][0];
+        $("#viewDescription").textContent = VISTAS_COMITE[viewName][1];
+        if (viewName === "historico") loadHistory();
+        if (viewName === "firmas") loadFirmas();
       }
+
+      // ---------------- Panel del líder: firma de certificados ----------------
+      let firmaConfigurada = false;
+
+      async function prepararPanelLider() {
+        if (!["comite", "comité"].includes(role)) return;
+        try {
+          const liderazgo = await api("/certificados/lider-comite/actual");
+          if (!liderazgo || !liderazgo.es_lider) return;
+          $("#firmasNav").hidden = false;
+          if (location.hash === "#firmas") showView("firmas");
+        } catch (_) {
+          // Sin líder asignado la vista simplemente no aparece.
+        }
+      }
+
+      async function loadFirmas() {
+        $("#firmasContent").textContent = "Cargando certificados...";
+        try {
+          const [estadoFirma, certificados] = await Promise.all([
+            api("/certificados/firma/estado"),
+            api("/certificados/?limite=200")
+          ]);
+          firmaConfigurada = Boolean(estadoFirma && estadoFirma.configurada);
+          $("#firmaConfigForm").hidden = firmaConfigurada;
+          const pendientes = (certificados || []).filter((c) => String(c.estado_certificado || "").trim().toUpperCase() === "PENDIENTE_FIRMA");
+          $("#firmasNav").textContent = "Pendientes de firma" + (pendientes.length ? " (" + pendientes.length + ")" : "");
+          if (!pendientes.length) {
+            $("#firmasContent").innerHTML = '<div class="comite-table-empty">No tiene certificados pendientes de firma.</div>';
+            return;
+          }
+          $("#firmasContent").innerHTML = '<div class="comite-table-wrap"><table><thead><tr>' +
+            "<th>Certificado</th><th>Empresa</th><th>Norma</th><th>Vence</th><th>Firma</th>" +
+            "</tr></thead><tbody>" +
+            pendientes.map((c) => "<tr>" +
+              "<td><strong>" + escapeHtml(c.codigo_verificacion || "--") + "</strong><br><span class=\"comite-muted\">" + escapeHtml(c.numero_radicado || "") + "</span></td>" +
+              "<td>" + escapeHtml(c.empresa || "--") + "<br><span class=\"comite-muted\">NIT " + escapeHtml(c.nit || "") + "</span></td>" +
+              "<td>" + escapeHtml(c.norma_codigo || "--") + "</td>" +
+              "<td>" + escapeHtml(fechaLegible(c.fecha_vencimiento)) + "</td>" +
+              '<td><form class="firma-fila" data-firmar="' + escapeHtml(c.id_certificado) + '">' +
+              '<input type="password" placeholder="Contraseña de firma" aria-label="Contraseña de firma" autocomplete="off" required' + (firmaConfigurada ? "" : " disabled") + ">" +
+              '<button class="comite-button primary btn btn-primario btn-sm" type="submit"' + (firmaConfigurada ? "" : " disabled") + ">Firmar</button>" +
+              "</form></td></tr>").join("") +
+            "</tbody></table></div>";
+        } catch (error) {
+          $("#firmasContent").textContent = error.message;
+        }
+      }
+
+      $("#firmasContent").addEventListener("submit", async (evento) => {
+        const formulario = evento.target.closest("[data-firmar]");
+        if (!formulario) return;
+        evento.preventDefault();
+        const campo = formulario.querySelector("input");
+        const boton = formulario.querySelector("button");
+        boton.disabled = true;
+        try {
+          await api("/certificados/" + encodeURIComponent(formulario.dataset.firmar) + "/firmar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password_firma: campo.value })
+          });
+          showFeedback("Certificado firmado: ya está vigente y publicado.", "success");
+          await loadFirmas();
+        } catch (error) {
+          showFeedback(error.message, "error");
+          boton.disabled = false;
+        } finally {
+          campo.value = "";
+        }
+      });
+
+      $("#firmaConfigForm").addEventListener("submit", async (evento) => {
+        evento.preventDefault();
+        if ($("#firmaNueva").value !== $("#firmaRepetir").value) {
+          showFeedback("Las dos contraseñas de firma no coinciden.", "error");
+          return;
+        }
+        try {
+          await api("/certificados/firma/configurar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password_login: $("#firmaLogin").value, password_firma: $("#firmaNueva").value })
+          });
+          evento.target.reset();
+          showFeedback("Contraseña de firma guardada. Ya puede firmar.", "success");
+          await loadFirmas();
+        } catch (error) {
+          showFeedback(error.message, "error");
+        }
+      });
+      $("#firmasActualizar").addEventListener("click", loadFirmas);
 
       document.querySelectorAll(".comite-nav-link").forEach((link) => link.addEventListener("click", () => showView(link.dataset.view)));
 
@@ -655,9 +958,13 @@
       $("#cancelActaSign").addEventListener("click", () => $("#actaSignDialog").close());
       $("#logoutButton").addEventListener("click", () => { localStorage.clear(); window.location.href = "/login"; });
       loadExpedientes();
+      // El Coordinador y el Auxiliar llegan al historial: los expedientes
+      // pendientes son la mesa de trabajo del Comité.
+      if (!["comite", "comité"].includes(role) && !location.hash) showView("historico");
+      prepararPanelLider();
     })();
   </script>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 <script src="/static/session.js?v=20261029"></script>
 </body>
 

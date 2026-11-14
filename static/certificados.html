@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028">
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
   <style>
     /* Buscar y Estado en una fila; las exportaciones (secundarias) debajo, juntas. */
     .certificados-page .cert-toolbar { grid-template-columns: minmax(220px, 1fr) minmax(155px, .6fr); }
@@ -343,6 +343,9 @@
       // Coordinador (retirado): ahora los hace el Coordinador.
       const canWithdrawPublic = role === "admin";
       const canExport = ["admin", "auxiliar"].includes(role);
+      // CER-024 (métricas internas): solo Coordinador y Auxiliar. El resto de
+      // roles (Comité, Empresa, Auditor) no la pide y resume lo que ve.
+      const canSeeInternalMetrics = ["admin", "auxiliar"].includes(role);
       const canSeeAlerts = ["admin", "auxiliar", "empresa", "auditor"].includes(role);
       const canSeeHistory = ["admin", "auxiliar", "empresa", "auditor", "public"].includes(role);
       const publicOnly = publicMode || role === "public";
@@ -473,12 +476,14 @@
           let metrics;
           if (publicOnly || publicMode) {
             metrics = await api("/certificados/metricas-publicas");
-          } else {
+          } else if (canSeeInternalMetrics) {
             try {
               metrics = await api("/certificados/metricas");
             } catch (_) {
               metrics = metricsFromList(state.certificados || []);
             }
+          } else {
+            metrics = metricsFromList(state.certificados || []);
           }
           $("#metricTotal").textContent = metrics.total ?? 0;
           $("#metricVigentes").textContent = metrics.vigentes ?? 0;
@@ -1124,7 +1129,7 @@
       }
     })();
   </script>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 <script src="/static/session.js?v=20261029"></script>
 <script src="/static/pqrs-enlace.js?v=20261106"></script>
 </body>

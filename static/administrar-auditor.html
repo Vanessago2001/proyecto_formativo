@@ -5,8 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>CertiSENA · Ver solicitud de auditor</title>
-    <link rel="stylesheet" href="/static/tema.css?v=20261028">
-    <link rel="stylesheet" href="/static/styles.css?v=20261028">
+    <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+    <link rel="stylesheet" href="/static/styles.css?v=20261114a">
     <style>
         :root {
             --green: #15803d;
@@ -272,7 +272,7 @@
         <section class="section">
             <div class="section-body">
                 <h3>Decisión de la postulación</h3>
-                <div class="review-box"><textarea id="obs"
+                <div class="review-box"><textarea id="obs" aria-label="Observación general de la postulación"
                         placeholder="Observación general de la postulación"></textarea>
                     <div class="actions"><button class="btn btn-secundario" onclick="cambiarEstado('En Revisión')">Poner en
                             revisión</button><button class="btn btn-secundario" onclick="cambiarEstado('Correcciones')">Solicitar
@@ -444,8 +444,8 @@
                         : ''}
 
                     <div class="doc-actions">
-                        <button class="btn btn-secundario btn-sm" onclick="window.open('${esc(d.url_archivo)}','_blank')">
-                            👁 Ver
+                        <button class="btn btn-secundario btn-sm" title="Ver documento" onclick="window.open('${esc(d.url_archivo)}','_blank')">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Ver
                         </button>
 
                         ${locked

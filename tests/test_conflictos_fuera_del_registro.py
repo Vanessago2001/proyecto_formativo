@@ -115,6 +115,11 @@ class SesionConflictos:
                 self.conflictos = []
             return ResultadoFalso([])
 
+        # Aviso al Coordinador de asignaciones activas con la empresa (14/11):
+        # en estos escenarios el auditor no tiene asignaciones.
+        if "FROM auditores_solicitud a" in sql and "s.id_empresa = :id_empresa" in sql:
+            return ResultadoFalso([])
+
         raise AssertionError(f"Consulta no contemplada por el doble: {sql[:120]}")
 
 

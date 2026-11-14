@@ -104,7 +104,7 @@ _EXTENSIONES_ARCHIVO = (
 def _es_archivo(ruta: str) -> bool:
     """Archivos subidos (/uploads) o rutas que terminan en una extensión de archivo."""
     ruta = (ruta or "").lower()
-    return ruta.startswith("/uploads/") or ruta.endswith(_EXTENSIONES_ARCHIVO)
+    return ruta.startswith(("/uploads/", "/archivos/")) or ruta.endswith(_EXTENSIONES_ARCHIVO)
 
 
 def _mensajes(codigo: int) -> tuple[str, str, str]:

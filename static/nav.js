@@ -234,8 +234,12 @@
     return {
       grupo: titulo,
       opciones: [
-        { texto: "Expedientes pendientes", href: "/comite#expedientes", proxy: 'aside.comite-sidebar button[data-view="expedientes"]' },
-        { texto: "Historial de decisiones", href: "/comite#historico", proxy: 'aside.comite-sidebar button[data-view="historico"]' }
+        // Los expedientes pendientes son del Comité: el Coordinador revisa las
+        // solicitudes en "Revisión de solicitudes" y aquí solo ve el historial.
+        { texto: "Expedientes pendientes", href: "/comite#expedientes", proxy: 'aside.comite-sidebar button[data-view="expedientes"]', solo: ["comite"] },
+        { texto: "Historial de decisiones", href: "/comite#historico", proxy: 'aside.comite-sidebar button[data-view="historico"]' },
+        // Solo el líder asignado: la pantalla muestra el botón si lo es.
+        { texto: "Pendientes de firma", href: "/comite#firmas", proxy: 'aside.comite-sidebar button[data-view="firmas"]', solo: ["comite"] }
       ]
     };
   };
@@ -256,11 +260,10 @@
     return {
       grupo: titulo,
       opciones: [
+        // Todo lo de una apelación (expediente, comité, requerimientos y
+        // decisión) está en su revisión, que se abre con "Revisar".
         vista("bandeja", "Bandeja del comité"),
-        vista("expediente", "Expediente"),
-        vista("requerimientos", "Requerimientos"),
-        vista("decision", "Decisión del comité"),
-        vista("asignar", "Asignar comité", ["admin", "auxiliar"])
+        vista("porasignar", "Por asignar comité", ["admin", "auxiliar"])
       ]
     };
   };
@@ -268,21 +271,18 @@
   var MENU_ADMINISTRACION = {
     titulo: "Administración",
     items: [
-      { texto: "Resumen", href: "/dashboard" },
-      {
-        grupo: "Usuarios",
-        opciones: [
-          // El panel solo muestra la gestión de usuarios al Coordinador.
-          { texto: "Gestionar usuarios", href: "/dashboard#usuarios", solo: ["admin"] },
-          { texto: "Permisos de auxiliares", href: "/permisos-auxiliar", solo: ["admin"] }
-        ]
-      },
+      // Usuarios es una sola opción: el panel (/dashboard) tiene las pestañas
+      // Resumen, Gestionar usuarios y Permisos de auxiliares (esta última es
+      // otra pantalla, por eso también queda marcada allí). El Auxiliar no
+      // gestiona usuarios: para él la misma opción se llama "Resumen".
+      { texto: "Usuarios", textoAuxiliar: "Resumen", href: "/dashboard", activoEn: /^\/permisos-auxiliar\/?$/ },
       {
         grupo: "Empresas",
         opciones: [
           { texto: "Registradas", href: "/empresas#listado", proxy: '#menu button[data-view="listado"]' },
-          { texto: "Registrar empresa", href: "/empresas#registrar", proxy: '#menu button[data-view="registrar"]' },
-          { texto: "Aprobaciones", textoAuxiliar: "Mis solicitudes de aprobación", href: "/empresas#aprobaciones", proxy: '#menu button[data-view="aprobaciones"]' }
+          { texto: "Registrar empresa", href: "/empresas#registrar", proxy: '#menu button[data-view="registrar"]' }
+          // "Aprobaciones" se quitó: no se usaba y se confundía con el
+          // Historial de decisiones del Comité.
         ]
       },
       { texto: "Asignación de auditores", href: "/asignacion-auditores" },
@@ -300,12 +300,15 @@
         grupo: "Consultar agenda de auditor",
         opciones: [
           ["schedule", "Programar una auditoría"],
-          ["assignments", "Solicitudes con auditores asignados"],
+          // "Solicitudes con auditores asignados" se quitó: solo informaba y
+          // eso ya está en Asignación de auditores (con "Programar visita").
           ["weekly", "Disponibilidad semanal"],
-          ["blocked", "Registrar fecha no disponible"],
-          ["month", "Disponibilidad mensual y auditorías"],
-          ["history", "Historial de disponibilidad"],
-          ["bitacora", "Bitácora de validación"]
+          // "Registrar fecha no disponible" se quitó (13/11/2026): las fechas
+          // con auditorías programadas quedan bloqueadas por el backend y el
+          // auditor declara su disponibilidad en su perfil.
+          ["month", "Disponibilidad mensual y auditorías"]
+          // "Historial de disponibilidad" y "Bitácora de validación" se
+          // quitaron por pedido de la usuaria (13/11/2026).
         ].map(function (s) {
           return { texto: s[1], href: "/consultar-agenda-auditor#" + s[0], proxy: '.agenda-menu a[data-seccion="' + s[0] + '"]' };
         })
@@ -317,8 +320,9 @@
         opciones: [
           { texto: "Banco de auditores", href: "/banco-auditores", activoEn: /^\/banco-auditores\/solicitud\// },
           { texto: "Auditores registrados", href: "/auditores-registrados" },
-          { texto: "Conflictos de interés", href: "/conflictos-administrador" },
-          { texto: "Consultar empresas restringidas", href: "/empresas-restringidas" }
+          { texto: "Conflictos de interés", href: "/conflictos-administrador" }
+          // "Consultar empresas restringidas" es solo del auditor (sus propias
+          // restricciones); el Coordinador las ve en Conflictos de interés.
         ]
       },
       GRUPO_CERTIFICADOS,
@@ -368,15 +372,18 @@
       },
       {
         grupo: "Disponibilidad",
+        // El horario semanal lo configura el propio auditor en su perfil,
+        // junto al calendario de sus auditorías (static/mi_disponibilidad.js).
         opciones: [
-          ["configurar-horario", "Horario semanal"],
+          { texto: "Mi disponibilidad semanal", href: "/perfil-auditor#disponibilidad" }
+        ].concat([
           ["bloquear-fecha", "Bloquear fecha"],
           ["desbloquear-fecha", "Desbloquear fecha"],
           ["disponibilidad-extraordinaria", "Disponibilidad extraordinaria"],
           ["historial-disponibilidad", "Historial"]
         ].map(function (s) {
           return { texto: s[1], href: "/disponibilidad-auditor#" + s[0], proxy: '.side a[data-seccion="' + s[0] + '"]' };
-        })
+        }))
       },
       {
         grupo: "Catálogo de competencias",
@@ -968,4 +975,18 @@
   } else {
     aplicar();
   }
+})();
+
+/* ==========================================================
+   Modales accesibles: carga static/modales.js (foco, Tab,
+   Escape y roles ARIA en las ventanas modales hechas con div).
+   Bloque independiente: no toca la lógica del menú.
+   ========================================================== */
+(function () {
+  "use strict";
+  if (window.__modalesAccesibles || document.querySelector('script[src^="/static/modales.js"]')) return;
+  var s = document.createElement("script");
+  s.src = "/static/modales.js?v=20261114";
+  s.defer = true;
+  (document.head || document.documentElement).appendChild(s);
 })();

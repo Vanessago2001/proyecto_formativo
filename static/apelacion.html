@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CertiSENA | Apelaciones</title>
-  <link rel="stylesheet" href="/static/tema.css?v=20261028">
-  <link rel="stylesheet" href="/static/styles.css?v=20261028" />
+  <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261114a" />
   <style>
     :root {
       --verde-900: #1b4b12;
@@ -142,10 +142,39 @@
     }
 
     .metric-value {
-      margin-top: 14px;
-      font-size: 1.4rem;
+      margin-top: 8px;
+      font-size: 1.05rem;
       font-weight: 700;
-      color: var(--verde-800);
+      color: #1f2937;
+    }
+
+    .bandeja-filtros { display: flex; gap: 8px; align-items: center; }
+    .bandeja-filtros select { min-height: 36px; padding: 6px 10px; border: 1px solid var(--campo-borde, #7f8b9e); border-radius: 6px; font: inherit; background: #fff; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .tabla-apelaciones { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .tabla-apelaciones table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .tabla-apelaciones th { text-align: left; padding: 10px 12px; background: #f8fafc; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    .tabla-apelaciones td { padding: 10px 12px; border-top: 1px solid #eef2f7; vertical-align: middle; }
+    .pendiente-comite { color: #8d6e00; font-weight: 700; }
+    /* En la revisión cada sección es un bloque separado. */
+    [data-vista-panel] + [data-vista-panel]:not([hidden]) { margin-top: 18px; }
+    .metrics[hidden] { display: none; }
+
+    /* Mismos títulos que el resto del sistema (Comité, Revisión...). */
+    .main-column .comite-page-heading { margin-bottom: 18px; }
+    .section-header h2,
+    .section-header h3 { color: #1f2937 !important; }
+    .side-title { color: #1f2937 !important; font-size: 15px !important; }
+
+    /* Empresa: sus vistas van en la columna lateral, como en su portal. */
+    .vista-nav.vista-nav-lateral { display: flex; flex-direction: column; gap: 0; margin: 0 0 6px; padding: 0; border: 0; }
+    .vista-nav-lateral .vista-link {
+      display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 0;
+      border-left: 3px solid transparent; padding: 11px 12px; font-size: 13px; color: #334155; font-weight: 400; cursor: pointer;
+    }
+    .vista-nav-lateral .vista-link:hover,
+    .vista-nav-lateral .vista-link.activa {
+      background: var(--gris-100); color: var(--verde-800); border-left-color: var(--verde-600); font-weight: 700;
     }
 
     .admin-grid {
@@ -568,7 +597,7 @@
         <img src="/static/sena_blanco.png" alt="Logo SENA" class="sena-blanco" />
         <div>
           <h1>CertiSENA</h1>
-          <p class="subtitle">Gestion de certificados</p>
+          <p class="subtitle">Apelaciones</p>
         </div>
       </div>
       <div class="comite-header-user">
@@ -581,15 +610,6 @@
   </header>
 
   <div class="page-shell">
-    <div class="admin-header">
-      <div>
-        <h2 id="welcomeTitle">Bienvenido</h2>
-        <p id="roleDescription">Gestión y revisión de apelaciones</p>
-      </div>
-    </div>
-
-    <div id="alertBox" class="alert"></div>
-
     <div class="admin-grid">
       <nav class="side admin-nav" aria-label="Navegación del panel">
         <a href="/dashboard">Volver al panel</a>
@@ -597,7 +617,18 @@
       </nav>
 
       <main class="main-column">
-        <section class="metrics">
+        <div class="comite-page-heading">
+          <div>
+            <span class="comite-kicker">Apelaciones</span>
+            <h2 id="welcomeTitle">Apelaciones</h2>
+            <p id="roleDescription">Gestión y revisión de apelaciones</p>
+          </div>
+        </div>
+
+        <div id="alertBox" class="alert"></div>
+
+        <!-- Resumen de la apelación abierta: solo se ve cuando hay una. -->
+        <section class="metrics" id="resumenApelacion" hidden>
           <div class="metric">
             <div class="metric-label">Estado</div>
             <div class="metric-value" id="metricEstado">Sin solicitud</div>
@@ -618,20 +649,28 @@
 
         <nav class="vista-nav" id="vistaNav" aria-label="Vistas de apelaciones">
           <button class="vista-link" type="button" data-vista="bandeja">Bandeja del comité</button>
-          <button class="vista-link" type="button" data-vista="expediente">Expediente</button>
+          <button class="vista-link" type="button" data-vista="porasignar">Por asignar comité</button>
           <button class="vista-link" type="button" data-vista="apelacion">Mi apelación</button>
           <button class="vista-link" type="button" data-vista="requerimientos">Requerimientos</button>
           <button class="vista-link" type="button" data-vista="decision">Decisión del comité</button>
           <button class="vista-link" type="button" data-vista="asignar">Asignar comité</button>
         </nav>
-        <p class="hint" id="vistaAyuda">Seleccione una apelación de la bandeja.</p>
+        <p class="hint" id="vistaAyuda" hidden>Seleccione una apelación de la bandeja.</p>
         <!-- =============== BANDEJA =============== -->
         <section class="panel" data-vista-panel="bandeja" hidden>
           <div class="section-header">
-            <h2>Bandeja del comité</h2>
-            <button class="btn btn-secundario secondary" id="btnActualizarBandeja" type="button">Actualizar</button>
+            <h2>Cola de apelaciones</h2>
+            <div class="bandeja-filtros">
+              <label for="filtroBandeja" class="sr-only">Mostrar</label>
+              <select id="filtroBandeja">
+                <option value="">Todas</option>
+                <option value="abiertas">En trámite</option>
+                <option value="sincomite">Sin comité asignado</option>
+                <option value="decididas">Decididas</option>
+              </select>
+              <button class="btn btn-secundario secondary" id="btnActualizarBandeja" type="button">Actualizar</button>
+            </div>
           </div>
-          <p class="hint">Las apelaciones que le corresponde revisar. Abra una para ver su expediente.</p>
           <div id="listaApelaciones" class="support-list"></div>
         </section>
 
@@ -639,9 +678,11 @@
         <section class="panel" data-vista-panel="expediente" hidden>
           <div class="section-header">
             <h2>Expediente de la apelación</h2>
-            <span class="badge-soft" id="expedienteRadicado">--</span>
+            <div class="acciones-tabla">
+              <span class="badge-soft" id="expedienteRadicado">--</span>
+              <button class="btn btn-secundario secondary" id="btnVolverBandeja" type="button">Volver a la bandeja</button>
+            </div>
           </div>
-          <p class="hint">La solicitud original, la evaluación previa del Comité y la apelación con sus evidencias.</p>
 
           <div class="expediente-grid">
             <article class="expediente-bloque">
@@ -735,10 +776,9 @@
         <!-- =============== REQUERIMIENTOS =============== -->
         <section class="panel" data-vista-panel="requerimientos" hidden>
           <div class="section-header">
-            <h2>Requerimientos de información</h2>
+            <h2>Requerimientos de la apelación</h2>
             <button class="btn btn-secundario secondary" id="btnActualizarRequerimientos" type="button">Actualizar</button>
           </div>
-          <p class="hint">Lo que el Comité ha pedido en esta apelación y si ya fue atendido.</p>
           <div id="listaRequerimientos" class="support-list"></div>
         </section>
 
@@ -772,8 +812,8 @@
           </article>
 
           <article class="expediente-bloque" style="margin-top: 18px;">
-            <h3 class="side-title">Respuesta del comité</h3>
-            <textarea id="comentariosComite" placeholder="Fundamento de la decisión. Lo verá la empresa."></textarea>
+            <h3 class="side-title" id="tituloRespuestaComite">Respuesta del comité</h3>
+            <textarea id="comentariosComite" aria-labelledby="tituloRespuestaComite" placeholder="Fundamento de la decisión. Lo verá la empresa."></textarea>
             <div class="actions" style="margin-top: 18px;">
               <button class="btn btn-primario primary" id="btnAprobar" type="button">Aprobar apelación</button>
               <button class="btn btn-peligro danger" id="btnRechazar" type="button">Rechazar apelación</button>
@@ -800,8 +840,8 @@
         </section>
 
         <!-- Se usan poco: se guardan plegados para no robar espacio. -->
-        <details class="panel plegable" style="margin-top: 18px;">
-          <summary>Flujo y búsqueda</summary>
+        <details class="panel plegable" id="panelBusqueda" style="margin-top: 18px;">
+          <summary>Buscar otra solicitud y ver el flujo</summary>
 
           <h3 class="side-title">Flujo de la apelación</h3>
           <div class="flow-list">
@@ -933,7 +973,7 @@
       const roles = Array.isArray(state.role) ? state.role : [state.role];
       return roles.some((role) => {
         const normalized = String(role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        return normalized.includes('comite') || normalized.includes('admin');
+        return normalized.includes('comite') || normalized.includes('admin') || normalized.includes('coordinador');
       });
     }
 
@@ -945,7 +985,7 @@
       const roles = Array.isArray(state.role) ? state.role : [state.role];
       return roles.some((role) => {
         const normalizado = normalizarRol(role);
-        return normalizado.includes('admin') || normalizado.includes('auxiliar');
+        return normalizado.includes('admin') || normalizado.includes('coordinador') || normalizado.includes('auxiliar');
       });
     }
 
@@ -965,37 +1005,71 @@
       if (company) {
         const volver = document.querySelector('nav.side a[href="/dashboard"]');
         if (volver) volver.textContent = 'Volver a mis solicitudes';
+        const lateral = document.querySelector('nav.side');
+        const vistas = document.getElementById('vistaNav');
+        if (lateral && vistas) {
+          vistas.classList.add('vista-nav-lateral');
+          lateral.prepend(vistas);
+        }
       }
+      // La búsqueda por ID solo la usa la empresa; el resto trabaja desde la bandeja.
+      const busqueda = document.getElementById('panelBusqueda');
+      if (busqueda) busqueda.hidden = !company;
 
       mostrarVista(company ? 'apelacion' : 'bandeja');
     }
 
+    const ESTADOS_DECIDIDOS = ['APROBADA', 'RECHAZADA', 'CANCELADA', 'CERRADA'];
+    let apelacionesBandeja = [];
+
     async function cargarBandejaComite() {
-      if (!esComite()) return;
+      if (!esComite() && !esAdministracion()) return;
       const container = document.getElementById('listaApelaciones');
       container.innerHTML = '<div class="empty-state">Cargando apelaciones...</div>';
       try {
         const apelaciones = await api('/api/apelaciones/');
-        if (!Array.isArray(apelaciones) || apelaciones.length === 0) {
-          container.innerHTML = '<div class="empty-state">No hay apelaciones radicadas.</div>';
-          return;
-        }
-        container.innerHTML = apelaciones.map((item) => `
-          <div class="support-item">
-            <strong>${escapeHtml(item.radicado || 'Apelación ' + item.id)}</strong>
-            <div>Solicitud: ${escapeHtml(item.id_solicitud || '--')} · Estado: ${escapeHtml(item.estado || '--')}</div>
-            <small>Fecha: ${formatDate(item.fecha)}</small>
-            <div class="actions"><button class="btn btn-secundario btn-sm secondary" type="button" data-appeal-id="${item.id}">Revisar</button></div>
-          </div>
-        `).join('');
-        container.querySelectorAll('[data-appeal-id]').forEach((button) => {
-          button.addEventListener('click', () => cargarDetalleApelacion(button.dataset.appealId));
-        });
+        apelacionesBandeja = Array.isArray(apelaciones) ? apelaciones : [];
+        pintarBandeja();
       } catch (error) {
-        container.innerHTML = '<div class="empty-state">No se pudo cargar la bandeja del comité.</div>';
+        container.innerHTML = '<div class="empty-state">No se pudo cargar la bandeja de apelaciones.</div>';
         setAlert(error.message, 'error');
       }
     }
+
+    function pintarBandeja() {
+      const container = document.getElementById('listaApelaciones');
+      const filtro = document.getElementById('filtroBandeja').value;
+      const estadoDe = (a) => String(a.estado || '').toUpperCase();
+      const lista = apelacionesBandeja.filter((a) => {
+        if (filtro === 'sincomite') return !Number(a.comite_asignados) && !ESTADOS_DECIDIDOS.includes(estadoDe(a));
+        if (filtro === 'abiertas') return !ESTADOS_DECIDIDOS.includes(estadoDe(a));
+        if (filtro === 'decididas') return ESTADOS_DECIDIDOS.includes(estadoDe(a));
+        return true;
+      });
+      if (!lista.length) {
+        container.innerHTML = '<div class="empty-state">' + (filtro === 'sincomite'
+          ? 'Todas las apelaciones en trámite ya tienen comité asignado.'
+          : 'No hay apelaciones para mostrar.') + '</div>';
+        return;
+      }
+      container.innerHTML = '<div class="tabla-apelaciones"><table><thead><tr>' +
+        '<th>Radicado</th><th>Estado</th><th>Fecha</th><th>Comité</th><th>Acción</th>' +
+        '</tr></thead><tbody>' +
+        lista.map((item) => '<tr>' +
+          '<td><strong>' + escapeHtml(item.radicado || 'Apelación') + '</strong></td>' +
+          '<td><span class="status ' + normalizeStatus(item.estado) + '">' + escapeHtml(item.estado || '--') + '</span></td>' +
+          '<td>' + escapeHtml(formatDate(item.fecha)) + '</td>' +
+          '<td>' + (Number(item.comite_asignados) ? escapeHtml(item.comite_asignados + ' asignado(s)') : '<span class="pendiente-comite">Sin asignar</span>') + '</td>' +
+          '<td><button class="btn btn-secundario btn-sm secondary" type="button" data-appeal-id="' + escapeHtml(item.id) + '">Revisar</button></td>' +
+          '</tr>').join('') +
+        '</tbody></table></div>';
+    }
+
+    document.getElementById('listaApelaciones').addEventListener('click', (evento) => {
+      const boton = evento.target.closest('[data-appeal-id]');
+      if (boton) cargarDetalleApelacion(boton.dataset.appealId);
+    });
+    document.getElementById('filtroBandeja').addEventListener('change', pintarBandeja);
 
     async function cargarDetalleApelacion(id) {
       try {
@@ -1005,7 +1079,7 @@
           await cargarExpediente(id);
           mostrarVista('expediente');
           window.scrollTo({ top: 0, behavior: 'smooth' });
-          setAlert('Apelación abierta. Revise el expediente antes de decidir.', 'success');
+          setAlert('Apelación abierta: aquí está todo lo de esta apelación.', 'success');
         }
       } catch (error) {
         setAlert(error.message, 'error');
@@ -1313,9 +1387,21 @@
 
     const VISTAS_POR_ROL = {
       empresa: ['apelacion', 'requerimientos'],
-      comite: ['bandeja', 'expediente', 'requerimientos', 'decision'],
-      administracion: ['bandeja', 'expediente', 'requerimientos', 'asignar'],
+      comite: ['bandeja', 'expediente'],
+      administracion: ['bandeja', 'porasignar', 'expediente'],
     };
+
+    // Lo que se ve dentro de la revisión de una apelación, según el rol.
+    function seccionesDeRevision() {
+      const secciones = ['expediente'];
+      if (esAdministracion()) secciones.push('asignar');
+      secciones.push('requerimientos');
+      if (esComite()) secciones.push('decision');
+      return secciones;
+    }
+
+    // Vistas del comité y la administración que necesitan una apelación abierta.
+    const VISTAS_CON_APELACION = ['expediente', 'requerimientos', 'decision', 'asignar'];
 
     function vistasPermitidas() {
       if (esAdministracion()) {
@@ -1327,21 +1413,45 @@
       return [];
     }
 
+    // Título y descripción de la página para cada vista.
+    const TEXTOS_VISTA = {
+      bandeja: ['Bandeja del comité', 'Apelaciones que le corresponde revisar. Pulse Revisar para trabajar con una.'],
+      porasignar: ['Por asignar comité', 'Apelaciones en trámite que todavía no tienen comité asignado.'],
+      expediente: ['Revisión de la apelación', 'Todo lo de esta apelación en un solo lugar: expediente, comité, requerimientos y decisión.'],
+      apelacion: ['Mi apelación', 'Presente su apelación y adjunte los documentos que le pidan.'],
+      requerimientos: ['Requerimientos de información', 'Lo que el Comité ha pedido en esta apelación y si ya fue atendido.'],
+      decision: ['Decisión del comité', 'Solicite más información o registre la decisión final sobre la apelación.'],
+      asignar: ['Asignar el comité de la apelación', 'Elija un comité distinto al que evaluó la solicitud original.'],
+    };
+
     function mostrarVista(nombre) {
       const permitidas = vistasPermitidas();
       if (!permitidas.includes(nombre)) nombre = permitidas[0];
       state.vista = nombre;
+      const textos = TEXTOS_VISTA[nombre];
+      if (textos) {
+        document.getElementById('welcomeTitle').textContent = textos[0];
+        document.getElementById('roleDescription').textContent = textos[1];
+      }
 
+      // "Por asignar comité" es la misma bandeja filtrada.
+      const panelesVisibles = nombre === 'expediente' && !esEmpresa()
+        ? seccionesDeRevision()
+        : [nombre === 'porasignar' ? 'bandeja' : nombre];
       document.querySelectorAll('[data-vista-panel]').forEach((panel) => {
-        panel.hidden = panel.dataset.vistaPanel !== nombre;
+        panel.hidden = !panelesVisibles.includes(panel.dataset.vistaPanel);
       });
       document.querySelectorAll('.vista-link').forEach((enlace) => {
         enlace.classList.toggle('activa', enlace.dataset.vista === nombre);
       });
+      if (nombre === 'porasignar' || nombre === 'bandeja') {
+        document.getElementById('filtroBandeja').value = nombre === 'porasignar' ? 'sincomite' : '';
+        pintarBandeja();
+      }
 
-      if (nombre === 'requerimientos') cargarRequerimientos();
-      if (nombre === 'expediente') cargarExpediente(state.currentAppealId);
-      if (nombre === 'asignar') cargarComiteElegible(state.currentAppealId);
+      if (panelesVisibles.includes('requerimientos')) cargarRequerimientos();
+      if (panelesVisibles.includes('expediente')) cargarExpediente(state.currentAppealId);
+      if (panelesVisibles.includes('asignar')) cargarComiteElegible(state.currentAppealId);
       actualizarDisponibilidad();
     }
 
@@ -1383,6 +1493,16 @@
 
     function actualizarDisponibilidad() {
       const hayApelacion = Boolean(state.currentAppealId);
+      const resumen = document.getElementById('resumenApelacion');
+      if (resumen) resumen.hidden = !hayApelacion;
+      // Las vistas que trabajan sobre una apelación solo se ofrecen (aquí y en
+      // el menú lateral) cuando hay una abierta: antes aparecían vacías.
+      const permitidas = vistasPermitidas();
+      document.querySelectorAll('.vista-link').forEach((enlace) => {
+        const vista = enlace.dataset.vista;
+        // La revisión no va en el menú: se abre con "Revisar".
+        enlace.hidden = !permitidas.includes(vista) || (vista === 'expediente');
+      });
       const abierta = hayApelacion && estaAbierta();
 
       // --- Empresa ---
@@ -1732,17 +1852,14 @@
     if (!token || !usuario) {
       window.location.href = '/login';
     } else {
-      const rol = normalizarRol(usuario.role_name || '');
-      document.getElementById('welcomeTitle').textContent = 'Bienvenido, ' + (usuario.sub || 'usuario');
-      document.getElementById('roleDescription').textContent =
-        rol.includes('empresa') ? 'Apelaciones de la empresa'
-          : rol.includes('comite') ? 'Revisión y decisión de apelaciones'
-            : 'Administración de apelaciones y revisiones del comité';
+      // El título de la página lo pone cada vista (mostrarVista).
       const headerAvatar = document.getElementById('headerAvatar');
       if (headerAvatar) {
         headerAvatar.textContent = String(usuario.sub || 'U').charAt(0).toUpperCase();
       }
     }
+
+    document.getElementById('btnVolverBandeja').addEventListener('click', () => mostrarVista('bandeja'));
 
     state.role = parseUserRole();
     configurarAccionesPorRol();
@@ -1763,7 +1880,7 @@
       buscarApelacionPorSolicitud();
     }
   </script>
-  <script src="/static/nav.js"></script>
+  <script src="/static/nav.js?v=20261114a"></script>
 <script src="/static/session.js?v=20261029"></script>
 </body>
 </html>

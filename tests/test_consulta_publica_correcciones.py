@@ -162,7 +162,7 @@ def test_normalizar_codigo_ignora_mayusculas_espacios_y_guiones(entrada):
 # ============================================================
 
 async def test_validar_envia_el_codigo_normalizado(db, cliente):
-    db.execute.side_effect = [_una(None)]
+    db.execute.side_effect = [_una(None), _una(None)]
 
     async with cliente as ac:
         await ac.get(f"{BASE}/validar", params={"codigo": "cert‐2026‐0001 "})

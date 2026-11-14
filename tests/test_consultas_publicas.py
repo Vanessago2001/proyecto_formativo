@@ -379,22 +379,20 @@ async def test_el_portal_bloquea_quien_consulta_demasiado(db, cliente, monkeypat
     assert codigos[5:] == [status.HTTP_429_TOO_MANY_REQUESTS] * 2
 
 
-@pytest.mark.parametrize("nit, parcial", [("1", "1"), ("900", "900"), ("Cafe", "Cafe"), ("%25", "\\%")])
-async def test_la_busqueda_acepta_nit_parcial_o_nombre_y_escapa_comodines(db, cliente, nit, parcial):
+@pytest.mark.parametrize("nit", ["1", "900", "Cafe", "%25"])
+async def test_la_ficha_publica_exige_nit_completo(db, cliente, nit):
     """
-    Decisión del equipo: la búsqueda pública acepta parte del NIT o del nombre
-    de la empresa (ILIKE). `%` y `_` se escapan para buscarse como texto y no
-    traer toda la tabla.
+    Retest 13/11: "900" devolvía Cafe del Eje. La ficha pública por NIT (y la
+    constancia) exige el NIT completo, como el resto de la consulta pública:
+    un NIT parcial o un nombre responde 422 sin consultar la base.
     """
     _cargar_busqueda_por_nit(db, [])
 
     async with cliente as ac:
         respuesta = await ac.get(f"{BASE}/empresa/{nit}")
 
-    assert respuesta.status_code == status.HTTP_200_OK
-    sql, parametros = db.execute.call_args_list[0].args
-    assert "ILIKE" in str(sql).upper()
-    assert parametros["nit_parcial"] == parcial
+    assert respuesta.status_code == 422
+    db.execute.assert_not_called()
 
 
 async def test_la_busqueda_con_nit_completo_tambien_compara_exacto(db, cliente):
@@ -633,7 +631,7 @@ async def test_un_codigo_existente_valida_como_autentico(db, cliente):
 
 
 async def test_un_codigo_inexistente_no_valida(db, cliente):
-    db.execute.side_effect = [_una_fila(None)]
+    db.execute.side_effect = [_una_fila(None), _una_fila(None)]
 
     async with cliente as ac:
         respuesta = await ac.get(f"{BASE}/validar", params={"codigo": "CV-999"})
@@ -649,7 +647,7 @@ async def test_la_validacion_compara_exacto_y_no_por_prefijo(db, cliente):
     Un ILIKE aquí dejaría que cualquiera enumere códigos válidos probando
     prefijos ("CV-1", "CV-12"...). La comparación debe ser de igualdad.
     """
-    db.execute.side_effect = [_una_fila(None)]
+    db.execute.side_effect = [_una_fila(None), _una_fila(None)]
 
     async with cliente as ac:
         await ac.get(f"{BASE}/validar", params={"codigo": "CV-1"})

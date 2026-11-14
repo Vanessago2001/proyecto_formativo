@@ -71,6 +71,8 @@ class SesionRevision:
                     "Cancelado",
                 ):
                     self.postulaciones[id_postulacion]["estado"] = "Correcciones"
+                    # RETURNING: solo devuelve fila si la postulación cambió.
+                    return ResultadoFalso([{"id_postulacion": id_postulacion}])
             return ResultadoFalso()
 
         if sql.startswith("UPDATE usuario"):

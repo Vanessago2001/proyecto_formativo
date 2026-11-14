@@ -14,10 +14,10 @@
         CertiSENA | Solicitud de Auditor
     </title>
 
-    <link rel="stylesheet" href="/static/tema.css?v=20261028">
+    <link rel="stylesheet" href="/static/tema.css?v=20261114a">
     <link
         rel="stylesheet"
-        href="/static/styles.css?v=20261028"
+        href="/static/styles.css?v=20261114a"
     />
 
     <style>
@@ -1163,6 +1163,7 @@
         <p id="revisionModalDesc"></p>
         <textarea
             id="revisionObservacion"
+            aria-label="Observación"
             maxlength="500"
             placeholder="Escriba la observación..."
         ></textarea>
@@ -1882,9 +1883,7 @@
                     <tr>
 
                         <td>
-                            ${valueOrDash(
-                                item.id_empresa
-                            )}
+                            ${valueOrDash(item.empresa_nombre || "Empresa no encontrada")}
                         </td>
 
                         <td>
@@ -1900,15 +1899,11 @@
                         </td>
 
                         <td>
-                            ${valueOrDash(
-                                item.bloquea_asignacion
-                            )}
+                            ${item.bloquea_asignacion === true ? "Sí" : item.bloquea_asignacion === false ? "No" : "-"}
                         </td>
 
                         <td>
-                            ${valueOrDash(
-                                item.fecha_declaracion
-                            )}
+                            ${formatDate(item.fecha_declaracion)}
                         </td>
 
                         <td>
@@ -2557,7 +2552,7 @@
 
             fotoAdmin.innerHTML = `
                 <span
-                    style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: #94a3b8; font-size: 11px;"
+                    style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: #64748b; font-size: 11px;"
                 >
                     Sin foto
                 </span>
@@ -2906,7 +2901,7 @@
 
 <script src="/static/session.js?v=20261029"></script>
 
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 
 </html>

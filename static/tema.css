@@ -264,7 +264,11 @@ para no romper el JavaScript que las usa.
   --boton-foco: 0 0 0 3px rgba(59, 170, 1, .35);
   --campo-alto: 38px;
   --campo-radio: 6px;
-  --campo-borde: #cbd5e1;
+  --campo-borde: #7f8b9e; /* 3,45:1 sobre blanco y 3,15:1 sobre el fondo #f1f5f9 (WCAG 1.4.11) */
+  /* Color del indicador de foco: verde oscuro (6,43:1 sobre blanco). En la
+     cabecera verde se usa blanco (3,03:1 sobre #3baa01). */
+  --foco-color: var(--verde-800);
+  --foco-color-cabecera: #fff;
 }
 
 .btn,
@@ -403,7 +407,8 @@ para no romper el JavaScript que las usa.
 .primary-action:focus-visible,
 .secondary-action:focus-visible,
 .comite-button:focus-visible {
-  outline: none;
+  outline: 2px solid var(--foco-color);
+  outline-offset: 2px;
   box-shadow: var(--boton-foco);
 }
 .btn:disabled, .btn[aria-disabled="true"], .btn.is-disabled,
@@ -458,11 +463,12 @@ textarea,
   line-height: 1.3;
 }
 textarea { min-height: 80px; }
-:where(input, select, textarea)::placeholder { color: var(--gris-400); letter-spacing: 0; }
+:where(input, select, textarea)::placeholder { color: var(--gris-500); letter-spacing: 0; } /* 4,76:1 sobre blanco */
 :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus,
 .campo:focus {
   border-color: var(--verde-600);
-  outline: none;
+  outline: 2px solid var(--foco-color);
+  outline-offset: 1px;
   box-shadow: 0 0 0 3px rgba(59, 170, 1, .15);
 }
 :where(input, select, textarea):disabled,
@@ -560,8 +566,71 @@ de las pantallas internas.
   background: var(--gris-100);
   border-left-color: var(--verde-600);
   color: var(--verde-800);
-  outline: none;
 }
 
 /* El reset "*{margin:0}" de styles.css quita el centrado de los <dialog> nativos. */
 dialog { margin: auto; }
+
+/* ----------------------------------------------------------
+   PESTAÑAS DE UNA PANTALLA (p. ej. Usuarios: Resumen /
+   Gestionar usuarios / Permisos de auxiliares). Cada pestaña
+   puede ser un <button> (vista de la misma pantalla) o un <a>
+   (otra pantalla del mismo módulo).
+   ---------------------------------------------------------- */
+.pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-bottom: 1px solid var(--gris-200, #e2e8f0);
+  margin-bottom: 18px;
+}
+.pestanas > button,
+.pestanas > a {
+  all: unset;
+  cursor: pointer;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gris-700, #334155);
+  border-bottom: 3px solid transparent;
+  text-decoration: none;
+}
+.pestanas > .active,
+.pestanas > [aria-current="page"],
+.pestanas > button:hover,
+.pestanas > a:hover {
+  color: var(--verde-800, #1f5f0a);
+  border-bottom-color: var(--verde-600, #39a900);
+}
+.pestanas > button:focus-visible,
+.pestanas > a:focus-visible {
+  outline: 2px solid var(--verde-600, #39a900);
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------
+   FOCO VISIBLE EN TODO EL SISTEMA (WCAG 2.4.7 / 1.4.11)
+   Se muestra solo al navegar con teclado (:focus-visible; en los
+   campos de texto tambien al hacer clic, como hace el navegador).
+   Lleva !important para ganarle a los "outline: none" que algunas
+   pantallas ponen en sus propios estilos.
+   ---------------------------------------------------------- */
+:where(a, button, [tabindex], summary, input, select, textarea, [role="button"], [contenteditable="true"]):focus-visible {
+  outline: 2px solid var(--foco-color) !important;
+  outline-offset: 2px !important;
+}
+/* Dentro de la cabecera verde el anillo es blanco (3,03:1 sobre #3baa01)... */
+.login-header :where(a, button, [tabindex], summary, input, select, textarea, [role="button"]):focus-visible {
+  outline-color: var(--foco-color-cabecera) !important;
+}
+/* ...salvo en los menus desplegables, que tienen fondo blanco. */
+.login-header :where(.nav-dropdown-panel, .mobile-menu) :where(a, button, [tabindex], summary, input, select, textarea, [role="button"]):focus-visible {
+  outline-color: var(--foco-color) !important;
+}
+/* Casillas y radios: anillo pegado al control. */
+:where(input[type="checkbox"], input[type="radio"]):focus-visible { outline-offset: 1px !important; }
+
+/* Mientras haya un modal abierto (static/modales.js) la pagina de fondo no se desplaza. */
+body.modal-abierto { overflow: hidden; }
+/* Las ventanas modales de las pantallas no arrastran el scroll a la pagina de fondo. */
+:where(.modal-overlay, .modal, .audit-modal, .notif-modal) { overscroll-behavior: contain; }

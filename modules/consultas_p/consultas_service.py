@@ -65,6 +65,11 @@ MENSAJE_NIT_INVALIDO = (
 )
 
 # Tras quitar puntos y espacios: el número completo y, opcional, `-DV`.
+MENSAJE_CERTIFICADO_SIN_PUBLICAR = (
+    "El código corresponde a un certificado que aún no está publicado con firma "
+    "digital; consulte con CertiSENA."
+)
+
 _PATRON_NIT = re.compile(r"^\d{6,12}(-\d)?$")
 # Guiones tipográficos que un visor de PDF o Word puede poner en lugar de "-".
 _GUIONES = re.compile(r"[‐‑‒–—−­]")
@@ -263,11 +268,13 @@ class ConsultasPublicasService:
     async def buscar_por_nit(self, nit: str) -> list[dict]:
         if not (nit or "").strip():
             return []
-        filtro, parametros = filtro_nit_publico("nit", "nombre", nit.strip())
+        # Ficha pública y constancia: NIT completo y exacto (retest 13/11:
+        # "900" devolvía Cafe del Eje). 422 si no es un NIT válido.
+        parametros = _nit_o_422(nit.strip())
         result = await self.db.execute(text(f"""
             SELECT {COLUMNAS_PUBLICAS_EMPRESA}
             FROM empresa
-            WHERE {filtro}
+            WHERE {condicion_nit("nit")}
             ORDER BY nombre ASC
             LIMIT {MAX_EMPRESAS_POR_BUSQUEDA};
         """), parametros)
@@ -583,6 +590,20 @@ class ConsultasPublicasService:
         fila = result.mappings().first()
 
         if not fila:
+            # Solo se publican certificados firmados (decisión del equipo). Si
+            # el código existe pero aún no está publicado con firma, no se
+            # niega su existencia ni se revela ningún dato del certificado.
+            existe = await self.db.execute(text(f"""
+                SELECT 1 AS existe FROM certificado c
+                WHERE {condicion_codigo("c.codigo_verificacion")}
+                LIMIT 1;
+            """), {"codigo": codigo_limpio})
+            if existe.mappings().first():
+                return {
+                    "autentico": False,
+                    "detalle": MENSAJE_CERTIFICADO_SIN_PUBLICAR,
+                    "documento": None,
+                }
             return {
                 "autentico": False,
                 "detalle": "Ningún certificado registrado coincide con ese código.",

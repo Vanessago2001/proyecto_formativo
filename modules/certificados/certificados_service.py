@@ -102,7 +102,7 @@ class CertificadosService:
         resultado = await self.db.execute(text("""
             SELECT
                 c.id_certificado, c.codigo_verificacion, c.id_comite,
-                c.url_certificado, c.fecha_vencimiento, c.estado_certificado,
+                c.url_certificado, c.fecha_vencimiento, TRIM(c.estado_certificado) AS estado_certificado,
                 c.fecha_emision, c.publico_certificado, c.id_solicitud,
                 c.id_alcance, c.fecha_registro, c.fecha_revocacion,
                 c.id_asignacion_lider, c.id_firmante, c.huella_firmante,
@@ -154,7 +154,7 @@ class CertificadosService:
         params: dict = {"limite": limite, "desplazamiento": desplazamiento}
         if es_usuario_publico(usuario):
             resultado = await self.db.execute(text(f"""
-                SELECT c.codigo_verificacion, c.estado_certificado,
+                SELECT c.codigo_verificacion, TRIM(c.estado_certificado) AS estado_certificado,
                        c.fecha_emision, c.fecha_vencimiento,
                        s.numero_radicado, e.nombre AS empresa, e.nit,
                        n.codigo AS norma_codigo
@@ -193,7 +193,7 @@ class CertificadosService:
         resultado = await self.db.execute(text(f"""
             SELECT
                 c.id_certificado, c.codigo_verificacion, c.fecha_emision,
-                c.fecha_vencimiento, c.estado_certificado, c.publico_certificado,
+                c.fecha_vencimiento, TRIM(c.estado_certificado) AS estado_certificado, c.publico_certificado,
                 c.id_solicitud, c.id_alcance, s.numero_radicado,
                 e.nombre AS empresa, e.nit, n.codigo AS norma_codigo
             FROM certificado c
@@ -231,7 +231,7 @@ class CertificadosService:
         self, id_certificado: UUID, usuario: dict
     ) -> None:
         resultado = await self.db.execute(text("""
-            SELECT c.estado_certificado, u.id_usuario, r.id_rol AS id_rol_comite
+            SELECT TRIM(c.estado_certificado) AS estado_certificado, u.id_usuario, r.id_rol AS id_rol_comite
             FROM certificado c
             LEFT JOIN asignacion_lider_comite a
               ON a.id_asignacion = c.id_asignacion_lider
@@ -467,6 +467,56 @@ class CertificadosService:
         await self.db.commit()
         return await self._obtener(resultado.scalar_one())
 
+    # Vigencia del borrador que se crea solo al aprobar (3 años; el
+    # Coordinador puede renovarlo o ajustarlo después).
+    VIGENCIA_BORRADOR_ANIOS = 3
+
+    async def crear_borrador_automatico(self, id_solicitud: UUID, usuario: dict) -> dict:
+        """
+        Al aprobarse una solicitud en el Comité se crea solo el borrador del
+        certificado (pendiente de firma) para que llegue al panel del líder.
+
+        No lanza errores: si la solicitud ya tiene certificado, si no tiene un
+        alcance técnico o si no hay líder asignado, devuelve el motivo para
+        que el Coordinador lo genere a mano desde Gestión de certificados.
+        """
+        existente = await self.db.execute(text("""
+            SELECT codigo_verificacion FROM certificado
+            WHERE id_solicitud = :id_solicitud LIMIT 1;
+        """), {"id_solicitud": str(id_solicitud)})
+        codigo = existente.scalar_one_or_none()
+        if codigo:
+            return {"creado": False, "motivo": f"La solicitud ya tiene el certificado {codigo}."}
+
+        alcance = await self.db.execute(text("""
+            SELECT id_alcance FROM alcance_solicitud
+            WHERE id_solicitud = :id_solicitud
+            ORDER BY id_alcance
+            LIMIT 1;
+        """), {"id_solicitud": str(id_solicitud)})
+        id_alcance = alcance.scalar_one_or_none()
+        if not id_alcance:
+            return {"creado": False, "motivo": "La solicitud no tiene un alcance técnico registrado."}
+
+        hoy = date.today()
+        try:
+            vencimiento = hoy.replace(year=hoy.year + self.VIGENCIA_BORRADOR_ANIOS)
+        except ValueError:  # 29 de febrero
+            vencimiento = hoy.replace(year=hoy.year + self.VIGENCIA_BORRADOR_ANIOS, day=28)
+
+        from modules.certificados.certificados_schema import CertificadoCrear
+
+        try:
+            certificado = await self.crear(
+                CertificadoCrear(id_solicitud=id_solicitud, id_alcance=id_alcance, fecha_vencimiento=vencimiento),
+                usuario,
+                detalle_inicial="Borrador creado automáticamente al aprobar el Comité; pendiente de firma del líder.",
+            )
+        except HTTPException as error:
+            await self.db.rollback()
+            return {"creado": False, "motivo": str(error.detail)}
+        return {"creado": True, "codigo_verificacion": certificado.get("codigo_verificacion")}
+
     async def renovar(self, id_certificado: UUID, fecha_vencimiento: date, usuario: dict) -> dict:
         from modules.certificados.certificados_schema import CertificadoCrear
 
@@ -497,7 +547,7 @@ class CertificadosService:
     ) -> dict:
         await self.db.execute(text("SELECT pg_advisory_xact_lock(76139521, 11);"))
         resultado = await self.db.execute(text("""
-            SELECT c.estado_certificado, c.id_asignacion_lider,
+            SELECT TRIM(c.estado_certificado) AS estado_certificado, c.id_asignacion_lider,
                    a.id_usuario AS id_lider, u.nombre AS nombre_lider,
                    u.correo AS correo_lider
             FROM certificado c
@@ -661,7 +711,7 @@ class CertificadosService:
         usuario: dict,
     ) -> dict:
         resultado = await self.db.execute(text("""
-                         SELECT estado_certificado, fecha_vencimiento, url_certificado,
+                         SELECT TRIM(estado_certificado) AS estado_certificado, fecha_vencimiento, url_certificado,
                              id_firmante, huella_firmante, codigo_hash, huella_pdf
             FROM certificado
             WHERE id_certificado = :id_certificado
@@ -741,7 +791,7 @@ class CertificadosService:
 
     async def cambiar_publicacion(self, id_certificado: UUID, publicar: bool, usuario: dict) -> dict:
         resultado = await self.db.execute(text("""
-            SELECT estado_certificado, fecha_vencimiento, url_certificado,
+            SELECT TRIM(estado_certificado) AS estado_certificado, fecha_vencimiento, url_certificado,
                    id_firmante, huella_firmante, codigo_hash, huella_pdf
             FROM certificado
             WHERE id_certificado = :id_certificado
@@ -1083,7 +1133,7 @@ class CertificadosService:
     async def registros_exportacion(self) -> list[dict]:
         resultado = await self.db.execute(text("""
             SELECT c.codigo_verificacion, c.fecha_emision, c.fecha_vencimiento,
-                   c.estado_certificado, c.publico_certificado, s.numero_radicado,
+                   TRIM(c.estado_certificado) AS estado_certificado, c.publico_certificado, s.numero_radicado,
                    e.nombre AS empresa, e.nit, n.codigo AS norma_codigo,
                    a.descripcion AS alcance
             FROM certificado c

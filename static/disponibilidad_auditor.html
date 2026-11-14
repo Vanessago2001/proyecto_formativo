@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Disponibilidad semanal - Auditor</title>
-    <link rel="stylesheet" href="/static/tema.css?v=20261028">
-    <link rel="stylesheet" href="/static/styles.css?v=20261028">
+    <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+    <link rel="stylesheet" href="/static/styles.css?v=20261114a">
     <style>
         :root {
             color-scheme: light;
@@ -642,34 +642,13 @@
                         <span>
                             <strong>¿Cómo funciona?</strong> Selecciona los días de la semana en los que puedes
                             atender auditorías y define un rango de vigencia. El patrón se repetirá automáticamente
-                            dentro de ese rango.
+                            dentro de ese rango. El calendario muestra las auditorías que ya tienes programadas.
                         </span>
                     </div>
 
-                    <form id="weeklyForm">
-                        <div class="grid">
-                            <div class="field">
-                                <label for="weeklyFrom">Vigente desde</label>
-                                <input type="date" id="weeklyFrom" required>
-                            </div>
-                            <div class="field">
-                                <label for="weeklyUntil">Vigente hasta (opcional)</label>
-                                <input type="date" id="weeklyUntil">
-                            </div>
-                        </div>
-
-                        <div class="field" style="margin-top:16px;">
-                            <label for="weeklyReason">Motivo / observación</label>
-                            <input id="weeklyReason" maxlength="500" placeholder="Ej. Disponibilidad semanal">
-                        </div>
-
-                        <div class="hint" style="margin-top:16px;">Selecciona los días de la semana disponibles:</div>
-                        <div class="weekday-grid" id="weekdayGrid"></div>
-
-                        <div class="actions">
-                            <button type="submit" class="btn btn-primario btn-primary">Guardar disponibilidad semanal</button>
-                        </div>
-                    </form>
+                    <!-- Formulario y calendario comunes con el perfil del auditor
+                         (static/mi_disponibilidad.js). -->
+                    <div id="miDisponibilidad"><p class="hint">Cargando su disponibilidad...</p></div>
                 </div>
             </section>
 
@@ -828,7 +807,7 @@
         <form id="editForm">
             <input type="hidden" id="editId">
             <div class="field">
-                <label>Día de la semana</label>
+                <label for="editDia">Día de la semana</label>
                 <select id="editDia">
                     <option value="lunes">Lunes</option>
                     <option value="martes">Martes</option>
@@ -841,26 +820,26 @@
             </div>
             <div class="grid two">
                 <div class="field">
-                    <label>Vigente desde</label>
+                    <label for="editDesde">Vigente desde</label>
                     <input type="date" id="editDesde" required>
                 </div>
                 <div class="field">
-                    <label>Vigente hasta</label>
+                    <label for="editHasta">Vigente hasta</label>
                     <input type="date" id="editHasta">
                 </div>
             </div>
             <div class="grid two">
                 <div class="field">
-                    <label>Hora inicio</label>
+                    <label for="editHoraInicio">Hora inicio</label>
                     <input type="time" id="editHoraInicio">
                 </div>
                 <div class="field">
-                    <label>Hora fin</label>
+                    <label for="editHoraFin">Hora fin</label>
                     <input type="time" id="editHoraFin">
                 </div>
             </div>
             <div class="field">
-                <label>Motivo</label>
+                <label for="editMotivo">Motivo</label>
                 <input id="editMotivo" maxlength="255">
             </div>
             <div class="grupo-botones" style="margin-top:16px;">
@@ -870,6 +849,7 @@
         </form>
     </div>
 </div>
+<script src="/static/mi_disponibilidad.js?v=20261113b"></script>
 <script>
     function esc(value) {
         return String(value ?? '')
@@ -941,25 +921,6 @@
     if (!id_usuario) {
         id_usuario = "auditor-1234"; // fallback
     }
-
-    // Generar grid de días de la semana con horarios
-    const diasSemana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-    const weekdayGrid = document.getElementById('weekdayGrid');
-    diasSemana.forEach((dia, idx) => {
-        const el = document.createElement('div');
-        el.className = 'weekday-item';
-        el.innerHTML = `<label><input type="checkbox" data-dia="${dia}" data-idx="${idx}"> ${dia}</label>
-            <div class="time-row" style="display:none; margin-top:4px;">
-                <input type="time" class="hora-inicio" value="08:00">
-                <input type="time" class="hora-fin" value="17:00">
-            </div>`;
-        const cb = el.querySelector('input[type="checkbox"]');
-        const timeRow = el.querySelector('.time-row');
-        cb.addEventListener('change', () => {
-            timeRow.style.display = cb.checked ? 'flex' : 'none';
-        });
-        weekdayGrid.appendChild(el);
-    });
 
     const apiBase = `/agenda-auditor/${id_usuario}`;
     const headers = { 'Content-Type': 'application/json' };
@@ -1045,32 +1006,14 @@
         });
     }
 
-    // Form: disponibilidad semanal
-    enviarUnaVez(document.getElementById('weeklyForm'), async (e) => {
-        const desde = document.getElementById('weeklyFrom').value;
-        const hasta = document.getElementById('weeklyUntil').value || null;
-        const motivo = document.getElementById('weeklyReason').value;
-        const dias = [];
-        document.querySelectorAll('.weekday-item').forEach(item => {
-            const cb = item.querySelector('input[type="checkbox"]');
-            if (cb.checked) {
-                const dia = cb.dataset.dia;
-                const hi = item.querySelector('.hora-inicio').value;
-                const hf = item.querySelector('.hora-fin').value;
-                dias.push({ dia_semana: dia.toLowerCase(), hora_inicio: hi, hora_fin: hf });
-            }
+    // Horario semanal y calendario: bloque común con el perfil del auditor.
+    if (window.MiDisponibilidad) {
+        window.MiDisponibilidad.montar(document.getElementById('miDisponibilidad'), {
+            idUsuario: id_usuario,
+            token,
+            alGuardar: () => cargarHistorial()
         });
-        if (dias.length === 0) {
-            showModal('Seleccione al menos un día.', 'error');
-            return;
-        }
-        const body = { fecha_inicio: desde, fecha_fin: hasta, dias: dias, motivo: motivo || 'Disponibilidad semanal' };
-        const res = await apiPOST('/disponibilidad-semanal', body);
-        if (res.ok) {
-            showModal('Disponibilidad semanal guardada correctamente.', 'success');
-            cargarHistorial();
-        }
-    });
+    }
 
     // Form: bloquear fecha
     enviarUnaVez(document.getElementById('blockForm'), async (e) => {
@@ -1381,6 +1324,6 @@
  <script src="/static/session.js?v=20261029"></script>
  <script src="/static/session-guard.js"></script>
 
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 </body>
 </html>

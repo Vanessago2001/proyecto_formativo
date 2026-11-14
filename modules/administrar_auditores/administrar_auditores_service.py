@@ -6,6 +6,46 @@ from sqlalchemy import text
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Longitud mínima del motivo de rechazo y de la justificación al aprobar un
+# auditor sin competencias validadas.
+MIN_MOTIVO_RECHAZO = 10
+MIN_JUSTIFICACION_SIN_COMPETENCIAS = 10
+# Cabecera con la que el 409 avisa a la pantalla que debe pedir confirmación.
+CABECERA_CONFIRMACION = "X-Requiere-Confirmacion"
+VALOR_SIN_COMPETENCIAS = "sin-competencias"
+
+
+def _describir_competencia_no_valida(fila: dict, hoy) -> str:
+    nombre = str(fila.get("tipo_competencia") or "Competencia").strip()
+    estado = str(fila.get("estado_validacion") or "Pendiente").strip()
+    if estado == "Validado":
+        fecha_fin = fila.get("fecha_fin")
+        if not fila.get("es_vigente") or (fecha_fin is not None and fecha_fin < hoy):
+            return f"{nombre} (vencida o no vigente)"
+        return nombre
+    return f"{nombre} ({estado.lower()})"
+
+
+def competencias_vigentes_y_faltantes(filas: list[dict], hoy) -> tuple[list[dict], list[str]]:
+    """Separa las competencias validadas y vigentes de las que no cuentan.
+
+    Una competencia sirve para asignaciones solo si está Validada, marcada
+    vigente y su fecha fin no pasó (misma regla que Asignación de auditores).
+    """
+    vigentes, faltantes = [], []
+    for fila in filas:
+        fecha_fin = fila.get("fecha_fin")
+        if (
+            str(fila.get("estado_validacion") or "") == "Validado"
+            and fila.get("es_vigente")
+            and (fecha_fin is None or fecha_fin >= hoy)
+        ):
+            vigentes.append(fila)
+        else:
+            faltantes.append(_describir_competencia_no_valida(fila, hoy))
+    return vigentes, faltantes
+
+
 class AdministrarAuditoresService:
 
     def __init__(self, db: AsyncSession):
@@ -499,91 +539,36 @@ class AdministrarAuditoresService:
 
         # ----------------------------------------------------
 
+        # Todos los conflictos que declaró el auditor (en esta postulación o
+        # después del registro, sin postulación), con el nombre de la empresa
+        # para que la tabla no muestre el UUID.
         result = await self.db.execute(
-
             text("""
-
                 SELECT
-
-                    id_conflicto,
-
-                    id_empresa,
-
-                    tipo_conflicto,
-
-                    descripcion,
-
-                    bloquea_asignacion,
-
-                    fecha_declaracion,
-
-                    estado
-
-                FROM conflicto_interes
-
-                WHERE id_usuario = :id_usuario
-
-                  AND id_postulacion = :id_postulacion
-
-                ORDER BY fecha_declaracion DESC
-
-                LIMIT 1
-
+                    c.id_conflicto,
+                    c.id_empresa,
+                    e.nombre AS empresa_nombre,
+                    c.tipo_conflicto,
+                    c.descripcion,
+                    c.bloquea_asignacion,
+                    c.fecha_declaracion,
+                    c.estado
+                FROM conflicto_interes c
+                LEFT JOIN empresa e
+                    ON e.id_empresa = c.id_empresa
+                WHERE c.id_usuario = :id_usuario
+                  AND (
+                        c.id_postulacion = :id_postulacion
+                        OR c.id_postulacion IS NULL
+                  )
+                ORDER BY c.fecha_declaracion DESC
             """),
-
             {
-
                 "id_usuario": solicitud["id_usuario"],
-
                 "id_postulacion": id_postulacion,
-
             },
-
         )
-
-        conflicto = result.mappings().first()
-
-        if conflicto is None:
-
-            result = await self.db.execute(
-
-                text("""
-
-                    SELECT
-
-                        id_conflicto,
-
-                        id_empresa,
-
-                        tipo_conflicto,
-
-                        descripcion,
-
-                        bloquea_asignacion,
-
-                        fecha_declaracion,
-
-                        estado
-
-                    FROM conflicto_interes
-
-                    WHERE id_usuario = :id_usuario
-
-                      AND id_postulacion IS NULL
-
-                    ORDER BY fecha_declaracion DESC
-
-                    LIMIT 1
-
-                """),
-
-                {"id_usuario": solicitud["id_usuario"]},
-
-            )
-
-            conflicto = result.mappings().first()
-
-        conflictos = [conflicto] if conflicto else []
+        conflictos = [dict(fila) for fila in result.mappings().all()]
 
         # ----------------------------------------------------
 
@@ -889,6 +874,12 @@ class AdministrarAuditoresService:
 
         id_usuario_actor: UUID,
 
+        confirmar_sin_competencias: bool = False,
+
+        justificacion_sin_competencias: str | None = None,
+
+        rol_confirmacion: str | None = None,
+
     ):
 
         """
@@ -1037,6 +1028,37 @@ class AdministrarAuditoresService:
 
             )
 
+        # Un borrador todavía no fue enviado por el auditor: el banco no lo
+        # lista y el Coordinador no puede revisarlo, aprobarlo ni rechazarlo.
+        if str(estado_anterior or "").strip().lower() == "borrador":
+
+            raise HTTPException(
+
+                status_code=status.HTTP_409_CONFLICT,
+
+                detail=(
+                    "La postulación sigue en Borrador: el auditor aún no la "
+                    "ha enviado, por eso no puede revisarse."
+                ),
+
+            )
+
+        # Rechazar exige explicarle al auditor por qué (decisión de negocio
+        # del 14/11): mínimo 10 caracteres reales, no solo espacios. Se valida
+        # después de Borrador/cerrada para que esos casos sigan dando 409.
+        if nuevo_estado == "Rechazado" and len((observaciones or "").strip()) < MIN_MOTIVO_RECHAZO:
+
+            raise HTTPException(
+
+                status_code=422,
+
+                detail=(
+                    "El motivo del rechazo es obligatorio: escriba al menos "
+                    f"{MIN_MOTIVO_RECHAZO} caracteres explicando las razones."
+                ),
+
+            )
+
         if nuevo_estado == "Aprobado":
 
             pendientes = []
@@ -1053,9 +1075,15 @@ class AdministrarAuditoresService:
 
                 pendientes.append("documentos adjuntos")
 
+            # Competencias sin revisar (ni validadas ni rechazadas): igual que
+            # los documentos, primero hay que revisarlas.
             result = await self.db.execute(
 
-                text("SELECT COUNT(*) FROM competencia_auditor WHERE id_postulacion = :id_postulacion AND COALESCE(estado_validacion, 'Pendiente') <> 'Validado'"),
+                text(
+                    "SELECT COUNT(*) FROM competencia_auditor "
+                    "WHERE id_postulacion = :id_postulacion "
+                    "AND COALESCE(estado_validacion, 'Pendiente') NOT IN ('Validado', 'Rechazado')"
+                ),
 
                 {"id_postulacion": id_postulacion},
 
@@ -1077,7 +1105,7 @@ class AdministrarAuditoresService:
 
                         "Faltan elementos validados o aprobados: "
 
-                        ", ".join(pendientes) + "."
+                        + ", ".join(pendientes) + "."
 
                     ),
 
@@ -1098,6 +1126,73 @@ class AdministrarAuditoresService:
             else ""
 
         )
+
+        # Aprobar sin competencias validadas y vigentes (o con alguna
+        # rechazada/vencida) se permite, pero solo con confirmación explícita
+        # y justificación: el auditor no será elegible en esas normas.
+        nota_sin_competencias = ""
+
+        if nuevo_estado == "Aprobado":
+
+            from datetime import date as _date
+
+            result = await self.db.execute(
+                text("""
+                    SELECT tipo_competencia, estado_validacion, es_vigente, fecha_fin
+                    FROM competencia_auditor
+                    WHERE id_postulacion = :id_postulacion
+                    ORDER BY tipo_competencia
+                """),
+                {"id_postulacion": id_postulacion},
+            )
+            filas_competencias = [dict(f) for f in result.mappings().all()]
+            vigentes, faltantes = competencias_vigentes_y_faltantes(filas_competencias, _date.today())
+
+            if not vigentes or faltantes:
+
+                if not vigentes:
+                    motivo = (
+                        "El auditor no tiene competencias validadas y vigentes "
+                        + ("(no registró ninguna)" if not filas_competencias
+                           else "(" + ", ".join(faltantes) + ")")
+                        + ". Si lo aprueba, no será elegible para asignaciones "
+                        "hasta que tenga una competencia vigente."
+                    )
+                else:
+                    motivo = (
+                        "Estas competencias del auditor no están validadas o vigentes: "
+                        + ", ".join(faltantes)
+                        + ". No será elegible para asignaciones en esas áreas."
+                    )
+
+                if not confirmar_sin_competencias:
+
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=(
+                            motivo + " Para aprobarlo debe confirmar expresamente "
+                            "y escribir una justificación."
+                        ),
+                        headers={CABECERA_CONFIRMACION: VALOR_SIN_COMPETENCIAS},
+                    )
+
+                justificacion = (justificacion_sin_competencias or "").strip()
+
+                if len(justificacion) < MIN_JUSTIFICACION_SIN_COMPETENCIAS:
+
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            "La justificación para aprobar sin competencias "
+                            f"validadas es obligatoria (mínimo {MIN_JUSTIFICACION_SIN_COMPETENCIAS} caracteres)."
+                        ),
+                    )
+
+                nota_sin_competencias = (
+                    "Aprobado sin competencias validadas y vigentes "
+                    f"(confirmado por {rol_confirmacion or 'Coordinador'}). "
+                    f"{motivo} Justificación: {justificacion}"
+                )
 
         # ----------------------------------------------------
 
@@ -1134,7 +1229,20 @@ class AdministrarAuditoresService:
 
                     observaciones_tecnicas = :observaciones,
 
-                    fecha_revision = CURRENT_TIMESTAMP
+                    fecha_revision = CURRENT_TIMESTAMP,
+
+                    id_usuario_revisor = :id_usuario_revisor,
+
+                    -- Auditores registrados lee estas columnas para la
+                    -- fecha de aprobación o rechazo de la postulación.
+                    fecha_aprobacion = CASE WHEN CAST(:nuevo_estado AS VARCHAR) = 'Aprobado'
+                        THEN CURRENT_TIMESTAMP ELSE fecha_aprobacion END,
+
+                    fecha_rechazo = CASE WHEN CAST(:nuevo_estado AS VARCHAR) = 'Rechazado'
+                        THEN CURRENT_TIMESTAMP ELSE fecha_rechazo END,
+
+                    motivo_rechazo = CASE WHEN CAST(:nuevo_estado AS VARCHAR) = 'Rechazado'
+                        THEN NULLIF(CAST(:observaciones AS TEXT), '') ELSE motivo_rechazo END
 
                 WHERE id_postulacion = :id_postulacion
 
@@ -1159,6 +1267,8 @@ class AdministrarAuditoresService:
                 "observaciones": observaciones_finales,
 
                 "id_postulacion": id_postulacion,
+
+                "id_usuario_revisor": id_usuario_actor,
 
             },
 
@@ -1287,7 +1397,12 @@ class AdministrarAuditoresService:
                 "id_usuario_administrador": id_usuario_actor,
                 "estado_anterior": estado_anterior,
                 "estado_nuevo": nuevo_estado,
-                "observaciones": observaciones_finales or None,
+                # Si se aprobó sin competencias, el historial deja quién lo
+                # confirmó (id_usuario_administrador) y la justificación.
+                "observaciones": (
+                    " ".join(p for p in (nota_sin_competencias, observaciones_finales) if p)
+                    or None
+                ),
             },
         )
 
@@ -1341,7 +1456,11 @@ class AdministrarAuditoresService:
 
         mensaje = mensajes[nuevo_estado]
 
-        if observaciones_finales:
+        if nuevo_estado == "Rechazado":
+
+            mensaje += f" Motivo del rechazo: {observaciones_finales}"
+
+        elif observaciones_finales:
 
             mensaje += (
 
@@ -1350,6 +1469,21 @@ class AdministrarAuditoresService:
                 f"{observaciones_finales}"
 
             )
+
+        if nota_sin_competencias:
+
+            mensaje += (
+                " Aún no tiene competencias validadas y vigentes en todas las "
+                "áreas: no recibirá asignaciones en ellas hasta registrarlas y "
+                "que sean validadas."
+            )
+
+        # notificacion.mensaje es VARCHAR(255): un motivo largo no debe
+        # romper el cambio de estado (el texto completo queda en la
+        # postulación y en Consultar estado de registro).
+        if len(mensaje) > 255:
+
+            mensaje = mensaje[:252].rstrip() + "..."
 
         await self.db.execute(
 
@@ -1565,7 +1699,7 @@ class AdministrarAuditoresService:
 
         if estado_revision == "Rechazado":
 
-            await self.db.execute(text("""
+            devuelta = await self.db.execute(text("""
 
                 UPDATE postulacion_auditor
 
@@ -1579,17 +1713,25 @@ class AdministrarAuditoresService:
 
                   AND estado NOT IN ('Aprobado', 'Rechazado', 'Cancelado')
 
+                RETURNING id_postulacion
+
             """), {"id_postulacion": documento["id_postulacion"]})
 
-            await self.db.execute(text("""
+            # Solo vuelve a "Postulante" quien tiene su postulación abierta
+            # devuelta a Correcciones. Rechazar un documento de una postulación
+            # ya cerrada (p. ej. una rechazada antigua) no debe quitarle el
+            # estado Activo a un auditor aprobado en otra postulación.
+            if devuelta.first() is not None:
 
-                UPDATE usuario
+                await self.db.execute(text("""
 
-                SET estado_auditor = 'Postulante'
+                    UPDATE usuario
 
-                WHERE id_usuario = :id_usuario
+                    SET estado_auditor = 'Postulante'
 
-            """), {"id_usuario": documento["id_usuario"]})
+                    WHERE id_usuario = :id_usuario
+
+                """), {"id_usuario": documento["id_usuario"]})
 
         asunto_notificacion = (
             "Documento aprobado"
@@ -1761,19 +1903,24 @@ class AdministrarAuditoresService:
             id_postulacion = activa["id_postulacion"] if activa else None
 
         if estado_validacion == "Rechazado":
-            await self.db.execute(text("""
+            devuelta = await self.db.execute(text("""
                 UPDATE postulacion_auditor
                 SET estado = 'Correcciones',
                     fecha_revision = CURRENT_TIMESTAMP
                 WHERE id_postulacion = :id_postulacion
                   AND estado NOT IN ('Aprobado', 'Rechazado', 'Cancelado')
+                RETURNING id_postulacion
             """), {"id_postulacion": id_postulacion})
 
-            await self.db.execute(text("""
-                UPDATE usuario
-                SET estado_auditor = 'Postulante'
-                WHERE id_usuario = :id_usuario
-            """), {"id_usuario": competencia["id_usuario"]})
+            # Igual que con los documentos: un auditor aprobado no pierde su
+            # estado Activo porque se devuelva una competencia de una
+            # postulación cerrada o una competencia nueva de su perfil.
+            if devuelta.first() is not None:
+                await self.db.execute(text("""
+                    UPDATE usuario
+                    SET estado_auditor = 'Postulante'
+                    WHERE id_usuario = :id_usuario
+                """), {"id_usuario": competencia["id_usuario"]})
 
         # El aviso llega al buzon del auditor para que sepa que tiene una
         # correccion pendiente, con la misma forma que usan los documentos.

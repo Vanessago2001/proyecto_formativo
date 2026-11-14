@@ -527,7 +527,9 @@ class PqrsService:
                 acciones.append("cerrar")
             if estado == CERRADA and await permitido("PQR-013"):
                 acciones.append("reabrir")
-            if estado != CERRADA and await permitido("PQR-011"):
+            # Evidencias internas solo mientras alguien la trabaja; recién
+            # radicada, respondida o reabierta no tiene sentido adjuntar.
+            if estado in (ASIGNADA, EN_TRAMITE, INFO_SOLICITADA) and await permitido("PQR-011"):
                 acciones.append("adjuntar")
         elif rol in (ROL_EMPRESA, ROL_PUBLICO):
             if estado != CERRADA:

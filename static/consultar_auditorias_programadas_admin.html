@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Consultar auditorías programadas</title>
-    <link rel="stylesheet" href="/static/tema.css?v=20261028">
-    <link rel="stylesheet" href="/static/styles.css?v=20261028">
+    <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+    <link rel="stylesheet" href="/static/styles.css?v=20261114a">
     <style>
         :root {
             color-scheme: light;
@@ -988,7 +988,7 @@
         <div class="modal-card">
             <div class="modal-head">
                 <h3>Reprogramar visita</h3>
-                <button type="button" class="modal-close" onclick="cerrarModalAdminRepro()">&times;</button>
+                <button type="button" class="modal-close" onclick="cerrarModalAdminRepro()" aria-label="Cerrar">&times;</button>
             </div>
             <div class="modal-body">
                 <p class="help-text" id="adminReproResumen"></p>
@@ -1011,7 +1011,7 @@
         <div class="modal-card">
             <div class="modal-head">
                 <h3>Rechazar solicitud de reprogramación</h3>
-                <button type="button" class="modal-close" onclick="cerrarModalRechazo()">&times;</button>
+                <button type="button" class="modal-close" onclick="cerrarModalRechazo()" aria-label="Cerrar">&times;</button>
             </div>
             <div class="modal-body">
                 <p class="help-text" id="adminRechazoResumen"></p>
@@ -1747,7 +1747,7 @@
 
                 <div class="modal-section">
                     <div class="modal-section-head"><h4>Seleccionar auditor para exportar</h4></div>
-                    <select id="selectAuditorExport" class="modal-export-select campo">
+                    <select id="selectAuditorExport" class="modal-export-select campo" aria-label="Seleccionar auditor para exportar">
                         <option value="all">Todos los auditores</option>
                         ${(r.auditores || []).map((a, i) => `<option value="${i}">${escapeHtml(a.nombre || 'Auditor ' + (i+1))}</option>`).join('')}
                     </select>
@@ -2076,7 +2076,7 @@
             actualizarMenuVista(vista);
         });
     </script>
-<script src="/static/nav.js"></script>
+<script src="/static/nav.js?v=20261114a"></script>
 <script src="/static/session.js?v=20261029"></script>
 </body>
 </html>

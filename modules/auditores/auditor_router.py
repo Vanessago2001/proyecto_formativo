@@ -1192,6 +1192,10 @@ async def listar_normas(
 )
 async def listar_empresas(
     db: AsyncSession = Depends(get_db),
+    # Nombre y NIT de todas las empresas: solo con sesión (el auditor lo usa
+    # para declarar conflictos de interés). Antes era abierto y permitía
+    # enumerar los NIT que la consulta pública exige completos.
+    _usuario: dict = Depends(get_current_user),
 ):
     result = await db.execute(
         text("""

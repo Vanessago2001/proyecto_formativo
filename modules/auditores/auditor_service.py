@@ -29,6 +29,17 @@ from core.pdf_institucional import (
     texto_institucional,
 )
 
+def _mensaje_conflicto(base: str, afectadas: list[dict]) -> str:
+    """Agrega el aviso de asignaciones que deben reasignarse por el conflicto."""
+    if not afectadas:
+        return base
+    radicados = ", ".join(str(a.get("numero_radicado") or a["id_asignacion"]) for a in afectadas)
+    return (
+        f"{base} Atención: el auditor sigue asignado en {radicados} de esa empresa; "
+        "se avisó al Coordinador para que lo reasigne."
+    )
+
+
 class AuditorService:
     
 
@@ -548,46 +559,16 @@ class AuditorService:
 
         else:
 
-            result = await self.db.execute(
-                text("""
-                    INSERT INTO postulacion_auditor (
-                        id_usuario,
-                        estado,
-                        observaciones_tecnicas,
-                        fecha_postulacion,
-                        fecha_revision
-                    )
-                    VALUES (
-                        :id_usuario,
-                        'Borrador',
-                        '',
-                        CURRENT_TIMESTAMP,
-                        NULL
-                    )
-                    RETURNING
-                        id_postulacion,
-                        id_usuario,
-                        estado,
-                        fecha_postulacion,
-                        fecha_revision,
-                        observaciones_tecnicas
-            """),
-                {
-                    "id_usuario": id_usuario,
-                },
+            # Una consulta no crea filas: quien aún no tiene postulación
+            # recibe 404 y la pantalla de registro la inicia de forma
+            # explícita con POST /auditores/registro/nueva-postulacion, que
+            # además exige rol Auditor.
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    "Aún no ha iniciado su postulación como auditor."
+                ),
             )
-
-            postulacion = result.mappings().first()
-
-            if not postulacion:
-                await self.db.rollback()
-
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="No fue posible crear el borrador.",
-                )
-
-            await self.db.commit()
 
         # ========================================================
         # PERFIL
@@ -2711,6 +2692,26 @@ class AuditorService:
             "mensaje": "Conflicto de interés registrado correctamente.",
         }
 
+    async def _avisar_conflicto_en_asignaciones(self, id_usuario: UUID, data) -> list[dict]:
+        """Detecta asignaciones activas del auditor con la empresa del
+        conflicto y notifica al Coordinador. Solo aplica a conflictos que
+        bloquean asignaciones (los que se registran siempre quedan Activos)."""
+        if not getattr(data, "bloquea_asignacion", True):
+            return []
+        from modules.asignacion_auditores.asignacion_service import AsignacionAuditorService
+
+        afectadas = await AsignacionAuditorService(self.db).avisar_conflicto_en_asignaciones(
+            id_usuario, data.id_empresa
+        )
+        return [
+            {
+                "id_asignacion": str(fila["id"]),
+                "numero_radicado": fila.get("numero_radicado"),
+                "rol": fila.get("especialidad"),
+            }
+            for fila in afectadas
+        ]
+
     async def _obtener_usuario_para_conflicto(self, id_usuario: UUID):
         result = await self.db.execute(
             text("""
@@ -2773,7 +2774,7 @@ class AuditorService:
                 ),
             )
 
-        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
+        id_postulacion = await self._obtener_postulacion_del_conflicto(id_usuario)
         result = await self.db.execute(
             text("""
                 INSERT INTO conflicto_interes (
@@ -2795,14 +2796,18 @@ class AuditorService:
             },
         )
         conflicto = result.mappings().first()
+        # Si el auditor ya está asignado en solicitudes de esa empresa, se
+        # avisa al Coordinador para que lo reasigne (Asignación de auditores).
+        asignaciones_afectadas = await self._avisar_conflicto_en_asignaciones(id_usuario, data)
         await self.db.commit()
         return {
             "id_conflicto": conflicto["id_conflicto"],
-            "mensaje": "Conflicto de interés registrado correctamente.",
+            "mensaje": _mensaje_conflicto("Conflicto de interés registrado correctamente.", asignaciones_afectadas),
+            "asignaciones_afectadas": asignaciones_afectadas,
         }
 
     # ========================================================
-    # CONFLICTO - CREAR DESDE ADMINISTRADOR (sin restricci��n de estado)
+    # CONFLICTO - CREAR DESDE ADMINISTRADOR (sin restricción de estado)
     # ========================================================
     async def crear_conflicto_administrador(self, id_usuario: UUID, data: ConflictoInteresCrear):
         result = await self.db.execute(
@@ -2810,8 +2815,8 @@ class AuditorService:
             {"id_usuario": id_usuario},
         )
         if not result.scalar():
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "No se encontr�� el usuario auditor.")
-        id_postulacion = await self._obtener_postulacion_activa(id_usuario)
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No se encontró el usuario auditor.")
+        id_postulacion = await self._obtener_postulacion_del_conflicto(id_usuario)
         result = await self.db.execute(
             text("""
                 INSERT INTO conflicto_interes (
@@ -2833,8 +2838,15 @@ class AuditorService:
             },
         )
         conflicto = result.mappings().first()
+        # Si el auditor ya está asignado en solicitudes de esa empresa, se
+        # avisa al Coordinador para que lo reasigne (Asignación de auditores).
+        asignaciones_afectadas = await self._avisar_conflicto_en_asignaciones(id_usuario, data)
         await self.db.commit()
-        return {"id_conflicto": conflicto["id_conflicto"], "mensaje": "Conflicto de inter��s registrado correctamente."}
+        return {
+            "id_conflicto": conflicto["id_conflicto"],
+            "mensaje": _mensaje_conflicto("Conflicto de interés registrado correctamente.", asignaciones_afectadas),
+            "asignaciones_afectadas": asignaciones_afectadas,
+        }
 
     # ========================================================
     # CONFLICTO - ACTUALIZAR
@@ -2880,11 +2892,16 @@ class AuditorService:
                 ),
             )
 
+        # Si el auditor ya está asignado en solicitudes de esa empresa, se
+        # avisa al Coordinador para que lo reasigne (Asignación de auditores).
+        asignaciones_afectadas = await self._avisar_conflicto_en_asignaciones(id_usuario, data)
+
         await self.db.commit()
 
         return {
             "id_conflicto": actualizado["id_conflicto"],
-            "mensaje": "Conflicto actualizado correctamente.",
+            "mensaje": _mensaje_conflicto("Conflicto actualizado correctamente.", asignaciones_afectadas),
+            "asignaciones_afectadas": asignaciones_afectadas,
         }
 
     # ========================================================
@@ -2923,7 +2940,7 @@ class AuditorService:
         return {"mensaje": "Conflicto eliminado correctamente."}
 
     # ========================================================
-    # CONFLICTO - ELIMINAR DESDE ADMINISTRADOR (sin restricci��n de borrador)
+    # CONFLICTO - ELIMINAR DESDE ADMINISTRADOR (sin restricción de borrador)
     # ========================================================
     async def eliminar_conflicto_administrador(self, id_usuario: UUID, id_conflicto: UUID):
         result = await self.db.execute(
@@ -2931,7 +2948,7 @@ class AuditorService:
             {"id_usuario": id_usuario},
         )
         if not result.scalar():
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "No se encontr�� el usuario auditor.")
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No se encontró el usuario auditor.")
         result = await self.db.execute(
             text("""
                 DELETE FROM conflicto_interes
@@ -3300,7 +3317,8 @@ class AuditorService:
                     p.estado AS estado_postulacion,
                     p.fecha_postulacion,
                     p.fecha_revision,
-                    p.observaciones_tecnicas
+                    p.observaciones_tecnicas,
+                    p.motivo_rechazo
                 FROM postulacion_auditor p
                 WHERE p.id_usuario = :id_usuario
                 AND LOWER(TRIM(COALESCE(p.estado, ''))) IN (
@@ -3365,30 +3383,13 @@ class AuditorService:
                     postulacion.get("observaciones_tecnicas") or ""
                 )
 
-            # Última observación de rechazo asociada a ESTA postulación.
-            rechazo = None
-            try:
-                result = await self.db.execute(
-                    text("""
-                        SELECT observacion AS observaciones
-                        FROM historial_estado
-                        WHERE id_solicitud = :id_postulacion
-                        AND LOWER(estado) = LOWER('Rechazado')
-                        ORDER BY fecha DESC
-                        LIMIT 1
-                    """),
-                    {"id_postulacion": id_postulacion},
-                )
-                rechazo = result.mappings().first()
-            except Exception:
-                # La postulación se conserva aunque no exista historial_estado
-                # o el historial no esté disponible.
-                await self.db.rollback()
-                rechazo = None
-
+            # Motivo del rechazo de ESTA postulación (obligatorio desde el
+            # 14/11). Se guarda en postulacion_auditor.motivo_rechazo; antes
+            # se buscaba en historial_estado, cuya FK es de solicitudes de
+            # empresa y nunca tenía filas de postulaciones.
             observaciones_rechazo = (
-                rechazo["observaciones"] if rechazo else ""
-            ) or ""
+                postulacion.get("motivo_rechazo") or ""
+            ) if estado_normalizado == "rechazado" else ""
             if not observaciones_rechazo and estado_normalizado == "rechazado":
                 observaciones_rechazo = (
                     postulacion.get("observaciones_tecnicas") or ""
@@ -3412,6 +3413,23 @@ class AuditorService:
         # La pantalla usa estos campos superiores como compatibilidad con la
         # postulación seleccionada inicialmente: la más reciente de las visibles.
         actual = postulaciones[0] if postulaciones else None
+        # El listado oculta los borradores, pero la pantalla debe avisar si el
+        # auditor dejó una postulación sin enviar (la más reciente es Borrador).
+        result = await self.db.execute(
+            text("""
+                SELECT p.estado, p.fecha_postulacion
+                FROM postulacion_auditor p
+                WHERE p.id_usuario = :id_usuario
+                ORDER BY p.fecha_postulacion DESC NULLS LAST
+                LIMIT 1
+            """),
+            {"id_usuario": auditor["id_usuario"]},
+        )
+        ultima = result.mappings().first()
+        borrador_pendiente = bool(
+            ultima
+            and str(ultima.get("estado") or "").strip().lower() == "borrador"
+        )
 
         return {
             "id_usuario": auditor["id_usuario"],
@@ -3436,6 +3454,8 @@ class AuditorService:
                 and actual.get("observaciones_correccion")
             ),
             "postulaciones": postulaciones,
+            "borrador_pendiente": borrador_pendiente,
+            "fecha_borrador": ultima["fecha_postulacion"] if borrador_pendiente else None,
         }
 
 
@@ -4073,6 +4093,35 @@ class AuditorService:
     # REENVIAR POSTULACIÓN DESPUÉS DE CORRECCIONES
     # ========================================================
 
+    async def _verificar_rol_auditor(self, id_usuario: UUID) -> None:
+        """Solo una cuenta con rol Auditor puede tener postulación de auditor."""
+        from core.security import _normalize_role_name
+
+        result = await self.db.execute(
+            text("""
+                SELECT r.nombre AS rol
+                FROM usuario u
+                LEFT JOIN rol r ON r.id_rol = u.rol_id
+                WHERE u.id_usuario = :id_usuario
+                LIMIT 1
+            """),
+            {"id_usuario": id_usuario},
+        )
+        fila = result.mappings().first()
+        if fila is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No se encontró el usuario auditor.",
+            )
+        if _normalize_role_name(fila["rol"]) != "auditor":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Solo una cuenta con rol Auditor puede tener una "
+                    "postulación de auditor."
+                ),
+            )
+
     async def _obtener_o_crear_postulacion_borrador(
         self,
         id_usuario: UUID,
@@ -4122,6 +4171,8 @@ class AuditorService:
         # ========================================================
 
         if not ultima:
+
+            await self._verificar_rol_auditor(id_usuario)
 
             result = await self.db.execute(
                 text("""
@@ -4240,6 +4291,7 @@ class AuditorService:
     # NUEVA POSTULACIÓN DESPUÉS DE RECHAZO/CANCELACIÓN
     # ========================================================
     async def crear_nueva_postulacion(self, id_usuario: UUID):
+        await self._verificar_rol_auditor(id_usuario)
         result = await self.db.execute(
             text("""
                 SELECT id_postulacion, estado
