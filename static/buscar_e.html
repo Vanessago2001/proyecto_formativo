@@ -269,17 +269,16 @@
             return "";
         }
 
+        function vigenciaVencida(fila) {
+            return String(fila.estado_vigencia || "").trim().toUpperCase() === "VENCIDO";
+        }
+
         function categoriaTramite(fila) {
-            if (!fila.id_solicitud) return "No radicada";
             const estado = String(fila.estado_tramite || "")
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                 .trim().toLowerCase();
             if (["radicada", "radicado"].includes(estado)) return "Radicada";
-            if (["aprobada", "aprobado"].includes(estado)) return "Aprobada";
-            if (["borrador", "no radicada", "no radicado"].includes(estado)) return "No radicada";
-            if (["rechazada", "rechazado", "cancelada", "cancelado", "no aprobada", "no aprobado"].includes(estado)) {
-                return "No aprobada";
-            }
+            if (vigenciaVencida(fila)) return "Vencida";
             return null;
         }
 
@@ -324,7 +323,7 @@
                 ${badge}
                 <p class="cp-nombre">${esc(emp.nombre)}</p>
                 <p class="cp-sub">NIT ${esc(emp.nit)}${emp.ciudad ? " - " + esc(emp.ciudad) : ""}</p>
-                <div class="cp-note">Estado de la solicitud: ${esc(estado)}.</div>
+                <div class="cp-note">Estado público: ${esc(estado)}.</div>
                 <dl class="cp-rows">
                     <dt>Último radicado</dt><dd>${esc(radicado)}</dd>
                     <dt>Fecha de solicitud</dt><dd>${esc(ultimoTramite && (ultimoTramite.fecha_radicacion || ultimoTramite.fecha_tramite))}</dd>
@@ -395,7 +394,7 @@
                 }).filter((resultado) => resultado.tramites.length);
 
                 if (!empresasVisibles.length) {
-                    mostrarError("No hay solicitudes Radicadas, Aprobadas, No radicadas o No aprobadas para mostrar. Las que siguen en revisión o trámite se ocultan.");
+                    mostrarError("No hay solicitudes Radicadas ni certificados con vigencia vencida para mostrar.");
                     return;
                 }
 
