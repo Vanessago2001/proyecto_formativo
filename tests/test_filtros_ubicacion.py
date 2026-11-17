@@ -147,14 +147,6 @@ def test_auditorias_del_auditor_mantienen_su_alcance_y_aceptan_departamento():
     assert "ciudad" not in params
 
 
-def test_programaciones_futuras_aceptan_pais():
-    sesion = Sesion()
-    asyncio.run(AgendaAuditorService(sesion).listar_programaciones_futuras(dias=7, pais="Perú"))
-    sql, params = sesion.consultas[0]
-    assert params["pais"] == "%peru%"
-    assert "se.pais" in sql
-
-
 def test_endpoint_de_auditorias_solo_pasa_departamento_y_pais_si_llegan():
     recibido = {}
 

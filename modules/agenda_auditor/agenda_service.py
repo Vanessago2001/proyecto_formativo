@@ -23,6 +23,7 @@ from modules.asignacion_auditores.asignacion_service import (
     CTE_AUDITORES,
     ESTADOS_ASIGNACION_ACTIVOS,
 )
+from modules.agenda_auditor.fechas_disponibles import motivo_no_disponible, sugerir_fechas
 
 
 def _filtros_ubicacion_visita(
@@ -683,121 +684,6 @@ class AgendaAuditorService(AuditorService):
         )
         return [dict(row) for row in result.mappings().all()]
 
-    # ------------------------------------------------------------------
-    # PROGRAMACIONES FUTURAS
-    # ------------------------------------------------------------------
-    async def listar_programaciones_futuras(
-        self,
-        dias: int = 7,
-        id_usuario: UUID | None = None,
-        estado: str | None = None,
-        ciudad: str | None = None,
-        modalidad: str | None = None,
-        departamento: str | None = None,
-        pais: str | None = None,
-    ) -> list[dict]:
-        """
-        Programaciones con fecha de inicio igual o superior a hoy + `dias`.
-
-        Si se indica `id_usuario` solo se devuelven las programaciones en las
-        que ese auditor está asignado (alcance propio del auditor). La
-        consulta usa siempre las fechas reales registradas en el sistema.
-
-        Solo se devuelven las programaciones vigentes: las canceladas o ya
-        ejecutadas quedan excluidas del listado.
-        """
-        filtros = [
-            "CAST(p.fecha_inicio AS DATE) >= (CURRENT_DATE + CAST(:dias AS INTEGER))",
-            # Se excluyen las programaciones cerradas (canceladas o ejecutadas).
-            "UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'EJECUTADA', 'EJECUTADO')",
-        ]
-        params: dict = {"dias": int(dias)}
-        if id_usuario:
-            filtros.append("d.id_usuario = :id_usuario")
-            params["id_usuario"] = str(id_usuario)
-        if estado and estado.strip():
-            filtros.append("UPPER(TRIM(COALESCE(p.estado, ''))) = UPPER(:estado)")
-            params["estado"] = estado.strip()
-        filtros_lugar, params_lugar = _filtros_ubicacion_visita(ciudad, departamento, pais, alias_sede="se")
-        filtros += filtros_lugar
-        params.update(params_lugar)
-        if modalidad and modalidad.strip():
-            filtros.append("LOWER(COALESCE(p.modalidad, '')) = LOWER(:modalidad)")
-            params["modalidad"] = modalidad.strip()
-
-        result = await self.db.execute(
-            text(f"""
-                SELECT
-                    p.id_programacion,
-                    p.id_solicitud,
-                    s.numero_radicado,
-                    s.estado AS estado_solicitud,
-                    e.nombre AS empresa_nombre,
-                    e.nit AS empresa_nit,
-                    p.id_sede,
-                    se.nombre_sede,
-                    se.ciudad AS sede_ciudad,
-                    se.departamento AS sede_departamento,
-                    se.pais AS sede_pais,
-                    e.ciudad AS empresa_ciudad,
-                    p.direccion_servicio,
-                    p.ciudad_servicio,
-                    p.fecha_inicio,
-                    p.fecha_fin,
-                    p.modalidad,
-                    p.estado,
-                    p.notificacion_enviada,
-                    p.estado_solicitud_reprogramacion,
-                    p.motivo_solicitud_reprogramacion,
-                    CASE
-                        WHEN UPPER(TRIM(COALESCE(p.estado_solicitud_reprogramacion, ''))) = 'RECHAZADA'
-                            THEN 'Reprogramación rechazada' || CASE
-                                WHEN p.motivo_solicitud_reprogramacion IS NOT NULL
-                                    THEN ': ' || p.motivo_solicitud_reprogramacion
-                                ELSE '' END
-                        WHEN UPPER(TRIM(COALESCE(p.estado_solicitud_reprogramacion, ''))) = 'APROBADA'
-                            THEN 'Reprogramación resuelta' || CASE
-                                WHEN p.motivo_solicitud_reprogramacion IS NOT NULL
-                                    THEN ': ' || p.motivo_solicitud_reprogramacion
-                                ELSE '' END
-                        ELSE p.motivo_reprogramacion
-                    END AS observacion_auditor,
-                    d.id_usuario,
-                    d.rol_auditor,
-                    d.horas_asignadas,
-                    COALESCE(d.confirmado, FALSE) AS auditor_confirmado,
-                    d.fecha_confirmacion,
-                    u.nombre AS auditor_nombre,
-                    u.correo AS auditor_correo,
-                    u.tipo_doc AS auditor_tipo_doc,
-                    u.num_doc AS auditor_num_doc,
-                    (
-                        SELECT COUNT(*) FROM detalle_programacion_auditor dt
-                        WHERE dt.id_programacion = p.id_programacion
-                    ) AS auditores_total,
-                    (
-                        SELECT COUNT(*) FROM detalle_programacion_auditor dc
-                        WHERE dc.id_programacion = p.id_programacion
-                          AND COALESCE(dc.confirmado, FALSE) = TRUE
-                    ) AS auditores_confirmados
-                FROM detalle_programacion_auditor d
-                INNER JOIN programacion_visita p
-                    ON p.id_programacion = d.id_programacion
-                LEFT JOIN solicitud s
-                    ON s.id_solicitud = p.id_solicitud
-                LEFT JOIN empresa e
-                    ON e.id_empresa = s.id_empresa
-                LEFT JOIN sede_empresa se
-                    ON se.id_sede = p.id_sede
-                LEFT JOIN usuario u
-                    ON u.id_usuario = d.id_usuario
-                WHERE {' AND '.join(filtros)}
-                ORDER BY p.fecha_inicio ASC, u.nombre ASC
-            """),
-            params,
-        )
-        return [dict(fila) for fila in result.mappings().all()]
-
     async def consultar_detalle_programacion(self, id_programacion: UUID) -> dict:
         """Detalle completo de una programación: solicitud, empresa, sede y auditores."""
         result = await self.db.execute(
@@ -1050,7 +936,7 @@ class AgendaAuditorService(AuditorService):
             )
 
         auditor = await self.db.execute(text("""
-            SELECT estado, estado_auditor
+            SELECT estado, estado_auditor, nombre
             FROM usuario
             WHERE id_usuario = :id_usuario
         """), {"id_usuario": str(id_usuario)})
@@ -1077,11 +963,24 @@ class AgendaAuditorService(AuditorService):
             id_usuario, fecha, hora_inicio.time(), hora_fin.time()
         )
         if not tiene_disponibilidad:
+            # Dice por qué (vigencia vencida, día no declarado, horas, bloqueo...).
+            nombre = (auditor.get("nombre") if hasattr(auditor, "get") else None) or "El auditor"
+            motivo = await motivo_no_disponible(
+                self.db, id_usuario, fecha, hora_inicio.time(), hora_fin.time(), nombre
+            )
             return {
                 "disponible": False,
-                "motivo": "El auditor no tiene un intervalo de disponibilidad que cubra la fecha y las horas indicadas, o registró ese día como no disponible.",
+                "motivo": motivo or "El auditor no tiene un intervalo de disponibilidad que cubra la fecha y las horas indicadas, o registró ese día como no disponible.",
             }
         return {"disponible": True, "motivo": "El auditor está disponible en el intervalo."}
+
+    async def sugerir_fechas_disponibles(self, auditores: list, **opciones) -> dict:
+        """Próximas franjas libres para todo el equipo (ver fechas_disponibles.py).
+
+        Cada opción se confirma con `_tiene_disponibilidad_fecha` y
+        `_buscar_cruce`, las mismas validaciones de `crear_programacion`.
+        """
+        return await sugerir_fechas(self, auditores, **opciones)
 
     def _normalizar_rol_agenda(self, rol: str | None) -> str:
         valor = (rol or "").strip()
@@ -1410,12 +1309,17 @@ class AgendaAuditorService(AuditorService):
                     id_usuario, fecha_programacion, data.fecha_inicio.time(), data.fecha_fin.time()
                 )
                 if not tiene_disponibilidad:
+                    motivo = await motivo_no_disponible(
+                        self.db, id_usuario, fecha_programacion,
+                        data.fecha_inicio.time(), data.fecha_fin.time(), nombre_auditor,
+                    )
                     raise HTTPException(
                         status_code=409,
                         detail=(
                             f"No se puede programar: {nombre_auditor} no tiene disponibilidad el "
                             f"{data.fecha_inicio.strftime('%d/%m/%Y')} de {data.fecha_inicio.strftime('%H:%M')} "
-                            f"a {data.fecha_fin.strftime('%H:%M')} (fuera de su horario o día bloqueado)."
+                            f"a {data.fecha_fin.strftime('%H:%M')}"
+                            + (f". {motivo}" if motivo else " (fuera de su horario o día bloqueado).")
                         ),
                     )
 

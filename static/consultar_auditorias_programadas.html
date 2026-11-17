@@ -1023,7 +1023,6 @@
             <a href="/conflictos-auditor">Consultar conflictos registrados</a>
             <a href="/empresas-restringidas">Consultar empresas restringidas</a>
             <a href="/consultar-auditorias-programadas" class="active" aria-current="page">Consultar auditorías programadas</a>
-            <a href="/programaciones-futuras-auditor">Programaciones futuras</a>
             <a href="/disponibilidad-auditor#configurar-horario">Mi disponibilidad semanal</a>
             <a href="/notificaciones-auditor" style="display:flex;align-items:center;gap:6px;">Notificaciones
                 <span id="notifBadge" style="display:none;width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 2px #fff;"></span>
@@ -1909,7 +1908,12 @@
         function esLiderProgramacion(r) {
             if (!r || !usuarioId) return false;
             if (String(r.id_usuario || '') !== String(usuarioId)) return false;
-            return /l\u00edder|lider/i.test(String(r.rol_auditor || ''));
+            return esRolLider(r.rol_auditor);
+        }
+
+        // 'Auditor L\u00edder', 'Auditor lider', 'AUDITOR L\u00cdDER'...: sin tildes ni may\u00fasculas.
+        function esRolLider(rol) {
+            return String(rol || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes('lider');
         }
 
         function esProgramacionFinalizada(r) {
@@ -2062,10 +2066,13 @@
 
         /* ---------------------------------------------------------
            CALIFICACIÓN DE LA VISITA (1 a 100 %) — la ve el Comité.
-           Regla: solo el auditor asignado; visita no cancelada y ya
-           iniciada (o finalizada); editable hasta que el Comité decida.
+           Regla: solo el auditor LÍDER de la visita (los demás integrantes
+           no ven el botón); visita no cancelada y ya iniciada (o
+           finalizada); editable hasta que el Comité decida. Es obligatoria
+           para que el Comité apruebe o rechace el expediente.
         --------------------------------------------------------- */
         let misCalificaciones = {};
+        let visitasQueLidero = new Set();
         let indiceCalificacion = null;
         const CAL_CAMPOS = [
             ['calComentario', 'comentario_visita', 'Comentarios sobre la visita'],
@@ -2086,12 +2093,15 @@
                 }
                 misCalificaciones = {};
                 (data.calificaciones || []).forEach(c => { misCalificaciones[String(c.id_programacion)] = c; });
+                visitasQueLidero = new Set((data.visitas_lider || []).map(String));
             } catch { misCalificaciones = {}; }
         }
 
         function estadoCalificacion(r) {
             const estado = String(r.estado || '').trim().toLowerCase();
             if (estado.startsWith('cancelad')) return { visible: false };
+            // Solo califica la persona a cargo de la visita (el auditor líder).
+            if (!esLiderProgramacion(r) && !visitasQueLidero.has(String(r.id_programacion))) return { visible: false };
             const actual = misCalificaciones[String(r.id_programacion)] || null;
             if (actual && actual.bloqueada) {
                 return { visible: true, habilitado: false, actual, texto: 'Calificación cerrada',
@@ -2338,6 +2348,6 @@
         })();
     </script>
      <script src="/static/session.js?v=20261117"></script>
-<script src="/static/nav.js?v=20261114a"></script>
+<script src="/static/nav.js?v=20261117a"></script>
 </body>
 </html>

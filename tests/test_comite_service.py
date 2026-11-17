@@ -15,7 +15,12 @@ def resultado_falso(fila=None):
 
 
 @pytest.mark.asyncio
-async def test_aprobar_guarda_accion_y_actualiza_estado_en_una_transaccion():
+async def test_aprobar_guarda_accion_y_actualiza_estado_en_una_transaccion(monkeypatch):
+    # La exigencia de la calificación del auditor líder se prueba en
+    # tests/test_comite_imparcialidad.py; aquí se da por cumplida.
+    from modules.calificacion_visitas.calificacion_service import CalificacionVisitaService
+
+    monkeypatch.setattr(CalificacionVisitaService, "exigir_calificaciones_para_decidir", AsyncMock())
     id_solicitud = uuid4()
     id_accion = uuid4()
     db = AsyncMock()

@@ -635,9 +635,11 @@ async def notificaciones_auditor():
 async def disponibilidad_auditor():
     return pagina_interna("static/disponibilidad_auditor.html")
 
-@app.get("/programaciones-futuras-auditor", response_class=HTMLResponse)
+@app.get("/programaciones-futuras-auditor", include_in_schema=False)
 async def programaciones_futuras_auditor_page():
-    return pagina_interna("static/programaciones_futuras_auditor.html")
+    # "Programaciones futuras" se eliminó: los enlaces guardados van a las
+    # auditorías programadas del auditor.
+    return RedirectResponse("/consultar-auditorias-programadas", status_code=302)
 
 @app.get("/consultar-auditorias-programadas", response_class=HTMLResponse)
 async def consultar_auditorias_programadas_page():

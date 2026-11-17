@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.filtros_ubicacion import condiciones_ubicacion_solicitud
+from modules.comite.imparcialidad import exigir_imparcialidad
 from modules.solicitudes import estado_solicitud as estados
 
 
@@ -24,6 +25,9 @@ CAMBIOS_ESTADO = {
     "cerrar-expediente": estados.CERRADA,
     "reabrir-dictamen": estados.EN_REVISION,
 }
+# Acciones que fijan la decisión del Comité: exigen la calificación del
+# auditor líder de cada visita no cancelada (si la tabla ya existe).
+ACCIONES_QUE_EXIGEN_CALIFICACION = {"aprobar", "rechazar", "decisiones", "decision-definitiva"}
 
 
 # Cola del Comité (COM-001). El estado lo decide SIEMPRE el filtro de estado;
@@ -171,6 +175,10 @@ class ComiteService:
                 detail="El expediente no existe o fue eliminado.",
             )
 
+        # Imparcialidad: un miembro del Comité que ya participó en una
+        # evaluación anterior de la solicitud o en su apelación no actúa.
+        await exigir_imparcialidad(self.db, id_solicitud, usuario)
+
         estado_actual = solicitud["estado"]
         nuevo_estado = CAMBIOS_ESTADO.get(accion)
         # Se compara por el valor canonico, no por mayusculas: asi da igual
@@ -211,6 +219,11 @@ class ComiteService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail="El expediente solo se puede cerrar después de generar y firmar el acta definitiva.",
                 )
+
+        if accion in ACCIONES_QUE_EXIGEN_CALIFICACION:
+            from modules.calificacion_visitas.calificacion_service import CalificacionVisitaService
+
+            await CalificacionVisitaService(self.db).exigir_calificaciones_para_decidir(id_solicitud)
 
         if nuevo_estado:
             actualizacion = await self.db.execute(

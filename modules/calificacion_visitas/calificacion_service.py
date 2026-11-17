@@ -1,25 +1,33 @@
 """
 Calificación de visitas por los auditores (1 a 100 %) para el Comité.
 
-Cada auditor asignado a una visita (`detalle_programacion_auditor`) la
-califica y deja comentarios: sobre la visita, situaciones encontradas y
-oportunidades de mejora. El Comité las ve en el expediente antes de
-aprobar o rechazar el certificado.
+El auditor LÍDER de cada visita (`detalle_programacion_auditor.rol_auditor`
+'Auditor Líder', sin importar mayúsculas ni tildes) la califica y deja
+comentarios: sobre la visita, situaciones encontradas y oportunidades de
+mejora. El Comité las ve en el expediente antes de aprobar o rechazar.
 
 Reglas:
-  · Solo califica un usuario con rol Auditor que esté asignado a esa visita.
+  · Solo califica el auditor líder de esa visita (los demás integrantes
+    del equipo reciben 403).
+  · La calificación del líder de cada visita no cancelada del expediente es
+    obligatoria para que el Comité apruebe o rechace (409 con lo que falta,
+    ver `estado_para_decidir`). Si la tabla aún no existe (falta el SQL) la
+    decisión NO se bloquea, para no frenar el sistema.
   · La visita no puede estar cancelada y debe haber empezado
     (fecha_inicio ya pasó) o estar Finalizada/Ejecutada.
   · La visita debe pertenecer a una solicitud vigente.
   · Se puede editar mientras el Comité no haya decidido: con la solicitud
     Aprobada, Rechazada, Cerrada (o Cancelada) queda bloqueada (409).
-  · Lo lee el Comité y el Coordinador; nadie más.
+  · Lo lee el Comité y el Coordinador; nadie más. Un miembro del Comité
+    que ya participó en la solicitud o en su apelación no lo ve (regla de
+    imparcialidad, modules/comite/imparcialidad.py).
 
 La tabla `calificacion_visita` la crea la usuaria con
 documentacion/sql_calificacion_visitas.sql. Mientras no exista, todo
 responde 503 con un mensaje claro en vez de un 500.
 """
 
+import unicodedata
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -29,6 +37,7 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import _normalize_role_name
+from modules.comite.imparcialidad import exigir_imparcialidad
 from modules.solicitudes import estado_solicitud as estados
 
 TABLA = "calificacion_visita"
@@ -54,6 +63,20 @@ ESTADOS_SOLICITUD_BLOQUEADA = {
 }
 
 ROLES_LECTURA_COMITE = {"comite", "admin"}  # Comité y Coordinador
+
+MENSAJE_SOLO_LIDER = "Solo el auditor líder de la visita la califica."
+
+
+def es_rol_lider(rol) -> bool:
+    """'Auditor Líder', 'Auditor lider', 'AUDITOR LÍDER'... (sin tildes ni mayúsculas)."""
+    texto = unicodedata.normalize("NFKD", str(rol or ""))
+    texto = "".join(c for c in texto if not unicodedata.combining(c)).lower()
+    return "lider" in texto
+
+
+def sql_es_lider(columna: str) -> str:
+    """Lo mismo que `es_rol_lider`, en SQL."""
+    return f"TRANSLATE(LOWER(COALESCE({columna}, '')), 'áàäâéèëêíìïîóòöôúùüû', 'aaaaeeeeiiiioooouuuu') LIKE '%lider%'"
 
 
 def _rol(usuario: dict | None) -> str:
@@ -172,7 +195,17 @@ class CalificacionVisitaService:
             dato = dict(fila)
             dato["bloqueada"] = _decision_tomada(dato.pop("estado_solicitud", None))
             filas.append(dato)
-        return {"calificaciones": filas}
+        # Visitas de las que este auditor es el líder: solo en ellas ve el botón.
+        asignaciones = await self.db.execute(text("""
+            SELECT id_programacion, rol_auditor
+            FROM detalle_programacion_auditor
+            WHERE id_usuario = :id_auditor;
+        """), {"id_auditor": _id_usuario(usuario)})
+        visitas_lider = sorted({
+            str(fila["id_programacion"]) for fila in asignaciones.mappings().all()
+            if es_rol_lider(fila["rol_auditor"])
+        })
+        return {"calificaciones": filas, "visitas_lider": visitas_lider}
 
     async def guardar(self, id_programacion: UUID, datos: dict, usuario: dict) -> dict:
         if _rol(usuario) != "auditor":
@@ -181,13 +214,19 @@ class CalificacionVisitaService:
         await self._exigir_tabla()
         id_auditor = _id_usuario(usuario)
 
-        resultado = await self.db.execute(text("""
+        resultado = await self.db.execute(text(f"""
             SELECT p.id_programacion, p.id_solicitud, p.estado, p.fecha_inicio,
                    EXISTS (
                        SELECT 1 FROM detalle_programacion_auditor d
                        WHERE d.id_programacion = p.id_programacion
                          AND d.id_usuario = :id_auditor
-                   ) AS asignado
+                   ) AS asignado,
+                   EXISTS (
+                       SELECT 1 FROM detalle_programacion_auditor d
+                       WHERE d.id_programacion = p.id_programacion
+                         AND d.id_usuario = :id_auditor
+                         AND {sql_es_lider('d.rol_auditor')}
+                   ) AS es_lider
             FROM programacion_visita p
             WHERE p.id_programacion = :id_programacion;
         """), {"id_programacion": str(id_programacion), "id_auditor": id_auditor})
@@ -199,6 +238,9 @@ class CalificacionVisitaService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo el auditor asignado a esta visita puede calificarla.",
             )
+        if not visita.get("es_lider"):
+            # Califica solo la persona a cargo de la visita (decisión de la usuaria).
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MENSAJE_SOLO_LIDER)
         estado_visita = str(visita["estado"] or "").strip().upper()
         if estado_visita in ESTADOS_VISITA_CANCELADA:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No se puede calificar una visita cancelada.")
@@ -273,12 +315,93 @@ class CalificacionVisitaService:
     # ------------------------------------------------------------------
     # Comité
     # ------------------------------------------------------------------
+    async def _tabla_existe(self) -> bool:
+        resultado = await self.db.execute(text("SELECT to_regclass('public.calificacion_visita') IS NOT NULL AS existe;"))
+        fila = resultado.mappings().first()
+        return bool(fila and fila["existe"])
+
+    async def _visitas_con_lider(self, id_solicitud) -> list[dict]:
+        """Cada visita no cancelada del expediente con su líder y la calificación de ese líder."""
+        resultado = await self.db.execute(text(f"""
+            SELECT p.id_programacion, p.fecha_inicio, p.fecha_fin, p.estado AS estado_visita,
+                   l.id_usuario AS id_auditor, u.nombre, l.rol_auditor AS rol,
+                   c.calificacion, c.comentario_visita, c.situaciones_encontradas,
+                   c.oportunidades_mejora, c.fecha_registro, c.fecha_actualizacion
+            FROM programacion_visita p
+            LEFT JOIN LATERAL (
+                SELECT d.id_usuario, d.rol_auditor
+                FROM detalle_programacion_auditor d
+                WHERE d.id_programacion = p.id_programacion
+                  AND {sql_es_lider('d.rol_auditor')}
+                ORDER BY d.id_detalle
+                LIMIT 1
+            ) l ON TRUE
+            LEFT JOIN usuario u ON u.id_usuario = l.id_usuario
+            LEFT JOIN calificacion_visita c
+                   ON c.id_programacion = p.id_programacion AND c.id_auditor = l.id_usuario
+            WHERE p.id_solicitud = CAST(:id AS UUID)
+              AND UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN ('CANCELADA', 'CANCELADO')
+            ORDER BY p.fecha_inicio NULLS LAST, p.id_programacion;
+        """), {"id": str(id_solicitud)})
+        return [dict(fila) for fila in resultado.mappings().all()]
+
+    @staticmethod
+    def _faltantes(visitas: list[dict]) -> list[dict]:
+        faltantes = []
+        for numero, visita in enumerate(visitas, start=1):
+            if visita.get("calificacion") is not None:
+                continue
+            faltantes.append({
+                "numero": numero,
+                "id_programacion": str(visita.get("id_programacion")),
+                "fecha_inicio": visita.get("fecha_inicio"),
+                "lider": visita.get("nombre"),
+                "motivo": "sin_lider" if not visita.get("id_auditor") else "sin_calificar",
+            })
+        return faltantes
+
+    @staticmethod
+    def describir_faltante(faltante: dict) -> str:
+        fecha = faltante.get("fecha_inicio")
+        if isinstance(fecha, datetime):
+            fecha = fecha.strftime("%d/%m/%Y")
+        visita = f"visita {faltante.get('numero')}" + (f" del {fecha}" if fecha else "")
+        if faltante.get("motivo") == "sin_lider":
+            return f"la {visita} no tiene auditor líder asignado"
+        return f"falta la calificación del auditor líder de la {visita} ({faltante.get('lider') or 'sin nombre'})"
+
+    async def estado_para_decidir(self, id_solicitud) -> dict:
+        """
+        ¿Puede el Comité aprobar o rechazar? Exige la calificación del líder de
+        cada visita no cancelada. Sin la tabla (SQL sin aplicar) NO bloquea:
+        devuelve activa=False para que la pantalla muestre el aviso.
+        """
+        if not await self._tabla_existe():
+            return {"activa": False, "faltantes": [], "puede_decidir": True}
+        faltantes = self._faltantes(await self._visitas_con_lider(id_solicitud))
+        return {"activa": True, "faltantes": faltantes, "puede_decidir": not faltantes}
+
+    async def exigir_calificaciones_para_decidir(self, id_solicitud) -> None:
+        """409 si falta la calificación del líder de alguna visita no cancelada."""
+        estado = await self.estado_para_decidir(id_solicitud)
+        if estado["faltantes"]:
+            detalle = "; ".join(self.describir_faltante(f) for f in estado["faltantes"])
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "El Comité no puede aprobar ni rechazar todavía: "
+                    f"{detalle}. Solo el auditor líder de cada visita la califica."
+                ),
+            )
+
     async def calificaciones_expediente(self, id_solicitud: UUID, usuario: dict) -> dict:
         if _rol(usuario) not in ROLES_LECTURA_COMITE:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo el Comité y el Coordinador pueden consultar las calificaciones de los auditores.",
             )
+        # Un miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+        await exigir_imparcialidad(self.db, id_solicitud, usuario)
         await self._exigir_tabla()
         resultado = await self.db.execute(text("""
             SELECT id_solicitud, estado FROM solicitud
@@ -288,50 +411,20 @@ class CalificacionVisitaService:
         if not solicitud:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El expediente no existe o fue eliminado.")
 
-        # Todo el equipo de cada visita no cancelada, haya calificado o no;
-        # más las calificaciones de quien ya no esté en el equipo (no se pierden).
-        resultado = await self.db.execute(text("""
-            SELECT p.id_programacion, p.fecha_inicio, p.fecha_fin, p.estado AS estado_visita,
-                   u.id_usuario AS id_auditor, u.nombre, d.rol_auditor AS rol,
-                   c.calificacion, c.comentario_visita, c.situaciones_encontradas,
-                   c.oportunidades_mejora, c.fecha_registro, c.fecha_actualizacion
-            FROM programacion_visita p
-            JOIN detalle_programacion_auditor d ON d.id_programacion = p.id_programacion
-            JOIN usuario u ON u.id_usuario = d.id_usuario
-            LEFT JOIN calificacion_visita c
-                   ON c.id_programacion = p.id_programacion AND c.id_auditor = d.id_usuario
-            WHERE p.id_solicitud = :id
-              AND UPPER(TRIM(COALESCE(p.estado, ''))) NOT IN ('CANCELADA', 'CANCELADO')
-            UNION ALL
-            SELECT p.id_programacion, p.fecha_inicio, p.fecha_fin, p.estado,
-                   u.id_usuario, u.nombre, NULL,
-                   c.calificacion, c.comentario_visita, c.situaciones_encontradas,
-                   c.oportunidades_mejora, c.fecha_registro, c.fecha_actualizacion
-            FROM calificacion_visita c
-            JOIN programacion_visita p ON p.id_programacion = c.id_programacion
-            JOIN usuario u ON u.id_usuario = c.id_auditor
-            WHERE c.id_solicitud = :id
-              AND NOT EXISTS (
-                  SELECT 1 FROM detalle_programacion_auditor d
-                  WHERE d.id_programacion = c.id_programacion AND d.id_usuario = c.id_auditor
-              )
-        """), {"id": str(id_solicitud)})
-        auditores = [dict(fila) for fila in resultado.mappings().all()]
-        # Por visita (la más antigua primero) y, dentro de cada una, el líder primero.
-        auditores.sort(key=lambda a: (
-            str(a.get("fecha_inicio") or ""),
-            str(a.get("id_programacion") or ""),
-            0 if "lider" in str(a.get("rol") or "").lower().replace("í", "i") else 1,
-            str(a.get("nombre") or "").lower(),
-        ))
-        notas = [a["calificacion"] for a in auditores if a.get("calificacion") is not None]
-        promedio = round(sum(notas) / len(notas), 1) if notas else None
+        visitas = await self._visitas_con_lider(id_solicitud)
+        faltantes = self._faltantes(visitas)
+        notas = [v["calificacion"] for v in visitas if v.get("calificacion") is not None]
+        # El promedio solo tiene sentido con varias visitas.
+        promedio = round(sum(notas) / len(notas), 1) if notas and len(visitas) > 1 else None
         return {
             "expediente_id": str(id_solicitud),
             "estado_expediente": solicitud["estado"],
             "bloqueada": _decision_tomada(solicitud["estado"]),
-            "auditores": auditores,
-            "total_auditores": len(auditores),
-            "calificados": len(notas),
+            "activa": True,
+            "visitas": visitas,
+            "total_visitas": len(visitas),
+            "calificadas": len(notas),
             "promedio": promedio,
+            "faltantes": [{**f, "texto": self.describir_faltante(f)} for f in faltantes],
+            "puede_decidir": not faltantes,
         }

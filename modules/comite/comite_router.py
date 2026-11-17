@@ -20,6 +20,9 @@ from modules.comite.comite_service import (
 )
 from modules.reportes.exportacion_tabular import Columna, respuesta_exportacion
 from modules.comite.comite_acta_service import ComiteActaService
+from modules.comite.imparcialidad import MENSAJES as MENSAJES_IMPARCIALIDAD
+from modules.comite.imparcialidad import aplica_a as imparcialidad_aplica_a
+from modules.comite.imparcialidad import exigir_imparcialidad, id_de, sql_impedimento
 from modules.solicitudes.documento_service import CARPETA_ARCHIVOS, DocumentoService
 
 router = APIRouter(prefix="/comite", tags=["Comité de certificación"])
@@ -124,10 +127,22 @@ async def consultar_expedientes_pendientes(
     ciudad: str | None = Query(default=None, max_length=100, description="Ciudad de la empresa o de una sede"),
     departamento: str | None = Query(default=None, max_length=100, description="Departamento de alguna sede"),
     pais: str | None = Query(default=None, max_length=100, description="País de alguna sede"),
+    decision: str | None = Query(default=None, description="aprobada o rechazada"),
+    firma: str | None = Query(default=None, description="pendiente, firmado o certificado-pendiente"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=500),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Permiso COM-001: consultar expedientes pendientes (con filtros combinables)."""
+    """
+    Permiso COM-001: vista unificada de expedientes (pendientes y decididos).
+
+    El filtro de estado decide qué se ve ('pendientes' por defecto, 'todos' o
+    un estado). Cada fila trae además la decisión del Comité (quién y
+    cuándo), la firma del dictamen y del certificado, y si el miembro del
+    Comité está impedido para evaluarla (regla de imparcialidad). Reúne lo
+    que antes eran "Expedientes pendientes" e "Historial de decisiones".
+    """
     role_name = _normalize_role_name(current_user.get("role_name"))
 
     if role_name not in COMITE_CERTIFICACION_PERMISOS:
@@ -139,7 +154,26 @@ async def consultar_expedientes_pendientes(
     condiciones, params = construir_filtro_expedientes(
         estado, q, norma, fecha_desde, fecha_hasta, ciudad=ciudad, departamento=departamento, pais=pais
     )
+    if imparcialidad_aplica_a(current_user):
+        columna_impedimento = sql_impedimento("s.id_solicitud")
+        params["imp_usuario"] = id_de(current_user)
+    else:
+        columna_impedimento = "CAST(NULL AS TEXT)"
     resultado = await db.execute(text(f"""
+        WITH decision AS (
+            SELECT DISTINCT ON (a.id_solicitud)
+                a.id_solicitud, a.accion, a.datos->>'comentario' AS comentario, a.fecha,
+                COALESCE(u.nombre, u.correo, a.id_usuario) AS decidio
+            FROM comite_accion a
+            LEFT JOIN usuario u ON u.id_usuario::TEXT = a.id_usuario
+            WHERE a.accion IN ('aprobar', 'rechazar')
+            ORDER BY a.id_solicitud, a.fecha DESC, a.id_accion DESC
+        ),
+        acta AS (
+            SELECT DISTINCT ON (id_solicitud) id_solicitud, estado AS estado_acta, fecha_firma
+            FROM comite_acta
+            ORDER BY id_solicitud, version DESC
+        )
         SELECT
             s.id_solicitud AS id,
             COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo,
@@ -158,15 +192,34 @@ async def consultar_expedientes_pendientes(
             n.codigo AS norma,
             s.estado,
             s.fecha_creacion,
-            COALESCE(s.fecha_radicacion, s.fecha_creacion) AS fecha_radicacion
+            COALESCE(s.fecha_radicacion, s.fecha_creacion) AS fecha_radicacion,
+            d.accion, d.comentario, d.fecha AS fecha_decision, d.decidio,
+            acta.estado_acta, acta.fecha_firma,
+            cert.id_certificado, cert.codigo_verificacion, cert.estado_certificado, cert.certificado_firmado,
+            {columna_impedimento} AS impedimento
         FROM solicitud s
         LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
         LEFT JOIN norma n ON n.id_norma = s.id_norma
+        LEFT JOIN decision d ON d.id_solicitud = s.id_solicitud
+        LEFT JOIN acta ON acta.id_solicitud = s.id_solicitud
+        -- Un certificado se liga por id_solicitud o por solicitud.id_certificado.
+        LEFT JOIN LATERAL (
+            SELECT c.id_certificado, c.codigo_verificacion, TRIM(c.estado_certificado) AS estado_certificado,
+                   (c.id_firmante IS NOT NULL AND c.huella_firmante IS NOT NULL
+                    AND c.codigo_hash IS NOT NULL AND c.huella_pdf IS NOT NULL) AS certificado_firmado
+            FROM certificado c
+            WHERE c.id_solicitud = s.id_solicitud OR c.id_certificado = s.id_certificado
+            ORDER BY c.fecha_registro DESC NULLS LAST
+            LIMIT 1
+        ) cert ON TRUE
         WHERE s.deleted_at IS NULL
           -- Los estados vienen del catalogo de M5, no de una lista a mano.{condiciones}
         ORDER BY COALESCE(s.fecha_radicacion, s.fecha_creacion) DESC;
     """), params)
-    expedientes = [dict(fila) for fila in resultado.mappings().all()]
+    expedientes = [_fila_expediente_unificada(dict(fila)) for fila in resultado.mappings().all()]
+    expedientes = _filtrar_por_decision_y_firma(expedientes, decision, firma)
+    total = len(expedientes)
+    inicio = (page - 1) * page_size
     normas = await db.execute(text("SELECT codigo, nombre FROM norma ORDER BY codigo;"))
     return {
         "modulo": "M8 — Comité de certificación",
@@ -182,11 +235,68 @@ async def consultar_expedientes_pendientes(
             "ciudad": ciudad,
             "departamento": departamento,
             "pais": pais,
+            "decision": decision,
+            "firma": firma,
         },
         "estados_disponibles": [FILTRO_ESTADO_PENDIENTES, FILTRO_ESTADO_TODOS, *estados.ESTADOS],
         "normas": [dict(fila) for fila in normas.mappings().all()],
-        "expedientes": expedientes,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "paginas": max(1, -(-total // page_size)),
+        "expedientes": expedientes[inicio:inicio + page_size],
     }
+
+
+ESTADOS_PENDIENTES_EVALUACION = {estados.RADICADA, estados.EN_REVISION}
+
+
+def _fila_expediente_unificada(item: dict) -> dict:
+    """Completa una fila de la vista unificada: decisión, firmas e imparcialidad."""
+    canonico = estados.normalizar(item.get("estado"))
+    # Una apelación aprobada revoca el rechazo: la solicitud queda Aprobada.
+    item["por_apelacion"] = item.get("accion") == "rechazar" and canonico == estados.APROBADA
+    if item["por_apelacion"]:
+        item["decision"] = "Aprobada"
+    elif item.get("accion") in ("aprobar", "rechazar"):
+        item["decision"] = "Aprobada" if item["accion"] == "aprobar" else "Rechazada"
+    elif canonico in (estados.APROBADA, estados.RECHAZADA):
+        item["decision"] = "Aprobada" if canonico == estados.APROBADA else "Rechazada"
+    else:
+        item["decision"] = None
+    if item["decision"]:
+        item["firma_dictamen"] = _estado_firma_dictamen(item.get("estado_acta"))
+        item["firma_certificado"] = _estado_firma_certificado(
+            item["decision"], item.get("estado_certificado"), item.get("certificado_firmado")
+        )
+        item["pendiente_firma"] = item["firma_dictamen"] != "Firmado" or item["firma_certificado"] in ("Pendiente de firma", "Sin certificado")
+    else:
+        item["firma_dictamen"] = item["firma_certificado"] = None
+        item["pendiente_firma"] = False
+    item["certificado_pendiente_firma"] = str(item.get("estado_certificado") or "").strip().upper() == "PENDIENTE_FIRMA"
+    # Mismos nombres que el historial (el modal "Ver dictamen" los usa).
+    item["expediente_id"] = item.get("id")
+    item["codigo_expediente"] = item.get("codigo")
+    item["fecha"] = item.get("fecha_decision")
+    motivo = item.get("impedimento")
+    item["impedimento"] = MENSAJES_IMPARCIALIDAD.get(motivo) if motivo else None
+    item["pendiente_evaluacion"] = canonico in ESTADOS_PENDIENTES_EVALUACION
+    item["puede_evaluar"] = item["pendiente_evaluacion"] and not item["impedimento"]
+    return item
+
+
+def _filtrar_por_decision_y_firma(filas: list[dict], decision: str | None, firma: str | None) -> list[dict]:
+    if decision and decision.strip():
+        prefijo = decision.strip().lower()[:6]
+        filas = [f for f in filas if f.get("decision") and f["decision"].lower().startswith(prefijo)]
+    valor = (firma or "").strip().lower()
+    if valor == "firmado":
+        filas = [f for f in filas if f.get("decision") and not f["pendiente_firma"]]
+    elif valor == "pendiente":
+        filas = [f for f in filas if f.get("pendiente_firma")]
+    elif valor == "certificado-pendiente":
+        filas = [f for f in filas if f.get("certificado_pendiente_firma")]
+    return filas
 
 
 @router.get("/expediente-completo/{expediente_id}")
@@ -203,6 +313,8 @@ async def consultar_expediente_completo(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar el expediente completo del comité de certificación.",
         )
+    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
         SELECT
@@ -255,6 +367,8 @@ async def descargar_expediente_digital(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para descargar el expediente digital del comité de certificación.",
         )
+    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
         SELECT d.id_documento, d.tipo_documento, d.nombre_archivo, d.estado,
@@ -311,6 +425,8 @@ async def consultar_informe_auditor(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar el informe del auditor del comité de certificación.",
         )
+    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
         SELECT i.id_informe, i.id_auditoria, i.version, i.tipo, i.contenido,
@@ -380,6 +496,8 @@ async def consultar_evidencias_fisicas(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar evidencias físicas del comité de certificación.",
         )
+    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
         SELECT e.id_evidencia, e.id_auditoria, e.id_hallazgo,
@@ -427,6 +545,8 @@ async def consultar_no_conformidades(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar las no conformidades del comité de certificación.",
         )
+    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
         SELECT h.id_hallazgo AS id, h.clasificacion,
@@ -511,6 +631,8 @@ async def consultar_observaciones_tecnicos(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar observaciones de técnicos del comité.",
         )
+    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    await exigir_imparcialidad(db, expediente_id, current_user)
     resultado = await db.execute(text("""
         SELECT o.id_observacion, o.texto AS descripcion, o.tipo,
                o.fecha, COALESCE(u.nombre, u.correo) AS tecnico
@@ -1028,6 +1150,8 @@ async def consultar_auditor_responsable(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar auditor responsable.")
+    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    await exigir_imparcialidad(db, expediente_id, current_user)
     resultado = await db.execute(text("""
         SELECT u.id_usuario, u.nombre, u.correo,
                a.especialidad, a.estado_asignacion
@@ -1124,6 +1248,7 @@ async def generar_acta_del_comite_definitiva(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="El comentario es obligatorio para generar el acta.",
         )
+    await exigir_imparcialidad(db, expediente_id, current_user)
     return await ComiteActaService(db).generar(expediente_id, comentario.strip(), current_user)
 
 

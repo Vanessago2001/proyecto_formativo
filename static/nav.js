@@ -234,10 +234,10 @@
     return {
       grupo: titulo,
       opciones: [
-        // Los expedientes pendientes son del Comité: el Coordinador revisa las
-        // solicitudes en "Revisión de solicitudes" y aquí solo ve el historial.
-        { texto: "Expedientes pendientes", href: "/comite#expedientes", proxy: 'aside.comite-sidebar button[data-view="expedientes"]', solo: ["comite"] },
-        { texto: "Historial de decisiones", href: "/comite#historico", proxy: 'aside.comite-sidebar button[data-view="historico"]' },
+        // "Expedientes pendientes" e "Historial de decisiones" se unificaron:
+        // una sola lista donde el filtro de estado decide qué se ve (el
+        // Coordinador y el Auxiliar entran con "Todos los estados").
+        { texto: "Expedientes", href: "/comite#expedientes", proxy: 'aside.comite-sidebar button[data-view="expedientes"]' },
         // Solo el líder asignado: la pantalla muestra el botón si lo es.
         { texto: "Pendientes de firma", href: "/comite#firmas", proxy: 'aside.comite-sidebar button[data-view="firmas"]', solo: ["comite"] }
       ]
@@ -366,8 +366,8 @@
       {
         grupo: "Auditorías",
         opciones: [
-          { texto: "Consultar auditorías programadas", href: "/consultar-auditorias-programadas" },
-          { texto: "Programaciones futuras", href: "/programaciones-futuras-auditor" }
+          // "Programaciones futuras" se eliminó: la ruta redirige a esta pantalla.
+          { texto: "Consultar auditorías programadas", href: "/consultar-auditorias-programadas" }
         ]
       },
       {

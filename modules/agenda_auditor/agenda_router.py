@@ -148,64 +148,6 @@ async def listar_todas_programaciones(
 
 
 @router.get(
-    "/programaciones-futuras",
-    summary="Programaciones futuras (hoy + N días) de todos los auditores",
-)
-async def listar_programaciones_futuras(
-    dias: int = Query(7, ge=1, le=365, description="Días desde hoy a partir de los cuales se consideran futuras"),
-    estado: str | None = Query(None, max_length=40),
-    ciudad: str | None = Query(None, max_length=150),
-    modalidad: str | None = Query(None, max_length=40),
-    departamento: str | None = Query(None, max_length=100),
-    pais: str | None = Query(None, max_length=100),
-    usuario: dict = Depends(_validar_administrador),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Programaciones cuya fecha de inicio sea igual o superior a hoy + `dias`.
-
-    Alcance administrativo: incluye la programación de todos los auditores.
-    """
-    return {
-        "programaciones": await AgendaAuditorService(db).listar_programaciones_futuras(
-            dias=dias, estado=estado, ciudad=ciudad, modalidad=modalidad,
-            **_ubicacion_extra(departamento, pais),
-        ),
-        "dias": dias,
-    }
-
-
-@router.get(
-    "/{id_usuario}/programaciones-futuras",
-    summary="Programaciones futuras asignadas a un auditor",
-)
-async def listar_programaciones_futuras_auditor(
-    id_usuario: UUID,
-    dias: int = Query(7, ge=1, le=365, description="Días desde hoy a partir de los cuales se consideran futuras"),
-    estado: str | None = Query(None, max_length=40),
-    ciudad: str | None = Query(None, max_length=150),
-    modalidad: str | None = Query(None, max_length=40),
-    departamento: str | None = Query(None, max_length=100),
-    pais: str | None = Query(None, max_length=100),
-    usuario: dict = Depends(_validar_admin_o_propio_auditor),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Programaciones futuras del auditor indicado.
-
-    Un auditor solo puede consultar las suyas propias; el administrador puede
-    consultar las de cualquier auditor.
-    """
-    return {
-        "programaciones": await AgendaAuditorService(db).listar_programaciones_futuras(
-            dias=dias, id_usuario=id_usuario, estado=estado, ciudad=ciudad, modalidad=modalidad,
-            **_ubicacion_extra(departamento, pais),
-        ),
-        "dias": dias,
-    }
-
-
-@router.get(
     "/programacion/{id_programacion}/detalle",
     summary="Detalle completo de una programación",
 )
@@ -326,6 +268,35 @@ async def listar_auditores_disponibles_para_sede(
         modalidad=modalidad,
         competencia=competencia,
         conflicto=conflicto,
+    )
+
+
+@router.get(
+    "/programacion/fechas-disponibles",
+    summary="Próximas fechas y franjas en que todo el equipo está disponible",
+)
+async def fechas_disponibles_equipo(
+    auditores: list[UUID] = Query(..., min_length=1, max_length=20),
+    hora_inicio: time | None = Query(None, description="Hora local HH:MM preferida"),
+    hora_fin: time | None = Query(None, description="Hora local HH:MM (define la duración)"),
+    duracion_minutos: int | None = Query(None, ge=15, le=960),
+    desde: date | None = Query(None, description="Por defecto, mañana"),
+    hasta: date | None = Query(None, description="Por defecto, desde + 90 días (máx. 180)"),
+    limite: int = Query(10, ge=1, le=30),
+    excluir_programacion: UUID | None = Query(None),
+    usuario: dict = Depends(_validar_administrador),
+    db: AsyncSession = Depends(get_db),
+):
+    """Solo lectura. Cada opción pasa las mismas validaciones que programar."""
+    return await AgendaAuditorService(db).sugerir_fechas_disponibles(
+        auditores,
+        hora_inicio=hora_inicio,
+        hora_fin=hora_fin,
+        duracion_minutos=duracion_minutos,
+        desde=desde,
+        hasta=hasta,
+        limite=limite,
+        excluir_programacion=excluir_programacion,
     )
 
 

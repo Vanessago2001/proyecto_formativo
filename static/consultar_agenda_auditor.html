@@ -710,6 +710,19 @@
             display: none !important;
         }
 
+        /* Fechas sugeridas para el equipo (botones de tema.css). */
+        .sugerencias-fechas {
+            margin-top: 12px;
+            padding: 12px 14px;
+            border: 1px solid var(--border, #d9e2dc);
+            border-radius: 10px;
+        }
+        .sugerencias-fechas h4 { margin: 0 0 6px; font-size: 14px; }
+        .sugerencias-fechas .btn { text-align: left; line-height: 1.3; }
+        .sugerencias-fechas .btn small { display: block; font-weight: normal; opacity: .85; }
+        .sugerencias-detalle { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+        .sugerencias-detalle:empty { display: none; }
+
         /* Anclas JS (ocultas, mantienen la lógica del sistema) */
         .hidden-js-anchor {
             display: none !important;
@@ -1535,12 +1548,21 @@
                             <div class="actions">
                                 <button type="button" class="btn btn-secundario secondary" id="checkScheduleAvailability">Comprobar
                                     disponibilidad</button>
+                                <button type="button" class="btn btn-secundario secondary" id="scheduleSuggest"
+                                    aria-controls="scheduleSuggestions">Ver fechas disponibles</button>
                                 <button type="submit" class="btn btn-primario primary" id="scheduleSave">Programar auditoría (equipo de la
                                     sede)</button>
                                 <button type="button" class="btn btn-secundario secondary hidden" id="scheduleCancelEdit">Salir de
                                     edición</button>
                             </div>
                             <div id="scheduleActionNotice" class="notice junto-accion" role="alert" aria-live="assertive" tabindex="-1"></div>
+                            <!-- Fechas sugeridas: franjas en que TODO el equipo está disponible. -->
+                            <section id="scheduleSuggestions" class="sugerencias-fechas hidden" aria-labelledby="scheduleSuggestionsTitle">
+                                <h4 id="scheduleSuggestionsTitle">Fechas disponibles para todo el equipo</h4>
+                                <p id="scheduleSuggestionsInfo" class="hint" aria-live="polite"></p>
+                                <div id="scheduleSuggestionsList" class="grupo-botones" role="list"></div>
+                                <ul id="scheduleSuggestionsDetail" class="sugerencias-detalle"></ul>
+                            </section>
                         </form>
 
                         <h3
@@ -2165,6 +2187,8 @@
             $("scheduleSave").textContent = editing ? "Guardar cambios" : "Programar auditoría (equipo de la sede)";
             $("scheduleCancelEdit").classList.toggle("hidden", !editing);
             $("scheduleMoreAuditors").disabled = Boolean(locked);
+            $("scheduleSuggest").disabled = Boolean(locked);
+            ocultarFechasSugeridas();
         }
         let borradorFechas = null;
         function guardarBorradorFechas() {
@@ -3534,6 +3558,94 @@
             await checkCurrentScheduleAvailability();
         });
 
+        // ---- Fechas disponibles para el equipo (GET /programacion/fechas-disponibles).
+        // Cada opción ya pasó en el servidor las mismas validaciones que
+        // "Programar auditoría", así que al elegirla la comprobación sale bien.
+        function ocultarFechasSugeridas() {
+            const panel = $("scheduleSuggestions");
+            if (!panel) return;
+            panel.classList.add("hidden");
+            $("scheduleSuggestionsList").innerHTML = "";
+            $("scheduleSuggestionsDetail").innerHTML = "";
+            $("scheduleSuggestionsInfo").textContent = "";
+        }
+        function fechaLarga(iso) {
+            const [a, m, d] = String(iso).split("-").map(Number);
+            return new Date(a, m - 1, d).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+        }
+        let consultaSugerencias = 0;
+        async function cargarFechasSugeridas() {
+            const panel = $("scheduleSuggestions");
+            const info = $("scheduleSuggestionsInfo");
+            const lista = $("scheduleSuggestionsList");
+            const detalle = $("scheduleSuggestionsDetail");
+            const equipo = equipoActivo();
+            if (!currentAssignment()) { avisoJuntoAccion("scheduleActionNotice", "Selecciona la solicitud que vas a programar.", "error", ["assignmentTabla"]); return; }
+            if (!equipo.length) { avisoJuntoAccion("scheduleActionNotice", "Selecciona al menos un auditor para el equipo de esta sede.", "error", ["scheduleTeam"]); return; }
+            const inicio = $("scheduleStart").value, fin = $("scheduleEnd").value;
+            if (inicio && fin && fin <= inicio) { avisoJuntoAccion("scheduleActionNotice", "La hora final debe ser posterior a la hora de inicio.", "error", ["scheduleEnd"]); return; }
+            const query = new URLSearchParams();
+            equipo.forEach(a => query.append("auditores", a.id_usuario));
+            if (inicio && fin) { query.set("hora_inicio", inicio); query.set("hora_fin", fin); }
+            if (programacionActual && programacionEnEdicion && programacionActual.id_programacion) {
+                query.set("excluir_programacion", String(programacionActual.id_programacion));
+            }
+            const turno = ++consultaSugerencias;
+            const boton = $("scheduleSuggest");
+            panel.classList.remove("hidden");
+            lista.innerHTML = "";
+            detalle.innerHTML = "";
+            info.textContent = "Buscando fechas disponibles para todo el equipo (próximos 90 días)...";
+            boton.disabled = true;
+            try {
+                const data = await api(`/programacion/fechas-disponibles?${query}`);
+                if (turno !== consultaSugerencias) return;
+                const duracion = data.duracion_minutos >= 60
+                    ? `${Math.floor(data.duracion_minutos / 60)} h${data.duracion_minutos % 60 ? " " + (data.duracion_minutos % 60) + " min" : ""}`
+                    : `${data.duracion_minutos} min`;
+                const opciones = data.opciones || [];
+                info.textContent = opciones.length
+                    ? `${opciones.length} opción(es) de ${duracion} entre el ${fechaLarga(data.desde)} y el ${fechaLarga(data.hasta)}${inicio && fin ? "" : " (sin horas en el formulario se buscan 4 h)"}. Pulse una para usarla en el formulario.`
+                    : `${data.mensaje || "No hay fechas disponibles."} Rango revisado: ${fechaLarga(data.desde)} a ${fechaLarga(data.hasta)}, duración ${duracion}.`;
+                opciones.forEach(op => {
+                    const b = document.createElement("button");
+                    b.type = "button";
+                    b.className = "btn btn-secundario btn-sm";
+                    b.setAttribute("role", "listitem");
+                    const nombres = (op.auditores || []).map(a => a.nombre).join(", ");
+                    b.setAttribute("aria-label", `Usar ${op.dia_semana} ${fechaLarga(op.fecha)} de ${op.hora_inicio} a ${op.hora_fin} con ${nombres}`);
+                    b.innerHTML = `${esc(op.dia_semana.charAt(0).toUpperCase() + op.dia_semana.slice(1))} ${esc(fechaLarga(op.fecha))}<small>${esc(op.hora_inicio)} – ${esc(op.hora_fin)} · ${esc(nombres)}</small>`;
+                    b.addEventListener("click", async () => {
+                        $("scheduleDate").value = op.fecha;
+                        $("scheduleStart").value = op.hora_inicio;
+                        $("scheduleEnd").value = op.hora_fin;
+                        // Un solo "change": guarda el borrador y limpia el resultado anterior.
+                        $("scheduleDate").dispatchEvent(new Event("change", { bubbles: true }));
+                        await checkCurrentScheduleAvailability();
+                    });
+                    lista.appendChild(b);
+                });
+                (data.auditores || []).filter(a => a.motivo).forEach(a => {
+                    const li = document.createElement("li");
+                    li.textContent = a.motivo;
+                    detalle.appendChild(li);
+                });
+            } catch (error) {
+                if (turno !== consultaSugerencias) return;
+                info.textContent = `No fue posible consultar las fechas disponibles: ${error.message}`;
+            } finally {
+                if (turno === consultaSugerencias) boton.disabled = Boolean(programacionActual && !programacionEnEdicion);
+            }
+        }
+        $("scheduleSuggest").addEventListener("click", () => {
+            if (programacionActual && !programacionEnEdicion) {
+                avisoJuntoAccion("scheduleActionNotice", "La solicitud ya está programada en esta sede. Use Editar en la tabla de programaciones para cambiar el periodo.", "info");
+                return;
+            }
+            clearNotice("scheduleActionNotice");
+            cargarFechasSugeridas();
+        });
+
         // Valida fecha y horas; devuelve el mensaje y los campos con error.
         function validarFechasProgramacion() {
             const fecha = $("scheduleDate").value, inicio = $("scheduleStart").value, fin = $("scheduleEnd").value;
@@ -3589,7 +3701,9 @@
                 ).join("\n");
                 const unavailable = results.filter(item => !item.result.disponible);
                 if (unavailable.length) {
-                    avisoJuntoAccion("scheduleActionNotice", `No se puede programar a todo el equipo el ${fecha} de ${inicio} a ${fin}:\n${lineas}\n\nCambie la fecha u horas, o desmarque a quien no esté disponible.`, "error");
+                    avisoJuntoAccion("scheduleActionNotice", `No se puede programar a todo el equipo el ${fecha} de ${inicio} a ${fin}:\n${lineas}\n\nCambie la fecha u horas (vea abajo las fechas disponibles), o desmarque a quien no esté disponible.`, "error");
+                    // Sin tantear: se ofrecen las próximas fechas en que todo el equipo puede.
+                    cargarFechasSugeridas();
                     return false;
                 }
                 const texto = `Todo el equipo tiene disponibilidad el ${fecha} de ${inicio} a ${fin}:\n${lineas}`;
@@ -3927,7 +4041,7 @@
     </script>
 
     <script src="/static/session.js?v=20261117"></script>
-<script src="/static/nav.js?v=20261114a"></script>
+<script src="/static/nav.js?v=20261117a"></script>
 </body>
 
 </html>

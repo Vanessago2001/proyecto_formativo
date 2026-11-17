@@ -74,3 +74,21 @@ Y se puede controlar con variables de entorno:
 El motor venía con `echo=True`, así que imprimía **todas** las sentencias de
 todas las peticiones. Ahora está apagado por defecto y se enciende cuando hace
 falta con `--sql` o `SQL_ECHO=1`.
+
+## Firmar certificados en su computador (firma de PRUEBA)
+
+Para firmar certificados, el servidor necesita el certificado digital (.p12)
+del líder del Comité. En desarrollo cada quien genera una firma de prueba en
+su propio equipo (no se comparte ni se sube a git):
+
+```
+venv\Scripts\python.exe -m modules.scripts.configurar_firma_prueba
+```
+
+- Crea la firma del líder vigente en `C:\Users\<usuario>\.certisena_firma`
+  y agrega las variables `CERTIFICADOS_FIRMA_*` a su `.env`.
+- Luego reinicie el servidor. En la aplicación, el líder crea su
+  "contraseña de firma" la primera vez y ya puede firmar.
+- Si cambian de líder del Comité, ejecútelo de nuevo con `--forzar`.
+- Nunca suba los archivos `.p12` ni esas líneas del `.env` al repositorio.
+  En producción el .p12 lo emite una entidad certificadora real.
