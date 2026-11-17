@@ -1775,7 +1775,7 @@
               <!-- ACCIONES -->
               <div class="form-actions">
                 <button type="button" id="clearBtn" class="btn btn-secundario secondary-action">Limpiar</button>
-                <button type="submit" id="assignBtn" class="btn btn-primario primary-action" disabled>Asignar auditores</button>
+                <button type="submit" id="assignBtn" class="btn btn-primario primary-action" disabled>Asignar auditor</button>
               </div>
             </form>
 
@@ -2372,7 +2372,6 @@
       lista.forEach((auditor) => {
         const id = String(auditor.id_usuario);
         const seleccionado = auditoresSeleccionados.has(id);
-        const rolActual = auditorRolesAsignados.get(id) || "";
         const card = document.createElement("div");
         card.className = `auditor-card${seleccionado ? " selected" : ""}${auditor.elegible ? "" : " ineligible"}`;
         card.dataset.auditorId = id;
@@ -2412,16 +2411,8 @@
             <span class="check">Disponibilidad y cruces: Agenda</span>
           </div>
           ${auditor.elegible ? "" : `<div class="eligibility-note">${escapeHTML(auditor.motivo || "No cumple las condiciones de asignación.")}</div>`}
-          <div class="auditor-role-picker" style="display:${seleccionado ? "block" : "none"};margin-top:12px;" onclick="event.stopPropagation();">
-            <label style="display:block;font-weight:700;color:#256d00;margin-bottom:6px;">Rol para este auditor</label>
-            <select class="form-control role-select" aria-label="Rol para este auditor" data-auditor-role-id="${escapeHTML(id)}"
-              onclick="event.stopPropagation();" onchange="setAuditorRoleById(this.dataset.auditorRoleId, this.value)">
-              <option value="">Seleccione un rol</option>
-              <option value="Auditor líder" ${rolActual === "Auditor líder" ? "selected" : ""}>Auditor líder</option>
-              <option value="Experto técnicos" ${rolActual === "Experto técnicos" ? "selected" : ""}>Experto técnicos</option>
-              <option value="Auditor integral" ${rolActual === "Auditor integral" ? "selected" : ""}>Auditor integral</option>
-              <option value="Observador" ${rolActual === "Observador" ? "selected" : ""}>Observador</option>
-            </select>
+          <div class="auditor-role-picker" style="display:${seleccionado ? "block" : "none"};margin-top:12px;color:#256d00;font-weight:700;" onclick="event.stopPropagation();">
+            Se asignará como Auditor
           </div>`;
 
         card.addEventListener("click", (event) => {
@@ -2561,6 +2552,9 @@
       }
 
       if (checked) {
+        // Desde Asignación se registra UN auditor por solicitud (con uno la
+        // solicitud queda completa); los demás se suman en Agenda.
+        desmarcarOtrosAuditores(id);
         auditoresSeleccionados.set(id, auditor);
         if (picker) picker.style.display = 'block';
         auditorSeleccionado = auditor;
@@ -2578,6 +2572,23 @@
       }
       if (card) card.classList.toggle("selected", checked);
       updateAssignButton();
+    }
+
+    function desmarcarOtrosAuditores(idConservar) {
+      Array.from(auditoresSeleccionados.keys()).forEach((otro) => {
+        if (otro === String(idConservar)) return;
+        auditoresSeleccionados.delete(otro);
+        auditoresForzados.delete(otro);
+        justificacionesForzado.delete(otro);
+        const tarjeta = document.querySelector(`.auditor-card[data-auditor-id="${CSS.escape(otro)}"]`);
+        if (tarjeta) {
+          tarjeta.classList.remove("selected");
+          const marca = tarjeta.querySelector('.auditor-check-input');
+          const aviso = tarjeta.querySelector('.auditor-role-picker');
+          if (marca) marca.checked = false;
+          if (aviso) aviso.style.display = 'none';
+        }
+      });
     }
 
     async function abrirModalAdvertencia(auditor) {
@@ -2658,9 +2669,9 @@
         return;
       }
       justificacionesForzado.set(id, texto);
+      desmarcarOtrosAuditores(id);
       auditoresSeleccionados.set(id, auditor);
       auditoresForzados.add(id);
-      auditorRolesAsignados.set(id, auditorRolesAsignados.get(id) || 'Observador');
       const card = document.querySelector(`.auditor-card[data-auditor-id="${CSS.escape(id)}"]`);
       const checkbox = card ? card.querySelector('.auditor-check-input') : null;
       const picker = card ? card.querySelector('.auditor-role-picker') : null;
@@ -2672,30 +2683,16 @@
       updateAssignButton();
     }
 
-    function setAuditorRoleById(id, rol) {
-      id = String(id);
-      const rolesPermitidos = ["Auditor líder", "Experto técnicos", "Auditor integral", "Observador"];
-      if (auditoresSeleccionados.has(id) && rolesPermitidos.includes(rol)) {
-        auditorRolesAsignados.set(id, rol);
-      } else {
-        auditorRolesAsignados.delete(id);
-      }
-      updateAssignButton();
-    }
-
     function updateAssignButton() {
       const solicitud = getSelectedSolicitud();
       const seleccionados = Array.from(auditoresSeleccionados.values());
-      const rolesValidos = seleccionados.length > 0 && seleccionados.every(auditor => {
+      const elegibles = seleccionados.length === 1 && seleccionados.every(auditor => {
         const id = String(auditor.id_usuario);
-        return (auditor.elegible === true || auditoresForzados.has(id)) && auditorRolesAsignados.has(id) && !!auditorRolesAsignados.get(id);
+        return auditor.elegible === true || auditoresForzados.has(id);
       });
-      const cantidadLideres = seleccionados.filter(auditor => auditorRolesAsignados.get(String(auditor.id_usuario)) === "Auditor líder").length;
-      const valido = Boolean(isAdmin && solicitud && seleccionados.length > 0 && rolesValidos && cantidadLideres <= 1);
+      const valido = Boolean(isAdmin && solicitud && elegibles);
       assignBtn.disabled = !valido;
-      assignBtn.title = cantidadLideres > 1
-        ? "Solo puede haber un auditor líder por solicitud."
-        : (!rolesValidos ? "Selecciona auditores elegibles y asigna un rol individual a cada uno." : "");
+      assignBtn.title = !elegibles ? "Selecciona un auditor elegible (los demás se suman en Agenda al programar)." : "";
       if (auditorsSection.classList.contains("show")) {
         auditorsCounter.textContent = `${totalAuditoresFiltrados} resultado(s) · ${auditoresSeleccionados.size} seleccionado(s)`;
       }
@@ -2794,31 +2791,21 @@
         showMessage("Seleccione al menos un auditor elegible.", "error");
         return;
       }
-      const sinRol = seleccionados.filter(auditor => !auditorRolesAsignados.get(String(auditor.id_usuario)));
-      if (sinRol.length) {
-        showMessage(`Asigne un rol individual a: ${sinRol.map(item => item.nombre).join(", ")}.`, "error");
-        return;
-      }
-      const lideres = seleccionados.filter(auditor => auditorRolesAsignados.get(String(auditor.id_usuario)) === "Auditor líder");
-      if (lideres.length > 1) {
-        showMessage("Solo puede asignarse un auditor líder por solicitud. Ajuste los roles individuales.", "error");
+      if (seleccionados.length > 1) {
+        showMessage("Desde Asignación se registra un auditor por solicitud; los demás se suman en Agenda al programar la visita.", "error");
         return;
       }
 
       assignBtn.disabled = true;
       assignBtn.textContent = "Asignando...";
       const resultados = [];
-      // El auditor líder se registra al final: con él la solicitud queda con
-      // el equipo completo y el servidor ya no admite más asignaciones.
-      const esLider = (auditor) => auditorRolesAsignados.get(String(auditor.id_usuario)) === "Auditor líder" ? 1 : 0;
-      const enOrden = seleccionados.slice().sort((a, b) => esLider(a) - esLider(b));
+      const enOrden = seleccionados;
 
       try {
         for (const selected of enOrden) {
           const payload = {
             id_solicitud: solicitud.id_solicitud,
-            id_auditor: selected.id_usuario,
-            rol_auditor: auditorRolesAsignados.get(String(selected.id_usuario))
+            id_auditor: selected.id_usuario
           };
           // Antes no se enviaba ninguna marca: el servidor volvía a validar y
           // rechazaba siempre al auditor "asignado de todas formas".
@@ -2871,7 +2858,7 @@
         console.error(error);
         showMessage(error?.message || String(error), "error");
       } finally {
-        assignBtn.textContent = "Asignar auditores";
+        assignBtn.textContent = "Asignar auditor";
         updateAssignButton();
       }
     });
@@ -3058,7 +3045,7 @@
           <td>${escapeHTML(asignacion.auditor_correo || "-")}</td>
           <td>${escapeHTML(asignacion.fecha_inicio_planificada ? formatDateTime(asignacion.fecha_inicio_planificada) : "Pendiente en Agenda")}</td>
           <td>${escapeHTML(asignacion.fecha_fin_planificada ? formatDateTime(asignacion.fecha_fin_planificada) : "Pendiente en Agenda")}</td>
-          <td>${escapeHTML(asignacion.especialidad || "-")}</td>
+          <td>Auditor</td>
           <td><span class="status ${statusClass}">${escapeHTML(estadoVisible)}</span>${enConflicto
             ? '<br><span class="status conflicto" title="El auditor tiene un conflicto de interés activo con la empresa de esta solicitud">Conflicto de interés: debe reasignarse</span>'
             : ''}</td>
@@ -3171,7 +3158,7 @@
       document.getElementById("detailSolicitud").textContent = assignment.numero_radicado || assignment.id_solicitud || "-";
       document.getElementById("detailAuditor").textContent = assignment.auditor_nombre || "-";
       document.getElementById("detailCorreo").textContent = assignment.auditor_correo || "-";
-      document.getElementById("detailRol").textContent = assignment.especialidad || "-";
+      document.getElementById("detailRol").textContent = "Auditor";
       document.getElementById("detailInicio").textContent = assignment.fecha_inicio_planificada
         ? formatDateTime(assignment.fecha_inicio_planificada)
         : "Pendiente de programación en Agenda";
@@ -3243,11 +3230,11 @@
         const normaCodigo = solicitud.norma_codigo || '-';
         const normaNombre = solicitud.norma_nombre || '-';
         const fecha = solicitud.fecha ? new Date(solicitud.fecha).toLocaleDateString('es-CO') : '-';
-        // Solo llegan solicitudes sin auditor líder activo; si ya tienen otros
-        // integrantes se indica cuántos y qué falta para completar el equipo.
+        // Solo llegan solicitudes sin auditores activos (con uno ya quedan
+        // completas). Si el servidor informara alguno, se indica cuántos.
         const asignados = Number(solicitud.auditores_asignados || 0);
         const equipo = asignados
-          ? `<br><span class="help-text">Tiene ${asignados} auditor(es) · falta el auditor líder</span>`
+          ? `<br><span class="help-text">Ya tiene ${asignados} auditor(es)</span>`
           : '';
         return `<tr>
           <td>${escapeHTML(radicado)}${equipo}</td>
@@ -3372,7 +3359,7 @@
           <tr>
             <td>${escapeHTML(item.numero_radicado || item.id_solicitud)}</td>
             <td>${escapeHTML(item.empresa_nombre || "-")}</td>
-            <td>${escapeHTML(item.auditor_nombre || "-")}<br><small>${escapeHTML(item.rol_auditor || "")}</small></td>
+            <td>${escapeHTML(item.auditor_nombre || "-")}</td>
             <td style="max-width:320px;white-space:normal">${escapeHTML(item.motivo || "")}</td>
             <td>${escapeHTML(item.fecha_solicitud ? formatDateTime(item.fecha_solicitud) : "-")}</td>
             <td><span class="status ${item.estado === "Pendiente" ? "pending" : (item.estado === "Aprobada" ? "assigned" : "inactive")}">${escapeHTML(item.estado)}</span>
@@ -3490,7 +3477,7 @@
     function cerrarModalAuditor() { document.getElementById('auditorModal').classList.remove('show'); }
   </script>
  <script src="/static/session.js?v=20261117"></script>
-<script src="/static/nav.js?v=20261117a"></script>
+<script src="/static/nav.js?v=20261117cat"></script>
 </body>
 
 </html>

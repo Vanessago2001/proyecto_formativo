@@ -551,7 +551,9 @@
           '<td>' + escapeHtml(item.numero_radicado || "—") + '</td>' +
           '<td>' + escapeHtml(item.empresa || "—") + (item.empresa_ciudad ? '<br><span class="comite-muted">' + escapeHtml(item.empresa_ciudad) + '</span>' : '') + '</td>' +
           '<td>' + escapeHtml(item.norma_codigo || "—") + '</td>' +
-          '<td><span class="comite-status ' + statusClass(item.estado_certificado) + '">' + escapeHtml(item.estado_certificado || "Sin estado") + '</span></td>' +
+          '<td><span class="comite-status ' + statusClass(item.estado_certificado) + '">' + escapeHtml(item.estado_certificado || "Sin estado") + '</span>' +
+          // Pendiente de firma sin líder del comité: el Coordinador lo asigna en el Comité.
+          (item.sin_lider ? '<br><a class="comite-status rejected" href="/comite" title="Elegir el líder del comité de este expediente">Sin líder</a>' : '') + '</td>' +
           '<td>' + escapeHtml(formatDate(item.fecha_vencimiento)) + '</td>' +
           '<td><button class="comite-table-action btn btn-secundario btn-sm" type="button" data-open-cert="' + escapeHtml(item.id_certificado) + '">Ver</button></td>' +
           '</tr>').join("");
@@ -662,10 +664,14 @@
         try {
           state.liderazgo = await api("/certificados/lider-comite/actual");
           const lider = state.liderazgo && state.liderazgo.lider;
-          $("#leaderStatus").textContent = lider
-            ? "Líder firmante: " + lider.nombre
-            : "No hay líder firmante asignado";
-          $("#leaderPanel").hidden = !canAssignLeader;
+          const porExpediente = Boolean(state.liderazgo && state.liderazgo.lider_por_expediente);
+          $("#leaderStatus").textContent = porExpediente
+            ? "El líder firmante se elige por expediente en el Comité"
+            : lider
+              ? "Líder firmante: " + lider.nombre
+              : "No hay líder firmante asignado";
+          // Con el SQL de líder por expediente el líder global ya no se usa.
+          $("#leaderPanel").hidden = !canAssignLeader || porExpediente;
           $("#leaderCurrent").textContent = lider ? lider.nombre + " · " + lider.correo : "Sin líder asignado";
           if (canAssignLeader) {
             const opciones = await api("/certificados/lider-comite/opciones");
@@ -1097,7 +1103,7 @@
       }
     })();
   </script>
-<script src="/static/nav.js?v=20261117a"></script>
+<script src="/static/nav.js?v=20261117cat"></script>
 <script src="/static/session.js?v=20261117"></script>
 <script src="/static/pqrs-enlace.js?v=20261106"></script>
 </body>

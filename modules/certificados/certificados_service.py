@@ -12,11 +12,17 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import almacen_archivos
 from core.config import settings
 from core.security import _normalize_role_name
 from modules.certificados.certificados_pdf import generar_pdf_certificado
 from modules.certificados.firma_pades import FirmaPadesError, firmar_pdf_pades
 from modules.certificados.firma_service import FirmaService
+
+
+def clave_pdf_firmado(id_certificado) -> str:
+    """Clave del PDF firmado en el almacén compartido (independiente de CERTIFICADOS_STORAGE_DIR)."""
+    return f"storage/certificados_firmados/{id_certificado}.pdf"
 
 
 ESTADO_PENDIENTE_FIRMA = "PENDIENTE_FIRMA"
@@ -147,6 +153,16 @@ class CertificadosService:
             empresas = await self._empresas_del_usuario(usuario)
             if str(certificado["id_empresa"]) not in empresas:
                 raise HTTPException(status_code=404, detail="Certificado no encontrado.")
+        if usuario and es_usuario_comite(usuario) and certificado.get("id_solicitud"):
+            # Imparcialidad: el miembro impedido no lo ve (404), salvo que sea
+            # el líder del comité del expediente (debe firmarlo).
+            from modules.comite.imparcialidad import motivo_impedimento
+            from modules.comite.lider_expediente import es_lider_del_expediente
+
+            if await motivo_impedimento(self.db, certificado["id_solicitud"], usuario) and not (
+                await es_lider_del_expediente(self.db, certificado["id_solicitud"], usuario)
+            ):
+                raise HTTPException(status_code=404, detail="Certificado no encontrado.")
         return certificado
 
     async def listar(self, usuario: dict, limite: int = 100, desplazamiento: int = 0) -> list[dict]:
@@ -169,15 +185,33 @@ class CertificadosService:
 
         filtro_lider = ""
         if es_usuario_comite(usuario):
-            lider = await self.validar_lider_actual(usuario)
+            # El Comité consulta los certificados expedidos (vigentes,
+            # suspendidos y cancelados, CER-011); cada líder ve además los
+            # pendientes de firma de los expedientes donde ES el líder
+            # (asignación vigente del certificado a su nombre). 17/11/2026.
+            # Imparcialidad: no le aparecen los de expedientes en los que está
+            # impedido, salvo los que debe firmar como líder.
+            from modules.comite.imparcialidad import filtro_visible
+
             filtro_lider = """
-                AND TRIM(UPPER(c.estado_certificado)) = :estado_pendiente
-                AND c.id_asignacion_lider = :id_asignacion_lider
+                AND (
+                    TRIM(UPPER(c.estado_certificado)) IN (:estado_vigente, :estado_suspendido, 'CANCELADO')
+                    OR (TRIM(UPPER(c.estado_certificado)) = :estado_pendiente
+                        AND EXISTS (
+                            SELECT 1 FROM asignacion_lider_comite al
+                            WHERE al.id_asignacion = c.id_asignacion_lider
+                              AND al.fecha_fin IS NULL
+                              AND al.id_usuario::TEXT = :id_usuario_lider
+                        ))
+                )
             """
             params.update({
+                "estado_vigente": ESTADO_VIGENTE,
+                "estado_suspendido": ESTADO_SUSPENDIDO,
                 "estado_pendiente": ESTADO_PENDIENTE_FIRMA,
-                "id_asignacion_lider": str(lider["id_asignacion"]),
+                "id_usuario_lider": str(usuario.get("id_usuario") or ""),
             })
+            filtro_lider += filtro_visible(usuario, "c.id_solicitud", params, permitir_lider=True)
 
         filtro_empresa = ""
         if es_usuario_empresa(usuario):
@@ -194,6 +228,12 @@ class CertificadosService:
                 c.id_certificado, c.codigo_verificacion, c.fecha_emision,
                 c.fecha_vencimiento, TRIM(c.estado_certificado) AS estado_certificado, c.publico_certificado,
                 c.id_solicitud, s.numero_radicado,
+                -- Pendiente de firma sin líder del comité vigente: el
+                -- Coordinador debe elegir el líder de ese expediente.
+                (TRIM(UPPER(c.estado_certificado)) = 'PENDIENTE_FIRMA' AND NOT EXISTS (
+                    SELECT 1 FROM asignacion_lider_comite sl
+                    WHERE sl.id_asignacion = c.id_asignacion_lider AND sl.fecha_fin IS NULL
+                )) AS sin_lider,
                 e.nombre AS empresa, e.nit, n.codigo AS norma_codigo,
                 -- Ubicación (filtros de ciudad, departamento y país): la ciudad
                 -- de la empresa y las de las sedes incluidas en la solicitud.
@@ -265,7 +305,10 @@ class CertificadosService:
         if str(certificado["estado_certificado"]).strip().upper() != ESTADO_PENDIENTE_FIRMA:
             raise HTTPException(status_code=409, detail="El certificado ya no está pendiente de firma.")
         if not certificado["id_usuario"]:
-            raise HTTPException(status_code=409, detail="El certificado no tiene una asignación de líder activa.")
+            raise HTTPException(
+                status_code=409,
+                detail="El certificado no tiene líder del comité vigente: el Coordinador debe asignarlo.",
+            )
         if not certificado["id_rol_comite"]:
             raise HTTPException(status_code=409, detail="El líder asignado ya no tiene un rol activo del Comité.")
         if str(certificado["id_usuario"]) != str(usuario.get("id_usuario")):
@@ -280,9 +323,11 @@ class CertificadosService:
                    u.nombre, u.correo
             FROM asignacion_lider_comite a
             JOIN usuario u ON u.id_usuario = a.id_usuario
-                        JOIN rol r ON r.id_rol = u.rol_id
-                        WHERE a.fecha_fin IS NULL
-                            AND u.estado = 'Activo'
+            JOIN rol r ON r.id_rol = u.rol_id
+            WHERE a.fecha_fin IS NULL
+              AND u.estado = 'Activo'
+              -- Solo el líder global (las filas con id_solicitud son por expediente).
+              AND (to_jsonb(a)->>'id_solicitud') IS NULL
               AND LOWER(TRANSLATE(r.nombre, 'ÁÉÍÓÚáéíóú', 'AEIOUaeiou'))
                   IN ('comite', 'comite de certificacion')
             ORDER BY a.fecha_inicio DESC
@@ -292,19 +337,39 @@ class CertificadosService:
         return dict(fila) if fila else None
 
     async def mi_liderazgo(self, usuario: dict) -> dict:
+        """
+        ¿Es líder? Con el SQL de líder por expediente: si es el líder vigente
+        de algún expediente. Sin el SQL: si es el líder global (como antes).
+        """
+        from modules.comite.lider_expediente import SQL_MODO_POR_EXPEDIENTE
+
         lider = await self.lider_comite_actual()
-        es_persona_asignada = bool(
-            lider and str(lider["id_usuario"]) == str(usuario.get("id_usuario"))
-        )
+        resultado = await self.db.execute(text(f"""
+            SELECT {SQL_MODO_POR_EXPEDIENTE} AS por_expediente,
+                   (SELECT COUNT(*) FROM asignacion_lider_comite a
+                    WHERE a.fecha_fin IS NULL
+                      AND (to_jsonb(a)->>'id_solicitud') IS NOT NULL
+                      AND a.id_usuario::TEXT = :id_usuario) AS expedientes;
+        """), {"id_usuario": str(usuario.get("id_usuario") or "")})
+        fila = resultado.mappings().first() or {}
+        por_expediente = bool(fila.get("por_expediente"))
+        expedientes = int(fila.get("expedientes") or 0)
+        es_lider_global = bool(lider and str(lider["id_usuario"]) == str(usuario.get("id_usuario")))
+        es_persona_asignada = expedientes > 0 if por_expediente else es_lider_global
         rol = _normalize_role_name(usuario.get("role_name"))
-        if lider and rol not in {"admin"} and not es_persona_asignada:
+        if lider and rol not in {"admin"} and not es_lider_global:
             lider = {"nombre": lider["nombre"]}
         return {
             "es_lider": es_persona_asignada,
-            "lider": lider,
+            "lider": None if por_expediente else lider,
+            "lider_por_expediente": por_expediente,
+            "expedientes_liderados": expedientes,
         }
 
     async def asignar_lider_comite(self, id_usuario: UUID, actor: dict) -> dict:
+        """Líder GLOBAL (compatibilidad mientras no se aplique el SQL de líder por expediente)."""
+        from modules.comite.lider_expediente import SQL_MODO_POR_EXPEDIENTE
+
         await self.db.execute(text("SELECT pg_advisory_xact_lock(76139521, 11);"))
         candidato = await self.db.execute(text("""
             SELECT u.id_usuario, u.nombre, u.correo
@@ -324,9 +389,10 @@ class CertificadosService:
             )
 
         actual = await self.db.execute(text("""
-            SELECT id_asignacion, id_usuario
-            FROM asignacion_lider_comite
-            WHERE fecha_fin IS NULL
+            SELECT a.id_asignacion, a.id_usuario
+            FROM asignacion_lider_comite a
+            WHERE a.fecha_fin IS NULL
+              AND (to_jsonb(a)->>'id_solicitud') IS NULL
             FOR UPDATE;
         """))
         asignacion_actual = actual.mappings().first()
@@ -361,9 +427,12 @@ class CertificadosService:
             UPDATE certificado
             SET id_asignacion_lider = :id_asignacion
             WHERE TRIM(UPPER(estado_certificado)) = :estado
-              AND (id_asignacion_lider IS NULL OR id_asignacion_lider = :anterior)
+              -- Con líder por expediente, los "sin líder" esperan a que el
+              -- Coordinador elija el de su expediente: el global no los toma.
+              AND (id_asignacion_lider = :anterior
+                   OR (id_asignacion_lider IS NULL AND NOT {SQL_MODO_POR_EXPEDIENTE}))
             RETURNING id_certificado, codigo_verificacion;
-        """), {
+        """.replace("{SQL_MODO_POR_EXPEDIENTE}", SQL_MODO_POR_EXPEDIENTE)), {
             "id_asignacion": str(nueva_asignacion),
             "estado": ESTADO_PENDIENTE_FIRMA,
             "anterior": str(asignacion_actual["id_asignacion"]) if asignacion_actual else None,
@@ -414,16 +483,14 @@ class CertificadosService:
                     detail="La solicitud ya tiene un certificado. Use la operación de renovación.",
                 )
 
-        asignacion_lider = await self.db.execute(text("""
-            SELECT id_asignacion
-            FROM asignacion_lider_comite
-            WHERE fecha_fin IS NULL
-            ORDER BY fecha_inicio DESC
-            LIMIT 1
-            FOR SHARE;
-        """))
-        asignacion = asignacion_lider.mappings().first()
-        if not asignacion:
+        # Firma el líder del comité de ESTE expediente. Con el SQL de líder
+        # por expediente, si aún no lo tiene el certificado queda "sin líder"
+        # (PENDIENTE_FIRMA con id_asignacion_lider NULL) y el Coordinador lo
+        # asigna desde el Comité. Sin el SQL se usa el líder global.
+        from modules.comite.lider_expediente import lider_de_expediente, modo_por_expediente
+
+        asignacion = await lider_de_expediente(self.db, data.id_solicitud)
+        if not asignacion and not await modo_por_expediente(self.db):
             raise HTTPException(
                 status_code=409,
                 detail="Asigne primero un líder activo del Comité para la firma de certificados.",
@@ -460,11 +527,13 @@ class CertificadosService:
             "estado": ESTADO_PENDIENTE_FIRMA,
             "id_solicitud": str(data.id_solicitud),
             "codigo": codigo,
-            "id_asignacion_lider": str(asignacion["id_asignacion"]),
+            "id_asignacion_lider": str(asignacion["id_asignacion"]) if asignacion else None,
         })
+        detalle = detalle_inicial or "Certificado generado; pendiente de firma digital."
+        if not asignacion:
+            detalle += " Sin líder del comité: el Coordinador debe asignarlo."
         await self._registrar_historial(
-            id_certificado, None, ESTADO_PENDIENTE_FIRMA, usuario,
-            detalle_inicial or "Certificado generado; pendiente de firma digital.",
+            id_certificado, None, ESTADO_PENDIENTE_FIRMA, usuario, detalle,
         )
         await self.db.commit()
         return await self._obtener(resultado.scalar_one())
@@ -507,7 +576,12 @@ class CertificadosService:
         except HTTPException as error:
             await self.db.rollback()
             return {"creado": False, "motivo": str(error.detail)}
-        return {"creado": True, "codigo_verificacion": certificado.get("codigo_verificacion")}
+        return {
+            "creado": True,
+            "codigo_verificacion": certificado.get("codigo_verificacion"),
+            # Con líder por expediente puede quedar sin líder hasta que el Coordinador lo elija.
+            "sin_lider": not certificado.get("id_asignacion_lider"),
+        }
 
     async def renovar(self, id_certificado: UUID, fecha_vencimiento: date, usuario: dict) -> dict:
         from modules.certificados.certificados_schema import CertificadoCrear
@@ -597,6 +671,11 @@ class CertificadosService:
                 archivo.flush()
                 os.fsync(archivo.fileno())
             os.replace(archivo_temporal, archivo_final)
+            # Copia en la base compartida (misma transacción que el UPDATE).
+            await almacen_archivos.guardar(
+                clave_pdf_firmado(id_certificado), pdf_firmado, db=self.db, disco=archivo_final,
+                content_type="application/pdf", nombre=f"{id_certificado}.pdf", usuario=usuario,
+            )
             await self.db.execute(text("""
                 UPDATE certificado
                 SET estado_certificado = :estado,
@@ -638,12 +717,17 @@ class CertificadosService:
 
         return await self._obtener(id_certificado)
 
-    def _leer_pdf_firmado(self, id_certificado: UUID | str, huella_esperada: str | None) -> bytes:
+    async def _leer_pdf_firmado(self, id_certificado: UUID | str, huella_esperada: str | None) -> bytes:
         archivo = Path(settings.CERTIFICADOS_STORAGE_DIR).expanduser().resolve() / f"{id_certificado}.pdf"
         try:
-            contenido = archivo.read_bytes()
+            # Disco local; si se firmó en otro computador, desde la base compartida.
+            contenido = await almacen_archivos.leer(
+                clave_pdf_firmado(id_certificado), db=self.db, disco=archivo
+            )
         except OSError as exc:
             raise HTTPException(status_code=404, detail="No se encontró el PDF firmado.") from exc
+        if contenido is None:
+            raise HTTPException(status_code=404, detail="No se encontró el PDF firmado.")
         if not huella_esperada or not hmac.compare_digest(
             hashlib.sha256(contenido).hexdigest(), huella_esperada
         ):
@@ -658,7 +742,7 @@ class CertificadosService:
             or not certificado.get("huella_firmante")
         ):
             raise HTTPException(status_code=409, detail="El certificado aún no tiene una firma digital válida.")
-        return self._leer_pdf_firmado(id_certificado, certificado.get("huella_pdf"))
+        return await self._leer_pdf_firmado(id_certificado, certificado.get("huella_pdf"))
 
     async def pdf_publico_firmado(self, codigo: str) -> bytes:
         certificado = await self._certificado_publico(codigo)
@@ -667,7 +751,7 @@ class CertificadosService:
                 status_code=404,
                 detail="Este certificado no tiene un PDF con firma digital disponible para descarga.",
             )
-        return self._leer_pdf_firmado(certificado["id_certificado"], certificado["huella_pdf"])
+        return await self._leer_pdf_firmado(certificado["id_certificado"], certificado["huella_pdf"])
 
     async def _registrar_historial(
         self,
@@ -809,7 +893,7 @@ class CertificadosService:
                 detail="No se puede publicar un certificado sin firma digital PAdES registrada.",
             )
         if publicar:
-            self._leer_pdf_firmado(id_certificado, certificado.get("huella_pdf"))
+            await self._leer_pdf_firmado(id_certificado, certificado.get("huella_pdf"))
         await self.db.execute(text("""
             UPDATE certificado
             SET publico_certificado = :publicar

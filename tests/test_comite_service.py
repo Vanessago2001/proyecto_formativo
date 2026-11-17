@@ -126,7 +126,8 @@ async def test_cerrar_y_reabrir_actualizan_el_estado_y_el_historial(
         resultado_falso({"estado": estado_esperado}),
         resultado_falso(),
         *(
-            [resultado_falso()]
+            # Anula el acta y libera el líder del expediente (ronda nueva).
+            [resultado_falso(), resultado_falso()]
             if accion == "reabrir-dictamen"
             else []
         ),
@@ -145,7 +146,9 @@ async def test_cerrar_y_reabrir_actualizan_el_estado_y_el_historial(
     )
 
     assert respuesta["estado"] == estado_esperado
-    assert db.execute.await_count == 5
+    assert db.execute.await_count == (6 if accion == "reabrir-dictamen" else 5)
+    if accion == "reabrir-dictamen":
+        assert "UPDATE asignacion_lider_comite" in str(db.execute.await_args_list[4].args[0])
     assert db.commit.await_count == 1
 
 

@@ -180,6 +180,129 @@
 
 
   /* ----------------------------------------------------------
+     Acceso del auditor (17/11/2026).
+
+     "Si el auditor está en revisión o no está aprobado como auditor,
+     no se le debe permitir ver el resto de acciones o módulos a los
+     que los auditores tienen acceso, solo a su proceso mientras se
+     le aprueba."
+
+     GET /auditores/mi-acceso dice si el registro está aprobado
+     (misma regla que la asignación: postulación Aprobado y
+     estado_auditor 'Activo'). La respuesta se guarda un momento en
+     sessionStorage para no consultarla en cada pantalla; mientras no
+     se sabe, el menú muestra solo el proceso de registro. El backend
+     responde 403 en los módulos restringidos (require_auditor_aprobado):
+     esto solo ordena la interfaz.
+     ---------------------------------------------------------- */
+  var CLAVE_ACCESO_AUDITOR = "certisena.accesoAuditor";
+  var VIGENCIA_ACCESO_MS = 20000;          // refresco breve: al aprobarlo se nota enseguida
+  var AVISO_REGISTRO_EN_REVISION =
+    "Tu registro está en revisión: cuando seas aprobado verás el resto de módulos";
+  // Pantallas que un auditor sin registro aprobado no puede abrir.
+  var RUTAS_SOLO_AUDITOR_APROBADO = [
+    "/conflictos-auditor",
+    "/empresas-restringidas",
+    "/consultar-auditorias-programadas",
+    "/programaciones-futuras-auditor",
+    "/consultar-agenda-auditor",
+    "/disponibilidad-auditor",
+    // El catálogo de competencias sí lo usa el auditor no aprobado: puede
+    // registrar sus certificaciones vigentes durante el registro (17/11/2026).
+    "/reportes",
+    "/pqrs-gestion"
+  ];
+  var accesoAuditor = { conocido: false, aprobado: false };
+  var oyentesAcceso = [];
+
+  function usuarioDeLaSesion() {
+    try {
+      var token = localStorage.getItem("access_token");
+      if (!token) return "";
+      var datos = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      return String(datos.user_id || datos.sub || "");
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function leerAccesoGuardado() {
+    try {
+      var guardado = JSON.parse(sessionStorage.getItem(CLAVE_ACCESO_AUDITOR) || "null");
+      if (guardado && guardado.usuario && guardado.usuario === usuarioDeLaSesion()) return guardado;
+    } catch (_) {}
+    return null;
+  }
+
+  function guardarAcceso(datos) {
+    try {
+      sessionStorage.setItem(CLAVE_ACCESO_AUDITOR, JSON.stringify({
+        usuario: usuarioDeLaSesion(),
+        aprobado: datos.aprobado === true,
+        estado_postulacion: datos.estado_postulacion || null,
+        estado_auditor: datos.estado_auditor || null,
+        t: Date.now()
+      }));
+    } catch (_) {}
+  }
+
+  function fijarAcceso(aprobado) {
+    accesoAuditor.conocido = true;
+    accesoAuditor.aprobado = aprobado === true;
+    oyentesAcceso.forEach(function (oyente) {
+      try { oyente(accesoAuditor.aprobado); } catch (_) {}
+    });
+  }
+
+  function esRutaSoloAprobado() {
+    var ruta = rutaActual();
+    return RUTAS_SOLO_AUDITOR_APROBADO.some(function (r) { return ruta === r || ruta.indexOf(r + "/") === 0; });
+  }
+
+  // Si un auditor no aprobado abre una pantalla restringida (escribiendo
+  // la dirección), se le lleva a "Consultar estado del registro".
+  function llevarAlEstadoDelRegistro() {
+    window.location.replace("/consultar-estado");
+  }
+
+  function mostrarPagina() {
+    document.documentElement.style.removeProperty("visibility");
+  }
+
+  function iniciarAccesoAuditor() {
+    var restringida = esRutaSoloAprobado();
+    var guardado = leerAccesoGuardado();
+    if (guardado) {
+      accesoAuditor.conocido = true;
+      accesoAuditor.aprobado = guardado.aprobado === true;
+    }
+    if (restringida && guardado && !guardado.aprobado) {
+      llevarAlEstadoDelRegistro();
+      return;
+    }
+    if (restringida && !guardado) {
+      // No se sabe aún: la pantalla no se muestra hasta saberlo.
+      document.documentElement.style.visibility = "hidden";
+    }
+    if (guardado && Date.now() - (guardado.t || 0) < VIGENCIA_ACCESO_MS) return;
+
+    var token = null;
+    try { token = localStorage.getItem("access_token"); } catch (_) {}
+    if (!token || !window.fetch) { mostrarPagina(); return; }
+    fetch("/auditores/mi-acceso", { headers: { Authorization: "Bearer " + token }, cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (datos) {
+        if (!datos) { mostrarPagina(); return; }    // sin respuesta: el menú sigue reducido
+        guardarAcceso(datos);
+        if (restringida && datos.aprobado !== true) { llevarAlEstadoDelRegistro(); return; }
+        mostrarPagina();
+        fijarAcceso(datos.aprobado === true);
+      })
+      .catch(mostrarPagina);
+  }
+
+
+  /* ----------------------------------------------------------
      4. Menú lateral en acordeón, el mismo en todas las pantallas.
 
      Cada rol tiene un único menú con grupos. Pulsar un grupo solo
@@ -208,6 +331,9 @@
                (la pantalla no lo ofrece a ese rol), la opción no se ve.
        solo    roles ("admin", "auxiliar", "comite", "auditor") que
                ven la opción; sin él, todos los del menú.
+       soloAprobado  (opción, grupo o dinámico del auditor) solo se ve
+               cuando su registro como auditor está aprobado (ver
+               "Acceso del auditor" más abajo).
      Grupo:    { grupo, opciones: [...] }
      Dinámico: { texto, href, dinamico: selector } — fuera de esa
                pantalla es un enlace; en ella, un grupo con los
@@ -358,6 +484,7 @@
       },
       {
         grupo: "Conflictos y restricciones",
+        soloAprobado: true,
         opciones: [
           { texto: "Consultar conflictos registrados", href: "/conflictos-auditor" },
           { texto: "Consultar empresas restringidas", href: "/empresas-restringidas" }
@@ -365,6 +492,7 @@
       },
       {
         grupo: "Auditorías",
+        soloAprobado: true,
         opciones: [
           // "Programaciones futuras" se eliminó: la ruta redirige a esta pantalla.
           { texto: "Consultar auditorías programadas", href: "/consultar-auditorias-programadas" }
@@ -372,6 +500,7 @@
       },
       {
         grupo: "Disponibilidad",
+        soloAprobado: true,
         // El horario semanal lo configura el propio auditor en la pantalla de
         // Disponibilidad (no en el perfil), junto al calendario de sus
         // auditorías (static/mi_disponibilidad.js). 17/11/2026.
@@ -395,7 +524,7 @@
       },
       { texto: "Notificaciones", href: "/notificaciones-auditor", insignia: "notifBadge" },
       { texto: "Mi perfil", href: "/perfil-auditor" },
-      REPORTES,
+      { texto: REPORTES.texto, href: REPORTES.href, dinamico: REPORTES.dinamico, soloAprobado: true },
       SALIR
     ]
   };
@@ -456,7 +585,10 @@
     "nav.menu-acordeon .ma-opciones a.ma-enlace{padding:9px 12px 9px 26px;font-size:12.5px}",
     "nav.menu-acordeon .ma-vacio{display:block;padding:9px 12px 9px 26px;font-size:12.5px;color:#64748b}",
     "nav.menu-acordeon .ma-aviso::after{content:\"\";flex:none;width:8px;height:8px;border-radius:50%;background:#dc2626;margin-left:auto}",
-    "nav.menu-acordeon a.ma-enlace[hidden],nav.menu-acordeon .ma-grupo[hidden]{display:none}"
+    "nav.menu-acordeon a.ma-enlace[hidden],nav.menu-acordeon .ma-grupo[hidden]{display:none}",
+    "nav.menu-acordeon .ma-nota-registro{margin:0 8px 8px;padding:9px 10px;border-radius:6px;background:#fff7ed;" +
+      "border:1px solid #fed7aa;color:#9a3412;font-size:12px;line-height:1.4}",
+    "nav.menu-acordeon .ma-nota-registro[hidden]{display:none}"
   ].join("\n");
 
   function ponerEstilos() {
@@ -557,6 +689,21 @@
     encabezado.appendChild(kicker);
     encabezado.appendChild(tituloModulo);
     raiz.appendChild(encabezado);
+
+    // Auditor sin registro aprobado: solo su proceso, con este aviso.
+    function accesoCompleto() {
+      return tipo !== "auditor" || accesoAuditor.aprobado === true;
+    }
+    var notaRegistro = null;
+    if (tipo === "auditor") {
+      notaRegistro = document.createElement("div");
+      notaRegistro.className = "ma-nota-registro";
+      notaRegistro.setAttribute("role", "status");
+      notaRegistro.textContent = AVISO_REGISTRO_EN_REVISION;
+      notaRegistro.hidden = accesoCompleto() || !accesoAuditor.conocido;
+      raiz.appendChild(notaRegistro);
+    }
+    var cargasPendientes = [];          // catálogo de reportes, al aprobarse
 
     var opciones = [];        // { a, opcion, grupo }
     var grupos = [];          // { caja, boton, lista, item, dinamico, firma }
@@ -741,7 +888,11 @@
           // antes el submenú solo aparecía al entrar a Reportes.
           var externo = crearGrupo(item.texto, item);
           raiz.appendChild(externo.caja);
-          cargarCatalogoReportes(externo, item);
+          if (item.soloAprobado && !accesoCompleto()) {
+            cargasPendientes.push(function () { cargarCatalogoReportes(externo, item); });
+          } else {
+            cargarCatalogoReportes(externo, item);
+          }
         }
         return;
       }
@@ -792,8 +943,9 @@
           if (destino.hash) puntos = destino.hash === hash ? 2 : 0;
           else puntos = 1;
         }
+        if (!accesoCompleto() && (o.opcion.soloAprobado || (o.grupo && o.grupo.item.soloAprobado))) visible = false;
         if (o.a.hidden === visible) o.a.hidden = !visible;
-        if (aqui && o.grupo && !grupoDeLaPantalla) grupoDeLaPantalla = o.grupo;
+        if (visible && aqui && o.grupo && !grupoDeLaPantalla) grupoDeLaPantalla = o.grupo;
         if (puntos > mejorPuntos) { mejor = o; mejorPuntos = puntos; }
       });
 
@@ -811,9 +963,13 @@
       grupos.forEach(function (grupo) {
         var actual = grupo === grupoActual;
         if (grupo.caja.classList.contains("ma-grupo-actual") !== actual) grupo.caja.classList.toggle("ma-grupo-actual", actual);
-        if (!grupo.dinamico) {
+        if (grupo.item.soloAprobado && !accesoCompleto()) {
+          if (!grupo.caja.hidden) grupo.caja.hidden = true;
+        } else if (!grupo.dinamico) {
           var algunaVisible = Array.prototype.some.call(grupo.lista.children, function (hijo) { return !hijo.hidden; });
           if (grupo.caja.hidden === algunaVisible) grupo.caja.hidden = !algunaVisible;
+        } else if (grupo.caja.hidden) {
+          grupo.caja.hidden = false;
         }
         var conAviso = Boolean(grupo.lista.querySelector(".ma-aviso"));
         if (grupo.boton.classList.contains("ma-aviso") !== conAviso) grupo.boton.classList.toggle("ma-aviso", conAviso);
@@ -857,6 +1013,16 @@
     }
 
     actualizar();
+
+    if (tipo === "auditor") {
+      oyentesAcceso.push(function () {
+        if (notaRegistro) notaRegistro.hidden = accesoCompleto();
+        if (accesoCompleto()) {
+          cargasPendientes.splice(0).forEach(function (cargar) { cargar(); });
+        }
+        programar();
+      });
+    }
 
     if (window.MutationObserver) {
       new MutationObserver(function (cambios) {
@@ -967,6 +1133,10 @@
       ajustarCabeceraAuditor();
     }
   }
+
+  // El acceso del auditor se pide en cuanto carga el script, antes de que
+  // la pantalla dibuje nada.
+  if (tipoDeRol(rolDelUsuario()) === "auditor") iniciarAccesoAuditor();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", aplicar);

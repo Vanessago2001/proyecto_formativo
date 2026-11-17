@@ -108,7 +108,7 @@ def test_borrador_ya_no_exige_alcance(monkeypatch):
 
     monkeypatch.setattr(servicio, "crear", crear)
     resultado = asyncio.run(servicio.crear_borrador_automatico(ID, {}))
-    assert resultado == {"creado": True, "codigo_verificacion": "CERT-2026-0010"}
+    assert resultado == {"creado": True, "codigo_verificacion": "CERT-2026-0010", "sin_lider": True}
     assert sesion.valores == []
 
 
@@ -123,7 +123,7 @@ def test_borrador_se_crea_pendiente_de_firma(monkeypatch):
 
     monkeypatch.setattr(servicio, "crear", crear)
     resultado = asyncio.run(servicio.crear_borrador_automatico(ID, {}))
-    assert resultado == {"creado": True, "codigo_verificacion": "CERT-2026-0009"}
+    assert resultado == {"creado": True, "codigo_verificacion": "CERT-2026-0009", "sin_lider": True}
     assert not hasattr(llamadas[0][0], "id_alcance") and "firma del líder" in llamadas[0][1]
 
 

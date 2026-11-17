@@ -60,12 +60,15 @@
     .cal-comentarios dt { font-size: 12px; font-weight: 700; color: #374151; }
     .cal-comentarios dd { margin: 0; font-size: 13px; color: #1f2937; white-space: pre-wrap; overflow-wrap: anywhere; }
     .cal-pendiente { color: #64748b; font-size: 13px; font-style: italic; }
+    .cal-evaluacion { border-top: 1px dashed #e2e8f0; margin-top: 8px; padding-top: 8px; }
     .cal-falta { border: 1px solid #f3c58b; background: #fff8ee; color: #7c3d00; border-radius: 8px; padding: 10px 12px; margin: 6px 0 12px; font-size: 13px; }
     .cal-falta ul { margin: 6px 0 0; padding-left: 18px; }
     .cal-aviso { border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; border-radius: 8px; padding: 10px 12px; font-size: 13px; }
     .decision-bloqueo { margin: 8px 0 0; font-size: 13px; color: #7c3d00; }
     /* Vista unificada de expedientes */
     .aviso-firmas { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; padding: 12px 16px; border: 1px solid #b7dfa0; background: #f3fbee; border-radius: 10px; font-weight: 600; color: #1f4d00; }
+    .aviso-firmas[hidden] { display: none; }
+    .aviso-lider { border-color: #f0c36d; background: #fff8e6; color: #7c4a00; }
     .fila-impedida td { background: #fafafa; }
     .impedimento { display: block; max-width: 240px; font-size: 12px; color: #7c3d00; }
     .acciones-fila { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -124,6 +127,7 @@
 
         <section id="expedientesView">
           <!-- Acceso directo del líder del Comité a lo que espera su firma. -->
+          <div id="avisoLider" class="aviso-firmas aviso-lider" role="status" hidden></div>
           <div id="avisoFirmas" class="aviso-firmas" role="status" hidden>
             <span id="avisoFirmasTexto"></span>
             <button id="avisoFirmasVer" class="comite-button primary btn btn-primario btn-sm" type="button">Ver los pendientes de firma</button>
@@ -225,6 +229,7 @@
                       <th>Estado</th>
                       <th>Decisión</th>
                       <th>Firmas</th>
+                      <th>Líder del comité</th>
                       <th>Acción</th>
                     </tr>
                   </thead>
@@ -295,6 +300,21 @@
     </form>
   </dialog>
 
+  <dialog id="liderDialog" class="dictamen-dialog" aria-labelledby="liderTitulo">
+    <form id="liderForm">
+      <h2 id="liderTitulo">Líder del comité de este expediente</h2>
+      <p id="liderContexto" class="comite-muted"></p>
+      <p class="comite-muted">Solo aparecen los miembros del Comité que participaron en la evaluación de este expediente. El líder firma su acta y su certificado.</p>
+      <label for="liderSelect">Líder del comité</label>
+      <select id="liderSelect" required></select>
+      <p id="liderSinCandidatos" class="comite-muted" hidden>Nadie del Comité ha participado todavía en la evaluación de este expediente.</p>
+      <div class="comite-decision-actions">
+        <button id="liderCancelar" class="comite-button secondary btn btn-secundario" type="button">Cancelar</button>
+        <button id="liderGuardar" class="comite-button primary btn btn-primario" type="submit">Guardar líder</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="actaSignDialog" aria-labelledby="actaSignTitle">
     <form id="actaSignForm">
       <h2 id="actaSignTitle">Firmar acta del Comité</h2>
@@ -326,6 +346,7 @@
       // Reabrir un dictamen (COM-029) era del Super Administrador (retirado): ahora es del Coordinador.
       const isSuperAdmin = ["adm", "admin", "administrador", "coordinador"].includes(role);
       const state = { selectedId: null, expedientes: [], pagina: 1, porPagina: 20, esLider: false, pendientesFirma: [] };
+      const miId = String(payload && (payload.user_id || payload.id_usuario) || "");
 
       const $ = (selector) => document.querySelector(selector);
       const feedback = $("#feedback");
@@ -517,8 +538,9 @@
         const id = item.id || item.expediente_id || item.codigo;
         const botones = [];
         if (item.impedimento) {
-          // Ya participó en la solicitud o en su apelación: no evalúa ni ve el expediente.
-          botones.push('<span class="impedimento">' + escapeHtml(item.impedimento) + '</span>');
+          // Impedido: el servidor ya no le muestra estas filas, salvo al líder
+          // del expediente, que la ve solo para firmar.
+          botones.push('<span class="impedimento">Solo firma (líder del comité)</span>');
         } else if (item.puede_evaluar && canDecide) {
           botones.push('<button class="btn btn-primario btn-sm" type="button" data-expediente="' + escapeHtml(id) + '">Evaluar</button>');
         } else {
@@ -527,17 +549,86 @@
         if (item.decision) {
           botones.push('<button class="btn btn-secundario btn-sm" type="button" data-dictamen="' + i + '">Ver dictamen</button>');
         }
-        // La firma no es evaluar: el líder firma aunque esté impedido para evaluar.
-        if (state.esLider && item.certificado_pendiente_firma && item.id_certificado) {
+        // La firma no es evaluar: firma el líder del comité de ESE expediente
+        // (elegido por el Coordinador), aunque esté impedido para evaluar.
+        const esMiLiderazgo = state.esLider && item.lider && String(item.lider.id_usuario) === miId;
+        if (esMiLiderazgo && item.certificado_pendiente_firma && item.id_certificado) {
           botones.push('<button class="btn btn-primario btn-sm" type="button" data-firmar-cert="' + i + '">Firmar certificado</button>');
         }
-        if (state.esLider && item.estado_acta === "GENERADA") {
+        if (esMiLiderazgo && item.estado_acta === "GENERADA") {
           botones.push('<button class="btn btn-secundario btn-sm" type="button" data-firmar-acta="' + escapeHtml(id) + '">Firmar acta</button>');
         }
         return '<div class="acciones-fila">' + botones.join("") + '</div>';
       }
 
+      // Líder del comité del expediente. El Coordinador lo elige entre quienes
+      // participaron en la evaluación (con el SQL de líder por expediente).
+      function celdaLider(item, i) {
+        const porExpediente = state.ultimaRespuesta && state.ultimaRespuesta.lider_por_expediente;
+        const nombre = item.lider
+          ? '<span class="decision-meta">' + escapeHtml(item.lider.nombre || "Líder asignado") + '</span>'
+          : (item.decision ? '<span class="comite-status pending">Sin líder</span>' : '<span class="comite-muted">--</span>');
+        const boton = isSuperAdmin && porExpediente && item.decision
+          ? '<button class="btn btn-secundario btn-sm" type="button" data-lider="' + i + '">' + (item.lider ? "Cambiar líder" : "Asignar líder") + "</button>"
+          : "";
+        return nombre + boton;
+      }
+
+      async function abrirLider(item) {
+        const id = item.id || item.expediente_id;
+        state.liderExpediente = id;
+        $("#liderContexto").textContent = (item.codigo || id) + " · " + (item.empresa || "Sin empresa");
+        $("#liderSelect").innerHTML = '<option value="">Cargando...</option>';
+        $("#liderDialog").showModal();
+        try {
+          const datos = await api("/comite/lider-expediente/" + encodeURIComponent(id));
+          const candidatos = (datos && datos.candidatos) || [];
+          $("#liderSinCandidatos").hidden = candidatos.length > 0;
+          $("#liderGuardar").disabled = !candidatos.length;
+          $("#liderSelect").innerHTML = '<option value="">Selecciona un miembro que participó</option>' +
+            candidatos.map((c) => '<option value="' + escapeHtml(c.id_usuario) + '">' + escapeHtml(c.nombre || c.correo) + (c.correo ? " · " + escapeHtml(c.correo) : "") + "</option>").join("");
+          if (datos && datos.lider) $("#liderSelect").value = datos.lider.id_usuario;
+        } catch (error) {
+          $("#liderSelect").innerHTML = "";
+          $("#liderSinCandidatos").hidden = false;
+          $("#liderSinCandidatos").textContent = error.message;
+          $("#liderGuardar").disabled = true;
+        }
+      }
+
+      $("#liderCancelar").addEventListener("click", () => $("#liderDialog").close());
+      $("#liderForm").addEventListener("submit", async (evento) => {
+        evento.preventDefault();
+        const seleccion = $("#liderSelect");
+        if (!seleccion.value) return;
+        const nombre = seleccion.options[seleccion.selectedIndex].textContent;
+        if (!window.confirm("¿Asignar a " + nombre + " como líder del comité de este expediente? Firmará su acta y su certificado.")) return;
+        $("#liderGuardar").disabled = true;
+        try {
+          const respuesta = await api("/comite/lider-expediente", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expediente_id: state.liderExpediente, id_usuario: seleccion.value })
+          });
+          $("#liderDialog").close();
+          await loadExpedientes();
+          showFeedback((respuesta && respuesta.mensaje) || "Líder asignado.", "success");
+        } catch (error) {
+          showFeedback(error.message, "error");
+        } finally {
+          $("#liderGuardar").disabled = false;
+        }
+      });
+
+      function renderAvisoLider(datos) {
+        const aviso = $("#avisoLider");
+        const texto = isSuperAdmin && datos && datos.aviso_lider;
+        aviso.hidden = !texto;
+        aviso.textContent = texto ? texto + ": mientras tanto firma el líder global de Gestión de certificados." : "";
+      }
+
       function renderExpedientes(items, datos) {
+        renderAvisoLider(datos);
         const body = $("#expedientesBody");
         const total = datos && typeof datos.total === "number" ? datos.total : items.length;
         $("#resultCount").textContent = total + (total === 1 ? " expediente" : " expedientes");
@@ -547,7 +638,7 @@
           const mensaje = FiltrosUbicacion.hayFiltros(ubicacion) && !$("#searchInput").value.trim()
             ? FiltrosUbicacion.mensajeVacio("expedientes", ubicacion)
             : "No hay expedientes para mostrar con los filtros actuales.";
-          body.innerHTML = '<tr><td colspan="7"><div class="comite-table-empty">' + escapeHtml(mensaje) + '</div></td></tr>';
+          body.innerHTML = '<tr><td colspan="8"><div class="comite-table-empty">' + escapeHtml(mensaje) + '</div></td></tr>';
           return;
         }
         body.innerHTML = items.map((item, i) => {
@@ -571,6 +662,7 @@
             '<td><span class="comite-status ' + statusClass(status) + '">' + escapeHtml(status) + '</span></td>' +
             '<td>' + decision + '</td>' +
             '<td>' + firmas + '</td>' +
+            '<td>' + celdaLider(item, i) + '</td>' +
             '<td>' + accionesDeFila(item, i) + '</td>' +
             '</tr>';
         }).join("");
@@ -593,6 +685,8 @@
         if (revisar) return loadDetail(revisar.dataset.expediente);
         const dictamen = evento.target.closest("[data-dictamen]");
         if (dictamen) return verDictamen(state.expedientes[Number(dictamen.dataset.dictamen)]);
+        const lider = evento.target.closest("[data-lider]");
+        if (lider) return abrirLider(state.expedientes[Number(lider.dataset.lider)]);
         const firmarCert = evento.target.closest("[data-firmar-cert]");
         if (firmarCert) return abrirFirmaCertificado(state.expedientes[Number(firmarCert.dataset.firmarCert)]);
         const firmarActa = evento.target.closest("[data-firmar-acta]");
@@ -671,7 +765,7 @@
           fact("Resultado del auditor", reportData.resultado || "Sin informe disponible") +
           fact("Fecha del informe", reportData.fecha || "No disponible") +
           '</dl>' +
-          '<div class="comite-detail-section" id="calificacionesAuditores" aria-live="polite"><h4>Calificación del auditor líder de cada visita</h4><p class="comite-muted">Cargando calificaciones...</p></div>' +
+          '<div class="comite-detail-section" id="calificacionesAuditores" aria-live="polite"><h4>Evaluación de los auditores de cada visita</h4><p class="comite-muted">Cargando calificaciones...</p></div>' +
           '<div class="comite-detail-section"><h4>Documentos</h4><div class="detalle-botones">' +
           '<button class="comite-button secondary btn btn-secundario btn-sm" data-resource="/comite/expediente-descargar/' + escapeHtml(id) + '">Descargar expediente digital</button>' +
           (actaFirmada ? '<button class="comite-button secondary btn btn-secundario btn-sm" data-resource="/comite/acta-firmada/' + escapeHtml(id) + '">Descargar acta firmada</button>' : '') +
@@ -728,9 +822,10 @@
         $("#detailPanel").querySelectorAll("[data-resource]").forEach((button) => button.addEventListener("click", () => loadResource(button.dataset.resource)));
       }
 
-      // Calificación (1 a 100 %) que el auditor LÍDER de cada visita dejó, con
-      // sus comentarios. Es obligatoria antes de aprobar o rechazar: si falta
-      // la de alguna visita no cancelada, los botones de decisión se
+      // Evaluación (1 a 100 %) que los auditores asignados a cada visita
+      // dejaron, con sus comentarios (rol único "Auditor": evalúa cualquiera
+      // de ellos). Cada visita no cancelada necesita al menos una antes de
+      // aprobar o rechazar: si falta la de alguna visita, los botones de decisión se
       // deshabilitan (el backend también responde 409). Si la tabla aún no
       // existe (falta el SQL) se avisa y se permite decidir.
       const ACCIONES_QUE_EXIGEN_CALIFICACION = ["/comite/aprobar", "/comite/rechazar", "/comite/decisiones", "/comite/decision-definitiva"];
@@ -758,7 +853,7 @@
         const caja = document.getElementById("calificacionesAuditores");
         if (!caja) return;
         if (!canDecide) { caja.remove(); return; }
-        const titulo = "<h4>Calificación del auditor líder de cada visita</h4>";
+        const titulo = "<h4>Evaluación de los auditores de cada visita</h4>";
         try {
           const datos = await api("/calificacion-visitas/expediente/" + encodeURIComponent(id));
           if (state.selectedId !== id || !datos) return;
@@ -766,7 +861,7 @@
           const faltan = Array.isArray(datos.faltantes) ? datos.faltantes : [];
           if (!yaDecidido && faltan.length) {
             bloquearPorCalificacion("No se puede aprobar ni rechazar: " +
-              faltan.map((f) => f.texto || "falta una calificación").join("; ") + ".");
+              faltan.map((f) => f.texto || "falta una evaluación").join("; ") + ".");
           }
         } catch (error) {
           if (state.selectedId !== id) return;
@@ -787,15 +882,15 @@
         const faltan = Array.isArray(datos.faltantes) ? datos.faltantes : [];
         let cabecera = "";
         if (faltan.length && !datos.bloqueada) {
-          cabecera += '<div class="cal-falta" role="alert"><strong>Falta la calificación del auditor líder antes de decidir</strong><ul>' +
-            faltan.map((f) => "<li>" + escapeHtml(f.texto ? f.texto.charAt(0).toUpperCase() + f.texto.slice(1) : "Falta una calificación") + "</li>").join("") +
+          cabecera += '<div class="cal-falta" role="alert"><strong>Falta la evaluación de la visita antes de decidir</strong><ul>' +
+            faltan.map((f) => "<li>" + escapeHtml(f.texto ? f.texto.charAt(0).toUpperCase() + f.texto.slice(1) : "Falta una evaluación") + "</li>").join("") +
             "</ul></div>";
         }
         // El promedio solo se muestra cuando hay varias visitas.
         const promedio = datos.promedio === null || datos.promedio === undefined ? null : Number(datos.promedio);
         if (visitas.length > 1 && promedio !== null) {
           cabecera += '<div class="cal-promedio"><span>Promedio de las visitas</span><strong>' + escapeHtml(promedio.toLocaleString("es-CO")) + ' %</strong>' +
-            '<span class="comite-muted">' + datos.calificadas + ' de ' + datos.total_visitas + ' visitas calificadas</span></div>' +
+            '<span class="comite-muted">' + datos.calificadas + ' de ' + datos.total_visitas + ' visitas evaluadas</span></div>' +
             '<div class="cal-barra" role="img" aria-label="Promedio ' + escapeHtml(String(promedio)) + ' por ciento"><span style="width:' + Math.max(0, Math.min(100, promedio)) + '%"></span></div>';
         }
         const comentarios = [
@@ -804,24 +899,29 @@
           ["oportunidades_mejora", "Oportunidades de mejora"]
         ];
         const items = visitas.map((v, i) => {
-          const nota = v.calificacion === null || v.calificacion === undefined ? null : Number(v.calificacion);
           const visita = "Visita " + (i + 1) + (v.fecha_inicio ? " · " + fechaLegible(v.fecha_inicio) : "");
-          const lider = v.id_auditor
-            ? '<span class="cal-item-nombre">' + escapeHtml(v.nombre || "Auditor líder") + '</span><span class="cal-item-rol">Auditor líder</span>'
-            : '<span class="cal-item-nombre">Sin auditor líder asignado</span>';
-          if (nota === null) {
-            return '<li class="cal-item"><div class="cal-item-cab"><span>' + lider + '</span>' +
-              '<span class="cal-pendiente">' + (v.id_auditor ? "Falta la calificación del auditor líder" : "Nadie puede calificarla") + '</span></div>' +
-              '<div class="cal-item-fecha">' + escapeHtml(visita) + '</div></li>';
+          const evaluaciones = Array.isArray(v.evaluaciones) ? v.evaluaciones : [];
+          const nota = v.calificacion === null || v.calificacion === undefined ? null : Number(v.calificacion);
+          if (!evaluaciones.length || nota === null) {
+            const sinAuditores = !Number(v.auditores_asignados || 0);
+            return '<li class="cal-item"><div class="cal-item-cab"><span class="cal-item-nombre">' + escapeHtml(visita) + '</span>' +
+              '<span class="cal-pendiente">' + (sinAuditores ? "Sin auditores asignados: nadie puede evaluarla" : "Falta la evaluación de la visita " + (i + 1)) + '</span></div></li>';
           }
-          const fecha = v.fecha_actualizacion || v.fecha_registro;
-          const textos = comentarios.filter(([clave]) => v[clave]).map(([clave, etiqueta]) =>
-            '<div><dt>' + etiqueta + '</dt><dd>' + escapeHtml(v[clave]) + '</dd></div>').join("");
-          return '<li class="cal-item"><div class="cal-item-cab"><span>' + lider + '</span>' +
-            '<span class="cal-item-nota">' + nota + ' %</span></div>' +
-            '<div class="cal-barra" role="img" aria-label="' + nota + ' por ciento"><span style="width:' + Math.max(0, Math.min(100, nota)) + '%"></span></div>' +
-            '<div class="cal-item-fecha">' + escapeHtml(visita + " · calificada el " + fechaLegible(fecha) + (v.fecha_actualizacion ? " (editada)" : "")) + '</div>' +
-            (textos ? '<dl class="cal-comentarios">' + textos + '</dl>' : '') + '</li>';
+          // Varias evaluaciones de la misma visita: se muestran todas y su promedio.
+          const cabeceraVisita = '<div class="cal-item-cab"><span class="cal-item-nombre">' + escapeHtml(visita) + '</span>' +
+            '<span class="cal-item-nota">' + escapeHtml(nota.toLocaleString("es-CO")) + ' %' +
+            (evaluaciones.length > 1 ? ' <span class="cal-item-rol">promedio de ' + evaluaciones.length + ' evaluaciones</span>' : '') + '</span></div>' +
+            '<div class="cal-barra" role="img" aria-label="' + nota + ' por ciento"><span style="width:' + Math.max(0, Math.min(100, nota)) + '%"></span></div>';
+          const detalle = evaluaciones.map((e) => {
+            const fecha = e.fecha_actualizacion || e.fecha_registro;
+            const textos = comentarios.filter(([clave]) => e[clave]).map(([clave, etiqueta]) =>
+              '<div><dt>' + etiqueta + '</dt><dd>' + escapeHtml(e[clave]) + '</dd></div>').join("");
+            return '<div class="cal-evaluacion"><div class="cal-item-cab"><span><span class="cal-item-nombre">' + escapeHtml(e.nombre || "Auditor") + '</span>' +
+              '<span class="cal-item-rol">Auditor</span></span><span class="cal-item-nota">' + escapeHtml(String(e.calificacion)) + ' %</span></div>' +
+              '<div class="cal-item-fecha">' + escapeHtml("Evaluada el " + fechaLegible(fecha) + (e.fecha_actualizacion ? " (editada)" : "")) + '</div>' +
+              (textos ? '<dl class="cal-comentarios">' + textos + '</dl>' : '') + '</div>';
+          }).join("");
+          return '<li class="cal-item">' + cabeceraVisita + detalle + '</li>';
         }).join("");
         return cabecera + '<ul class="cal-lista">' + items + '</ul>';
       }
@@ -1259,7 +1359,7 @@
       prepararPanelLider();
     })();
   </script>
-<script src="/static/nav.js?v=20261117a"></script>
+<script src="/static/nav.js?v=20261117cat"></script>
 <script src="/static/session.js?v=20261117"></script>
 </body>
 

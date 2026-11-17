@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import almacen_archivos
 from core.security import _normalize_role_name
 from modules.solicitudes import estado_solicitud as estados
 from modules.solicitudes.solicitud_service import SolicitudService
@@ -127,15 +128,27 @@ class ApelacionesService:
     def _rol(usuario: dict | None) -> str:
         return _normalize_role_name((usuario or {}).get("role_name"))
 
-    async def _esta_asignado(self, id_apelacion: UUID, id_usuario) -> bool:
+    async def _esta_asignado(self, id_apelacion: UUID, usuario: dict) -> int | None:
+        """
+        None si no pertenece al comité de la apelación; 1 si pertenece y la
+        puede ver; -1 si pertenece pero está impedido para la solicitud (la
+        decidió en una ronda anterior o decidió OTRA apelación suya).
+        """
+        from modules.comite.imparcialidad import filtro_visible
+
+        params: dict = {"id_apelacion": str(id_apelacion), "id_usuario": str(usuario.get("id_usuario"))}
+        visible = filtro_visible(usuario, "a.id_solicitud", params, columna_apelacion_propia="a.id")
+        condicion = visible.replace("AND", "", 1).strip() if visible else "TRUE"
         resultado = await self.db.execute(
-            text("""
-                SELECT 1 FROM apelacion_comite
-                WHERE id_apelacion = :id_apelacion AND id_usuario = :id_usuario;
+            text(f"""
+                SELECT CASE WHEN {condicion} THEN 1 ELSE -1 END
+                FROM apelacion_comite ac
+                JOIN apelacion a ON a.id = ac.id_apelacion
+                WHERE ac.id_apelacion = :id_apelacion AND ac.id_usuario = :id_usuario;
             """),
-            {"id_apelacion": str(id_apelacion), "id_usuario": str(id_usuario)},
+            params,
         )
-        return resultado.scalar() is not None
+        return resultado.scalar()
 
     async def exigir_acceso(self, id_apelacion: UUID, usuario: dict) -> None:
         """
@@ -146,11 +159,15 @@ class ApelacionesService:
         """
         if self._rol(usuario) != "comite":
             return
-        if not await self._esta_asignado(id_apelacion, usuario.get("id_usuario")):
+        acceso = await self._esta_asignado(id_apelacion, usuario)
+        if acceso is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No pertenece al comité asignado a esta apelación.",
             )
+        # Imparcialidad: impedido para la solicitud → 404, como si no existiera.
+        if acceso == -1:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Apelación no encontrada.")
 
     async def miembros_que_evaluaron(self, id_solicitud: UUID) -> set[str]:
         """Usuarios del Comité que ya actuaron sobre la solicitud original."""
@@ -371,8 +388,11 @@ class ApelacionesService:
         carpeta.mkdir(parents=True, exist_ok=True)
         nombre_disco = f"{uuid4()}{extension}"
         destino = carpeta / nombre_disco
-        destino.write_bytes(contenido)
         ruta_relativa = str(destino.relative_to(RAIZ_PROYECTO))
+        # Disco local + base compartida (la fila queda en esta misma transacción).
+        await almacen_archivos.guardar(
+            ruta_relativa, contenido, db=self.db, disco=destino, nombre=nombre, usuario=usuario
+        )
         payload = {
             "id_apelacion": id_apelacion,
             "id_usuario_subio": UUID(str(usuario["id_usuario"])),
@@ -462,7 +482,13 @@ class ApelacionesService:
 
         filtro_empresa = normalizar_rol(usuario.get("role_name")) == ROL_EMP
         solo_asignadas = self._rol(usuario) == "comite"
-        query = text("""
+        # Imparcialidad: al miembro del Comité impedido para la solicitud no le
+        # aparecen sus apelaciones (sí la que él mismo decidió, para cerrarla).
+        from modules.comite.imparcialidad import filtro_visible
+
+        params_imp: dict = {}
+        oculto = filtro_visible(usuario, "a.id_solicitud", params_imp, columna_apelacion_propia="a.id")
+        query = text(f"""
             SELECT a.id, a.id_solicitud,
                    a.id_empresa, a.estado, a.radicado, a.fecha, a.motivo,
                    a.razones_rechazo, a.fallo,
@@ -478,13 +504,14 @@ class ApelacionesService:
               AND (NOT :solo_asignadas OR a.id IN (
                 SELECT ac.id_apelacion FROM apelacion_comite ac
                 WHERE ac.id_usuario::TEXT = :id_usuario
-            ))
+            )){oculto}
             ORDER BY a.fecha DESC, a.id DESC;
         """)
         result = await self.db.execute(query, {
             "filtro_empresa": filtro_empresa,
             "solo_asignadas": solo_asignadas,
             "id_usuario": str(usuario.get("id_usuario")),
+            **params_imp,
         })
         return [dict(row) for row in result.mappings().all()]
 
@@ -990,7 +1017,12 @@ class ApelacionesService:
         certificados = CertificadosService(self.db)
         borrador = await certificados.crear_borrador_automatico(id_solicitud, usuario)
         if solicitud_actualizada or borrador.get("creado"):
-            await self._notificar_apelacion_favorable(fila, borrador, await certificados.lider_comite_actual())
+            # Se avisa al líder del comité de ESTE expediente (o al global sin el SQL).
+            from modules.comite.lider_expediente import lider_de_expediente
+
+            await self._notificar_apelacion_favorable(
+                fila, borrador, await lider_de_expediente(self.db, fila["id_solicitud"])
+            )
         return {"solicitud_actualizada": solicitud_actualizada, "certificado": borrador}
 
     async def _estado_solicitud(self, id_solicitud) -> str | None:
@@ -1049,6 +1081,10 @@ class ApelacionesService:
         if not evidence:
             return None
         ruta = (RAIZ_PROYECTO / evidence["url_archivo"]).resolve()
-        if not ruta.is_relative_to(CARPETA_EVIDENCIAS.resolve()) or not ruta.is_file():
+        if not ruta.is_relative_to(CARPETA_EVIDENCIAS.resolve()):
+            return None
+        # Si se subió en otro computador, se trae de la base compartida.
+        ruta = await almacen_archivos.ruta_local(evidence["url_archivo"], db=self.db, disco=ruta)
+        if ruta is None:
             return None
         return ruta, evidence["nombre_archivo"]

@@ -1164,7 +1164,7 @@
                         correo: r.auditor_correo,
                         tipo_doc: r.auditor_tipo_doc,
                         num_doc: r.auditor_num_doc,
-                        rol: r.rol_auditor
+                        rol: 'Auditor'
                     });
                 });
                 items = Object.values(grupos);
@@ -1942,7 +1942,7 @@
             const r = todosLosDatos[idx];
             if (!r) return;
             const auditores = (r.auditores || []).map(a =>
-                `<div class="auditor-card"><strong>${escapeHtml(a.nombre || '-')}</strong><br><span>${escapeHtml(a.tipo_doc || '')} ${escapeHtml(a.num_doc || '')}</span><br><span>${escapeHtml(a.correo || '')}</span><br><span>Rol: ${escapeHtml(a.rol || 'Auditor')}</span></div>`
+                `<div class="auditor-card"><strong>${escapeHtml(a.nombre || '-')}</strong><br><span>${escapeHtml(a.tipo_doc || '')} ${escapeHtml(a.num_doc || '')}</span><br><span>${escapeHtml(a.correo || '')}</span></div>`
             ).join('') || '<span>-</span>';
             const contenido = `
                 <div class="section"><h3>Empresa</h3>
@@ -1973,7 +1973,7 @@
         // existan (nunca "undefined").
         function lineaAuditor(a) {
             const doc = [a.tipo_doc, a.num_doc].filter(Boolean).join(' ');
-            return [a.nombre || 'Auditor sin nombre', doc ? '(' + doc + ')' : '', a.correo || '', a.rol ? 'Rol: ' + a.rol : '']
+            return [a.nombre || 'Auditor sin nombre', doc ? '(' + doc + ')' : '', a.correo || '', '']
                 .filter(Boolean).join(' - ').replace(' - (', ' (');
         }
 
@@ -2139,7 +2139,7 @@
             actualizarMenuVista(vista);
         });
     </script>
-<script src="/static/nav.js?v=20261117a"></script>
+<script src="/static/nav.js?v=20261117cat"></script>
 <script src="/static/session.js?v=20261117"></script>
 </body>
 </html>

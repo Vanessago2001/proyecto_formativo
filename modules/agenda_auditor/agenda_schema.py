@@ -16,6 +16,7 @@ class AuditorProgramacion(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id_usuario: UUID
+    # Obsoleto: rol único "Auditor" (17/11/2026). Se acepta y se ignora.
     rol_auditor: str | None = Field(default=None, max_length=80)
 
 

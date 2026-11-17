@@ -18,7 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.logger import logger
 from core.security import get_current_user
-from modules.auth.dependencies import es_rol_administrativo
+from modules.auth.dependencies import (
+    consultar_acceso_auditor,
+    es_rol_administrativo,
+    es_rol_auditor,
+    require_auditor_aprobado,
+)
 
 from modules.auditores.auditor_schema import (
     IniciarRegistroAuditor,
@@ -130,6 +135,25 @@ async def consultar_estado_auditor(
         correo=correo
     )
 
+
+
+# ============================================================
+# MI ACCESO (menú del auditor)
+#
+# El menú común (static/nav.js) pregunta aquí si el auditor ya está aprobado:
+# mientras no lo esté solo ve su proceso de registro. Misma regla que
+# require_auditor_aprobado (modules/auth/dependencies.py).
+# ============================================================
+
+@router.get("/mi-acceso")
+async def mi_acceso_auditor(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not es_rol_auditor(current_user):
+        # Otros roles no tienen esta restricción.
+        return {"aprobado": True, "estado_postulacion": None, "estado_auditor": None}
+    return await consultar_acceso_auditor(db, current_user["id_usuario"])
 
 
 # ============================================================
@@ -698,6 +722,7 @@ async def eliminar_certificacion_vigente(
 
 @router.get(
     "/registro/conflictos/{id_usuario}",
+    dependencies=[Depends(require_auditor_aprobado)],
 )
 async def listar_conflictos(
     id_usuario: UUID,
@@ -710,6 +735,7 @@ async def listar_conflictos(
 
 @router.delete(
     "/registro/conflictos/{id_conflicto}",
+    dependencies=[Depends(require_auditor_aprobado)],
 )
 async def eliminar_conflicto(
     id_conflicto: UUID,
@@ -733,6 +759,7 @@ async def eliminar_conflicto(
 
 @router.get(
     "/registro/empresas-restringidas",
+    dependencies=[Depends(require_auditor_aprobado)],
 )
 async def consultar_empresas_restringidas(
     current_user: dict = Depends(get_current_user),
@@ -747,6 +774,7 @@ async def consultar_empresas_restringidas(
 
 @router.post(
     "/registro/validar-conflicto",
+    dependencies=[Depends(require_auditor_aprobado)],
 )
 async def validar_conflicto_antes_asignacion(
     data: dict,

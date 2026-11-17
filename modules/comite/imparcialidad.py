@@ -1,28 +1,44 @@
 """
-Imparcialidad del Comité de certificación.
+Imparcialidad del Comité de certificación (17/11/2026).
 
-Un miembro del Comité no puede ver ni decidir un expediente si ya participó
-antes en esa solicitud o en su apelación: la evaluación la hace siempre una
-persona externa a quienes ya la evaluaron. El Coordinador (y el Auxiliar)
-no están sujetos a esta regla; solo aplica al rol Comité.
+Decisión de la usuaria: "Solo se debe impedir a quien participó en la
+evaluación de la solicitud, aceptación o rechazo de la misma, así como
+también el que apruebe o rechace la apelación." y "No puede aparecerle
+dicha decisión, expediente o solicitud si está impedido de ella."
 
-"Participó" se determina con lo que ya registra el sistema:
+Un miembro del Comité está IMPEDIDO para una solicitud si:
 
-  · Evaluación anterior de la solicitud: una acción en `comite_accion`
-    (`id_usuario`) de una ronda ANTERIOR. Una ronda termina cuando el
-    Coordinador reabre el dictamen (acción 'reabrir-dictamen'): quien actuó
-    antes de la última reapertura ya no puede volver a evaluarla. Dentro de
-    la ronda vigente los miembros siguen trabajando sobre su expediente
-    (borrador, debate, decisión). La firma del acta ('firmar-acta') no
-    cuenta: firmar no es evaluar.
-  · Apelación de la solicitud (`apelacion.id_solicitud`): estar asignado a
-    su comité (`apelacion_comite.id_usuario`), haberla decidido
-    (`apelacion.id_usuario_revisa`), ser su evaluador
-    (`apelacion.id_auditor_evaluador`) o haberle pedido información
-    (`requerimiento_apelacion.id_usuario_solicita`).
+  (a) registró una DECISIÓN de aceptación o rechazo de esa solicitud en una
+      ronda ANTERIOR: una fila de `comite_accion` suya con `accion` en
+      ACCIONES_DE_DECISION ('aprobar', 'rechazar', 'decisiones',
+      'decision-definitiva') y fecha anterior a la última 'reabrir-dictamen'
+      de la solicitud. Una ronda termina cuando el Coordinador reabre el
+      dictamen; dentro de la ronda vigente quien decidió sigue con su
+      expediente. Borradores ('decision-borrador'), debate
+      ('comentarios-debate'), observaciones al acta, restricciones de
+      alcance, solicitudes de información, generar/firmar el acta y cerrar
+      el expediente NO impiden.
+      (En la base del 17/11/2026 solo existen 'aprobar', 'rechazar' y
+      'cerrar-expediente'; 'decisiones' y 'decision-definitiva' son las
+      otras rutas que fijan la decisión, COM-011 y COM-018.)
+  (b) aprobó o rechazó una apelación de esa solicitud:
+      `apelacion.id_usuario_revisa` es él y la apelación está decidida
+      (estado APROBADA, RECHAZADA, NOTIFICADA o CERRADA). Pedir información
+      (INFORMACION_SOLICITADA también llena id_usuario_revisa) no impide.
+      Estar asignado al comité de la apelación (`apelacion_comite`), ser su
+      auditor evaluador o haber pedido documentos ya NO impiden.
 
-La firma del certificado (líder del Comité, `asignacion_lider_comite`) y la
-del acta no se bloquean con esta regla.
+Al impedido no le aparece el expediente en ningún listado (se filtra en SQL)
+y cualquier lectura o acción responde 404, como si no existiera.
+
+Excepciones:
+  · El Coordinador (y el Auxiliar) no están sujetos: solo aplica al rol Comité.
+  · El líder del comité del expediente (modules/comite/lider_expediente.py)
+    puede siempre ver el estado del acta, generarla, firmarla, descargarla y
+    firmar el certificado de ESE expediente (`permitir_lider=True`).
+  · En la apelación que el miembro decidió, sigue entrando a ESA apelación
+    (para notificarla o cerrarla); las demás apelaciones de la solicitud no
+    le aparecen (`columna_apelacion_propia`).
 """
 
 from uuid import UUID
@@ -37,13 +53,16 @@ MOTIVO_SOLICITUD = "solicitud"
 MOTIVO_APELACION = "apelacion"
 
 MENSAJES = {
-    MOTIVO_SOLICITUD: "No puede evaluarlo: ya participó en una evaluación anterior de esta solicitud.",
-    MOTIVO_APELACION: "No puede evaluarlo: ya participó en la apelación de esta solicitud.",
+    MOTIVO_SOLICITUD: "No puede evaluarlo: ya registró la decisión de esta solicitud en una evaluación anterior.",
+    MOTIVO_APELACION: "No puede evaluarlo: ya aprobó o rechazó la apelación de esta solicitud.",
 }
 
-# Acciones que no son "evaluar": la firma del acta (la hace el líder) y la
-# reapertura (la hace el Coordinador).
-ACCIONES_QUE_NO_SON_EVALUACION = ("firmar-acta", "reabrir-dictamen")
+MENSAJE_NO_ENCONTRADO = "El expediente no existe o fue eliminado."
+
+# Acciones de comite_accion que fijan la aceptación o el rechazo.
+ACCIONES_DE_DECISION = ("aprobar", "rechazar", "decisiones", "decision-definitiva")
+# Estados de una apelación ya decidida (aprobada o rechazada y lo que sigue).
+ESTADOS_APELACION_DECIDIDA = ("APROBADA", "RECHAZADA", "NOTIFICADA", "CERRADA")
 
 
 def aplica_a(usuario: dict | None) -> bool:
@@ -55,41 +74,67 @@ def id_de(usuario: dict | None) -> str:
     return str((usuario or {}).get("id_usuario") or (usuario or {}).get("id") or "")
 
 
-def sql_impedimento(columna_solicitud: str, parametro_usuario: str = "imp_usuario") -> str:
+def sql_impedimento(
+    columna_solicitud: str,
+    parametro_usuario: str = "imp_usuario",
+    columna_apelacion_propia: str | None = None,
+) -> str:
     """
     Expresión SQL con el motivo ('apelacion' o 'solicitud') por el que el
-    usuario `:parametro_usuario` no puede evaluar la solicitud de
-    `columna_solicitud`, o NULL si puede.
+    usuario `:parametro_usuario` está impedido para la solicitud de
+    `columna_solicitud`, o NULL si no lo está.
+
+    `columna_apelacion_propia`: al listar apelaciones, la apelación de la
+    fila no impide a quien la decidió (sí las demás de la misma solicitud).
     """
     u = f":{parametro_usuario}"
     s = columna_solicitud
-    no_evaluacion = ", ".join(f"'{a}'" for a in ACCIONES_QUE_NO_SON_EVALUACION)
+    decisiones = ", ".join(f"'{a}'" for a in ACCIONES_DE_DECISION)
+    decididas = ", ".join(f"'{e}'" for e in ESTADOS_APELACION_DECIDIDA)
+    otra_apelacion = f" AND ap.id <> {columna_apelacion_propia}" if columna_apelacion_propia else ""
     return f"""CASE
             WHEN EXISTS (
                 SELECT 1 FROM apelacion ap
                 WHERE ap.id_solicitud = {s}
-                  AND (
-                      ap.id_usuario_revisa::TEXT = {u}
-                      OR ap.id_auditor_evaluador::TEXT = {u}
-                      OR EXISTS (SELECT 1 FROM apelacion_comite ac
-                                 WHERE ac.id_apelacion = ap.id AND ac.id_usuario::TEXT = {u})
-                      OR EXISTS (SELECT 1 FROM requerimiento_apelacion ra
-                                 WHERE ra.id_apelacion = ap.id AND ra.id_usuario_solicita::TEXT = {u})
-                  )
+                  AND ap.id_usuario_revisa::TEXT = {u}
+                  AND UPPER(TRIM(COALESCE(ap.estado, ''))) IN ({decididas}){otra_apelacion}
             ) THEN '{MOTIVO_APELACION}'
             WHEN EXISTS (
                 SELECT 1 FROM comite_accion ca
                 WHERE ca.id_solicitud = {s}
                   AND ca.id_usuario = {u}
-                  AND ca.accion NOT IN ({no_evaluacion})
+                  AND ca.accion IN ({decisiones})
                   AND ca.fecha < (SELECT MAX(r.fecha) FROM comite_accion r
                                   WHERE r.id_solicitud = {s} AND r.accion = 'reabrir-dictamen')
             ) THEN '{MOTIVO_SOLICITUD}'
         END"""
 
 
+def filtro_visible(
+    usuario: dict | None,
+    columna_solicitud: str,
+    params: dict,
+    columna_apelacion_propia: str | None = None,
+    permitir_lider: bool = False,
+) -> str:
+    """
+    Condición SQL (" AND ...") que oculta al miembro del Comité lo que tiene
+    impedido; "" para los demás roles. Agrega el parámetro a `params`.
+    Con `permitir_lider` el líder del expediente lo sigue viendo.
+    """
+    if not aplica_a(usuario):
+        return ""
+    params["imp_usuario"] = id_de(usuario)
+    condicion = f"({sql_impedimento(columna_solicitud, 'imp_usuario', columna_apelacion_propia)}) IS NULL"
+    if permitir_lider:
+        from modules.comite.lider_expediente import sql_id_lider_expediente
+
+        condicion = f"({condicion} OR {sql_id_lider_expediente(columna_solicitud)} = :imp_usuario)"
+    return f"\n          AND {condicion}"
+
+
 async def motivo_impedimento(db: AsyncSession, id_solicitud, usuario: dict | None) -> str | None:
-    """Motivo por el que este miembro del Comité no puede evaluar, o None."""
+    """Motivo por el que este miembro del Comité está impedido, o None."""
     if not aplica_a(usuario):
         return None
     resultado = await db.execute(
@@ -101,8 +146,22 @@ async def motivo_impedimento(db: AsyncSession, id_solicitud, usuario: dict | Non
     return motivo if motivo in MENSAJES else None
 
 
-async def exigir_imparcialidad(db: AsyncSession, id_solicitud: UUID | str, usuario: dict | None) -> None:
-    """403 si el miembro del Comité ya participó en la solicitud o su apelación."""
+async def exigir_imparcialidad(
+    db: AsyncSession,
+    id_solicitud: UUID | str,
+    usuario: dict | None,
+    permitir_lider: bool = False,
+) -> None:
+    """
+    404 si el miembro del Comité está impedido (no se revela que existe).
+    Con `permitir_lider`, el líder del comité de ese expediente pasa (firmas).
+    """
     motivo = await motivo_impedimento(db, id_solicitud, usuario)
-    if motivo:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MENSAJES[motivo])
+    if not motivo:
+        return
+    if permitir_lider:
+        from modules.comite.lider_expediente import es_lider_del_expediente
+
+        if await es_lider_del_expediente(db, id_solicitud, usuario):
+            return
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MENSAJE_NO_ENCONTRADO)

@@ -83,6 +83,7 @@ from uuid import uuid4
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import almacen_archivos
 from core.datetime_utils import SYSTEM_TIMEZONE, system_now, system_now_utc
 from core.logger import logger
 from modules.permisos_auxiliar import permisos_auxiliar_service as permisos_aux
@@ -751,8 +752,15 @@ class PqrsService:
             for nombre, extension, mime, contenido in leidos:
                 carpeta.mkdir(parents=True, exist_ok=True)
                 destino = carpeta / f"{uuid4()}{extension}"
-                destino.write_bytes(contenido)
                 escritos.append(destino)
+                if self.db is not None:
+                    # Disco local + base compartida, en la misma transacción que el adjunto.
+                    await almacen_archivos.guardar(
+                        destino.relative_to(RAIZ_PROYECTO), contenido, db=self.db, disco=destino,
+                        content_type=mime, nombre=nombre, usuario=usuario,
+                    )
+                else:  # repositorio simulado (pruebas): solo disco
+                    destino.write_bytes(contenido)
                 guardados.append(await self.repo.insertar_adjunto({
                     "id_pqrs": pqrs["id_pqrs"],
                     "nombre_archivo": nombre,
@@ -792,9 +800,14 @@ class PqrsService:
         pqrs = await self._obtener_publica(radicado, correo)
         return await self._adjuntar(pqrs, ROL_PUBLICO, archivos, comentario, None)
 
-    def _ruta_segura(self, adjunto: dict) -> Path:
+    async def _ruta_segura(self, adjunto: dict) -> Path:
         ruta = (RAIZ_PROYECTO / adjunto["ruta_archivo"]).resolve()
-        if CARPETA_ADJUNTOS.resolve() not in ruta.parents or not ruta.is_file():
+        if CARPETA_ADJUNTOS.resolve() not in ruta.parents:
+            raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+        if self.db is not None:
+            # Si se subió en otro computador, se trae de la base compartida.
+            ruta = await almacen_archivos.ruta_local(adjunto["ruta_archivo"], db=self.db, disco=ruta) or ruta
+        if not ruta.is_file():
             raise HTTPException(status_code=404, detail="Archivo no encontrado.")
         return ruta
 
@@ -803,14 +816,14 @@ class PqrsService:
         adjunto = await self.repo.adjunto(pqrs["id_pqrs"], id_adjunto)
         if not adjunto:
             raise HTTPException(status_code=404, detail="Archivo no encontrado.")
-        return self._ruta_segura(adjunto), adjunto["nombre_archivo"], adjunto["tipo_mime"]
+        return await self._ruta_segura(adjunto), adjunto["nombre_archivo"], adjunto["tipo_mime"]
 
     async def archivo_adjunto_publico(self, radicado: str, correo: str, id_adjunto) -> tuple[Path, str, str]:
         pqrs = await self._obtener_publica(radicado, correo)
         adjunto = await self.repo.adjunto(pqrs["id_pqrs"], id_adjunto)
         if not adjunto:
             raise HTTPException(status_code=404, detail="Archivo no encontrado.")
-        return self._ruta_segura(adjunto), adjunto["nombre_archivo"], adjunto["tipo_mime"]
+        return await self._ruta_segura(adjunto), adjunto["nombre_archivo"], adjunto["tipo_mime"]
 
     # ------------------------------------------------------------------
     # Consulta pública (PUB "Propias")

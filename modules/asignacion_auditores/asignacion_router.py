@@ -141,7 +141,7 @@ async def elegibilidad_auditor(
     return await AsignacionAuditorService(db).elegibilidad(id_solicitud, id_auditor)
 
 
-@router.post("/", summary="Asignar auditor a solicitud con un rol individual")
+@router.post("/", summary="Asignar auditor a solicitud (rol único: Auditor)")
 async def asignar_auditor(
     data: AsignacionAuditorCrear,
     usuario: dict = Depends(requiere_gestion_asignaciones),

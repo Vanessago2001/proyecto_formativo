@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from core.database import get_db
 from core.security import get_current_user
 from modules.comite.comite_service import ComiteService
-from modules.comite.imparcialidad import MENSAJES, sql_impedimento
+from modules.comite.imparcialidad import MENSAJE_NO_ENCONTRADO, MENSAJES, sql_impedimento
 
 MIEMBRO = {"id_usuario": str(uuid4()), "nombre": "Marta Comité", "role_name": "Comité"}
 COORDINADOR = {"id_usuario": str(uuid4()), "nombre": "Coordinación", "role_name": "Coordinador"}
@@ -50,7 +50,7 @@ class BaseComite:
             return _resultado([{"impedimento": self.impedimento}])
         if "to_regclass" in sql:
             return _resultado([{"existe": self.tabla}])
-        if "LEFT JOIN LATERAL" in sql and "calificacion_visita c" in sql:
+        if "AS evaluaciones" in sql:
             return _resultado(self.visitas)
         if "FROM solicitud" in sql and "FOR UPDATE" in sql:
             return _resultado([{"id_solicitud": uuid4(), "estado": self.estado}])
@@ -68,8 +68,12 @@ class BaseComite:
 
 
 def _visita(dia, calificacion=None):
-    return {"id_programacion": uuid4(), "fecha_inicio": datetime(2026, 11, dia, 8), "id_auditor": uuid4(),
-            "nombre": f"Líder {dia}", "calificacion": calificacion}
+    """Visita con un auditor asignado y, si hay nota, su evaluación (rol único "Auditor")."""
+    evaluaciones = [] if calificacion is None else [
+        {"id_auditor": str(uuid4()), "nombre": f"Auditor {dia}", "rol": "Auditor", "calificacion": calificacion}
+    ]
+    return {"id_programacion": uuid4(), "fecha_inicio": datetime(2026, 11, dia, 8),
+            "auditores_asignados": 1, "evaluaciones": evaluaciones}
 
 
 def _payload():
@@ -81,12 +85,13 @@ def _payload():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("motivo", ["solicitud", "apelacion"])
 @pytest.mark.parametrize("accion", ["aprobar", "rechazar", "decision-borrador", "comentarios-debate", "cerrar-expediente"])
-async def test_miembro_que_ya_participo_no_registra_acciones(motivo, accion):
+async def test_miembro_impedido_no_registra_acciones(motivo, accion):
     db = BaseComite(impedimento=motivo, visitas=[_visita(10, 90)])
     with pytest.raises(HTTPException) as error:
         await ComiteService(db).registrar_accion(accion, _payload(), MIEMBRO)
-    assert error.value.status_code == 403
-    assert error.value.detail == MENSAJES[motivo]
+    # 404: al impedido no se le revela que el expediente existe.
+    assert error.value.status_code == 404
+    assert error.value.detail == MENSAJE_NO_ENCONTRADO
     assert not db.hubo("UPDATE solicitud") and not db.hubo("INSERT INTO comite_accion")
     db.commit.assert_not_awaited()
 
@@ -110,30 +115,39 @@ async def test_el_coordinador_no_esta_sujeto_a_la_regla():
     assert db.hubo("INSERT INTO comite_accion")
 
 
-def test_participacion_se_toma_de_acciones_previas_y_de_la_apelacion():
+def test_impedimento_solo_por_decision_previa_o_decision_de_la_apelacion():
     sql = sql_impedimento("s.id_solicitud")
-    # Apelación: comité asignado, quien la decidió, su evaluador y quien pidió información.
-    for fragmento in ("apelacion_comite", "ap.id_usuario_revisa", "ap.id_auditor_evaluador",
-                      "requerimiento_apelacion", "ra.id_usuario_solicita"):
-        assert fragmento in sql
-    # Solicitud: acciones del Comité de una ronda anterior a la última reapertura;
-    # la firma del acta no es evaluar.
-    assert "comite_accion ca" in sql and "'reabrir-dictamen'" in sql
-    assert "ca.accion NOT IN ('firmar-acta', 'reabrir-dictamen')" in sql
-    assert "ca.fecha < (SELECT MAX(r.fecha)" in sql
+    # (b) Apelación: solo quien la aprobó o rechazó (id_usuario_revisa con la
+    # apelación ya decidida). Comité asignado, evaluador y requerimientos ya no.
+    assert "ap.id_usuario_revisa" in sql
+    assert "IN ('APROBADA', 'RECHAZADA', 'NOTIFICADA', 'CERRADA')" in sql
+    for fragmento in ("apelacion_comite", "id_auditor_evaluador", "requerimiento_apelacion"):
+        assert fragmento not in sql
+    # (a) Solicitud: solo las DECISIONES de una ronda anterior a la última reapertura.
+    assert "ca.accion IN ('aprobar', 'rechazar', 'decisiones', 'decision-definitiva')" in sql
+    assert "ca.fecha < (SELECT MAX(r.fecha)" in sql and "'reabrir-dictamen'" in sql
+    # Borrador, debate, observaciones, información, acta... ya no impiden.
+    for accion in ("decision-borrador", "comentarios-debate", "observaciones-acta",
+                   "solicitar-info-adicional", "restricciones-alcance", "firmar-acta", "acta-definitiva"):
+        assert f"'{accion}'" not in sql
+
+
+def test_la_apelacion_propia_no_oculta_su_apelacion_al_que_la_decidio():
+    sql = sql_impedimento("a.id_solicitud", columna_apelacion_propia="a.id")
+    assert "AND ap.id <> a.id" in sql
 
 
 # ---------------------------------------------------------------- calificación obligatoria del líder
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("accion", ["aprobar", "rechazar", "decisiones", "decision-definitiva"])
-async def test_decision_bloqueada_sin_la_calificacion_del_lider(accion):
+async def test_decision_bloqueada_sin_la_evaluacion_de_la_visita(accion):
     db = BaseComite(visitas=[_visita(10, 90), _visita(12)])
     with pytest.raises(HTTPException) as error:
         await ComiteService(db).registrar_accion(accion, _payload(), COORDINADOR)
     assert error.value.status_code == 409
-    assert "falta la calificación del auditor líder de la visita 2" in error.value.detail
-    assert "Líder 12" in error.value.detail
+    assert "falta la evaluación de la visita 2" in error.value.detail
+    assert "líder" not in error.value.detail
     assert not db.hubo("UPDATE solicitud") and not db.hubo("INSERT INTO comite_accion")
 
 
@@ -149,15 +163,16 @@ async def test_sin_la_tabla_de_calificaciones_no_se_bloquea_la_decision():
     db = BaseComite(tabla=False, visitas=[_visita(12)])
     respuesta = await ComiteService(db).registrar_accion("aprobar", _payload(), MIEMBRO)
     assert respuesta["estado"] == "Aprobada"
-    assert not db.hubo("LEFT JOIN LATERAL")
+    assert not db.hubo("AS evaluaciones")
 
 
 # ---------------------------------------------------------------- rutas del Comité
 
 class SesionRutas:
-    def __init__(self, impedimento=None, filas=None):
+    def __init__(self, impedimento=None, filas=None, lider=None):
         self.impedimento = impedimento
         self.filas = filas or []
+        self.lider = lider
         self.sql: list[str] = []
         self.params: list = []
 
@@ -170,6 +185,12 @@ class SesionRutas:
         if "FROM solicitud s" in sql and "WITH decision" in sql:
             return _resultado(self.filas)
         if "FROM norma" in sql:
+            return _resultado([])
+        if "FROM asignacion_lider_comite a" in sql:
+            return _resultado([self.lider] if self.lider else [])
+        if "AS disponible" in sql:
+            return _resultado([{"disponible": True}])
+        if "FROM comite_acta" in sql:
             return _resultado([])
         return _resultado([{"id": uuid4(), "codigo": "SOL-1", "estado": "En revision"}])
 
@@ -197,8 +218,9 @@ def test_miembro_impedido_no_ve_el_expediente(ruta):
         respuesta = cliente.get(ruta.format(id=uuid4()))
     finally:
         app.dependency_overrides.clear()
-    assert respuesta.status_code == 403
-    assert respuesta.json()["detail"] == MENSAJES["apelacion"]
+    # 404 y no 403: no se revela que existe.
+    assert respuesta.status_code == 404
+    assert respuesta.json()["detail"] == MENSAJE_NO_ENCONTRADO
 
 
 def test_coordinador_ve_el_expediente_aunque_otro_este_impedido():
@@ -212,18 +234,32 @@ def test_coordinador_ve_el_expediente_aunque_otro_este_impedido():
     assert not any("AS impedimento" in s for s in sesion.sql)
 
 
-def test_generar_acta_bloqueado_para_el_impedido_pero_estado_del_acta_no():
-    sesion = SesionRutas(impedimento="solicitud")
+def test_acta_bloqueada_para_el_impedido_que_no_es_el_lider():
+    otro = {"id_asignacion": uuid4(), "id_usuario": uuid4(), "nombre": "Otro líder", "correo": "o@x.co",
+            "fecha_inicio": None, "por_expediente": True}
+    sesion = SesionRutas(impedimento="solicitud", lider=otro)
     app, cliente = _cliente(MIEMBRO, sesion)
     try:
         acta = cliente.post("/comite/acta-definitiva", json={"expediente_id": str(uuid4()), "comentario": "Acta"})
-        consultas_antes = len(sesion.sql)
-        cliente.get(f"/comite/acta-estado/{uuid4()}")
+        estado = cliente.get(f"/comite/acta-estado/{uuid4()}")
+        firmada = cliente.get(f"/comite/acta-firmada/{uuid4()}")
     finally:
         app.dependency_overrides.clear()
-    assert acta.status_code == 403
-    # Consultar el estado del acta (flujo de firma del líder) no aplica la regla.
-    assert not any("AS impedimento" in s for s in sesion.sql[consultas_antes:])
+    assert acta.status_code == 404 and estado.status_code == 404 and firmada.status_code == 404
+
+
+def test_lider_del_expediente_impedido_puede_ver_y_firmar_su_acta():
+    """El líder del comité de ese expediente nunca queda bloqueado para firmar lo suyo."""
+    lider = {"id_asignacion": uuid4(), "id_usuario": MIEMBRO["id_usuario"], "nombre": "Marta", "correo": "m@x.co",
+             "fecha_inicio": None, "por_expediente": True}
+    sesion = SesionRutas(impedimento="apelacion", lider=lider)
+    app, cliente = _cliente(MIEMBRO, sesion)
+    try:
+        estado = cliente.get(f"/comite/acta-estado/{uuid4()}")
+    finally:
+        app.dependency_overrides.clear()
+    assert estado.status_code == 200
+    assert estado.json()["lider"]["id_usuario"] == MIEMBRO["id_usuario"]
 
 
 def _fila(**cambios):
@@ -260,8 +296,10 @@ def test_vista_unificada_marca_impedimento_decision_y_firma():
     finally:
         app.dependency_overrides.clear()
     por_codigo = {f["codigo"]: f for f in todos["expedientes"]}
+    # Una fila con impedimento solo llega si es el líder del expediente: solo firma.
     assert por_codigo["SOL-PEND"]["impedimento"] == MENSAJES["solicitud"]
-    assert por_codigo["SOL-PEND"]["puede_evaluar"] is False
+    assert por_codigo["SOL-PEND"]["puede_evaluar"] is False and por_codigo["SOL-PEND"]["solo_firma"] is True
+    assert por_codigo["SOL-NUEVA"]["solo_firma"] is False
     assert por_codigo["SOL-NUEVA"]["puede_evaluar"] is True and por_codigo["SOL-NUEVA"]["decision"] is None
     aprobada = por_codigo["SOL-APR"]
     assert aprobada["decision"] == "Aprobada" and aprobada["decidio"] == "Marta"
@@ -274,8 +312,29 @@ def test_vista_unificada_marca_impedimento_decision_y_firma():
     assert [f["codigo"] for f in firmadas["expedientes"]] == ["SOL-RECH"]
     assert pagina2["total"] == 5 and pagina2["paginas"] == 3
     assert [f["codigo"] for f in pagina2["expedientes"]] == ["SOL-APR", "SOL-APEL"]
-    # La consulta usa el id del miembro para la regla de imparcialidad.
+    # La consulta usa el id del miembro para la regla de imparcialidad y
+    # EXCLUYE en SQL lo impedido (contadores y paginación incluidos), salvo
+    # que sea el líder del expediente.
     assert any(p and p.get("imp_usuario") == MIEMBRO["id_usuario"] for p in sesion.params)
+    consulta = next(s for s in sesion.sql if "WITH decision" in s)
+    assert "IS NULL OR" in consulta and "asignacion_lider_comite la" in consulta
+
+
+def test_impedido_no_ve_decisiones_ni_en_la_exportacion_ni_en_la_busqueda():
+    sesion = SesionRutas()
+    app, cliente = _cliente(MIEMBRO, sesion)
+    try:
+        assert cliente.get("/comite/exportar-decisiones", params={"formato": "xlsx"}).status_code == 200
+        assert cliente.get("/comite/exportar-decisiones").status_code == 200
+        assert cliente.get("/comite/buscar-expediente", params={"query": "900"}).status_code == 200
+        assert cliente.get("/comite/decisiones-historicas").status_code == 200
+        assert cliente.get("/comite/historial-dictamenes").status_code == 200
+        assert cliente.get(f"/comite/historial-por-empresa/{uuid4()}").status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+    filtradas = [s for s, p in zip(sesion.sql, sesion.params)
+                 if p and p.get("imp_usuario") == MIEMBRO["id_usuario"] and "ap.id_usuario_revisa" in s]
+    assert len(filtradas) == 6
 
 
 def test_vista_unificada_sin_regla_para_el_coordinador():

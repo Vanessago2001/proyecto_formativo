@@ -156,44 +156,43 @@ def test_lider_del_comite_solo_lista_sus_certificados_pendientes():
         "codigo_verificacion": "CS-2026-000001",
         "estado_certificado": "PENDIENTE_FIRMA",
     }]
-    db = FakeDatabase(
-        {
-            "id_asignacion": id_asignacion,
-            "id_usuario": id_lider,
-            "nombre": "Líder",
-            "correo": "lider@example.test",
-        },
-        certificados,
-    )
+    db = FakeDatabase(certificados)
 
     resultado = asyncio.run(CertificadosService(db).listar(
         {"id_usuario": id_lider, "role_name": "Comité"}
     ))
 
     assert resultado == certificados
-    sql = str(db.executions[1][0][0])
+    # 17/11/2026: líder por expediente. Los pendientes de firma son los cuya
+    # asignación de líder vigente (la de su expediente) es de este usuario.
+    sql = str(db.executions[0][0][0])
     assert "TRIM(UPPER(c.estado_certificado)) = :estado_pendiente" in sql
-    assert "c.id_asignacion_lider = :id_asignacion_lider" in sql
-    assert db.executions[1][0][1]["id_asignacion_lider"] == id_asignacion
+    assert "al.id_asignacion = c.id_asignacion_lider" in sql and "al.fecha_fin IS NULL" in sql
+    assert db.executions[0][0][1]["id_usuario_lider"] == id_lider
+    assert id_asignacion  # la asignación concreta la da el certificado
 
 
-def test_usuario_comite_no_asignado_no_puede_listar_certificados_pendientes():
+def test_usuario_comite_no_lider_ve_expedidos_pero_no_pendientes_de_firma():
+    """
+    17/11/2026: el Comité consulta los certificados vigentes, suspendidos y
+    cancelados (CER-011); solo el líder vigente ve además los pendientes de
+    firma que tiene asignados. Un miembro que no es líder ya no recibe 403.
+    """
     from modules.certificados.certificados_service import CertificadosService
 
-    db = FakeDatabase({
-        "id_asignacion": "33333333-3333-4333-8333-333333333333",
-        "id_usuario": "11111111-1111-4111-8111-111111111111",
-        "nombre": "Líder",
-        "correo": "lider@example.test",
-    })
-    with pytest.raises(HTTPException) as error:
-        asyncio.run(CertificadosService(db).listar({
-            "id_usuario": "99999999-9999-4999-8999-999999999999",
-            "role_name": "Comité",
-        }))
+    db = FakeDatabase([])
+    asyncio.run(CertificadosService(db).listar({
+        "id_usuario": "99999999-9999-4999-8999-999999999999",
+        "role_name": "Comité",
+    }))
 
-    assert error.value.status_code == 403
-    assert len(db.executions) == 1
+    sql, parametros = db.executions[-1][0][0], db.executions[-1][0][1]
+    assert "IN (:estado_vigente, :estado_suspendido, 'CANCELADO')" in str(sql)
+    # Los pendientes solo si la asignación del certificado es de quien consulta.
+    assert parametros["id_usuario_lider"] == "99999999-9999-4999-8999-999999999999"
+    # Imparcialidad: los de expedientes en los que está impedido no aparecen.
+    assert parametros["imp_usuario"] == "99999999-9999-4999-8999-999999999999"
+    assert "IS NULL" in str(sql) and "apelacion ap" in str(sql)
 
 
 def test_lider_asignado_puede_listar_abrir_y_previsualizar_certificado():
@@ -226,15 +225,7 @@ def test_lider_asignado_puede_listar_abrir_y_previsualizar_certificado():
 
     app.dependency_overrides[get_db] = override_db
     client = TestClient(app)
-    db.responses = [
-        {
-            "id_asignacion": certificado["id_asignacion_lider"],
-            "id_usuario": usuario["id_usuario"],
-            "nombre": "Líder",
-            "correo": "lider@example.test",
-        },
-        [certificado],
-    ]
+    db.responses = [[certificado]]
     listado = client.get("/certificados/")
     assert listado.status_code == 200
     assert listado.json()[0]["estado_certificado"] == "PENDIENTE_FIRMA"
@@ -244,12 +235,13 @@ def test_lider_asignado_puede_listar_abrir_y_previsualizar_certificado():
         "id_usuario": usuario["id_usuario"],
         "id_rol_comite": 7,
     }
-    db.responses = [fila_asignada, certificado]
+    # Tras leer el certificado se verifica la imparcialidad (no impedido).
+    db.responses = [fila_asignada, certificado, {"impedimento": None}]
     detalle = client.get(f"/certificados/{certificado['id_certificado']}")
     assert detalle.status_code == 200
     assert detalle.json()["estado_certificado"] == "PENDIENTE_FIRMA"
 
-    db.responses = [fila_asignada, certificado]
+    db.responses = [fila_asignada, certificado, {"impedimento": None}]
     vista_previa = client.get(f"/certificados/{certificado['id_certificado']}/pdf/preview")
     assert vista_previa.status_code == 200
     assert vista_previa.headers["content-type"] == "application/pdf"

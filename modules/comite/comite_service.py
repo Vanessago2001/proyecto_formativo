@@ -25,8 +25,8 @@ CAMBIOS_ESTADO = {
     "cerrar-expediente": estados.CERRADA,
     "reabrir-dictamen": estados.EN_REVISION,
 }
-# Acciones que fijan la decisión del Comité: exigen la calificación del
-# auditor líder de cada visita no cancelada (si la tabla ya existe).
+# Acciones que fijan la decisión del Comité: exigen al menos una evaluación
+# de un auditor de cada visita no cancelada (si la tabla ya existe).
 ACCIONES_QUE_EXIGEN_CALIFICACION = {"aprobar", "rechazar", "decisiones", "decision-definitiva"}
 
 
@@ -175,8 +175,8 @@ class ComiteService:
                 detail="El expediente no existe o fue eliminado.",
             )
 
-        # Imparcialidad: un miembro del Comité que ya participó en una
-        # evaluación anterior de la solicitud o en su apelación no actúa.
+        # Imparcialidad: el miembro del Comité que ya decidió la solicitud en
+        # una ronda anterior o decidió su apelación recibe 404.
         await exigir_imparcialidad(self.db, id_solicitud, usuario)
 
         estado_actual = solicitud["estado"]
@@ -268,6 +268,11 @@ class ComiteService:
                 WHERE id_solicitud = :id_solicitud
                   AND estado IN ('GENERADA', 'FIRMADA');
             """), {"id_solicitud": str(id_solicitud)})
+            # Ronda nueva: el líder del expediente se libera y el Coordinador
+            # elige otro entre quienes participen en esta ronda.
+            from modules.comite.lider_expediente import terminar_por_reapertura
+
+            await terminar_por_reapertura(self.db, id_solicitud)
 
         datos_json = json.dumps(datos, ensure_ascii=False, default=str)
         guardado = await self.db.execute(

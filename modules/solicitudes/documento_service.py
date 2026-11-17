@@ -12,7 +12,6 @@ almacenamiento compartido (S3 o similar) cambiando solo `_guardar_archivo`
 y `ruta_absoluta`.
 """
 
-import shutil
 import unicodedata
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -20,6 +19,8 @@ from uuid import UUID, uuid4
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core import almacen_archivos
 
 from modules.solicitudes.documento_schema import (
     ESTADOS_MODIFICABLES,
@@ -123,11 +124,12 @@ class DocumentoService:
         """Traduce lo guardado en `url_archivo` a una ruta real en disco."""
         return RAIZ_PROYECTO / url_archivo
 
-    def _guardar_archivo(
+    async def _guardar_archivo(
         self,
         archivo: UploadFile,
         id_solicitud: UUID | str,
         id_documento: UUID | str,
+        usuario: dict | None = None,
     ) -> str:
         """
         Escribe el archivo en disco y devuelve la ruta relativa a guardar.
@@ -142,10 +144,14 @@ class DocumentoService:
         destino = carpeta / f"{id_documento}{extension}"
 
         archivo.file.seek(0)
-        with destino.open("wb") as salida:
-            shutil.copyfileobj(archivo.file, salida)
-
-        return str(destino.relative_to(RAIZ_PROYECTO))
+        contenido = archivo.file.read()
+        relativa = str(destino.relative_to(RAIZ_PROYECTO))
+        # Disco local + base compartida, en la misma transacción que el documento.
+        await almacen_archivos.guardar(
+            relativa, contenido, db=self.db, disco=destino,
+            nombre=_nombre_seguro(archivo.filename), usuario=usuario,
+        )
+        return relativa
 
     async def _obtener_documento(
         self,
@@ -221,7 +227,7 @@ class DocumentoService:
             )
 
         id_documento = uuid4()
-        url = self._guardar_archivo(archivo, id_solicitud, id_documento)
+        url = await self._guardar_archivo(archivo, id_solicitud, id_documento, usuario)
 
         resultado = await self.db.execute(
             text(f"""
@@ -312,8 +318,8 @@ class DocumentoService:
         # 2. Se guarda el archivo nuevo con la versión siguiente en el nombre,
         #    para no sobrescribir el fichero de la versión archivada.
         nueva_version = int(documento["version"] or 1) + 1
-        url = self._guardar_archivo(
-            archivo, id_solicitud, f"{id_documento}_v{nueva_version}"
+        url = await self._guardar_archivo(
+            archivo, id_solicitud, f"{id_documento}_v{nueva_version}", usuario
         )
 
         resultado = await self.db.execute(
@@ -440,6 +446,8 @@ class DocumentoService:
         """SOL-034 y SOL-035: ruta en disco y nombre original del archivo."""
         documento = await self._obtener_documento(id_solicitud, id_documento, usuario)
         ruta = self.ruta_absoluta(documento["url_archivo"])
+        # Si se subió en otro computador, se trae de la base compartida.
+        ruta = await almacen_archivos.ruta_local(documento["url_archivo"], db=self.db, disco=ruta) or ruta
 
         if not ruta.is_file():
             raise HTTPException(

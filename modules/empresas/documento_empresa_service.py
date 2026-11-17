@@ -24,6 +24,8 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import almacen_archivos
+
 # ============================================================
 # VALIDACIÓN AUTOMÁTICA DE FORMATO (EMP-016)
 # ============================================================
@@ -127,15 +129,16 @@ class DocumentoEmpresaService:
             )
         return tipo_documento
 
-    def _guardar_archivo(self, id_empresa: UUID, archivo: UploadFile, contenido: bytes) -> tuple[str, str]:
-        """Escribe el archivo en disco y devuelve (nombre visible, ruta relativa)."""
+    async def _guardar_archivo(
+        self, id_empresa: UUID, archivo: UploadFile, contenido: bytes, usuario: dict | None = None
+    ) -> tuple[str, str]:
+        """Escribe el archivo (disco + base compartida) y devuelve (nombre visible, ruta relativa)."""
         nombre_visible = _nombre_seguro(archivo.filename or "documento")
         carpeta = CARPETA_ARCHIVOS / str(id_empresa)
         carpeta.mkdir(parents=True, exist_ok=True)
 
         extension = Path(nombre_visible).suffix.lower()
         destino = carpeta / f"{uuid4().hex}{extension}"
-        destino.write_bytes(contenido)
 
         # Se guarda la ruta relativa al proyecto para poder mover la carpeta
         # sin reescribir la base. Si el almacenamiento vive fuera del
@@ -144,11 +147,25 @@ class DocumentoEmpresaService:
             relativa = destino.relative_to(RAIZ_PROYECTO).as_posix()
         except ValueError:
             relativa = destino.as_posix()
+
+        if almacen_archivos.normalizar(relativa):
+            await almacen_archivos.guardar(
+                relativa, contenido, db=self.db, disco=destino, nombre=nombre_visible, usuario=usuario
+            )
+        else:
+            destino.write_bytes(contenido)
         return nombre_visible, relativa
 
     def ruta_absoluta(self, url_archivo: str) -> Path:
         ruta = Path(url_archivo or "")
         return ruta if ruta.is_absolute() else RAIZ_PROYECTO / ruta
+
+    async def ruta_disponible(self, url_archivo: str) -> Path:
+        """Ruta local del archivo; si se subió en otro computador, la trae de la base."""
+        ruta = self.ruta_absoluta(url_archivo or "")
+        if not url_archivo:
+            return ruta
+        return await almacen_archivos.ruta_local(url_archivo, db=self.db, disco=ruta) or ruta
 
     async def _obtener(self, id_empresa: UUID, id_documento: UUID) -> dict:
         resultado = await self.db.execute(
@@ -185,7 +202,7 @@ class DocumentoEmpresaService:
         contenido = await archivo.read()
         self.validar_formato(archivo, len(contenido))
 
-        nombre_visible, ruta = self._guardar_archivo(id_empresa, archivo, contenido)
+        nombre_visible, ruta = await self._guardar_archivo(id_empresa, archivo, contenido, usuario)
 
         resultado = await self.db.execute(
             text(f"""
@@ -267,7 +284,7 @@ class DocumentoEmpresaService:
             },
         )
 
-        nombre_visible, ruta = self._guardar_archivo(id_empresa, archivo, contenido)
+        nombre_visible, ruta = await self._guardar_archivo(id_empresa, archivo, contenido, usuario)
 
         resultado = await self.db.execute(
             text(f"""
@@ -338,7 +355,7 @@ class DocumentoEmpresaService:
         cambiarle el estado. Sirve para revisar antes de decidir.
         """
         documento = await self._obtener(id_empresa, id_documento)
-        ruta = self.ruta_absoluta(documento["url_archivo"] or "")
+        ruta = await self.ruta_disponible(documento["url_archivo"] or "")
         existe = bool(documento["url_archivo"]) and ruta.is_file()
         extension = Path(documento["nombre_archivo"] or "").suffix.lower()
 

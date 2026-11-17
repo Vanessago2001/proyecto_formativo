@@ -22,10 +22,12 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import almacen_archivos
 from core.config import settings
 from core.logger import logger
 from modules.certificados.firma_pades import FirmaPadesError, firmar_pdf_pades
 from modules.certificados.firma_service import FirmaService
+from modules.comite.lider_expediente import lider_de_expediente
 from modules.solicitudes import estado_solicitud as estados
 
 
@@ -37,6 +39,12 @@ class ComiteActaService:
     def _ruta(id_acta: UUID | str, firmada: bool = False) -> Path:
         sufijo = "-firmada" if firmada else ""
         return Path(settings.COMITE_ACTAS_STORAGE_DIR).expanduser().resolve() / f"{id_acta}{sufijo}.pdf"
+
+    @staticmethod
+    def _clave(id_acta: UUID | str, firmada: bool = False) -> str:
+        """Clave del PDF en el almacén compartido (independiente de COMITE_ACTAS_STORAGE_DIR)."""
+        sufijo = "-firmada" if firmada else ""
+        return f"storage/actas_comite/{id_acta}{sufijo}.pdf"
 
     @staticmethod
     def _crear_pdf(datos: dict) -> bytes:
@@ -200,6 +208,11 @@ class ComiteActaService:
                 archivo.flush()
                 os.fsync(archivo.fileno())
             os.replace(ruta_temporal, ruta_final)
+            # Copia en la base compartida (misma transacción que el acta).
+            await almacen_archivos.guardar(
+                self._clave(id_acta), pdf, db=self.db, disco=ruta_final,
+                content_type="application/pdf", usuario=usuario,
+            )
             await self.db.execute(text("""
                 INSERT INTO comite_acta (
                     id_acta, id_solicitud, version, estado, huella_pdf,
@@ -262,19 +275,8 @@ class ComiteActaService:
             LIMIT 1;
         """), {"id_solicitud": str(id_solicitud)})
         acta = acta_resultado.mappings().first()
-        lider_resultado = await self.db.execute(text("""
-            SELECT a.id_usuario
-            FROM asignacion_lider_comite a
-            JOIN usuario u ON u.id_usuario = a.id_usuario
-            JOIN rol r ON r.id_rol = u.rol_id
-            WHERE a.fecha_fin IS NULL
-              AND u.estado = 'Activo'
-              AND LOWER(TRANSLATE(r.nombre, 'ÁÉÍÓÚáéíóú', 'AEIOUaeiou'))
-                  IN ('comite', 'comite de certificacion')
-            ORDER BY a.fecha_inicio DESC
-            LIMIT 1;
-        """))
-        lider = lider_resultado.mappings().first()
+        # Firma el líder del comité de ESTE expediente (o el global sin el SQL).
+        lider = await lider_de_expediente(self.db, id_solicitud)
         return {
             "acta": dict(acta) if acta else None,
             "puede_firmar": bool(
@@ -283,42 +285,25 @@ class ComiteActaService:
                 and lider
                 and str(lider["id_usuario"]) == str(usuario.get("id_usuario"))
             ),
+            "lider": {"id_usuario": str(lider["id_usuario"]), "nombre": lider.get("nombre")} if lider else None,
         }
 
     async def firmar(self, id_solicitud: UUID, password_firma: str, usuario: dict) -> dict:
-        lider_previo = await self.db.execute(text("""
-            SELECT a.id_usuario
-            FROM asignacion_lider_comite a
-            JOIN usuario u ON u.id_usuario = a.id_usuario
-            JOIN rol r ON r.id_rol = u.rol_id
-            WHERE a.fecha_fin IS NULL
-              AND u.estado = 'Activo'
-              AND LOWER(TRANSLATE(r.nombre, 'ÁÉÍÓÚáéíóú', 'AEIOUaeiou'))
-                  IN ('comite', 'comite de certificacion')
-            ORDER BY a.fecha_inicio DESC
-            LIMIT 1;
-        """))
-        lider = lider_previo.mappings().first()
-        if not lider or str(lider["id_usuario"]) != str(usuario.get("id_usuario")):
-            raise HTTPException(status_code=403, detail="Solo el líder activo del Comité puede firmar el acta.")
+        # Solo firma el líder del comité de este expediente (elegido por el
+        # Coordinador entre quienes participaron; sin el SQL, el líder global).
+        lider = await lider_de_expediente(self.db, id_solicitud)
+        if not lider:
+            raise HTTPException(
+                status_code=409,
+                detail="El expediente no tiene líder del comité: el Coordinador debe asignarlo antes de firmar.",
+            )
+        if str(lider["id_usuario"]) != str(usuario.get("id_usuario")):
+            raise HTTPException(status_code=403, detail="Solo el líder del comité de este expediente puede firmar el acta.")
         firma = await FirmaService(self.db).verificar(usuario, password_firma)
         await self.db.execute(text("SELECT pg_advisory_xact_lock(76139521, 11);"))
-        asignacion_resultado = await self.db.execute(text("""
-            SELECT a.id_usuario, u.correo
-            FROM asignacion_lider_comite a
-            JOIN usuario u ON u.id_usuario = a.id_usuario
-            JOIN rol r ON r.id_rol = u.rol_id
-            WHERE a.fecha_fin IS NULL
-              AND u.estado = 'Activo'
-              AND LOWER(TRANSLATE(r.nombre, 'ÁÉÍÓÚáéíóú', 'AEIOUaeiou'))
-                  IN ('comite', 'comite de certificacion')
-            ORDER BY a.fecha_inicio DESC
-            LIMIT 1
-            FOR SHARE OF a, u;
-        """))
-        lider = asignacion_resultado.mappings().first()
+        lider = await lider_de_expediente(self.db, id_solicitud, bloquear=True)
         if not lider or str(lider["id_usuario"]) != str(usuario.get("id_usuario")):
-            raise HTTPException(status_code=403, detail="Solo el líder activo del Comité puede firmar el acta.")
+            raise HTTPException(status_code=403, detail="Solo el líder del comité de este expediente puede firmar el acta.")
 
         acta_resultado = await self.db.execute(text("""
             SELECT id_acta, version, estado, huella_pdf
@@ -333,7 +318,7 @@ class ComiteActaService:
             raise HTTPException(status_code=404, detail="Primero debe generarse el acta definitiva.")
         if acta["estado"] != "GENERADA":
             raise HTTPException(status_code=409, detail="El acta no está pendiente de firma.")
-        contenido = self._leer_pdf(acta["id_acta"], acta["huella_pdf"])
+        contenido = await self._leer_pdf(acta["id_acta"], acta["huella_pdf"])
         try:
             pdf_firmado, huella_pdf, huella_firmante = await asyncio.to_thread(
                 firmar_pdf_pades,
@@ -354,6 +339,16 @@ class ComiteActaService:
                 archivo.flush()
                 os.fsync(archivo.fileno())
             os.replace(ruta_temporal, ruta_final)
+            # Copia firmada en la base compartida; el borrador sin firma se retira
+            # de la base en esta misma transacción (del disco, tras el commit).
+            await almacen_archivos.guardar(
+                self._clave(acta["id_acta"], firmada=True), pdf_firmado, db=self.db,
+                disco=ruta_final, content_type="application/pdf", usuario=usuario,
+            )
+            await almacen_archivos.eliminar(
+                self._clave(acta["id_acta"]), db=self.db, disco=self._ruta(acta["id_acta"]),
+                borrar_disco=False,
+            )
             await self.db.execute(text("""
                 UPDATE comite_acta
                 SET estado = 'FIRMADA',
@@ -400,16 +395,21 @@ class ComiteActaService:
             "mensaje": "Acta firmada digitalmente y validada.",
         }
 
-    def _leer_pdf(
+    async def _leer_pdf(
         self,
         id_acta: UUID | str,
         huella_esperada: str | None,
         firmada: bool = False,
     ) -> bytes:
         try:
-            contenido = self._ruta(id_acta, firmada=firmada).read_bytes()
+            # Disco local; si se generó en otro computador, desde la base compartida.
+            contenido = await almacen_archivos.leer(
+                self._clave(id_acta, firmada=firmada), db=self.db, disco=self._ruta(id_acta, firmada=firmada)
+            )
         except OSError as exc:
             raise HTTPException(status_code=404, detail="No se encontró el PDF del acta.") from exc
+        if contenido is None:
+            raise HTTPException(status_code=404, detail="No se encontró el PDF del acta.")
         huella_real = hashlib.sha256(contenido).hexdigest()
         if not huella_esperada or not hmac.compare_digest(huella_real, huella_esperada):
             raise HTTPException(status_code=409, detail="La huella del acta no coincide; se bloqueó la descarga.")
@@ -426,6 +426,6 @@ class ComiteActaService:
         acta = resultado.mappings().first()
         if not acta or acta["estado"] != "FIRMADA":
             raise HTTPException(status_code=404, detail="No hay un acta firmada para este expediente.")
-        return self._leer_pdf(
+        return await self._leer_pdf(
             acta["id_acta"], acta["huella_pdf"], firmada=True
         ), acta["version"]

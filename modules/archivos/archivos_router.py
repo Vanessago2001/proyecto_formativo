@@ -44,6 +44,7 @@ from core.archivos_firmados import (
     ruta_relativa,
     verificar,
 )
+from core import almacen_archivos, archivos_firmados
 from core.database import get_db
 from core.security import _normalize_role_name, get_current_user
 
@@ -103,11 +104,18 @@ async def firmar_archivo(
 
 
 @router.get("/{exp}/{firma}/{ruta:path}", response_class=FileResponse)
-async def descargar_archivo(exp: int, firma: str, ruta: str):
+async def descargar_archivo(exp: int, firma: str, ruta: str, db: AsyncSession = Depends(get_db)):
     relativo = ruta_relativa(f"/uploads/{ruta}")
     if relativo is None or not verificar(relativo, exp, firma):
         raise _PROHIBIDO
     archivo = resolver_en_uploads(relativo)
+    if archivo is None:
+        # No está en este computador: se trae de la base compartida (y queda en caché).
+        # La sesión solo toma una conexión si de verdad hay que consultar.
+        await almacen_archivos.ruta_local(
+            f"uploads/{relativo}", db=db, disco=archivos_firmados.RAIZ_UPLOADS / relativo
+        )
+        archivo = resolver_en_uploads(relativo)
     if archivo is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El archivo no existe.")
     tipo = mimetypes.guess_type(archivo.name)[0] or "application/octet-stream"

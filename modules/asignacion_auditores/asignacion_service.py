@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.filtros_ubicacion import condiciones_ubicacion_solicitud, patron_contiene, sql_comparable
 from modules.solicitudes import estado_solicitud as estados
 from modules.asignacion_auditores.asignacion_schema import AsignacionAuditorCrear
+from modules.asignacion_auditores.rol_auditor import ROL_AUDITOR, normalizar_rol_auditor
 
 
 # Estado aceptado por la constraint actual de auditores_solicitud.
@@ -35,20 +36,16 @@ SQL_ASIGNACION_ACTIVA = (
     "UPPER(TRIM(COALESCE(a.estado_asignacion, ''))) IN "
     "('AGENDADA', 'PROGRAMADA', 'CONFIRMADO', 'CONFIRMADA', 'ASIGNADO', 'ASIGNADA', 'ACTIVO', 'ACTIVA')"
 )
-SQL_ROL_LIDER = (
-    "LOWER(TRIM(COALESCE(a.especialidad, ''))) IN ('auditor líder', 'auditor lider')"
-)
-# Regla de equipo: una solicitud admite varios auditores (líder, experto
-# técnico, auditor integral, observador) pero un solo auditor líder, y es el
-# único rol obligatorio. Por eso el equipo queda "completo" en cuanto tiene un
-# auditor líder activo: la solicitud deja de ofrecerse para asignar y los
-# demás integrantes se suman desde Agenda al programar la visita.
+# Regla de equipo (17/11/2026, rol único "Auditor"): ya no hay roles en la
+# asignación. La solicitud queda "completa" en cuanto tiene AL MENOS UN
+# auditor con asignación activa: deja de ofrecerse en Asignación y el backend
+# responde 409 si se intenta asignar otro desde esa pantalla. Más auditores
+# para la misma solicitud se suman desde Agenda al programar la visita.
 SQL_SOLICITUD_CON_EQUIPO_COMPLETO = f"""EXISTS (
     SELECT 1
     FROM auditores_solicitud a
     WHERE a.id_solicitud = s.id_solicitud
       AND {SQL_ASIGNACION_ACTIVA}
-      AND {SQL_ROL_LIDER}
 )"""
 
 
@@ -183,7 +180,7 @@ class AsignacionAuditorService:
         filtros = [
             f"s.estado = '{estados.APROBADA}'",
             "s.deleted_at IS NULL",
-            # Las que ya tienen el equipo completo (auditor líder activo) no se
+            # Las que ya tienen un auditor con asignación activa no se
             # vuelven a ofrecer. Las que solo tienen asignaciones canceladas sí.
             "NOT " + SQL_SOLICITUD_CON_EQUIPO_COMPLETO,
         ]
@@ -647,20 +644,20 @@ class AsignacionAuditorService:
         raise error
 
     async def validar_equipo_incompleto(self, id_solicitud: UUID) -> None:
-        """409 si la solicitud ya tiene su equipo completo (auditor líder activo).
+        """409 si la solicitud ya tiene al menos un auditor con asignación activa.
 
         Así el backend no depende de que la pantalla oculte la solicitud.
         """
         resultado = await self.db.execute(
             text(
                 f"""
-                SELECT s.numero_radicado, u.nombre AS lider_nombre
+                SELECT s.numero_radicado, u.nombre AS auditor_nombre,
+                       COUNT(*) OVER () AS total
                 FROM auditores_solicitud a
                 INNER JOIN solicitud s ON s.id_solicitud = a.id_solicitud
                 LEFT JOIN usuario u ON u.id_usuario = a.id_auditor
                 WHERE a.id_solicitud = :id_solicitud
                   AND {SQL_ASIGNACION_ACTIVA}
-                  AND {SQL_ROL_LIDER}
                 LIMIT 1
                 """
             ),
@@ -669,13 +666,14 @@ class AsignacionAuditorService:
         fila = resultado.mappings().first()
         if fila:
             radicado = fila.get("numero_radicado") or "seleccionada"
-            lider = fila.get("lider_nombre") or "ya registrado"
+            total = int(fila.get("total") or 1)
+            quien = fila.get("auditor_nombre") or "ya registrado"
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    f"La solicitud {radicado} ya tiene su equipo asignado "
-                    f"(auditor líder: {lider}). Para sumar auditores hágalo desde "
-                    "Agenda al programar la visita, o cancele primero la asignación actual."
+                    f"La solicitud {radicado} ya tiene {total} auditor(es) asignado(s) "
+                    f"({quien}). Para sumar auditores hágalo desde Agenda al programar "
+                    "la visita, o cancele primero la asignación actual."
                 ),
             )
 
@@ -750,7 +748,7 @@ class AsignacionAuditorService:
                     "id": str(id_asignacion),
                     "id_solicitud": str(data.id_solicitud),
                     "id_auditor": str(data.id_auditor),
-                    "especialidad": data.rol_auditor.value,
+                    "especialidad": ROL_AUDITOR,
                     "estado_asignacion": ESTADO_ASIGNACION_INICIAL,
                 },
             )
@@ -819,8 +817,8 @@ class AsignacionAuditorService:
             "id_auditor": str(asignacion["id_auditor"]),
             "auditor_nombre": info.get("nombre", ""),
             "auditor_correo": info.get("correo", ""),
-            "rol_auditor": asignacion["especialidad"],
-            "especialidad": asignacion["especialidad"],
+            "rol_auditor": normalizar_rol_auditor(asignacion["especialidad"]),
+            "especialidad": normalizar_rol_auditor(asignacion["especialidad"]),
             "fecha_inicio_planificada": None,
             "fecha_fin_planificada": None,
             "estado_asignacion": asignacion["estado_asignacion"],
@@ -859,7 +857,7 @@ class AsignacionAuditorService:
                     a.id,
                     a.id_solicitud,
                     a.id_auditor,
-                    a.especialidad,
+                    'Auditor' AS especialidad,  -- rol único (rol_auditor.py)
                     a.declaracion,
                     COALESCE(agenda.fecha_inicio, a.fecha_inicio_planificada) AS fecha_inicio_planificada,
                     COALESCE(agenda.fecha_fin, a.fecha_fin_planificada) AS fecha_fin_planificada,
@@ -973,7 +971,7 @@ class AsignacionAuditorService:
         """Asignaciones activas del auditor en solicitudes de esa empresa."""
         resultado = await self.db.execute(
             text(f"""
-                SELECT a.id, a.id_solicitud, s.numero_radicado, a.especialidad,
+                SELECT a.id, a.id_solicitud, s.numero_radicado, 'Auditor' AS especialidad,
                        u.nombre AS auditor_nombre, e.nombre AS empresa_nombre
                 FROM auditores_solicitud a
                 INNER JOIN solicitud s ON s.id_solicitud = a.id_solicitud
@@ -1349,7 +1347,7 @@ class AsignacionAuditorService:
                     s.numero_radicado,
                     e.nombre AS empresa_nombre,
                     u.nombre AS auditor_nombre,
-                    a.especialidad AS rol_auditor,
+                    'Auditor' AS rol_auditor,  -- rol único (rol_auditor.py)
                     a.estado_asignacion,
                     sol.nombre AS solicitado_por_nombre
                 FROM historial_asignacion_auditor r

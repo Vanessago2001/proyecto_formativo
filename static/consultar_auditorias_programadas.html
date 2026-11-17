@@ -1373,7 +1373,7 @@
                                     correo: a.correo,
                                     tipo_doc: yo ? r.auditor_tipo_doc : '',
                                     num_doc: yo ? r.auditor_num_doc : '',
-                                    rol: a.rol
+                                    rol: 'Auditor'
                                 };
                             });
                             grupos[key].auditores_programados = r.equipo.map(a => a.nombre).filter(Boolean);
@@ -1386,7 +1386,7 @@
                         correo: r.auditor_correo,
                         tipo_doc: r.auditor_tipo_doc,
                         num_doc: r.auditor_num_doc,
-                        rol: r.rol_auditor
+                        rol: 'Auditor'
                     });
                 });
                 items = Object.values(grupos);
@@ -1905,15 +1905,11 @@
 </html>`;
         }
 
+        // Rol único "Auditor" (17/11/2026): cualquier auditor asignado a la
+        // visita la finaliza y la califica (antes solo el auditor líder).
         function esLiderProgramacion(r) {
             if (!r || !usuarioId) return false;
-            if (String(r.id_usuario || '') !== String(usuarioId)) return false;
-            return esRolLider(r.rol_auditor);
-        }
-
-        // 'Auditor L\u00edder', 'Auditor lider', 'AUDITOR L\u00cdDER'...: sin tildes ni may\u00fasculas.
-        function esRolLider(rol) {
-            return String(rol || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes('lider');
+            return String(r.id_usuario || '') === String(usuarioId);
         }
 
         function esProgramacionFinalizada(r) {
@@ -1966,7 +1962,7 @@
             const r = todosLosDatos[idx];
             if (!r) return;
             const auditores = (r.auditores || []).map(a =>
-                `<div class="auditor-card"><strong>${escapeHtml(a.nombre || '-')}</strong><br><span>${escapeHtml(a.tipo_doc || '')} ${escapeHtml(a.num_doc || '')}</span><br><span>${escapeHtml(a.correo || '')}</span><br><span>Rol: ${escapeHtml(a.rol || 'Auditor')}</span></div>`
+                `<div class="auditor-card"><strong>${escapeHtml(a.nombre || '-')}</strong><br><span>${escapeHtml(a.tipo_doc || '')} ${escapeHtml(a.num_doc || '')}</span><br><span>${escapeHtml(a.correo || '')}</span></div>`
             ).join('') || '<span>-</span>';
             const contenido = `
                 <div class="section"><h3>Empresa</h3>
@@ -1997,7 +1993,7 @@
         // existan (nunca "undefined").
         function lineaAuditor(a) {
             const doc = [a.tipo_doc, a.num_doc].filter(Boolean).join(' ');
-            return [a.nombre || 'Auditor sin nombre', doc ? '(' + doc + ')' : '', a.correo || '', a.rol ? 'Rol: ' + a.rol : '']
+            return [a.nombre || 'Auditor sin nombre', doc ? '(' + doc + ')' : '', a.correo || '', '']
                 .filter(Boolean).join(' - ').replace(' - (', ' (');
         }
 
@@ -2066,8 +2062,8 @@
 
         /* ---------------------------------------------------------
            CALIFICACIÓN DE LA VISITA (1 a 100 %) — la ve el Comité.
-           Regla: solo el auditor LÍDER de la visita (los demás integrantes
-           no ven el botón); visita no cancelada y ya iniciada (o
+           Regla: cualquier auditor asignado a la visita (rol único
+           "Auditor"); visita no cancelada y ya iniciada (o
            finalizada); editable hasta que el Comité decida. Es obligatoria
            para que el Comité apruebe o rechace el expediente.
         --------------------------------------------------------- */
@@ -2093,14 +2089,14 @@
                 }
                 misCalificaciones = {};
                 (data.calificaciones || []).forEach(c => { misCalificaciones[String(c.id_programacion)] = c; });
-                visitasQueLidero = new Set((data.visitas_lider || []).map(String));
+                visitasQueLidero = new Set((data.visitas_asignadas || data.visitas_lider || []).map(String));
             } catch { misCalificaciones = {}; }
         }
 
         function estadoCalificacion(r) {
             const estado = String(r.estado || '').trim().toLowerCase();
             if (estado.startsWith('cancelad')) return { visible: false };
-            // Solo califica la persona a cargo de la visita (el auditor líder).
+            // Califica cualquier auditor asignado a la visita.
             if (!esLiderProgramacion(r) && !visitasQueLidero.has(String(r.id_programacion))) return { visible: false };
             const actual = misCalificaciones[String(r.id_programacion)] || null;
             if (actual && actual.bloqueada) {
@@ -2348,6 +2344,6 @@
         })();
     </script>
      <script src="/static/session.js?v=20261117"></script>
-<script src="/static/nav.js?v=20261117a"></script>
+<script src="/static/nav.js?v=20261117cat"></script>
 </body>
 </html>

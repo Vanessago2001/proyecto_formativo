@@ -20,6 +20,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import almacen_archivos
+
 RAIZ_PROYECTO = Path(__file__).resolve().parents[2]
 RAIZ_UPLOADS = (RAIZ_PROYECTO / "uploads").resolve()
 
@@ -65,6 +67,34 @@ def _info_archivo(url: str | None) -> dict[str, Any]:
         "formato": ruta.suffix.lstrip(".").upper(),
         "tamano": tamano,
     }
+
+
+async def _resolver_archivo_compartido(url: str | None, db) -> Path | None:
+    """Como ``_resolver_archivo``; si el archivo se subió en otro computador, lo trae de la base."""
+    ruta = _resolver_archivo(url)
+    if ruta is not None or not url:
+        return ruta
+    clave = almacen_archivos.normalizar(url)
+    if clave is None or not clave.startswith("uploads/"):
+        return None
+    await almacen_archivos.ruta_local(clave, db=db, disco=RAIZ_UPLOADS / clave[len("uploads/"):])
+    return _resolver_archivo(url)
+
+
+async def _completar_disponibles_en_base(db, faltantes: list[tuple[dict, str, str]]) -> None:
+    """Marca como disponibles los archivos que no están en este disco pero sí en la base.
+
+    ``faltantes``: (item, campo con la URL, campo "disponible"). Una sola consulta.
+    """
+    if not faltantes:
+        return
+    en_base = await almacen_archivos.tamanos([item.get(campo) for item, campo, _ in faltantes], db=db)
+    for item, campo, marca in faltantes:
+        clave = almacen_archivos.normalizar(item.get(campo))
+        if clave in en_base:
+            item[marca] = True
+            item["formato"] = Path(clave).suffix.lstrip(".").upper()
+            item["tamano"] = en_base[clave]
 
 
 def _decorar_archivo(item: dict[str, Any], campo: str = "url_archivo") -> dict[str, Any]:
@@ -323,6 +353,15 @@ class AuditoresRegistradosService:
         detalle["experiencia_laboral"] = await self._experiencia_laboral(id_usuario)
         detalle["experiencia_auditoria"] = await self._experiencia_auditoria(id_usuario)
         detalle["postulaciones"] = await self._postulaciones(id_usuario)
+
+        # Archivos subidos en otro computador: disponibles si están en la base compartida.
+        faltantes = [(detalle, "foto_url", "disponible")] if detalle.get("foto_url") and not detalle.get("disponible") else []
+        faltantes += [
+            (item, "url_archivo", "archivo_disponible")
+            for item in (*detalle["documentos"], *detalle["certificaciones"])
+            if item.get("url_archivo") and not item.get("archivo_disponible")
+        ]
+        await _completar_disponibles_en_base(self.db, faltantes)
 
         detalle["resumen"] = {
             "documentos": len(detalle["documentos"]),
@@ -1027,7 +1066,7 @@ class AuditoresRegistradosService:
                 detail="Documento no encontrado para este auditor.",
             )
 
-        ruta = _resolver_archivo(fila["url_archivo"])
+        ruta = await _resolver_archivo_compartido(fila["url_archivo"], self.db)
         if ruta is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -1059,7 +1098,7 @@ class AuditoresRegistradosService:
                 detail="Certificación no encontrada para este auditor.",
             )
 
-        ruta = _resolver_archivo(fila["url_archivo"])
+        ruta = await _resolver_archivo_compartido(fila["url_archivo"], self.db)
         if ruta is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -1082,7 +1121,7 @@ class AuditoresRegistradosService:
             {"id_usuario": id_usuario},
         )
         fila = resultado.mappings().first()
-        ruta = _resolver_archivo(fila["foto_url"] if fila else None)
+        ruta = await _resolver_archivo_compartido(fila["foto_url"] if fila else None, self.db)
         if ruta is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

@@ -7,9 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user
+from modules.auth.dependencies import require_auditor_aprobado
 from modules.calificacion_visitas.calificacion_service import CalificacionVisitaService
 
-router = APIRouter(prefix="/calificacion-visitas", tags=["Calificación de visitas"])
+# Solo el auditor ya aprobado califica visitas (ver require_auditor_aprobado).
+router = APIRouter(
+    prefix="/calificacion-visitas",
+    tags=["Calificación de visitas"],
+    dependencies=[Depends(require_auditor_aprobado)],
+)
 
 
 @router.get("/mias")

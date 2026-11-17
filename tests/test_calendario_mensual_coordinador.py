@@ -91,8 +91,9 @@ async def test_una_entrada_por_programacion_con_equipo_y_dias_de_la_visita():
 
     assert [str(a["id_programacion"]) for a in r["auditorias"]] == [str(ID_PROG), str(ID_PROG_2)]
     visita = r["auditorias"][0]
-    # El líder primero; datos de sede y NIT para el detalle.
-    assert [(e["nombre"], e["rol_auditor"]) for e in visita["equipo"]] == [("Ana", "Auditor Líder"), ("Luis", "Observador")]
+    # Rol único "Auditor": el equipo va por nombre y los roles viejos se leen
+    # como "Auditor"; datos de sede y NIT para el detalle.
+    assert [(e["nombre"], e["rol_auditor"]) for e in visita["equipo"]] == [("Ana", "Auditor"), ("Luis", "Auditor")]
     assert visita["equipo"][0]["confirmado"] is True
     assert visita["sede_nombre"] == "Sede norte" and visita["empresa_nit"] == "900123"
     assert visita["direccion"] == "Carrera 8 # 20-45"  # sin dirección propia: la de la sede

@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta
 import calendar
 import unicodedata
 
+from modules.asignacion_auditores.rol_auditor import ROL_AUDITOR, ROL_DETALLE_BD, normalizar_rol_auditor
 from core.filtros_ubicacion import condicion_contiene, patron_contiene
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -118,7 +119,7 @@ class AgendaAuditorService(AuditorService):
         result = await self.db.execute(text("""
             SELECT u.id_usuario, u.nombre, u.correo, u.estado, u.estado_auditor, u.tipo_doc, u.num_doc,
                    (
-                       SELECT a2.especialidad
+                       SELECT CAST('Auditor' AS TEXT)  -- rol único (rol_auditor.py)
                        FROM auditores_solicitud a2
                        WHERE a2.id_auditor = u.id_usuario
                          AND a2.especialidad IS NOT NULL
@@ -285,7 +286,7 @@ class AgendaAuditorService(AuditorService):
         """
         # Rol que el auditor ya tiene en la solicitud (si existe).
         rol_fragmento = """
-                rol.especialidad AS rol_asignado
+                CASE WHEN rol.especialidad IS NOT NULL THEN 'Auditor' END AS rol_asignado
         """
         seleccion = (
             CTE_AUDITORES
@@ -546,7 +547,7 @@ class AgendaAuditorService(AuditorService):
                     u.correo AS auditor_correo,
                     u.tipo_doc AS auditor_tipo_doc,
                     u.num_doc AS auditor_num_doc,
-                    a.especialidad AS rol_auditor,
+                    'Auditor' AS rol_auditor,
                     a.estado_asignacion
                 FROM auditores_solicitud a
                 INNER JOIN solicitud s
@@ -597,7 +598,7 @@ class AgendaAuditorService(AuditorService):
                     d.id_detalle,
                     d.id_programacion,
                     d.id_usuario,
-                    d.rol_auditor,
+                    'Auditor' AS rol_auditor,
                     d.horas_asignadas,
                     COALESCE(d.confirmado, FALSE) AS auditor_confirmado,
                     d.fecha_confirmacion,
@@ -750,7 +751,7 @@ class AgendaAuditorService(AuditorService):
             text("""
                 SELECT
                     d.id_usuario,
-                    d.rol_auditor,
+                    'Auditor' AS rol_auditor,
                     d.horas_asignadas,
                     COALESCE(d.confirmado, FALSE) AS confirmado,
                     d.fecha_confirmacion,
@@ -822,7 +823,7 @@ class AgendaAuditorService(AuditorService):
                     d.id_detalle,
                     d.id_programacion,
                     d.id_usuario,
-                    d.rol_auditor,
+                    'Auditor' AS rol_auditor,
                     d.horas_asignadas,
                     COALESCE(d.confirmado, FALSE) AS auditor_confirmado,
                     d.fecha_confirmacion,
@@ -879,7 +880,7 @@ class AgendaAuditorService(AuditorService):
                             'id_usuario', ue.id_usuario,
                             'nombre', ue.nombre,
                             'correo', ue.correo,
-                            'rol', de.rol_auditor,
+                            'rol', 'Auditor',
                             'confirmado', COALESCE(de.confirmado, FALSE)
                         ) ORDER BY ue.nombre), '[]'::json)
                         FROM detalle_programacion_auditor de
@@ -982,18 +983,14 @@ class AgendaAuditorService(AuditorService):
         """
         return await sugerir_fechas(self, auditores, **opciones)
 
-    def _normalizar_rol_agenda(self, rol: str | None) -> str:
-        valor = (rol or "").strip()
-        mapeo = {
-            "Auditor líder": "Auditor Líder",
-            "Auditor Líder": "Auditor Líder",
-            "Experto técnicos": "Auditor Técnico",
-            "Experto técnico": "Auditor Técnico",
-            "Auditor Técnico": "Auditor Técnico",
-            "Auditor integral": "Auditor Técnico",
-            "Observador": "Observador",
-        }
-        return mapeo.get(valor, "Auditor Técnico")
+    def _normalizar_rol_agenda(self, rol: str | None = None) -> str:
+        """Rol guardado en detalle_programacion_auditor: siempre el mismo.
+
+        Rol único "Auditor" (17/11/2026): el rol pedido se ignora. El CHECK
+        chk_rol_auditor aún no admite 'Auditor', así que se guarda
+        ROL_DETALLE_BD (ver modules/asignacion_auditores/rol_auditor.py).
+        """
+        return ROL_DETALLE_BD
 
     async def _tabla_existe(self, tabla: str) -> bool:
         result = await self.db.execute(text("""
@@ -1213,7 +1210,7 @@ class AgendaAuditorService(AuditorService):
                 "id": str(uuid4()),
                 "id_solicitud": str(id_solicitud),
                 "id_auditor": str(id_usuario),
-                "especialidad": self._normalizar_rol_agenda(rol_auditor),
+                "especialidad": ROL_AUDITOR,
                 "estado_asignacion": "Agendada",
             },
         )
@@ -2374,7 +2371,7 @@ class AgendaAuditorService(AuditorService):
                    sede.nombre_sede AS sede_nombre, sede.direccion AS sede_direccion,
                    sede.ciudad AS sede_ciudad,
                    sede.departamento AS sede_departamento, sede.pais AS sede_pais,
-                   d.id_usuario, d.rol_auditor, COALESCE(d.confirmado, FALSE) AS confirmado,
+                   d.id_usuario, COALESCE(d.confirmado, FALSE) AS confirmado,
                    u.nombre AS auditor_nombre, u.correo AS auditor_correo
             FROM programacion_visita p
             LEFT JOIN detalle_programacion_auditor d ON d.id_programacion = p.id_programacion
@@ -2407,7 +2404,7 @@ class AgendaAuditorService(AuditorService):
                     "id_usuario": fila["id_usuario"],
                     "nombre": fila.get("auditor_nombre"),
                     "correo": fila.get("auditor_correo"),
-                    "rol_auditor": fila.get("rol_auditor") or "Auditor",
+                    "rol_auditor": normalizar_rol_auditor(fila.get("rol_auditor")),
                     "confirmado": bool(fila.get("confirmado")),
                 })
 
@@ -2425,11 +2422,8 @@ class AgendaAuditorService(AuditorService):
                 continue
             if modalidad_buscada and modalidad_buscada != self._texto_comparable(item.get("modalidad")):
                 continue
-            # El líder primero; luego el resto por nombre.
-            item["equipo"].sort(key=lambda a: (
-                "lider" not in self._texto_comparable(a.get("rol_auditor")),
-                self._texto_comparable(a.get("nombre")),
-            ))
+            # Rol único "Auditor": el equipo va por nombre.
+            item["equipo"].sort(key=lambda a: self._texto_comparable(a.get("nombre")))
             auditorias.append(item)
 
         # ------------------------------------------------ calendario por día
@@ -2594,10 +2588,9 @@ class AgendaAuditorService(AuditorService):
         }
 
     async def _auditores_de_programacion(self, id_programacion: UUID):
-        # rol_auditor hace falta en finalizar_programacion para reconocer al
-        # auditor líder (sin él, el líder recibía siempre 403).
+        # Rol único "Auditor": cualquier auditor de la visita la finaliza.
         result = await self.db.execute(text("""
-            SELECT d.id_usuario, u.nombre, u.correo, d.rol_auditor
+            SELECT d.id_usuario, u.nombre, u.correo, 'Auditor' AS rol_auditor
             FROM detalle_programacion_auditor d
             LEFT JOIN usuario u ON u.id_usuario = d.id_usuario
             WHERE d.id_programacion = :id
@@ -2916,7 +2909,7 @@ class AgendaAuditorService(AuditorService):
         observaciones: str | None = None,
         es_admin: bool = False,
     ) -> dict:
-        """Finaliza la auditoria. Solo el auditor lider asignado puede hacerlo."""
+        """Finaliza la auditoria. Cualquier auditor asignado a la visita puede hacerlo."""
         programacion = await self.db.execute(
             text("SELECT id_programacion, estado FROM programacion_visita WHERE id_programacion = :id"),
             {"id": str(id_programacion)},
@@ -2931,16 +2924,11 @@ class AgendaAuditorService(AuditorService):
         if not auditores:
             raise HTTPException(status_code=409, detail="La programacion no tiene auditores asignados.")
         if not es_admin:
-            es_lider = any(
-                str(a.get("id_usuario")) == str(id_usuario)
-                and str(a.get("rol_auditor") or "").strip().lower()
-                in {"auditor lider", "auditor l\u00edder"}
-                for a in auditores
-            )
-            if not es_lider:
+            asignado = any(str(a.get("id_usuario")) == str(id_usuario) for a in auditores)
+            if not asignado:
                 raise HTTPException(
                     status_code=403,
-                    detail="Solo el auditor lider puede finalizar esta auditoria.",
+                    detail="Solo un auditor asignado a esta visita puede finalizarla.",
                 )
         await self.db.execute(
             text("""

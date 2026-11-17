@@ -43,8 +43,8 @@ class SesionAsignacion:
         self.sentencias.append((sql, params or {}))
         if sql.startswith("SELECT 1 FROM programacion_visita"):
             return ResultadoFalso([])
-        if "AS lider_nombre" in sql:
-            return ResultadoFalso([])  # equipo incompleto
+        if "AS total FROM auditores_solicitud" in sql:
+            return ResultadoFalso([])  # sin auditores activos: la solicitud no está completa
         if "FROM solicitud s LEFT JOIN empresa e" in sql:
             return ResultadoFalso([{
                 "id_solicitud": ID_SOLICITUD, "numero_radicado": "SOL-1", "estado": "Aprobada",

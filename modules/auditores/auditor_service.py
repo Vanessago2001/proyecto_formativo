@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import StreamingResponse
 
+from core import almacen_archivos
 from core.security import hash_password, validar_password_segura
 
 from modules.auditores.auditor_schema import (
@@ -903,21 +904,21 @@ class AuditorService:
             self.DIRECTORIO_DOCUMENTOS / nombre_fisico
         )
 
+        url_archivo = (
+            f"/uploads/auditores/{nombre_fisico}"
+        )
+
         try:
-            with ruta_archivo.open("wb") as buffer:
-                shutil.copyfileobj(
-                    archivo.file,
-                    buffer,
-                )
+            # Disco local + base compartida (se confirma con el commit del documento).
+            await almacen_archivos.guardar(
+                url_archivo, archivo.file.read(), db=self.db, disco=ruta_archivo,
+                nombre=archivo.filename, usuario=id_usuario,
+            )
         except Exception as error:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="No fue posible guardar el archivo.",
             ) from error
-
-        url_archivo = (
-            f"/uploads/auditores/{nombre_fisico}"
-        )
 
         if foto_anterior is not None:
             return await self._reemplazar_foto_profesional(
@@ -1101,11 +1102,9 @@ class AuditorService:
             if not url_vieja or not url_vieja.startswith("/uploads/auditores/"):
                 continue
             ruta_vieja = Path(url_vieja.lstrip("/"))
-            if ruta_vieja.exists():
-                try:
-                    ruta_vieja.unlink()
-                except OSError:
-                    pass
+            await almacen_archivos.eliminar(
+                url_vieja, db=self.db, disco=ruta_vieja, confirmar=True
+            )
 
         return {
             "mensaje": "Foto profesional reemplazada correctamente.",
@@ -1205,14 +1204,14 @@ class AuditorService:
             nombre_fisico
         )
 
-        with nueva_ruta.open("wb") as buffer:
-            shutil.copyfileobj(
-                archivo.file,
-                buffer,
-            )
-
         nueva_url = (
             f"/uploads/auditores/{nombre_fisico}"
+        )
+
+        # Disco local + base compartida (se confirma con el commit del UPDATE).
+        await almacen_archivos.guardar(
+            nueva_url, archivo.file.read(), db=self.db, disco=nueva_ruta,
+            nombre=archivo.filename, usuario=id_usuario,
         )
 
         try:
@@ -1277,11 +1276,9 @@ class AuditorService:
                 url_anterior.lstrip("/")
             )
 
-            if ruta_anterior.exists():
-                try:
-                    ruta_anterior.unlink()
-                except OSError:
-                    pass
+            await almacen_archivos.eliminar(
+                url_anterior, db=self.db, disco=ruta_anterior, confirmar=True
+            )
 
         return {
             "mensaje": "Documento reemplazado correctamente.",
@@ -1358,11 +1355,9 @@ class AuditorService:
                 url_archivo.lstrip("/")
             )
 
-            if ruta.exists():
-                try:
-                    ruta.unlink()
-                except OSError:
-                    pass
+            await almacen_archivos.eliminar(
+                url_archivo, db=self.db, disco=ruta, confirmar=True
+            )
 
         return {
             "id_documento": id_documento,
@@ -1689,7 +1684,11 @@ class AuditorService:
         foto_anterior = perfil["foto_url"] if perfil else None
 
         try:
-            ruta_nueva.write_bytes(contenido)
+            # Disco local + base compartida (se confirma con el commit del perfil).
+            await almacen_archivos.guardar(
+                url_nueva, contenido, db=self.db, disco=ruta_nueva,
+                nombre=archivo.filename, usuario=id_usuario,
+            )
 
             if perfil:
                 await self.db.execute(
@@ -1738,11 +1737,10 @@ class AuditorService:
 
         if foto_anterior and foto_anterior.startswith("/uploads/auditores/perfiles/"):
             ruta_anterior = Path(foto_anterior.lstrip("/"))
-            if ruta_anterior.exists() and ruta_anterior != ruta_nueva:
-                try:
-                    ruta_anterior.unlink()
-                except OSError:
-                    pass
+            if ruta_anterior != ruta_nueva:
+                await almacen_archivos.eliminar(
+                    foto_anterior, db=self.db, disco=ruta_anterior, confirmar=True
+                )
 
         return {
             "mensaje": "Foto de perfil cargada correctamente.",
@@ -1783,11 +1781,9 @@ class AuditorService:
 
         if foto_url.startswith("/uploads/auditores/perfiles/"):
             ruta = Path(foto_url.lstrip("/"))
-            if ruta.exists():
-                try:
-                    ruta.unlink()
-                except OSError:
-                    pass
+            await almacen_archivos.eliminar(
+                foto_url, db=self.db, disco=ruta, confirmar=True
+            )
 
         return {
             "mensaje": "Foto de perfil eliminada correctamente.",
@@ -2352,18 +2348,21 @@ class AuditorService:
         nombre_fisico = f"{id_usuario}_{uuid4()}{extension}"
         ruta_archivo = self.DIRECTORIO_CERTIFICACIONES / nombre_fisico
 
+        url_archivo = (
+            f"/uploads/auditores/certificaciones/{nombre_fisico}"
+        )
+
         try:
-            with ruta_archivo.open("wb") as buffer:
-                shutil.copyfileobj(archivo.file, buffer)
+            # Disco local + base compartida (se confirma con el commit de la certificación).
+            await almacen_archivos.guardar(
+                url_archivo, archivo.file.read(), db=self.db, disco=ruta_archivo,
+                nombre=archivo.filename, usuario=id_usuario,
+            )
         except Exception as error:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="No fue posible guardar el archivo de la certificación.",
             ) from error
-
-        url_archivo = (
-            f"/uploads/auditores/certificaciones/{nombre_fisico}"
-        )
         descripcion_limpia = (descripcion or "").strip() or None
 
         try:
@@ -2490,11 +2489,9 @@ class AuditorService:
 
         if url_archivo.startswith("/uploads/"):
             ruta = Path(url_archivo.lstrip("/"))
-            if ruta.exists():
-                try:
-                    ruta.unlink()
-                except OSError:
-                    pass
+            await almacen_archivos.eliminar(
+                url_archivo, db=self.db, disco=ruta, confirmar=True
+            )
 
         return {
             "id_certificacion": id_certificacion,
@@ -2708,7 +2705,7 @@ class AuditorService:
             {
                 "id_asignacion": str(fila["id"]),
                 "numero_radicado": fila.get("numero_radicado"),
-                "rol": fila.get("especialidad"),
+                "rol": "Auditor",  # rol único (rol_auditor.py)
             }
             for fila in afectadas
         ]
@@ -3982,6 +3979,17 @@ class AuditorService:
         # ====================================================
         # 6. ELIMINAR ARCHIVOS FÍSICOS
         # ====================================================
+
+        # Una sola consulta a la base para todos los archivos (y su commit).
+        await almacen_archivos.eliminar_varios(
+            [
+                (documento["url_archivo"], Path(documento["url_archivo"].lstrip("/")))
+                for documento in documentos
+                if documento["url_archivo"]
+            ],
+            db=self.db,
+            confirmar=True,
+        )
 
         for documento in documentos:
 

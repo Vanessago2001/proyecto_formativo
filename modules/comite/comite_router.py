@@ -22,7 +22,8 @@ from modules.reportes.exportacion_tabular import Columna, respuesta_exportacion
 from modules.comite.comite_acta_service import ComiteActaService
 from modules.comite.imparcialidad import MENSAJES as MENSAJES_IMPARCIALIDAD
 from modules.comite.imparcialidad import aplica_a as imparcialidad_aplica_a
-from modules.comite.imparcialidad import exigir_imparcialidad, id_de, sql_impedimento
+from modules.comite.imparcialidad import exigir_imparcialidad, filtro_visible, id_de, sql_impedimento
+from modules.comite import lider_expediente
 from modules.solicitudes.documento_service import CARPETA_ARCHIVOS, DocumentoService
 
 router = APIRouter(prefix="/comite", tags=["Comité de certificación"])
@@ -154,9 +155,12 @@ async def consultar_expedientes_pendientes(
     condiciones, params = construir_filtro_expedientes(
         estado, q, norma, fecha_desde, fecha_hasta, ciudad=ciudad, departamento=departamento, pais=pais
     )
+    # Imparcialidad: al miembro del Comité impedido no le aparece la fila (ni
+    # en los contadores ni en la paginación). Excepción: el líder del comité
+    # de ese expediente la ve para firmar (solo_firma).
     if imparcialidad_aplica_a(current_user):
         columna_impedimento = sql_impedimento("s.id_solicitud")
-        params["imp_usuario"] = id_de(current_user)
+        condiciones += filtro_visible(current_user, "s.id_solicitud", params, permitir_lider=True)
     else:
         columna_impedimento = "CAST(NULL AS TEXT)"
     resultado = await db.execute(text(f"""
@@ -196,6 +200,7 @@ async def consultar_expedientes_pendientes(
             d.accion, d.comentario, d.fecha AS fecha_decision, d.decidio,
             acta.estado_acta, acta.fecha_firma,
             cert.id_certificado, cert.codigo_verificacion, cert.estado_certificado, cert.certificado_firmado,
+            lider.lider_id, lider.lider_nombre, lider.lider_por_expediente,
             {columna_impedimento} AS impedimento
         FROM solicitud s
         LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
@@ -212,6 +217,8 @@ async def consultar_expedientes_pendientes(
             ORDER BY c.fecha_registro DESC NULLS LAST
             LIMIT 1
         ) cert ON TRUE
+        -- Líder del comité que firma este expediente (o el global sin el SQL).
+        LEFT JOIN LATERAL {lider_expediente.sql_lateral_lider('s.id_solicitud')} lider ON TRUE
         WHERE s.deleted_at IS NULL
           -- Los estados vienen del catalogo de M5, no de una lista a mano.{condiciones}
         ORDER BY COALESCE(s.fecha_radicacion, s.fecha_creacion) DESC;
@@ -221,6 +228,11 @@ async def consultar_expedientes_pendientes(
     total = len(expedientes)
     inicio = (page - 1) * page_size
     normas = await db.execute(text("SELECT codigo, nombre FROM norma ORDER BY codigo;"))
+    # El Coordinador asigna el líder de cada expediente: la pantalla necesita
+    # saber si ya se aplicó el SQL (si no, muestra el aviso).
+    lider_disponible = None
+    if role_name in COMITE_SUPERADMIN_ONLY_PERMISOS:
+        lider_disponible = await lider_expediente.modo_por_expediente(db)
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-001",
@@ -245,6 +257,8 @@ async def consultar_expedientes_pendientes(
         "page_size": page_size,
         "paginas": max(1, -(-total // page_size)),
         "expedientes": expedientes[inicio:inicio + page_size],
+        "lider_por_expediente": lider_disponible,
+        "aviso_lider": lider_expediente.MENSAJE_FALTA_SQL if lider_disponible is False else None,
     }
 
 
@@ -282,6 +296,13 @@ def _fila_expediente_unificada(item: dict) -> dict:
     item["impedimento"] = MENSAJES_IMPARCIALIDAD.get(motivo) if motivo else None
     item["pendiente_evaluacion"] = canonico in ESTADOS_PENDIENTES_EVALUACION
     item["puede_evaluar"] = item["pendiente_evaluacion"] and not item["impedimento"]
+    # Un impedido solo ve la fila si es el líder del expediente: para firmar.
+    item["solo_firma"] = bool(item["impedimento"])
+    item["lider"] = (
+        {"id_usuario": str(item["lider_id"]), "nombre": item.get("lider_nombre"),
+         "por_expediente": bool(item.get("lider_por_expediente"))}
+        if item.get("lider_id") else None
+    )
     return item
 
 
@@ -313,7 +334,7 @@ async def consultar_expediente_completo(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar el expediente completo del comité de certificación.",
         )
-    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    # Imparcialidad: el miembro del Comité impedido recibe 404 (no se revela que existe).
     await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
@@ -367,7 +388,7 @@ async def descargar_expediente_digital(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para descargar el expediente digital del comité de certificación.",
         )
-    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    # Imparcialidad: el miembro del Comité impedido recibe 404 (no se revela que existe).
     await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
@@ -425,7 +446,7 @@ async def consultar_informe_auditor(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar el informe del auditor del comité de certificación.",
         )
-    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    # Imparcialidad: el miembro del Comité impedido recibe 404 (no se revela que existe).
     await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
@@ -496,7 +517,7 @@ async def consultar_evidencias_fisicas(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar evidencias físicas del comité de certificación.",
         )
-    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    # Imparcialidad: el miembro del Comité impedido recibe 404 (no se revela que existe).
     await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
@@ -545,7 +566,7 @@ async def consultar_no_conformidades(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar las no conformidades del comité de certificación.",
         )
-    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    # Imparcialidad: el miembro del Comité impedido recibe 404 (no se revela que existe).
     await exigir_imparcialidad(db, expediente_id, current_user)
 
     resultado = await db.execute(text("""
@@ -597,17 +618,19 @@ async def consultar_historial_solicitudes_previas(
             detail="No tienes permisos para consultar el historial de solicitudes previas del comité de certificación.",
         )
 
-    resultado = await db.execute(text("""
-        SELECT id_solicitud AS id,
-               COALESCE(numero_radicado, id_solicitud::TEXT) AS codigo,
-               fecha_creacion AS fecha,
-               estado
-        FROM solicitud
-        WHERE usuario_creador = :usuario_id
-          AND deleted_at IS NULL
-        ORDER BY fecha_creacion DESC
+    params = {"usuario_id": usuario_id}
+    oculto = filtro_visible(current_user, "s.id_solicitud", params)
+    resultado = await db.execute(text(f"""
+        SELECT s.id_solicitud AS id,
+               COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo,
+               s.fecha_creacion AS fecha,
+               s.estado
+        FROM solicitud s
+        WHERE s.usuario_creador = :usuario_id
+          AND s.deleted_at IS NULL{oculto}
+        ORDER BY s.fecha_creacion DESC
         LIMIT 100;
-    """), {"usuario_id": usuario_id})
+    """), params)
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-007",
@@ -631,7 +654,7 @@ async def consultar_observaciones_tecnicos(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar observaciones de técnicos del comité.",
         )
-    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    # Imparcialidad: el miembro del Comité impedido recibe 404 (no se revela que existe).
     await exigir_imparcialidad(db, expediente_id, current_user)
     resultado = await db.execute(text("""
         SELECT o.id_observacion, o.texto AS descripcion, o.tipo,
@@ -676,7 +699,9 @@ async def buscar_expediente_por_nit_o_codigo(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para buscar expedientes del comité.",
         )
-    resultado = await db.execute(text("""
+    params = {"query": f"%{query.strip()}%"}
+    oculto = filtro_visible(current_user, "s.id_solicitud", params)
+    resultado = await db.execute(text(f"""
         SELECT
             s.id_solicitud AS id,
             COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo,
@@ -692,10 +717,10 @@ async def buscar_expediente_por_nit_o_codigo(
               s.numero_radicado ILIKE :query
               OR e.nit ILIKE :query
               OR e.nombre ILIKE :query
-          )
+          ){oculto}
         ORDER BY s.fecha_creacion DESC
         LIMIT 100;
-    """), {"query": f"%{query.strip()}%"})
+    """), params)
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-009",
@@ -725,7 +750,9 @@ async def filtrar_expedientes_por_norma_sector(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="El esquema de empresas no contiene un campo de sector para filtrar expedientes.",
         )
-    resultado = await db.execute(text("""
+    params = {"norma": f"%{norma.strip()}%" if norma and norma.strip() else None}
+    oculto = filtro_visible(current_user, "s.id_solicitud", params)
+    resultado = await db.execute(text(f"""
         SELECT
             s.id_solicitud AS id,
             COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo,
@@ -737,10 +764,10 @@ async def filtrar_expedientes_por_norma_sector(
         LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
         LEFT JOIN norma n ON n.id_norma = s.id_norma
         WHERE s.deleted_at IS NULL
-          AND (CAST(:norma AS TEXT) IS NULL OR n.codigo ILIKE :norma OR n.nombre ILIKE :norma)
+          AND (CAST(:norma AS TEXT) IS NULL OR n.codigo ILIKE :norma OR n.nombre ILIKE :norma){oculto}
         ORDER BY s.fecha_creacion DESC
         LIMIT 200;
-    """), {"norma": f"%{norma.strip()}%" if norma and norma.strip() else None})
+    """), params)
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-010",
@@ -786,7 +813,12 @@ async def aprobar_otorgamiento(
         UUID(str(resultado["expediente_id"])), current_user
     )
     resultado["certificado"] = borrador
-    if borrador.get("creado"):
+    if borrador.get("creado") and borrador.get("sin_lider"):
+        resultado["mensaje"] = (
+            f"Solicitud aprobada. Se creó el borrador del certificado {borrador['codigo_verificacion']}, "
+            "sin líder del comité: el Coordinador debe elegir el líder de este expediente para que lo firme."
+        )
+    elif borrador.get("creado"):
         resultado["mensaje"] = (
             f"Solicitud aprobada. Se creó el borrador del certificado {borrador['codigo_verificacion']} "
             "y quedó en el panel del líder del Comité para su firma."
@@ -886,7 +918,9 @@ async def consultar_decisiones_historicas(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar decisiones históricas.")
-    resultado = await db.execute(text("""
+    params: dict = {}
+    oculto = filtro_visible(current_user, "a.id_solicitud", params)
+    resultado = await db.execute(text(f"""
         SELECT
             a.id_accion,
             a.id_solicitud AS expediente_id,
@@ -903,9 +937,10 @@ async def consultar_decisiones_historicas(
         JOIN solicitud s ON s.id_solicitud = a.id_solicitud
         LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
         LEFT JOIN usuario u ON u.id_usuario::TEXT = a.id_usuario
+        WHERE TRUE{oculto}
         ORDER BY a.fecha DESC, a.id_accion DESC
         LIMIT 500;
-    """))
+    """), params)
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-019",
@@ -953,7 +988,9 @@ async def consultar_historial_dictamenes(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar decisiones históricas.")
-    resultado = await db.execute(text("""
+    params: dict = {}
+    oculto = filtro_visible(current_user, "s.id_solicitud", params)
+    resultado = await db.execute(text(f"""
         WITH decision AS (
             SELECT DISTINCT ON (a.id_solicitud)
                 a.id_solicitud, a.accion, a.datos->>'comentario' AS comentario, a.fecha,
@@ -992,10 +1029,10 @@ async def consultar_historial_dictamenes(
         ) cert ON TRUE
         -- Decididas por el Comité o ya aprobadas/rechazadas en la base.
         WHERE s.deleted_at IS NULL
-          AND (d.id_solicitud IS NOT NULL OR s.estado IN ('Aprobada', 'Rechazada'))
+          AND (d.id_solicitud IS NOT NULL OR s.estado IN ('Aprobada', 'Rechazada')){oculto}
         ORDER BY COALESCE(d.fecha, s.fecha) DESC NULLS LAST
         LIMIT 2000;
-    """))
+    """), params)
     filas = []
     for fila in resultado.mappings().all():
         item = dict(fila)
@@ -1070,7 +1107,10 @@ async def exportar_decisiones_consolidadas(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS and role_name not in {"req", "requerimiento"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para exportar decisiones consolidadas.")
-    resultado = await db.execute(text("""
+    # Imparcialidad: al miembro impedido no le salen esas decisiones.
+    params: dict = {}
+    oculto = filtro_visible(current_user, "a.id_solicitud", params)
+    resultado = await db.execute(text(f"""
         SELECT
             a.id_accion,
             a.id_solicitud AS expediente_id,
@@ -1087,8 +1127,9 @@ async def exportar_decisiones_consolidadas(
         JOIN solicitud s ON s.id_solicitud = a.id_solicitud
         LEFT JOIN empresa e ON e.id_empresa = s.id_empresa
         LEFT JOIN usuario u ON u.id_usuario::TEXT = a.id_usuario
+        WHERE TRUE{oculto}
         ORDER BY a.fecha DESC, a.id_accion DESC;
-    """))
+    """), params)
     decisiones = [dict(fila) for fila in resultado.mappings().all()]
     if formato:
         return respuesta_exportacion(
@@ -1118,18 +1159,20 @@ async def consultar_historial_por_empresa(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar historial por empresa.")
-    resultado = await db.execute(text("""
-        SELECT id_solicitud AS id,
-               COALESCE(numero_radicado, id_solicitud::TEXT) AS codigo,
-               estado,
-               fecha_creacion,
-               fecha_radicacion
-        FROM solicitud
-        WHERE id_empresa = :empresa_id
-          AND deleted_at IS NULL
-        ORDER BY fecha_creacion DESC
+    params = {"empresa_id": empresa_id}
+    oculto = filtro_visible(current_user, "s.id_solicitud", params)
+    resultado = await db.execute(text(f"""
+        SELECT s.id_solicitud AS id,
+               COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo,
+               s.estado,
+               s.fecha_creacion,
+               s.fecha_radicacion
+        FROM solicitud s
+        WHERE s.id_empresa = :empresa_id
+          AND s.deleted_at IS NULL{oculto}
+        ORDER BY s.fecha_creacion DESC
         LIMIT 200;
-    """), {"empresa_id": empresa_id})
+    """), params)
     return {
         "modulo": "M8 — Comité de certificación",
         "codigo": "COM-021",
@@ -1150,19 +1193,18 @@ async def consultar_auditor_responsable(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar auditor responsable.")
-    # Imparcialidad: el miembro del Comité que ya participó en la solicitud o su apelación no la ve.
+    # Imparcialidad: el miembro del Comité impedido recibe 404 (no se revela que existe).
     await exigir_imparcialidad(db, expediente_id, current_user)
     resultado = await db.execute(text("""
         SELECT u.id_usuario, u.nombre, u.correo,
-               a.especialidad, a.estado_asignacion
+               'Auditor' AS especialidad, a.estado_asignacion
         FROM auditores_solicitud a
         JOIN solicitud s ON s.id_solicitud = a.id_solicitud
         JOIN usuario u ON u.id_usuario = a.id_auditor
         WHERE a.id_solicitud = :expediente_id
           AND s.deleted_at IS NULL
           AND a.estado_asignacion IN ('Activo', 'Asignado', 'Confirmado')
-        ORDER BY CASE WHEN a.especialidad = 'Auditor líder' THEN 0 ELSE 1 END,
-                 a.id
+        ORDER BY a.id
         LIMIT 1;
     """), {"expediente_id": expediente_id})
     auditor = resultado.mappings().first()
@@ -1248,7 +1290,8 @@ async def generar_acta_del_comite_definitiva(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="El comentario es obligatorio para generar el acta.",
         )
-    await exigir_imparcialidad(db, expediente_id, current_user)
+    # El líder del comité del expediente siempre puede generar su acta.
+    await exigir_imparcialidad(db, expediente_id, current_user, permitir_lider=True)
     return await ComiteActaService(db).generar(expediente_id, comentario.strip(), current_user)
 
 
@@ -1261,6 +1304,8 @@ async def consultar_estado_acta(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar el estado del acta.")
+    # Vista de firmas: el impedido no la ve (404), salvo el líder del expediente.
+    await exigir_imparcialidad(db, expediente_id, current_user, permitir_lider=True)
     return await ComiteActaService(db).estado(expediente_id, current_user)
 
 
@@ -1274,6 +1319,7 @@ async def descargar_acta_firmada(
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para descargar el acta firmada.")
+    await exigir_imparcialidad(db, expediente_id, current_user, permitir_lider=True)
     contenido, version = await ComiteActaService(db).descargar_firmada(expediente_id)
     return Response(
         content=contenido,
@@ -1335,3 +1381,42 @@ async def reabrir_dictamen_por_error(
     if role_name not in COMITE_SUPERADMIN_ONLY_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Este permiso solo lo puede ejecutar el Coordinador.")
     return await ComiteService(db).registrar_accion("reabrir-dictamen", payload, current_user)
+
+
+# ---------------------------------------------------------------- líder por expediente
+
+@router.get("/lider-expediente/{expediente_id}")
+async def consultar_lider_del_expediente(
+    expediente_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Líder del comité de este expediente y los candidatos (miembros del Comité
+    que participaron en su evaluación en la ronda vigente). Solo Coordinador.
+    """
+    role_name = _normalize_role_name(current_user.get("role_name"))
+    if role_name not in COMITE_SUPERADMIN_ONLY_PERMISOS:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el Coordinador elige el líder del comité.")
+    return await lider_expediente.consultar(db, expediente_id)
+
+
+@router.put("/lider-expediente")
+async def asignar_lider_del_expediente(
+    payload: dict,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """El Coordinador elige el líder del comité de un expediente (firma su acta y certificado)."""
+    role_name = _normalize_role_name(current_user.get("role_name"))
+    if role_name not in COMITE_SUPERADMIN_ONLY_PERMISOS:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el Coordinador elige el líder del comité.")
+    try:
+        expediente_id = UUID(str(payload.get("expediente_id")))
+        id_usuario = UUID(str(payload.get("id_usuario")))
+    except (TypeError, ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="expediente_id e id_usuario deben ser UUID válidos.",
+        )
+    return await lider_expediente.asignar(db, expediente_id, id_usuario, current_user)

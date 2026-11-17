@@ -5,11 +5,16 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from modules.auth.dependencies import require_self_or_admin
+from modules.auth.dependencies import require_auditor_aprobado, require_self_or_admin
 from modules.reportes_auditor.reporte_service import ReporteAuditorService
 from modules.solicitudes.solicitud_permissions import requiere_permiso
 
-router = APIRouter(prefix="/reportes-auditor", tags=["Reportes del auditor"])
+# Reportes: un auditor sin registro aprobado no los consulta (require_auditor_aprobado).
+router = APIRouter(
+    prefix="/reportes-auditor",
+    tags=["Reportes del auditor"],
+    dependencies=[Depends(require_auditor_aprobado)],
+)
 
 
 @router.get("/conflictos")

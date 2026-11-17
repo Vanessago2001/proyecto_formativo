@@ -236,7 +236,7 @@ dialog.md-dialogo::backdrop { background: rgba(15,23,42,.55); }
             ? `<ul class="md-dlg-equipo">${equipo.map((e) => {
                 const propio = op.idPropio && String(e.id_usuario) === String(op.idPropio);
                 const correo = op.conCorreo && e.correo ? ` · ${esc(e.correo)}` : "";
-                return `<li><strong>${esc(e.nombre || "Auditor")}</strong>${propio ? " (usted)" : ""} — ${esc(e.rol_auditor || e.rol || "Auditor")} · ${e.confirmado ? "confirmó" : "sin confirmar"}${correo}</li>`;
+                return `<li><strong>${esc(e.nombre || "Auditor")}</strong>${propio ? " (usted)" : ""} — Auditor · ${e.confirmado ? "confirmó" : "sin confirmar"}${correo}</li>`;
             }).join("")}</ul>`
             : "Sin auditores registrados.";
         const acciones = typeof op.acciones === "function" ? op.acciones(v) : "";

@@ -20,6 +20,7 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import almacen_archivos
 from modules.auditorias.auditoria_service import AuditoriaService
 
 EXTENSIONES_PERMITIDAS = {".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".mp4"}
@@ -79,18 +80,27 @@ class EvidenciaService:
             )
         return extension
 
-    def _guardar(self, id_auditoria: UUID, archivo: UploadFile, contenido: bytes) -> tuple[str, str, str]:
+    async def _guardar(
+        self, id_auditoria: UUID, archivo: UploadFile, contenido: bytes, usuario: dict | None = None
+    ) -> tuple[str, str, str]:
         nombre_visible = _nombre_seguro(archivo.filename or "evidencia")
         carpeta = CARPETA_ARCHIVOS / str(id_auditoria)
         carpeta.mkdir(parents=True, exist_ok=True)
 
         destino = carpeta / f"{uuid4().hex}{Path(nombre_visible).suffix.lower()}"
-        destino.write_bytes(contenido)
 
         try:
             relativa = destino.relative_to(RAIZ_PROYECTO).as_posix()
         except ValueError:
             relativa = destino.as_posix()
+
+        if almacen_archivos.normalizar(relativa):
+            # Disco local + base compartida, en la misma transacción que la evidencia.
+            await almacen_archivos.guardar(
+                relativa, contenido, db=self.db, disco=destino, nombre=nombre_visible, usuario=usuario
+            )
+        else:
+            destino.write_bytes(contenido)
 
         return nombre_visible, relativa, hashlib.sha256(contenido).hexdigest()
 
@@ -151,7 +161,7 @@ class EvidenciaService:
 
         contenido = await archivo.read()
         extension = self.validar_formato(archivo, len(contenido))
-        nombre, ruta, hash_archivo = self._guardar(id_auditoria, archivo, contenido)
+        nombre, ruta, hash_archivo = await self._guardar(id_auditoria, archivo, contenido, usuario)
 
         resultado = await self.db.execute(
             text(f"""
@@ -225,7 +235,7 @@ class EvidenciaService:
 
         contenido = await archivo.read()
         extension = self.validar_formato(archivo, len(contenido))
-        nombre, ruta, hash_archivo = self._guardar(id_auditoria, archivo, contenido)
+        nombre, ruta, hash_archivo = await self._guardar(id_auditoria, archivo, contenido, usuario)
 
         resultado = await self.db.execute(
             text(f"""
@@ -313,6 +323,9 @@ class EvidenciaService:
     async def archivo(self, id_auditoria: UUID, id_evidencia: UUID) -> tuple[Path, str]:
         evidencia = await self._evidencia(id_auditoria, id_evidencia)
         ruta = self.ruta_absoluta(evidencia["ruta_archivo"] or "")
+        if evidencia["ruta_archivo"]:
+            # Si se subió en otro computador, se trae de la base compartida.
+            ruta = await almacen_archivos.ruta_local(evidencia["ruta_archivo"], db=self.db, disco=ruta) or ruta
         if not evidencia["ruta_archivo"] or not ruta.is_file():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -327,6 +340,8 @@ class EvidenciaService:
     async def verificar_integridad(self, id_auditoria: UUID, id_evidencia: UUID) -> dict:
         evidencia = await self._evidencia(id_auditoria, id_evidencia)
         ruta = self.ruta_absoluta(evidencia["ruta_archivo"] or "")
+        if evidencia["ruta_archivo"]:
+            ruta = await almacen_archivos.ruta_local(evidencia["ruta_archivo"], db=self.db, disco=ruta) or ruta
 
         if not evidencia["ruta_archivo"] or not ruta.is_file():
             return {

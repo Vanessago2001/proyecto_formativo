@@ -1577,15 +1577,6 @@
                                 <input id="filtroAuditorTexto" class="form-control" placeholder="Ej. Leonel o 123456">
                             </div>
                             <div class="filtro-campo">
-                                <label for="filtroAuditorRol">Rol</label>
-                                <select id="filtroAuditorRol" class="form-control">
-                                    <option value="">Todos los roles</option>
-                                    <option value="Auditor líder">Auditor líder</option>
-                                    <option value="Auditor Lider">Auditor Lider</option>
-                                    <option value="Observador">Observador</option>
-                                </select>
-                            </div>
-                            <div class="filtro-campo">
                                 <label for="filtroProgramacionEstado">Estado</label>
                                 <select id="filtroProgramacionEstado" class="form-control">
                                     <option value="">Sin canceladas</option>
@@ -1753,7 +1744,7 @@
 </div>
 
 <!-- Calendario mes/semana común (sección "Disponibilidad mensual y auditorías") -->
-<script src="/static/mi_disponibilidad.js?v=20261117c"></script>
+<script src="/static/mi_disponibilidad.js?v=20261117d"></script>
 <script>
     function showModal(message, type = 'success') {
         const overlay = document.getElementById('modalOverlay');
@@ -2152,7 +2143,7 @@
         }
         function auditorLabel(auditor, includeRole = true) {
             const name = auditor?.auditor_nombre || auditor?.nombre || "Auditor sin nombre";
-            const role = auditor?.rol_auditor || auditor?.rol || "Auditor";
+            const role = "Auditor";
             return `${name}${includeRole ? ` (${role})` : ""} · Documento: ${documentLabel(auditor)}`;
         }
         function normalizedStatus(value) {
@@ -2253,7 +2244,8 @@
            Permite asignar auditores adicionales a la sede que se está
            programando sin modificar las sedes ya programadas.
         ========================================================== */
-        const ROLES_EQUIPO = ["Auditor líder", "Experto técnicos", "Auditor integral", "Observador"];
+        // Rol único "Auditor" (17/11/2026): ya no se elige rol en la sede.
+        const ROL_AUDITOR = "Auditor";
         let equipoSede = new Map();
         let candidatosSede = [];
         let paginaCandidatos = 1;
@@ -2261,10 +2253,8 @@
         let totalCandidatos = 0;
         let equipoEditable = true;
 
-        function rolPorDefecto(rol) {
-            const valor = String(rol || "").trim();
-            const encontrada = ROLES_EQUIPO.find((item) => item.toLowerCase() === valor.toLowerCase());
-            return encontrada || "Auditor integral";
+        function rolPorDefecto() {
+            return ROL_AUDITOR;
         }
 
         function documentoEquipo(auditor) {
@@ -2317,7 +2307,7 @@
             if (boton) {
                 boton.title = programacion
                     ? "Esta sede ya tiene una programación vigente. Cancela esa programación para asignar otros auditores."
-                    : "Consulta los auditores que se pueden asignar a esta sede y elige su rol.";
+                    : "Consulta los auditores que se pueden asignar a esta sede.";
             }
             if (programacion) {
                 (programacion.auditores_equipo || []).forEach((item) => {
@@ -2340,10 +2330,6 @@
                 });
             }
             renderEquipoSede();
-        }
-
-        function opcionesRol(rolActual) {
-            return ROLES_EQUIPO.map((rol) => `<option value="${esc(rol)}" ${rol === rolActual ? "selected" : ""}>${esc(rol)}</option>`).join("");
         }
 
         function equipoActivo() {
@@ -2389,13 +2375,6 @@
                     <div class="team-checks">
                         <span class="team-tag ${auditor.origen === "adicional" ? "info" : "ok"}">${esc(etiquetaOrigen(auditor.origen))}</span>
                         ${etiquetaDisp}
-                    </div>
-                    <div class="team-role">
-                        <label for="rolEquipo-${esc(auditor.id_usuario)}">Rol en esta sede</label>
-                        <select id="rolEquipo-${esc(auditor.id_usuario)}" aria-label="Rol en el equipo de ${esc(auditor.nombre || auditor.auditor_nombre || "este auditor")}" ${equipoEditable ? "" : "disabled"}
-                            onchange="establecerRolEquipo('${esc(auditor.id_usuario)}', this.value, 'equipo')">
-                            ${opcionesRol(auditor.rol_auditor)}
-                        </select>
                     </div>`;
                 contenedor.appendChild(card);
             });
@@ -2412,14 +2391,6 @@
                 auditor.excluidoManual = !checked;
             }
             renderEquipoSede();
-            renderCandidatosSede();
-        }
-
-        function establecerRolEquipo(id, rol, origenUI) {
-            const auditor = equipoSede.get(String(id));
-            if (!auditor) return;
-            auditor.rol_auditor = rolPorDefecto(rol);
-            if (origenUI !== "equipo") renderEquipoSede();
             renderCandidatosSede();
         }
 
@@ -2502,7 +2473,6 @@
                 if (auditor.ya_asignado) etiquetas.push('<span class="team-tag info">Ya asignado a la solicitud</span>');
                 if (auditor.disponible === true) etiquetas.push('<span class="team-tag ok">Disponible en la fecha</span>');
 
-                const rolActual = enEquipo ? enEquipo.rol_auditor : rolPorDefecto(auditor.rol_auditor);
                 card.innerHTML = `
                     <div class="team-head">
                         <input type="checkbox" class="team-check" ${incluido ? "checked" : ""}
@@ -2516,10 +2486,6 @@
                         </div>
                     </div>
                     <div class="team-checks">${etiquetas.join("")}</div>
-                    ${incluido ? `<div class="team-role">
-                        <label>Rol en esta sede</label>
-                        <select aria-label="Rol en esta sede" onchange="establecerRolEquipo('${esc(id)}', this.value, 'candidatos')">${opcionesRol(rolActual)}</select>
-                    </div>` : ""}
                     <div class="team-toolbar" style="margin-top:8px;">
                         <button type="button" class="btn btn-secundario btn-sm secondary"
                             onclick="event.stopPropagation();abrirFichaAuditorSede('${esc(id)}')">Ver ficha del auditor</button>
@@ -2714,7 +2680,7 @@
                 id: a.id_usuario || a.id_auditor || "",
                 nombre: a.auditor_nombre || a.nombre || "Auditor sin nombre",
                 documento: `${a.auditor_tipo_doc || a.tipo_doc || ""} ${a.auditor_num_doc || a.num_doc || ""}`.trim() || "Documento no registrado",
-                rol: a.rol_auditor || a.rol || "Auditor"
+                rol: ROL_AUDITOR
             };
         }
 
@@ -2729,18 +2695,10 @@
                             <input type="text" data-filtro-texto aria-label="Nombre o documento del auditor" placeholder="Ej. Leonel o 987654321" autocomplete="off">
                             <div class="filtro-resultados" data-filtro-resultados></div>
                         </div>
-                        <div class="filtro-campo">
-                            <label>Rol</label>
-                            <select data-filtro-rol aria-label="Rol del auditor">
-                                <option value="">Todos los roles</option>
-                                <option value="Auditor líder">Auditor líder</option>
-                                <option value="Observador">Observador</option>
-                            </select>
-                        </div>
                         <div data-filtro-actual style="grid-column:1/-1;"></div>
                     </div>`;
                 const input = slot.querySelector("[data-filtro-texto]");
-                const rol = slot.querySelector("[data-filtro-rol]");
+                const rol = { value: "" };  // Rol único "Auditor": sin filtro de rol.
                 const resultados = slot.querySelector("[data-filtro-resultados]");
                 const actual = slot.querySelector("[data-filtro-actual]");
                 slot.dataset.actual = actual;
@@ -2749,9 +2707,6 @@
                 });
                 input.addEventListener("focus", () => {
                     if (input.value.trim()) pintarResultadosAuditor(input.value, rol.value, resultados);
-                });
-                rol.addEventListener("change", () => {
-                    pintarResultadosAuditor(input.value, rol.value, resultados);
                 });
                 document.addEventListener("click", (event) => {
                     if (!slot.contains(event.target)) resultados.classList.remove("visible");
@@ -2811,7 +2766,7 @@
         }
 
         // Filtro de la tabla de programaciones (nombre / documento / rol / estado)
-        ["filtroAuditorTexto", "filtroAuditorRol", "filtroProgramacionEstado"].forEach(id => {
+        ["filtroAuditorTexto", "filtroProgramacionEstado"].forEach(id => {
             const el = $(id);
             if (!el) return;
             el.addEventListener("input", () => {
@@ -2827,7 +2782,7 @@
         if (filtroLimpiar) {
             filtroLimpiar.addEventListener("click", () => {
                 $("filtroAuditorTexto").value = "";
-                $("filtroAuditorRol").value = "";
+                if ($("filtroAuditorRol")) $("filtroAuditorRol").value = "";
                 $("filtroProgramacionEstado").value = "";
                 const group = currentAssignment();
                 if (group) loadScheduleList(group);
@@ -2859,7 +2814,7 @@
                                 auditor_correo: auditor.auditor_correo || auditor.correo || "",
                                 auditor_tipo_doc: auditor.auditor_tipo_doc || auditor.tipo_doc || auditor.tipo_documento || auditor.tipo_identificacion || "",
                                 auditor_num_doc: auditor.auditor_num_doc || auditor.num_doc || auditor.numero_documento || auditor.numero_doc || auditor.documento_identidad || auditor.documento || "",
-                                rol_auditor: auditor.rol_auditor || auditor.rol || "Auditor"
+                                rol_auditor: ROL_AUDITOR
                             });
                         }
                     });
@@ -3215,7 +3170,7 @@
                 <div class="modal-section-group">
                     <h4 class="modal-section-label">Equipo auditor (${equipo.length})</h4>
                     ${equipo.length
-                        ? `<ul class="cal-equipo">${equipo.map(e => `<li><span><strong>${esc(e.nombre || "Auditor")}</strong> <span class="cell-meta">${esc(e.correo || "")}</span></span><span>${esc(e.rol_auditor || "Auditor")} · ${e.confirmado ? "Confirmó" : "Sin confirmar"}</span></li>`).join("")}</ul>`
+                        ? `<ul class="cal-equipo">${equipo.map(e => `<li><span><strong>${esc(e.nombre || "Auditor")}</strong> <span class="cell-meta">${esc(e.correo || "")}</span></span><span>Auditor · ${e.confirmado ? "Confirmó" : "Sin confirmar"}</span></li>`).join("")}</ul>`
                         : '<p class="cell-meta">Sin auditores registrados.</p>'}
                 </div>
                 <div class="modal-section-group">
@@ -3325,7 +3280,7 @@
                         const idAuditor = row.id_usuario || row.id_usuario_auditor;
                         const assignedAuditor = group.auditores.find(item => String(item.id_usuario) === String(idAuditor)) || auditor;
                         const nombreSimple = assignedAuditor.auditor_nombre || auditor.auditor_nombre || "Auditor sin nombre";
-                        const rolSimple = row.rol_auditor || assignedAuditor.rol_auditor || "Auditor";
+                        const rolSimple = ROL_AUDITOR;
                         const documentoSimple = documentLabel({
                             auditor_tipo_doc: assignedAuditor.auditor_tipo_doc || assignedAuditor.tipo_doc,
                             auditor_num_doc: assignedAuditor.auditor_num_doc || assignedAuditor.num_doc
@@ -3370,7 +3325,7 @@
                     const detalle = {
                         nombre: row.__auditorNombreSimple || row.auditor_nombre || "",
                         documento: row.__auditorDocumento || "",
-                        rol: row.__auditorRol || row.rol_auditor || "Auditor"
+                        rol: ROL_AUDITOR
                     };
                     if (!item.auditores_detalle.some(a => a.nombre === detalle.nombre && a.rol === detalle.rol)) {
                         item.auditores_detalle.push(detalle);
@@ -3381,7 +3336,7 @@
                         correo: row.__auditorCorreo || "",
                         tipo_doc: row.__auditorTipoDoc || "",
                         num_doc: row.__auditorNumDoc || "",
-                        rol: row.__auditorRol || row.rol_auditor || "Auditor"
+                        rol: ROL_AUDITOR
                     };
                     if (equipo.id_usuario && !item.auditores_equipo.some(a => a.id_usuario === equipo.id_usuario)) {
                         item.auditores_equipo.push(equipo);
@@ -3766,7 +3721,7 @@
             } : {
                 id_solicitud: group.id_solicitud,
                 id_sede: $("scheduleSede").value || null,
-                auditores: equipo.map(auditor => ({ id_usuario: auditor.id_usuario, rol_auditor: auditor.rol_auditor || "Auditor" })),
+                auditores: equipo.map(auditor => ({ id_usuario: auditor.id_usuario })),
                 asignar_auditores_adicionales: incluyeAdicionales,
                 direccion_servicio: $("scheduleAddress").value.trim(),
                 ...commonPayload
@@ -4041,7 +3996,7 @@
     </script>
 
     <script src="/static/session.js?v=20261117"></script>
-<script src="/static/nav.js?v=20261117a"></script>
+<script src="/static/nav.js?v=20261117cat"></script>
 </body>
 
 </html>

@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
+from modules.auth.dependencies import require_auditor_aprobado
 from modules.aprobaciones.aprobacion_service import AprobacionService, respuesta_permiso_delegado
 from modules.auditorias import auditoria_aprobaciones  # noqa: F401  (registra las acciones REQ)
 from modules.auditorias.auditoria_permissions import (
@@ -76,7 +77,12 @@ from modules.auditorias.seguimiento_service import (
 )
 from modules.solicitudes.sede_excel import TIPO_XLSX, generar_excel
 
-router = APIRouter(prefix="/auditorias", tags=["M7 - Auditorías"])
+# Un auditor sin registro aprobado no entra a las auditorías (require_auditor_aprobado).
+router = APIRouter(
+    prefix="/auditorias",
+    tags=["M7 - Auditorías"],
+    dependencies=[Depends(require_auditor_aprobado)],
+)
 
 
 def _requiere_aprobacion(usuario: dict) -> bool:

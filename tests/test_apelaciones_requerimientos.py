@@ -91,7 +91,7 @@ class BaseFalsa:
                 "observaciones": None, "fallo": False, "razones_rechazo": None,
                 "fecha": None, "fecha_decision": None, "id_auditor_evaluador": None,
             })
-        if sql.startswith("SELECT 1 FROM apelacion_comite"):
+        if ("FROM apelacion_comite ac" in sql and "CASE WHEN" in sql):
             return Resultado(escalar=1)
         # `get_apelacion_by_id` comprueba además que el usuario vea la solicitud.
         if "FROM solicitud" in sql:

@@ -307,7 +307,7 @@ class BaseConComite(BaseFalsa):
         if sql.startswith("SELECT DISTINCT id_usuario FROM comite_accion"):
             self.sentencias.append((sql, parametros))
             return Resultado(todas=[(e,) for e in self.evaluadores])
-        if sql.startswith("SELECT 1 FROM apelacion_comite"):
+        if ("FROM apelacion_comite ac" in sql and "CASE WHEN" in sql):
             self.sentencias.append((sql, parametros))
             esta = str(parametros.get("id_usuario")) in self.asignados
             return Resultado(escalar=1 if esta else None)
@@ -424,7 +424,7 @@ async def test_la_administracion_y_la_empresa_no_quedan_atadas_al_comite(usuario
 
     await ApelacionesService(db).exigir_acceso(ID_APELACION, usuario)
 
-    assert not any(sql.startswith("SELECT 1 FROM apelacion_comite") for sql, _ in db.sentencias)
+    assert not any(("FROM apelacion_comite ac" in sql and "CASE WHEN" in sql) for sql, _ in db.sentencias)
 
 
 async def test_el_listado_del_comite_se_limita_a_sus_apelaciones():

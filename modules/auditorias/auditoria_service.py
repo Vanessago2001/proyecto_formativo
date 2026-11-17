@@ -223,7 +223,7 @@ class AuditoriaService:
         )
         auditores = await self.db.execute(
             text("""
-                SELECT a.id_auditor, a.especialidad, a.estado_asignacion,
+                SELECT a.id_auditor, 'Auditor' AS especialidad, a.estado_asignacion,  -- rol único
                        COALESCE(u.nombre, u.correo) AS auditor
                 FROM auditores_solicitud a
                 LEFT JOIN usuario u ON u.id_usuario = a.id_auditor

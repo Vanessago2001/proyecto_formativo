@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import es_coordinador
+from modules.auth.dependencies import require_auditor_aprobado
 from modules.agenda_auditor.agenda_schema import (
     CancelarProgramacion,
     DisponibilidadEditar,
@@ -22,7 +23,13 @@ from modules.solicitudes.solicitud_permissions import (
     requiere_permiso,
 )
 
-router = APIRouter(prefix="/agenda-auditor", tags=["Agenda del auditor"])
+# Agenda, disponibilidad y auditorías programadas: solo para el auditor ya
+# aprobado (los demás roles no se ven afectados). Ver require_auditor_aprobado.
+router = APIRouter(
+    prefix="/agenda-auditor",
+    tags=["Agenda del auditor"],
+    dependencies=[Depends(require_auditor_aprobado)],
+)
 
 _ROLES_ADMIN_AGENDA = {"ADM", "ADMIN", "ADMINISTRADOR", "COORDINADOR"}
 

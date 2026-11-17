@@ -8,18 +8,19 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class RolAuditor(str, Enum):
-    LIDER = "Auditor líder"
-    EXPERTO_TECNICO = "Experto técnicos"
-    AUDITOR_INTEGRAL = "Auditor integral"
-    OBSERVADOR = "Observador"
+    """Rol único (17/11/2026): todos los integrantes son 'Auditor'."""
+
+    AUDITOR = "Auditor"
 
 
 class AsignacionAuditorCrear(BaseModel):
-    """Datos para relacionar un auditor con una solicitud y asignarle rol."""
+    """Datos para relacionar un auditor con una solicitud (rol único 'Auditor')."""
 
     id_solicitud: UUID = Field(..., description="Solicitud de certificación aprobada.")
     id_auditor: UUID = Field(..., description="Usuario auditor que se asignará.")
-    rol_auditor: RolAuditor = Field(..., description="Rol individual del auditor en esta solicitud.")
+    # Ya no se elige rol: se acepta cualquier valor (pantallas viejas) y se
+    # ignora; la asignación se guarda siempre como 'Auditor'.
+    rol_auditor: str | None = Field(None, max_length=80, description="Obsoleto: se ignora (rol único 'Auditor').")
     # "Asignar de todas formas": solo Coordinador (o Auxiliar con permiso
     # delegado SOL-048). El conflicto de interés nunca se puede forzar.
     forzar: bool = Field(False, description="Asignar aunque no cumpla la competencia vigente.")

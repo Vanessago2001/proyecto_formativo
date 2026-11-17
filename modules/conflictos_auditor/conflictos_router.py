@@ -5,13 +5,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import get_current_user
-from modules.auth.dependencies import es_rol_administrativo, require_self_or_admin
+from modules.auth.dependencies import (
+    es_rol_administrativo,
+    require_auditor_aprobado,
+    require_self_or_admin,
+)
 from modules.conflictos_auditor.conflictos_service import ConflictoAuditorService
 from modules.auditores.auditor_schema import ConflictoInteresCrear
 from modules.auditores.auditor_service import AuditorService
 from modules.solicitudes.solicitud_permissions import requiere_permiso
 
-router = APIRouter(prefix="/conflictos-auditor", tags=["Conflictos de interés del auditor"])
+# Módulo "Conflictos y restricciones" (aparte del formulario de registro, que
+# declara sus conflictos en /auditores/registro/{id}/conflictos): solo para el
+# auditor ya aprobado (ver require_auditor_aprobado).
+router = APIRouter(
+    prefix="/conflictos-auditor",
+    tags=["Conflictos de interés del auditor"],
+    dependencies=[Depends(require_auditor_aprobado)],
+)
 
 
 @router.get("/usuario/{id_usuario}")

@@ -13,12 +13,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import _normalize_role_name, get_current_user
+from modules.auth.dependencies import require_auditor_aprobado
 from modules.reportes import reportes_roles as roles_m12
 from modules.reportes.reportes_service import ReportesService
 
+# Un auditor sin registro aprobado no ve reportes (require_auditor_aprobado);
+# los demás roles no se ven afectados.
 router = APIRouter(
     prefix="/api/reportes",
     tags=["Reportes"],
+    dependencies=[Depends(require_auditor_aprobado)],
 )
 
 

@@ -534,7 +534,7 @@ async def descargar_documento_empresa(
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     servicio = DocumentoEmpresaService(db)
     documento = await servicio._obtener(UUID(id_empresa), id_documento)
-    ruta = servicio.ruta_absoluta(documento["url_archivo"] or "")
+    ruta = await servicio.ruta_disponible(documento["url_archivo"] or "")
     if not documento["url_archivo"] or not ruta.is_file():
         raise HTTPException(status_code=404, detail="El archivo ya no está disponible.")
     return FileResponse(path=ruta, filename=documento["nombre_archivo"] or ruta.name)
