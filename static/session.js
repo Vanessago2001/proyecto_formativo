@@ -282,3 +282,66 @@
   mostrarAvisoPendiente();
   revisar();
 })();
+
+/* ==========================================================
+   El logo del SENA lleva al inicio
+
+   - Sin sesión: a la página de inicio pública (/).
+   - Con sesión: al panel principal del rol, con las mismas reglas
+     que el botón "Panel" de nav.js (Empresa -> /empresa,
+     Comité -> /comite, Auditor -> /auditor, los demás -> /dashboard).
+   ========================================================== */
+(function () {
+  "use strict";
+
+  function datosDelToken() {
+    try {
+      var token = localStorage.getItem("access_token");
+      if (!token) return null;
+      var parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      var datos = JSON.parse(decodeURIComponent(atob(parte).split("").map(function (c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join("")));
+      if (datos.exp && datos.exp * 1000 <= Date.now()) return null;   // sesión vencida
+      return datos;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function destinoDelLogo() {
+    var datos = datosDelToken();
+    if (!datos) return "/";
+    var rol = String(datos.role_name || datos.rol || "")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    if (/empresa/.test(rol)) return "/empresa";
+    if (/comite/.test(rol)) return "/comite";
+    if (/auditor/.test(rol) && !/administrar/.test(rol)) return "/auditor";
+    return "/dashboard";
+  }
+
+  function enlazarLogos() {
+    var destino = destinoDelLogo();
+    var titulo = destino === "/" ? "Ir a la página de inicio" : "Ir a mi página principal";
+    document.querySelectorAll("img.sena-blanco").forEach(function (logo) {
+      var enlace = logo.closest("a");
+      if (!enlace) {
+        enlace = document.createElement("a");
+        enlace.className = "logo-inicio";
+        enlace.style.display = "inline-flex";
+        enlace.style.lineHeight = "0";
+        logo.parentNode.insertBefore(enlace, logo);
+        enlace.appendChild(logo);
+      }
+      enlace.setAttribute("href", destino);
+      enlace.setAttribute("title", titulo);
+      enlace.setAttribute("aria-label", "CertiSENA: " + titulo.toLowerCase());
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", enlazarLogos);
+  } else {
+    enlazarLogos();
+  }
+})();
