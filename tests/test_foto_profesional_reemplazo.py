@@ -258,6 +258,22 @@ async def test_sin_foto_previa_se_inserta_una(carpeta_temporal):
     assert guardadas[0]["estado_revision"] == "Pendiente"
 
 
+async def test_se_acepta_foto_profesional_webp(carpeta_temporal):
+    sesion = SesionDocumentos([])
+    respuesta = await AuditorService(sesion).adjuntar_documento(
+        id_usuario=ID_USUARIO,
+        tipo_documento=FOTO,
+        archivo=archivo_subido("foto-profesional.webp", b"imagen webp"),
+    )
+
+    guardadas = fotos(sesion.documentos)
+    assert len(guardadas) == 1
+    assert guardadas[0]["nombre_archivo"] == "foto-profesional.webp"
+    ruta = carpeta_temporal / respuesta["documento"]["url_archivo"].lstrip("/")
+    assert ruta.exists()
+    assert ruta.read_bytes() == b"imagen webp"
+
+
 async def test_foto_aprobada_no_se_puede_volver_a_sustituir(carpeta_temporal):
     aprobada = documento_documento(FOTO, "Aprobado", "/uploads/auditores/buena.jpg", AHORA - timedelta(days=1))
 

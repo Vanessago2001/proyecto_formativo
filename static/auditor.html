@@ -2394,11 +2394,11 @@
 
 
                     <div class="form-group full-width">
-                        <label for="foto_profesional">Foto Profesional</label>
+                        <label for="foto_profesional">Foto Profesional <span>*</span></label>
                         <input type="file" id="foto_profesional" name="foto_profesional" class="form-control"
                             accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp">
-                        <span class="help-text">Adjunte una imagen JPG, PNG o WEBP. Antes de guardar podrá ver la vista
-                            previa y quitarla con ×.</span>
+                        <span class="help-text">La foto profesional es obligatoria. Adjunte una imagen JPG, PNG o WEBP.
+                            Antes de guardar podrá ver la vista previa y quitarla con ×.</span>
                         <div id="fotoProfesionalGuardada" class="foto-profesional-guardada" hidden>
                             <img id="fotoProfesionalGuardadaImg" alt="Foto profesional guardada">
                             <div>
@@ -5718,6 +5718,12 @@
                 const inputFoto = document.getElementById('foto_profesional');
                 const archivoFoto = inputFoto?.files?.[0] || null;
 
+                if (!archivoFoto && !fotoProfesionalUrl) {
+                    alert('La foto profesional es obligatoria. Adjunte una foto antes de guardar el perfil.');
+                    inputFoto?.focus();
+                    return;
+                }
+
                 try {
                     if (archivoFoto) {
                         fotoProfesionalUrl = await subirFotoProfesional(archivoFoto);
@@ -7151,8 +7157,10 @@
                 const input = event.target;
                 if (input.id === 'foto_profesional' && input.files?.[0]) {
                     const archivo = input.files[0];
+                    const extensionesValidas = ['jpg', 'jpeg', 'png', 'webp'];
+                    const extension = archivo.name.split('.').pop()?.toLowerCase();
                     const formatosValidos = ['image/jpeg', 'image/png', 'image/webp'];
-                    if (!formatosValidos.includes(archivo.type)) {
+                    if (!extensionesValidas.includes(extension) && !formatosValidos.includes(archivo.type)) {
                         alert('La foto profesional debe ser una imagen JPG, PNG o WEBP.');
                         input.value = '';
                         actualizarVistaArchivo(input);

@@ -69,6 +69,7 @@ class AuditorService:
         ".jpg",
         ".jpeg",
         ".png",
+        ".webp",
     }
 
     EXTENSIONES_FOTO_PERFIL = {
@@ -821,7 +822,7 @@ class AuditorService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     "Tipo de archivo no permitido. "
-                    "Solo se permiten PDF, DOC, DOCX, JPG, JPEG y PNG."
+                    "Solo se permiten PDF, DOC, DOCX, JPG, JPEG, PNG y WEBP."
                 ),
             )
 
@@ -1141,7 +1142,7 @@ class AuditorService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     "Tipo de archivo no permitido. "
-                    "Solo se permiten PDF, DOC, DOCX, JPG, JPEG y PNG."
+                    "Solo se permiten PDF, DOC, DOCX, JPG, JPEG, PNG y WEBP."
                 ),
             )
 
