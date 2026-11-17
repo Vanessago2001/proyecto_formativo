@@ -18,6 +18,8 @@ F = NivelPermiso.DENEGADO
 REQ = NivelPermiso.REQUIERE_APROBACION
 SA = NivelPermiso.SOLO_SUPERADMIN
 
+# CER-008 (asociar alcance técnico) y CER-030 (registrar cambios de alcance)
+# se retiraron: el certificado ya no se liga a una línea de alcance.
 PERMISOS_M9: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
     #                                              SUPERADM ADM AUX EMP AUD COM APR PUB
     "CER-001": ("Generar certificado",                    (V, V, V, F, F, F, F, F)),
@@ -27,7 +29,6 @@ PERMISOS_M9: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
     "CER-005": ("Registrar fecha de vencimiento",          (V, V, V, F, F, F, F, F)),
     "CER-006": ("Asociar empresa titular",                 (V, V, V, F, F, F, F, F)),
     "CER-007": ("Asociar norma ISO",                        (V, V, V, F, F, F, F, F)),
-    "CER-008": ("Asociar alcance técnico",                  (V, V, V, F, F, F, F, F)),
     "CER-009": ("Generar archivo PDF oficial",              (V, V, V, F, F, F, F, F)),
     "CER-010": ("Firmar digitalmente certificado",          (V, V, REQ, F, F, F, F, F)),
     "CER-011": ("Consultar certificado expedido",           (V, V, V, V, V, V, F, V)),
@@ -49,7 +50,6 @@ PERMISOS_M9: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
     "CER-027": ("Alertas de próximos vencimientos",          (V, V, V, V, V, F, F, F)),
     "CER-028": ("Notificar vencimiento por correo",          (V, V, V, V, V, F, F, F)),
     "CER-029": ("Registrar renovación en plataforma",        (V, V, REQ, F, F, F, F, F)),
-    "CER-030": ("Registrar cambios de alcance",              (SA, F, F, F, F, F, F, F)),
 }
 
 

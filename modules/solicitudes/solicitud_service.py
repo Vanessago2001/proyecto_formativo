@@ -568,6 +568,7 @@ class SolicitudService:
         estado: EstadoSolicitud | None = None,
         limite: int = 50,
         desplazamiento: int = 0,
+        incluir_ubicacion: bool = False,
     ) -> list[dict]:
         """
         SOL-006: listado paginado.
@@ -613,9 +614,28 @@ class SolicitudService:
             """
             joins_usuario = ""
 
+        columnas_ubicacion = ""
+        if incluir_ubicacion:
+            # Ubicaciones de las sedes vigentes en la solicitud (solo lectura).
+            columnas_ubicacion = ", " + ", ".join(
+                f"""COALESCE(ARRAY(
+                        SELECT DISTINCT se.{columna}
+                        FROM solicitud_sede ss
+                        JOIN sede_empresa se ON se.id_sede = ss.id_sede
+                        WHERE ss.id_solicitud = s.id_solicitud
+                          AND ss.estado <> 'Excluida'
+                          AND se.{columna} IS NOT NULL
+                    ), '{{}}') AS {alias}"""
+                for columna, alias in (
+                    ("ciudad", "sedes_ciudades"),
+                    ("departamento", "sedes_departamentos"),
+                    ("pais", "sedes_paises"),
+                )
+            )
+
         resultado = await self.db.execute(
             text(f"""
-                SELECT {columnas_listado}, {columnas_usuario}
+                SELECT {columnas_listado}, {columnas_usuario}{columnas_ubicacion}
                 FROM solicitud s
                 {joins_usuario}
                 WHERE {' AND '.join(condiciones)}

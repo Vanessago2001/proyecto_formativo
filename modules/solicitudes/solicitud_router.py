@@ -90,6 +90,10 @@ async def listar_solicitudes(
     ),
     limite: int = Query(default=50, ge=1, le=200),
     desplazamiento: int = Query(default=0, ge=0),
+    incluir_ubicacion: bool = Query(
+        default=False,
+        description="Agrega ciudades, departamentos y países de las sedes incluidas.",
+    ),
     usuario: dict = Depends(requiere_permiso("SOL-006")),
     db: AsyncSession = Depends(get_db),
 ):
@@ -99,6 +103,8 @@ async def listar_solicitudes(
     La empresa recibe únicamente las suyas.
     """
     service = SolicitudService(db)
+    if incluir_ubicacion:
+        return await service.listar(usuario, estado, limite, desplazamiento, incluir_ubicacion=True)
     return await service.listar(usuario, estado, limite, desplazamiento)
 
 

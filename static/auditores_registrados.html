@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261114a">
   <style>
     /* ==========================================================
@@ -1213,7 +1214,6 @@
       </div>
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
-        <a class="profile-link" href="/reportes">Reportes</a>
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button class="comite-logout js-logout" type="button">Cerrar sesión</button>
       </div>
@@ -1331,6 +1331,7 @@
             </select>
           </div>
         </section>
+        <section id="filtrosUbicacionAuditores" class="audit-ubicacion" aria-label="Filtros de ubicación"></section>
 
         <section class="comite-panel" aria-labelledby="tituloListado">
           <div class="comite-panel-heading">
@@ -1516,6 +1517,15 @@
       const busqueda = $("#busquedaAuditor");
       const filtroEstado = $("#filtroEstado");
       const filtroRegistro = $("#filtroRegistro");
+      // Ciudad y departamento de residencia (el perfil del auditor no tiene país).
+      $("#filtrosUbicacionAuditores").innerHTML = FiltrosUbicacion.html({
+        prefijo: "audFiltro", campos: ["ciudad", "departamento"], panel: true,
+        etiquetas: { ciudad: "Ciudad de residencia", departamento: "Departamento de residencia" }
+      });
+      const filtrosUbicacion = FiltrosUbicacion.ligar($("#filtrosUbicacionAuditores"), {
+        prefijo: "audFiltro", campos: ["ciudad", "departamento"],
+        alCambiar: (valores) => { app.ubicacion = valores; aplicarFiltros(true); }
+      });
       const modalDetalle = $("#modalDetalle");
       const detalleCuerpo = $("#detalleCuerpo");
       const detalleIdentidad = $("#detalleIdentidad");
@@ -1817,6 +1827,8 @@
         try {
           const data = await api("/admin/auditores-registrados");
           app.auditores = Array.isArray(data.auditores) ? data.auditores : [];
+          filtrosUbicacion.sugerir("ciudad", app.auditores.map((a) => a.ciudad_residencia));
+          filtrosUbicacion.sugerir("departamento", app.auditores.map((a) => a.departamento_residencia));
           actualizarEstadisticas();
           aplicarFiltros(false);
         } catch (error) {
@@ -1845,12 +1857,16 @@
         const texto = normalizarTexto(app.texto);
         const estado = normalizarTexto(app.estado);
         const registro = normalizarTexto(app.registro);
+        const ubicacion = app.ubicacion || {};
 
         app.filtrados = app.auditores.filter((auditor) => {
           const coincideEstado = !estado || normalizarTexto(auditor.estado) === estado;
           if (!coincideEstado) return false;
           const coincideRegistro = !registro || normalizarTexto(auditor.estado_registro) === registro;
           if (!coincideRegistro) return false;
+          if (!FiltrosUbicacion.cumple(ubicacion, {
+            ciudad: auditor.ciudad_residencia, departamento: auditor.departamento_residencia
+          })) return false;
           if (!texto) return true;
 
           const campos = [
@@ -1894,14 +1910,17 @@
         }
 
         if (!app.filtrados.length) {
-          const hayFiltros = app.texto.trim() || app.estado || app.registro;
+          const porUbicacion = FiltrosUbicacion.hayFiltros(app.ubicacion);
+          const hayFiltros = app.texto.trim() || app.estado || app.registro || porUbicacion;
           tbody.innerHTML = `
             <tr>
               <td colspan="6" class="audit-table-empty">
                 <div class="audit-empty-box">
                   <span class="icono">⌕</span>
                   <strong>No se encontraron coincidencias</strong>
-                  <p>${hayFiltros
+                  <p>${porUbicacion && !app.texto.trim() && !app.estado && !app.registro
+                    ? escapar(FiltrosUbicacion.mensajeVacio("auditores que residan", app.ubicacion))
+                    : hayFiltros
                     ? "Ningún auditor coincide con el texto o el estado seleccionado. Prueba con otros criterios."
                     : "No hay auditores para mostrar."}</p>
                   ${hayFiltros
@@ -1911,6 +1930,7 @@
               </td>
             </tr>`;
           resumenListado.textContent = "0 resultados para los filtros aplicados.";
+          filtrosUbicacion.anunciar(porUbicacion ? FiltrosUbicacion.mensajeVacio("auditores que residan", app.ubicacion) : "");
           paginacion.hidden = true;
           return;
         }
@@ -1928,6 +1948,8 @@
             const metaPartes = [];
             if (totalDocs) metaPartes.push(`${totalDocs} documento${totalDocs === 1 ? "" : "s"}`);
             if (totalCerts) metaPartes.push(`${totalCerts} certificación${totalCerts === 1 ? "" : "es"}`);
+            const lugar = [auditor.ciudad_residencia, auditor.departamento_residencia].filter(Boolean).join(", ");
+            if (lugar) metaPartes.push(escapar(lugar));
             const meta = metaPartes.length ? metaPartes.join(" · ") : escapar(auditor.correo || "Sin correo registrado");
 
             return `
@@ -1972,6 +1994,9 @@
           (app.filtrados.length !== app.auditores.length
             ? ` (filtrados de ${app.auditores.length})`
             : "") + ".";
+        filtrosUbicacion.anunciar(FiltrosUbicacion.hayFiltros(app.ubicacion)
+          ? `${app.filtrados.length} auditor${app.filtrados.length === 1 ? "" : "es"} en esa ubicación.`
+          : "");
       }
 
       function renderPaginacion() {
@@ -2804,6 +2829,8 @@
         app.texto = "";
         app.estado = "";
         app.registro = "";
+        filtrosUbicacion.limpiar(true);
+        app.ubicacion = {};
         aplicarFiltros(true);
         busqueda.focus();
       });
@@ -2825,6 +2852,8 @@
           app.texto = "";
           app.estado = "";
           app.registro = "";
+          filtrosUbicacion.limpiar(true);
+          app.ubicacion = {};
           aplicarFiltros(true);
           busqueda.focus();
           return;

@@ -59,6 +59,9 @@ from modules.agenda_auditor.agenda_router import router as agenda_auditor_router
 from modules.agenda_auditor.agenda_bootstrap import preparar_modulo_agenda
 from modules.perfiles_auditor.perfil_router import router as perfil_auditor_router
 from modules.reportes_auditor.reporte_router import router as reporte_auditor_router
+# Calificación de visitas por los auditores (la consulta el Comité). Su tabla
+# la crea la usuaria con documentacion/sql_calificacion_visitas.sql.
+from modules.calificacion_visitas.calificacion_router import router as calificacion_visitas_router
 # Modulo heredado de otro proyecto: su tabla `tareas` no existe en esta base
 # de datos, asi que sus endpoints devolvian 500. El codigo se conserva en
 # modules/tareas/ por si se quiere reaprovechar; para reactivarlo hay que
@@ -389,6 +392,7 @@ app.include_router(conflictos_auditor_router)
 app.include_router(agenda_auditor_router)
 app.include_router(perfil_auditor_router)
 app.include_router(reporte_auditor_router)
+app.include_router(calificacion_visitas_router)
 # app.include_router(tarea_router)   # modulo heredado, ver nota arriba
 
 

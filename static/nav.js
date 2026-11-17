@@ -372,18 +372,19 @@
       },
       {
         grupo: "Disponibilidad",
-        // El horario semanal lo configura el propio auditor en su perfil,
-        // junto al calendario de sus auditorías (static/mi_disponibilidad.js).
+        // El horario semanal lo configura el propio auditor en la pantalla de
+        // Disponibilidad (no en el perfil), junto al calendario de sus
+        // auditorías (static/mi_disponibilidad.js). 17/11/2026.
         opciones: [
-          { texto: "Mi disponibilidad semanal", href: "/perfil-auditor#disponibilidad" }
-        ].concat([
+          ["configurar-horario", "Mi disponibilidad semanal"],
           ["bloquear-fecha", "Bloquear fecha"],
           ["desbloquear-fecha", "Desbloquear fecha"],
-          ["disponibilidad-extraordinaria", "Disponibilidad extraordinaria"],
+          // "Disponibilidad extraordinaria" se quitó (17/11/2026): era lo mismo
+          // que declarar la disponibilidad semanal con otra vigencia.
           ["historial-disponibilidad", "Historial"]
         ].map(function (s) {
           return { texto: s[1], href: "/disponibilidad-auditor#" + s[0], proxy: '.side a[data-seccion="' + s[0] + '"]' };
-        }))
+        })
       },
       {
         grupo: "Catálogo de competencias",

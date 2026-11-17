@@ -26,6 +26,16 @@ COLUMNAS_EMPRESA = "id_empresa, nombre, nit, ciudad, direccion, correo, estado"
 COLUMNAS_EMPRESA_AUDITOR = "id_empresa, nombre, nit, ciudad, estado"
 # Asignaciones que ya no dan acceso a la empresa.
 ASIGNACIONES_SIN_ACCESO = "('Cancelada', 'Reasignado', 'Rechazada')"
+# Ubicaciones de las sedes de cada empresa, para filtrar el listado por
+# ciudad, departamento o país ("alguna sede en ..."). Solo lectura.
+UBICACION_SEDES_EMPRESA = """
+    COALESCE(ARRAY(SELECT DISTINCT se.ciudad FROM sede_empresa se
+                   WHERE se.id_empresa = {alias}.id_empresa AND se.ciudad IS NOT NULL ORDER BY se.ciudad), '{{}}') AS sedes_ciudades,
+    COALESCE(ARRAY(SELECT DISTINCT se.departamento FROM sede_empresa se
+                   WHERE se.id_empresa = {alias}.id_empresa AND se.departamento IS NOT NULL ORDER BY se.departamento), '{{}}') AS sedes_departamentos,
+    COALESCE(ARRAY(SELECT DISTINCT se.pais FROM sede_empresa se
+                   WHERE se.id_empresa = {alias}.id_empresa AND se.pais IS NOT NULL ORDER BY se.pais), '{{}}') AS sedes_paises
+"""
 COLUMNAS_CONTACTO = "id_contacto, id_sede, nombre, cargo, telefono, correo, fecha_registro"
 
 
@@ -39,9 +49,10 @@ class EmpresasService:
 
     async def get_all_empresas(self) -> list[dict]:
         result = await self.db.execute(text(f"""
-            SELECT {COLUMNAS_EMPRESA}
-            FROM empresa
-            ORDER BY nombre ASC;
+            SELECT {", ".join("e." + c.strip() for c in COLUMNAS_EMPRESA.split(","))},
+                   {UBICACION_SEDES_EMPRESA.format(alias="e")}
+            FROM empresa e
+            ORDER BY e.nombre ASC;
         """))
         return [dict(row) for row in result.mappings().all()]
 
@@ -93,12 +104,16 @@ class EmpresasService:
         """Datos mínimos de las empresas de las solicitudes asignadas al auditor."""
         result = await self.db.execute(
             text(f"""
-                SELECT DISTINCT {", ".join("e." + c.strip() for c in COLUMNAS_EMPRESA_AUDITOR.split(","))}
+                SELECT {", ".join("e." + c.strip() for c in COLUMNAS_EMPRESA_AUDITOR.split(","))},
+                       {UBICACION_SEDES_EMPRESA.format(alias="e")}
                 FROM empresa e
-                JOIN solicitud s ON s.id_empresa = e.id_empresa
-                JOIN auditores_solicitud a ON a.id_solicitud = s.id_solicitud
-                WHERE a.id_auditor = :id_auditor
-                  AND a.estado_asignacion NOT IN {ASIGNACIONES_SIN_ACCESO}
+                WHERE e.id_empresa IN (
+                    SELECT s.id_empresa
+                    FROM solicitud s
+                    JOIN auditores_solicitud a ON a.id_solicitud = s.id_solicitud
+                    WHERE a.id_auditor = :id_auditor
+                      AND a.estado_asignacion NOT IN {ASIGNACIONES_SIN_ACCESO}
+                )
                 ORDER BY e.nombre ASC;
             """),
             {"id_auditor": id_auditor},

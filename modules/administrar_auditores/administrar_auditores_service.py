@@ -116,7 +116,12 @@ class AdministrarAuditoresService:
 
                 u.estado_auditor,
 
-                r.nombre AS rol
+                r.nombre AS rol,
+
+                -- Residencia declarada en la postulación (filtros de ubicación).
+                perfil.ciudad_residencia,
+
+                perfil.departamento_residencia
 
             FROM postulacion_auditor pa
 
@@ -127,6 +132,12 @@ class AdministrarAuditoresService:
             LEFT JOIN rol r
 
                 ON r.id_rol = u.rol_id
+
+            LEFT JOIN perfil_auditor perfil
+
+                ON perfil.id_usuario = pa.id_usuario
+
+               AND perfil.id_postulacion = pa.id_postulacion
 
             WHERE 1 = 1
 
@@ -211,6 +222,10 @@ class AdministrarAuditoresService:
                 "fecha_postulacion": solicitud["fecha_postulacion"],
 
                 "fecha_revision": solicitud["fecha_revision"],
+
+                "ciudad_residencia": solicitud.get("ciudad_residencia"),
+
+                "departamento_residencia": solicitud.get("departamento_residencia"),
 
             }
 

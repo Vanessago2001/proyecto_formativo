@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 class CertificadoCrear(BaseModel):
     id_solicitud: UUID
-    id_alcance: UUID
     fecha_vencimiento: date
 
 
@@ -16,10 +15,6 @@ class CertificadoMotivo(BaseModel):
 
 class CertificadoRenovar(BaseModel):
     fecha_vencimiento: date
-
-
-class CertificadoAlcance(BaseModel):
-    id_alcance: UUID
 
 
 class LiderComiteAsignar(BaseModel):

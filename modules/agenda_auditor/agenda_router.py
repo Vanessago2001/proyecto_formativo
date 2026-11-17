@@ -92,6 +92,16 @@ async def listar_bloqueos_vigentes(
     return {"bloqueos": await AgendaAuditorService(db).listar_bloqueos_activos()}
 
 
+def _ubicacion_extra(departamento, pais) -> dict:
+    """Filtros opcionales de departamento y país: solo se pasan si llegan con texto."""
+    extra = {}
+    if isinstance(departamento, str) and departamento.strip():
+        extra["departamento"] = departamento
+    if isinstance(pais, str) and pais.strip():
+        extra["pais"] = pais
+    return extra
+
+
 @router.get("/disponibilidad-mensual-general")
 async def disponibilidad_mensual_general(
     anio: int = Query(..., ge=2000, le=2100),
@@ -100,12 +110,15 @@ async def disponibilidad_mensual_general(
     modalidad: str | None = Query(None, max_length=30),
     id_usuario: UUID | None = Query(None, description="Limita el calendario a un auditor"),
     incluir_canceladas: bool = Query(False),
+    departamento: str | None = Query(None, max_length=100),
+    pais: str | None = Query(None, max_length=100),
     usuario: dict = Depends(requiere_permiso("SOL-006")),
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).ver_disponibilidad_mensual_general(
         anio=anio, mes=mes, ciudad=ciudad, modalidad=modalidad,
         id_usuario=id_usuario, incluir_canceladas=incluir_canceladas,
+        **_ubicacion_extra(departamento, pais),
     )
 
 
@@ -124,10 +137,14 @@ async def listar_todas_programaciones(
     ciudad: str | None = None,
     modalidad: str | None = None,
     estado: str | None = None,
+    departamento: str | None = Query(None, max_length=100),
+    pais: str | None = Query(None, max_length=100),
     usuario: dict = Depends(_validar_administrador),
     db: AsyncSession = Depends(get_db),
 ):
-    return {"programaciones": await AgendaAuditorService(db).listar_todas_programaciones(desde, hasta, ciudad, modalidad, estado)}
+    return {"programaciones": await AgendaAuditorService(db).listar_todas_programaciones(
+        desde, hasta, ciudad, modalidad, estado, **_ubicacion_extra(departamento, pais)
+    )}
 
 
 @router.get(
@@ -139,6 +156,8 @@ async def listar_programaciones_futuras(
     estado: str | None = Query(None, max_length=40),
     ciudad: str | None = Query(None, max_length=150),
     modalidad: str | None = Query(None, max_length=40),
+    departamento: str | None = Query(None, max_length=100),
+    pais: str | None = Query(None, max_length=100),
     usuario: dict = Depends(_validar_administrador),
     db: AsyncSession = Depends(get_db),
 ):
@@ -149,7 +168,8 @@ async def listar_programaciones_futuras(
     """
     return {
         "programaciones": await AgendaAuditorService(db).listar_programaciones_futuras(
-            dias=dias, estado=estado, ciudad=ciudad, modalidad=modalidad
+            dias=dias, estado=estado, ciudad=ciudad, modalidad=modalidad,
+            **_ubicacion_extra(departamento, pais),
         ),
         "dias": dias,
     }
@@ -165,6 +185,8 @@ async def listar_programaciones_futuras_auditor(
     estado: str | None = Query(None, max_length=40),
     ciudad: str | None = Query(None, max_length=150),
     modalidad: str | None = Query(None, max_length=40),
+    departamento: str | None = Query(None, max_length=100),
+    pais: str | None = Query(None, max_length=100),
     usuario: dict = Depends(_validar_admin_o_propio_auditor),
     db: AsyncSession = Depends(get_db),
 ):
@@ -176,7 +198,8 @@ async def listar_programaciones_futuras_auditor(
     """
     return {
         "programaciones": await AgendaAuditorService(db).listar_programaciones_futuras(
-            dias=dias, id_usuario=id_usuario, estado=estado, ciudad=ciudad, modalidad=modalidad
+            dias=dias, id_usuario=id_usuario, estado=estado, ciudad=ciudad, modalidad=modalidad,
+            **_ubicacion_extra(departamento, pais),
         ),
         "dias": dias,
     }
@@ -483,6 +506,8 @@ async def auditorias_programadas(
     ciudad: str | None = Query(None, max_length=150),
     modalidad: str | None = Query(None, max_length=30),
     estado: str | None = Query(None, max_length=40),
+    departamento: str | None = Query(None, max_length=100),
+    pais: str | None = Query(None, max_length=100),
     usuario: dict = Depends(_validar_admin_o_propio_auditor),
     db: AsyncSession = Depends(get_db),
 ):
@@ -492,7 +517,7 @@ async def auditorias_programadas(
         raise HTTPException(status_code=422, detail="La modalidad debe ser Presencial, Remota o Híbrida.")
     return {
         "auditorias": await AgendaAuditorService(db).consultar_auditorias_programadas(
-            id_usuario, desde, hasta, ciudad, modalidad, estado
+            id_usuario, desde, hasta, ciudad, modalidad, estado, **_ubicacion_extra(departamento, pais)
         )
     }
 

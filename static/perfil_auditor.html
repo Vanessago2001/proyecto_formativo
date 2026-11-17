@@ -141,7 +141,6 @@
 
     <div class="comite-header-user">
       <a class="comite-back-button" href="/dashboard">Panel</a>
-      <a class="profile-link" href="/reportes">Reportes</a>
       <button id="logoutButton" class="comite-logout js-salir" type="button">Cerrar sesión</button>
     </div>
 
@@ -240,12 +239,11 @@
     </div>
   </div>
 
-  <!-- Mi disponibilidad: solo el auditor configura cuándo puede atender
-       auditorías; el calendario muestra lo que ya tiene ocupado. -->
-  <section class="profile-card" id="disponibilidad" aria-labelledby="disponibilidadTitulo" style="scroll-margin-top: 16px;">
-    <h3 id="disponibilidadTitulo">Mi disponibilidad</h3>
-    <div id="miDisponibilidad"><p class="help-text">Cargando su disponibilidad...</p></div>
-  </section>
+  <!-- La disponibilidad semanal y su calendario viven en la ventana del menú
+       "Mi disponibilidad semanal" (/disponibilidad-auditor#configurar-horario). -->
+  <div class="profile-actions" id="disponibilidad">
+    <a href="/disponibilidad-auditor#configurar-horario" class="btn btn-secundario btn-sm">Configurar mi disponibilidad semanal</a>
+  </div>
 
   <div class="profile-actions">
     <a href="/dashboard" class="btn btn-secundario">Volver al panel</a>
@@ -258,7 +256,6 @@
   <p>&copy; 2026 CertiSENA - SENA. Todos los derechos reservados.</p>
 </footer>
 
-<script src="/static/mi_disponibilidad.js?v=20261113b"></script>
 <script>
     const token = localStorage.getItem('access_token');
     let usuarioId = null;
@@ -443,20 +440,6 @@
     }
 
     cargarPerfil();
-
-    // Sección "Mi disponibilidad" (static/mi_disponibilidad.js).
-    (async function () {
-        const contenedor = document.getElementById('miDisponibilidad');
-        const id = await resolverUsuario();
-        if (!id || !window.MiDisponibilidad) {
-            contenedor.innerHTML = '<p class="help-text">No se pudo identificar al auditor para cargar su disponibilidad.</p>';
-            return;
-        }
-        window.MiDisponibilidad.montar(contenedor, { idUsuario: id, token });
-        if (location.hash === '#disponibilidad') {
-            document.getElementById('disponibilidad').scrollIntoView();
-        }
-    })();
 </script>
 <script src="/static/session.js?v=20261117"></script>
 <script src="/static/session-guard.js"></script>

@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261114a">
 </head>
 
@@ -24,7 +25,6 @@
       </div>
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
-        <a class="profile-link" href="/reportes">Reportes</a>
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
@@ -164,6 +164,8 @@
         actual: null,
         texto: "",
         filtroEstado: "",
+        ubicacion: {},
+        ubicacionSedes: {},
         paginaListado: 1,
         editandoEmpresa: false,
         sedeEditada: null,
@@ -319,52 +321,98 @@
         }
       }
 
+      // Filtros de ubicación: la ciudad se busca en la empresa y en sus sedes;
+      // departamento y país solo existen en las sedes ("alguna sede en ...").
+      const ubicacionEmpresa = (e) => ({
+        ciudad: [e.ciudad].concat(e.sedes_ciudades || []),
+        departamento: e.sedes_departamentos || [],
+        pais: e.sedes_paises || []
+      });
+      let filtrosListado = null;
+
       function renderizarListado() {
-        const texto = estado.texto.toLowerCase();
+        if (!$("#listadoResultados")) {
+          $("#vista-listado").innerHTML =
+            '<div class="comite-toolbar">' +
+            '<form id="formBuscar" class="comite-search-form"><label for="buscarTexto">Buscar empresa</label><div class="comite-search-row">' +
+            '<input id="buscarTexto" type="search" placeholder="Nombre, NIT, ciudad o correo" value="' + esc(estado.texto) + '">' +
+            '<button class="comite-button primary btn btn-primario" type="submit">Buscar</button></div></form>' +
+            '<div class="comite-search-form" style="flex:0 1 220px">' +
+            selector("filtroEstado", "Estado", [["", "Todos"], ["Activa", "Activa"], ["Suspendida", "Suspendida"], ["Inactiva", "Inactiva"]], estado.filtroEstado) +
+            "</div></div>" +
+            '<div id="listadoUbicacion">' + FiltrosUbicacion.html({
+              prefijo: "empFiltro",
+              panel: true,
+              valores: estado.ubicacion,
+              ayudas: { departamento: "En alguna de sus sedes", pais: "En alguna de sus sedes" }
+            }) + "</div>" +
+            '<div id="listadoResultados"></div>';
+
+          filtrosListado = FiltrosUbicacion.ligar($("#vista-listado"), {
+            prefijo: "empFiltro",
+            alCambiar: (valores) => {
+              estado.ubicacion = valores;
+              estado.paginaListado = 1;
+              pintarListado();
+            }
+          });
+          $("#formBuscar").addEventListener("submit", (evento) => {
+            evento.preventDefault();
+            estado.texto = val("buscarTexto");
+            estado.paginaListado = 1;
+            pintarListado();
+          });
+          // La búsqueda general también filtra mientras se escribe.
+          $("#buscarTexto").addEventListener("input", FiltrosUbicacion.debounce(() => {
+            estado.texto = val("buscarTexto");
+            estado.paginaListado = 1;
+            pintarListado();
+          }, 300));
+          $("#filtroEstado").addEventListener("change", (evento) => {
+            estado.filtroEstado = evento.target.value;
+            estado.paginaListado = 1;
+            pintarListado();
+          });
+        }
+        filtrosListado.sugerir("ciudad", estado.empresas.map((e) => [e.ciudad].concat(e.sedes_ciudades || [])));
+        filtrosListado.sugerir("departamento", estado.empresas.map((e) => e.sedes_departamentos || []));
+        filtrosListado.sugerir("pais", estado.empresas.map((e) => e.sedes_paises || []));
+        pintarListado();
+      }
+
+      function pintarListado() {
+        const texto = FiltrosUbicacion.normalizar(estado.texto);
+        const ubicacion = estado.ubicacion || {};
         const visibles = estado.empresas.filter((e) =>
           (!estado.filtroEstado || (e.estado || "Activa") === estado.filtroEstado) &&
-          (!texto || [e.nombre, e.nit, e.ciudad, e.correo].some((v) => String(v || "").toLowerCase().includes(texto))));
+          (!texto || [e.nombre, e.nit, e.ciudad, e.correo].some((v) => FiltrosUbicacion.normalizar(v).includes(texto))) &&
+          FiltrosUbicacion.cumple(ubicacion, ubicacionEmpresa(e)));
 
         const totalPaginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA));
         estado.paginaListado = Math.min(Math.max(1, estado.paginaListado), totalPaginas);
         const desde = (estado.paginaListado - 1) * POR_PAGINA;
         const enPagina = visibles.slice(desde, desde + POR_PAGINA);
         const conteo = visibles.length === 1 ? "1 empresa" : visibles.length + " empresas";
+        const vacio = FiltrosUbicacion.hayFiltros(ubicacion)
+          ? FiltrosUbicacion.mensajeVacio("empresas", ubicacion)
+          : "No hay empresas para mostrar con los filtros actuales.";
 
-        $("#vista-listado").innerHTML =
-          '<div class="comite-toolbar">' +
-          '<form id="formBuscar" class="comite-search-form"><label for="buscarTexto">Buscar empresa</label><div class="comite-search-row">' +
-          '<input id="buscarTexto" type="search" placeholder="Nombre, NIT, ciudad o correo" value="' + esc(estado.texto) + '">' +
-          '<button class="comite-button primary btn btn-primario" type="submit">Buscar</button></div></form>' +
-          '<div class="comite-search-form" style="flex:0 1 220px">' +
-          selector("filtroEstado", "Estado", [["", "Todos"], ["Activa", "Activa"], ["Suspendida", "Suspendida"], ["Inactiva", "Inactiva"]], estado.filtroEstado) +
-          "</div></div>" +
+        $("#listadoResultados").innerHTML =
           panel(
             encabezado("Empresas", totalPaginas > 1 ? (desde + 1) + "-" + (desde + enPagina.length) + " de " + conteo : conteo,
               puede("gestionar") ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="registrar">Registrar empresa</button>' : "") +
             '<div class="comite-table-wrap"><table><thead><tr><th>Empresa</th><th>NIT</th><th>Ciudad</th><th>Correo</th><th>Estado</th><th>Acción</th></tr></thead><tbody>' +
             (enPagina.map((e) => "<tr><td><strong>" + esc(e.nombre) + "</strong></td><td>" + esc(e.nit) + "</td><td>" + esc(e.ciudad) + "</td>" +
               "<td>" + esc(e.correo) + "</td><td>" + chip(e.estado || "Activa") + "</td><td>" + accion("ver", "Ver detalle", e.id_empresa) + "</td></tr>").join("") ||
-              vacioTabla(6, "No hay empresas para mostrar con los filtros actuales.")) +
+              vacioTabla(6, vacio)) +
             "</tbody></table></div>" +
             paginador(estado.paginaListado, totalPaginas, "Páginas del listado de empresas")
           );
+        filtrosListado.anunciar(visibles.length ? conteo + (visibles.length === 1 ? " encontrada." : " encontradas.") : vacio);
 
-        ligarPaginador($("#vista-listado"), (pagina) => {
+        ligarPaginador($("#listadoResultados"), (pagina) => {
           estado.paginaListado = pagina;
-          renderizarListado();
-        });
-
-        $("#formBuscar").addEventListener("submit", (evento) => {
-          evento.preventDefault();
-          estado.texto = val("buscarTexto");
-          estado.paginaListado = 1;
-          renderizarListado();
-        });
-        $("#filtroEstado").addEventListener("change", (evento) => {
-          estado.filtroEstado = evento.target.value;
-          estado.paginaListado = 1;
-          renderizarListado();
+          pintarListado();
         });
       }
 
@@ -406,6 +454,12 @@
             panelDocumentos(documentos) +
             panelHistorial(historial) +
             "</div>";
+          if ($("#sedeFiltroCiudad")) {
+            FiltrosUbicacion.ligarFilas(caja, {
+              prefijo: "sedeFiltro", filas: "#tablaSedes tr[data-sede-fila]", vacio: "sedesSinResultados",
+              singular: "sede", plural: "sedes", alCambiar: (valores) => { estado.ubicacionSedes = valores; }
+            });
+          }
         } catch (error) {
           caja.innerHTML = "";
           mostrar(error.message, "error");
@@ -462,7 +516,7 @@
         const gestionar = puede("gestionar");
         const editada = sedes.find((s) => String(s.id_sede) === estado.sedeEditada);
 
-        const filas = sedes.map((s) => "<tr><td><strong>" + esc(s.nombre_sede) + "</strong></td><td>" + esc(s.direccion) + "</td>" +
+        const filas = sedes.map((s) => "<tr data-sede-fila" + FiltrosUbicacion.atributos({ ciudad: s.ciudad, departamento: s.departamento, pais: s.pais }) + "><td><strong>" + esc(s.nombre_sede) + "</strong></td><td>" + esc(s.direccion) + "</td>" +
           "<td>" + esc(s.ciudad) + "</td><td>" + esc(s.departamento || "-") + "</td><td>" + (s.es_principal ? "Sí" : "No") + "</td><td>" + chip(s.estado) + "</td>" +
           '<td><div class="acciones-tabla">' + accion("contactos", "Contactos", s.id_sede) +
           (gestionar ? accion("editar-sede", "Editar", s.id_sede) : "") +
@@ -493,9 +547,10 @@
 
         return panel(
           encabezado("Sedes", sedes.length + (sedes.length === 1 ? " sede registrada" : " sedes registradas")) +
-          '<div class="comite-table-wrap"><table><thead><tr><th>Sede</th><th>Dirección</th><th>Ciudad</th><th>Departamento</th><th>Principal</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' +
+          (sedes.length > 1 ? FiltrosUbicacion.html({ prefijo: "sedeFiltro", valores: estado.ubicacionSedes, titulo: "Filtrar sedes por ubicación" }) : "") +
+          '<div class="comite-table-wrap"><table id="tablaSedes"><thead><tr><th>Sede</th><th>Dirección</th><th>Ciudad</th><th>Departamento</th><th>Principal</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' +
           (filas || vacioTabla(7, "La empresa todavía no tiene sedes.")) +
-          "</tbody></table></div>" + formulario
+          '</tbody></table><p id="sedesSinResultados" class="comite-table-empty" hidden></p></div>' + formulario
         );
       }
 

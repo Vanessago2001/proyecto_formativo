@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.filtros_ubicacion import condiciones_ubicacion_solicitud
 from modules.solicitudes import estado_solicitud as estados
 
 
@@ -45,6 +46,9 @@ def construir_filtro_expedientes(
     norma: str | None = None,
     fecha_desde: date | None = None,
     fecha_hasta: date | None = None,
+    ciudad: str | None = None,
+    departamento: str | None = None,
+    pais: str | None = None,
 ) -> tuple[str, dict]:
     """
     Devuelve (condiciones SQL adicionales, parámetros) para la cola del Comité.
@@ -108,6 +112,12 @@ def construir_filtro_expedientes(
     if fecha_hasta:
         params["fecha_hasta"] = fecha_hasta
         condiciones.append("CAST(COALESCE(s.fecha_radicacion, s.fecha_creacion) AS DATE) <= :fecha_hasta")
+
+    # Ubicación: ciudad de la empresa o de una sede incluida; departamento y
+    # país de alguna sede (sin tildes ni mayúsculas, coincidencia parcial).
+    condiciones_lugar, params_lugar = condiciones_ubicacion_solicitud(ciudad, departamento, pais)
+    condiciones += condiciones_lugar
+    params.update(params_lugar)
 
     sql = "".join(f"\n          AND {c}" for c in condiciones)
     return sql, params

@@ -90,7 +90,6 @@ class SesionBorrador:
 
 
 ID = UUID("95198e60-b838-4d75-a694-08804cc1acc3")
-ALCANCE = UUID("11111111-2222-3333-4444-555555555555")
 
 
 def test_borrador_no_se_duplica():
@@ -99,13 +98,22 @@ def test_borrador_no_se_duplica():
     assert resultado["creado"] is False and "CERT-2026-0001" in resultado["motivo"]
 
 
-def test_borrador_requiere_alcance():
-    servicio = CertificadosService(SesionBorrador(None, None))
-    assert asyncio.run(servicio.crear_borrador_automatico(ID, {}))["creado"] is False
+def test_borrador_ya_no_exige_alcance(monkeypatch):
+    # Solo se consulta si ya hay certificado; no se busca ninguna línea de alcance.
+    sesion = SesionBorrador(None)
+    servicio = CertificadosService(sesion)
+
+    async def crear(datos, usuario, detalle_inicial=None):
+        return {"codigo_verificacion": "CERT-2026-0010"}
+
+    monkeypatch.setattr(servicio, "crear", crear)
+    resultado = asyncio.run(servicio.crear_borrador_automatico(ID, {}))
+    assert resultado == {"creado": True, "codigo_verificacion": "CERT-2026-0010"}
+    assert sesion.valores == []
 
 
 def test_borrador_se_crea_pendiente_de_firma(monkeypatch):
-    sesion = SesionBorrador(None, ALCANCE)
+    sesion = SesionBorrador(None)
     servicio = CertificadosService(sesion)
     llamadas = []
 
@@ -116,11 +124,11 @@ def test_borrador_se_crea_pendiente_de_firma(monkeypatch):
     monkeypatch.setattr(servicio, "crear", crear)
     resultado = asyncio.run(servicio.crear_borrador_automatico(ID, {}))
     assert resultado == {"creado": True, "codigo_verificacion": "CERT-2026-0009"}
-    assert llamadas[0][0].id_alcance == ALCANCE and "firma del líder" in llamadas[0][1]
+    assert not hasattr(llamadas[0][0], "id_alcance") and "firma del líder" in llamadas[0][1]
 
 
 def test_borrador_sin_lider_no_rompe_la_aprobacion(monkeypatch):
-    sesion = SesionBorrador(None, ALCANCE)
+    sesion = SesionBorrador(None)
     servicio = CertificadosService(sesion)
 
     async def crear(*_a, **_k):

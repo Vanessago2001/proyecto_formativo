@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Consultar auditorías programadas</title>
     <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+    <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
     <link rel="stylesheet" href="/static/styles.css?v=20261114a">
     <style>
         :root {
@@ -810,7 +811,6 @@
             </div>
             <div class="comite-header-user">
                 <a class="comite-back-button" href="/dashboard">Panel</a>
-                <a class="profile-link" href="/reportes">Reportes</a>
                 <a class="profile-link" href="/profile">Mi perfil</a>
                 <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
             </div>
@@ -871,7 +871,18 @@
                             </div>
                             <div class="filter-item">
                                 <label for="filtroCiudad">Ciudad</label>
-                                <input id="filtroCiudad" class="form-control campo" placeholder="Filtrar por ciudad">
+                                <input id="filtroCiudad" type="search" class="form-control campo" placeholder="Ej.: Bogotá" list="filtroCiudadLista" autocomplete="off" maxlength="100">
+                                <datalist id="filtroCiudadLista"></datalist>
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroDepartamento">Departamento</label>
+                                <input id="filtroDepartamento" type="search" class="form-control campo" placeholder="Ej.: Risaralda" list="filtroDepartamentoLista" autocomplete="off" maxlength="100" title="Departamento de la sede visitada">
+                                <datalist id="filtroDepartamentoLista"></datalist>
+                            </div>
+                            <div class="filter-item">
+                                <label for="filtroPais">País</label>
+                                <input id="filtroPais" type="search" class="form-control campo" placeholder="Ej.: Colombia" list="filtroPaisLista" autocomplete="off" maxlength="100" title="País de la sede visitada">
+                                <datalist id="filtroPaisLista"></datalist>
                             </div>
                             <div class="filter-item">
                                 <label for="filtroDesde">Desde</label>
@@ -886,6 +897,7 @@
                             <button type="button" class="btn btn-primario mini-btn" onclick="cargarDatos()">Aplicar ahora</button>
                             <button type="button" class="btn btn-secundario mini-btn" onclick="limpiarFiltros()">Limpiar</button>
                         </div>
+                        <p id="ubicacionEstado" class="fu-estado" role="status" aria-live="polite"></p>
                     </div>
                 </section>
 
@@ -1105,11 +1117,16 @@
             const estado = document.getElementById('filtroEstado').value;
             const modalidad = document.getElementById('filtroModalidad').value;
             const ciudad = document.getElementById('filtroCiudad').value.trim();
+            const departamento = document.getElementById('filtroDepartamento').value.trim();
+            const pais = document.getElementById('filtroPais').value.trim();
             const desde = document.getElementById('filtroDesde').value;
             const hasta = document.getElementById('filtroHasta').value;
             if (estado) params.set('estado', estado);
             if (modalidad) params.set('modalidad', modalidad);
             if (ciudad) params.set('ciudad', ciudad);
+            if (departamento) params.set('departamento', departamento);
+            if (pais) params.set('pais', pais);
+            ubicacionActual = { ciudad, departamento, pais };
             if (desde) params.set('desde', desde);
             if (hasta) params.set('hasta', hasta);
 
@@ -1120,8 +1137,13 @@
                 } else {
                     url = '/agenda-auditor/' + encodeURIComponent(uid) + '/auditorias-programadas' + (params.toString() ? '?' + params.toString() : '');
                 }
+                // Solo se pinta la respuesta de la última búsqueda.
+                if (abortoDatos) abortoDatos.abort();
+                const controlador = new AbortController();
+                abortoDatos = controlador;
                 const res = await fetch(url, {
-                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                    signal: controlador.signal
                 });
                 const data = await res.json().catch(() => ({}));
                 let items = esAdmin ? (Array.isArray(data.programaciones) ? data.programaciones : []) : (Array.isArray(data.auditorias) ? data.auditorias : []);
@@ -1177,8 +1199,10 @@
 
                 todosLosDatos = items;
                 paginaActual = 1;
+                actualizarUbicacion(items);
                 renderizarPagina();
             } catch (e) {
+                if (e && e.name === 'AbortError') return;
                 document.getElementById('rows').innerHTML = '<tr><td colspan="11" class="empty">No se pudieron cargar las auditorías.</td></tr>';
                 document.getElementById('resumen').textContent = '';
                 document.getElementById('pillContador').textContent = 'Sin datos';
@@ -1189,6 +1213,8 @@
             document.getElementById('filtroEstado').value = '';
             document.getElementById('filtroModalidad').value = '';
             document.getElementById('filtroCiudad').value = '';
+            document.getElementById('filtroDepartamento').value = '';
+            document.getElementById('filtroPais').value = '';
             document.getElementById('filtroDesde').value = '';
             document.getElementById('filtroHasta').value = '';
             cargarDatos();
@@ -1511,7 +1537,10 @@
             const items = todosLosDatos.slice(inicio, fin);
             const tbody = document.getElementById('rows');
             if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="11" class="empty">No hay auditorías programadas.</td></tr>';
+                const vacio = FiltrosUbicacion.hayFiltros(ubicacionActual)
+                    ? FiltrosUbicacion.mensajeVacio('auditorías programadas', ubicacionActual)
+                    : 'No hay auditorías programadas.';
+                tbody.innerHTML = '<tr><td colspan="11" class="empty">' + escapeHtml(vacio) + '</td></tr>';
             } else {
                 tbody.innerHTML = items.map((r, idx) => `
                     <tr class="${r.dia_no_disponible ? 'fila-bloqueada' : ''}">
@@ -1690,7 +1719,7 @@
                     <div class="modal-auditor-avatar">${escapeHtml(iniciales(a.nombre))}</div>
                     <div class="modal-auditor-body">
                         <strong>${escapeHtml(a.nombre || 'Auditor sin nombre')}</strong>
-                        <span class="modal-auditor-meta">${escapeHtml((a.tipo_doc || '') + ' ' + (a.num_doc || '')) || 'Documento no registrado'}</span>
+                        <span class="modal-auditor-meta">${escapeHtml([a.tipo_doc, a.num_doc].filter(Boolean).join(' ') || 'Documento no visible')}</span>
                         <span class="modal-auditor-meta">${escapeHtml(a.correo || 'Sin correo')}</span>
                         <span class="modal-auditor-role">${escapeHtml(a.rol || 'Auditor')}</span>
                     </div>
@@ -1940,6 +1969,14 @@
             w.print();
         }
 
+        // Una línea por auditor para exportar/imprimir: solo los datos que
+        // existan (nunca "undefined").
+        function lineaAuditor(a) {
+            const doc = [a.tipo_doc, a.num_doc].filter(Boolean).join(' ');
+            return [a.nombre || 'Auditor sin nombre', doc ? '(' + doc + ')' : '', a.correo || '', a.rol ? 'Rol: ' + a.rol : '']
+                .filter(Boolean).join(' - ').replace(' - (', ' (');
+        }
+
         function exportarAgendaIndividual(idx) {
             const r = todosLosDatos[idx];
             if (!r) return;
@@ -1950,7 +1987,7 @@
                 const i = parseInt(selected);
                 auditoresSeleccionados = [r.auditores[i]];
             }
-            const auditores = auditoresSeleccionados.map(a => `${a.nombre} (${a.tipo_doc} ${a.num_doc}) - ${a.correo} - Rol: ${a.rol}`).join('\\n');
+            const auditores = auditoresSeleccionados.map(lineaAuditor).join('\n');
             const contenido = `
                 <div class="section"><h3>Empresa</h3>
                     <div class="field"><label>Nombre</label><span>${escapeHtml(r.empresa_nombre || '-')}</span></div>
@@ -1981,7 +2018,7 @@
         function exportarProgramacionAgenda(idx) {
             const r = todosLosDatos[idx];
             if (!r) return;
-            const auditores = (r.auditores || []).map(a => `${a.nombre} (${a.tipo_doc} ${a.num_doc}) - ${a.correo} - Rol: ${a.rol}`).join('\\n');
+            const auditores = (r.auditores || []).map(lineaAuditor).join('\n');
             const contenido = `
                 <div class="section"><h3>Programación de Agenda</h3>
                     <div class="field"><label>ID Programación</label><span>${escapeHtml(r.id_programacion || '-')}</span></div>
@@ -2013,7 +2050,32 @@
                 timer = setTimeout(() => fn.apply(this, args), delay);
             };
         }
-        const autoFiltrar = debounce(cargarDatos, 400);
+        const autoFiltrar = debounce(cargarDatos, 300);
+
+        // ---- Filtros de ubicación (ciudad, departamento y país de la visita) ----
+        let abortoDatos = null;
+        let ubicacionActual = {};
+        function actualizarUbicacion(items) {
+            // Las sugerencias salen de la consulta sin filtros de ubicación.
+            if (!FiltrosUbicacion.hayFiltros(ubicacionActual)) {
+                const llenar = (id, valores) => {
+                    const lista = document.getElementById(id);
+                    if (lista) lista.innerHTML = FiltrosUbicacion.valoresUnicos(valores)
+                        .map(v => '<option value="' + escapeHtml(v) + '"></option>').join('');
+                };
+                llenar('filtroCiudadLista', items.map(r => [r.ciudad_servicio, r.sede_ciudad, r.empresa_ciudad]));
+                llenar('filtroDepartamentoLista', items.map(r => r.sede_departamento));
+                llenar('filtroPaisLista', items.map(r => r.sede_pais));
+            }
+            const estado = document.getElementById('ubicacionEstado');
+            if (estado) {
+                estado.textContent = FiltrosUbicacion.hayFiltros(ubicacionActual)
+                    ? (items.length
+                        ? items.length + (items.length === 1 ? ' auditoría programada' : ' auditorías programadas') + ' en esa ubicación.'
+                        : FiltrosUbicacion.mensajeVacio('auditorías programadas', ubicacionActual))
+                    : '';
+            }
+        }
 
         // Cerrar modal con clic fuera o tecla Escape + auto-filtros
         document.addEventListener('DOMContentLoaded', () => {
@@ -2030,7 +2092,8 @@
             // Auto-aplicar filtros al cambiar o escribir
             document.getElementById('filtroEstado')?.addEventListener('change', autoFiltrar);
             document.getElementById('filtroModalidad')?.addEventListener('change', autoFiltrar);
-            document.getElementById('filtroCiudad')?.addEventListener('input', autoFiltrar);
+            ['filtroCiudad', 'filtroDepartamento', 'filtroPais'].forEach(id =>
+                document.getElementById(id)?.addEventListener('input', autoFiltrar));
             document.getElementById('filtroDesde')?.addEventListener('change', autoFiltrar);
             document.getElementById('filtroHasta')?.addEventListener('change', autoFiltrar);
         });

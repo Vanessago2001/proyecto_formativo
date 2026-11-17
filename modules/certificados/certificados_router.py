@@ -16,7 +16,6 @@ from modules.certificados.certificados_permissions import (
     REQ,
 )
 from modules.certificados.certificados_schema import (
-    CertificadoAlcance,
     CertificadoCrear,
     CertificadoFirmar,
     CertificadoMotivo,
@@ -230,7 +229,6 @@ COLUMNAS_EXPORTACION_CERTIFICADOS = [
     Columna("empresa", "Empresa titular", 30),
     Columna("nit", "NIT", 15),
     Columna("norma_codigo", "Norma", 12),
-    Columna("alcance", "Alcance", 40),
     Columna("fecha_emision", "Fecha de emisión", 15),
     Columna("fecha_vencimiento", "Fecha de vencimiento", 15),
     Columna("estado_certificado", "Estado", 16, _estado_certificado_legible),
@@ -455,15 +453,3 @@ async def retirar_certificado_portal(
     db: AsyncSession = Depends(get_db),
 ):
     return await CertificadosService(db).cambiar_publicacion(id_certificado, False, usuario)
-
-
-@router.post("/{id_certificado}/alcance", summary="CER-030 · Registrar cambios de alcance")
-async def actualizar_alcance_certificado(
-    id_certificado: UUID,
-    data: CertificadoAlcance,
-    usuario: dict = Depends(requiere_permiso("CER-030")),
-    db: AsyncSession = Depends(get_db),
-):
-    return await CertificadosService(db).actualizar_alcance(
-        id_certificado, data.id_alcance, usuario
-    )

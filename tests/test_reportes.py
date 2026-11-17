@@ -288,10 +288,28 @@ async def test_la_pagina_envia_el_token_en_cada_peticion(cliente):
 
 @pytest.mark.parametrize("pagina", PAGINAS_CON_ENLACE)
 async def test_el_panel_enlaza_al_modulo_de_reportes(cliente, pagina):
+    """
+    Reportes ya no es un botón de la cabecera (17/11/2026): está en el menú
+    lateral común, que dibuja static/nav.js para Coordinador, Comité y
+    Auditor. La página debe cargar nav.js y el menú debe incluir Reportes.
+    """
     async with cliente as ac:
         html = (await ac.get(pagina)).text
+        menu = (await ac.get("/static/nav.js")).text
 
-    assert 'href="/reportes"' in html, f"{pagina} no enlaza al módulo de reportes"
+    assert "/static/nav.js" in html, f"{pagina} no carga el menú común"
+    assert 'href: "/reportes"' in menu, "el menú común no enlaza al módulo de reportes"
+    for rol in ("MENU_ADMINISTRACION", "MENU_AUDITOR", "MENU_COMITE"):
+        bloque = menu.split(f"var {rol}", 1)[1].split("\n  };", 1)[0]
+        assert "REPORTES" in bloque, f"{rol} no incluye Reportes"
+
+
+async def test_el_portal_de_empresa_enlaza_a_reportes_en_su_menu(cliente):
+    async with cliente as ac:
+        html = (await ac.get("/empresa")).text
+
+    menu_lateral = html.split("comite-sidebar", 1)[1]
+    assert 'href="/reportes"' in menu_lateral
 
 
 async def test_la_ruta_de_la_pagina_esta_registrada(cliente):

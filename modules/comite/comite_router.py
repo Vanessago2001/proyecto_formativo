@@ -121,6 +121,9 @@ async def consultar_expedientes_pendientes(
     norma: str | None = Query(default=None, description="Código de la norma (ISO-9001)"),
     fecha_desde: date | None = Query(default=None, description="Radicado desde (AAAA-MM-DD)"),
     fecha_hasta: date | None = Query(default=None, description="Radicado hasta (AAAA-MM-DD)"),
+    ciudad: str | None = Query(default=None, max_length=100, description="Ciudad de la empresa o de una sede"),
+    departamento: str | None = Query(default=None, max_length=100, description="Departamento de alguna sede"),
+    pais: str | None = Query(default=None, max_length=100, description="País de alguna sede"),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -133,13 +136,25 @@ async def consultar_expedientes_pendientes(
             detail="No tienes permisos para consultar expedientes pendientes del comité de certificación.",
         )
 
-    condiciones, params = construir_filtro_expedientes(estado, q, norma, fecha_desde, fecha_hasta)
+    condiciones, params = construir_filtro_expedientes(
+        estado, q, norma, fecha_desde, fecha_hasta, ciudad=ciudad, departamento=departamento, pais=pais
+    )
     resultado = await db.execute(text(f"""
         SELECT
             s.id_solicitud AS id,
             COALESCE(s.numero_radicado, s.id_solicitud::TEXT) AS codigo,
             e.nombre AS empresa,
             e.nit,
+            e.ciudad AS empresa_ciudad,
+            -- Ubicación de las sedes incluidas (para las sugerencias de los filtros).
+            COALESCE(ARRAY(SELECT DISTINCT se.departamento FROM solicitud_sede ss
+                           JOIN sede_empresa se ON se.id_sede = ss.id_sede
+                           WHERE ss.id_solicitud = s.id_solicitud AND ss.estado <> 'Excluida'
+                             AND se.departamento IS NOT NULL), '{{}}') AS sedes_departamentos,
+            COALESCE(ARRAY(SELECT DISTINCT se.pais FROM solicitud_sede ss
+                           JOIN sede_empresa se ON se.id_sede = ss.id_sede
+                           WHERE ss.id_solicitud = s.id_solicitud AND ss.estado <> 'Excluida'
+                             AND se.pais IS NOT NULL), '{{}}') AS sedes_paises,
             n.codigo AS norma,
             s.estado,
             s.fecha_creacion,
@@ -164,6 +179,9 @@ async def consultar_expedientes_pendientes(
             "norma": norma,
             "fecha_desde": fecha_desde,
             "fecha_hasta": fecha_hasta,
+            "ciudad": ciudad,
+            "departamento": departamento,
+            "pais": pais,
         },
         "estados_disponibles": [FILTRO_ESTADO_PENDIENTES, FILTRO_ESTADO_TODOS, *estados.ESTADOS],
         "normas": [dict(fila) for fila in normas.mappings().all()],

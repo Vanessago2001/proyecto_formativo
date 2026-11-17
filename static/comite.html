@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261114a">
   <style>
     .historial-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 6px 0 14px; }
@@ -40,6 +41,22 @@
     .detalle-botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .detalle-mas { margin-top: 14px; }
     .detalle-mas summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #256d00; }
+    /* Calificación de los auditores (1 a 100 %) */
+    .cal-promedio { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 12px; font-size: 14px; }
+    .cal-promedio strong { font-size: 22px; color: #256d00; }
+    .cal-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .cal-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; background: #fff; }
+    .cal-item-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .cal-item-nombre { font-weight: 700; color: #1f2937; }
+    .cal-item-rol { font-size: 12px; color: #64748b; margin-left: 6px; }
+    .cal-item-nota { font-weight: 800; color: #256d00; font-size: 16px; }
+    .cal-barra { height: 8px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin: 8px 0 6px; }
+    .cal-barra span { display: block; height: 100%; background: #39a900; border-radius: inherit; }
+    .cal-item-fecha { font-size: 12px; color: #64748b; }
+    .cal-comentarios { margin: 8px 0 0; display: grid; gap: 6px; }
+    .cal-comentarios dt { font-size: 12px; font-weight: 700; color: #374151; }
+    .cal-comentarios dd { margin: 0; font-size: 13px; color: #1f2937; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .cal-pendiente { color: #64748b; font-size: 13px; font-style: italic; }
   </style>
 </head>
 
@@ -55,7 +72,6 @@
       </div>
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
-        <a class="profile-link" href="/reportes">Reportes</a>
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
@@ -130,6 +146,22 @@
                 <label for="fechaHastaFilter">Radicado hasta</label>
                 <input id="fechaHastaFilter" type="date">
               </div>
+              <!-- Ubicación: filtran mientras se escribe (ciudad de la empresa o de una sede; departamento y país de las sedes). -->
+              <div>
+                <label for="ciudadFilter">Ciudad</label>
+                <input id="ciudadFilter" type="search" list="ciudadFilterLista" autocomplete="off" maxlength="100" placeholder="Ej.: Bogotá">
+                <datalist id="ciudadFilterLista"></datalist>
+              </div>
+              <div>
+                <label for="departamentoFilter">Departamento</label>
+                <input id="departamentoFilter" type="search" list="departamentoFilterLista" autocomplete="off" maxlength="100" placeholder="Ej.: Risaralda" title="Departamento de alguna sede incluida">
+                <datalist id="departamentoFilterLista"></datalist>
+              </div>
+              <div>
+                <label for="paisFilter">País</label>
+                <input id="paisFilter" type="search" list="paisFilterLista" autocomplete="off" maxlength="100" placeholder="Ej.: Colombia" title="País de alguna sede incluida">
+                <datalist id="paisFilterLista"></datalist>
+              </div>
               <button id="filterButton" class="comite-button primary btn btn-primario" type="button">Filtrar</button>
               <button id="clearFiltersButton" class="comite-button secondary btn btn-secundario" type="button">Limpiar</button>
             </div>
@@ -140,7 +172,7 @@
               <div class="comite-panel-heading">
                 <div>
                   <h3>Cola de expedientes</h3>
-                  <p id="resultCount">Cargando expedientes...</p>
+                  <p id="resultCount" role="status" aria-live="polite">Cargando expedientes...</p>
                 </div>
               </div>
               <div class="comite-table-wrap">
@@ -368,8 +400,22 @@
         if ($("#normaFilter").value) params.set("norma", $("#normaFilter").value);
         if ($("#fechaDesdeFilter").value) params.set("fecha_desde", $("#fechaDesdeFilter").value);
         if ($("#fechaHastaFilter").value) params.set("fecha_hasta", $("#fechaHastaFilter").value);
+        const ubicacion = ubicacionExpedientes();
+        if (ubicacion.ciudad) params.set("ciudad", ubicacion.ciudad);
+        if (ubicacion.departamento) params.set("departamento", ubicacion.departamento);
+        if (ubicacion.pais) params.set("pais", ubicacion.pais);
         return params;
       }
+
+      function ubicacionExpedientes() {
+        return {
+          ciudad: $("#ciudadFilter").value.trim(),
+          departamento: $("#departamentoFilter").value.trim(),
+          pais: $("#paisFilter").value.trim()
+        };
+      }
+      // Solo se pinta la respuesta de la última consulta.
+      let consultaExpedientes = 0;
 
       function cargarNormas(normas) {
         const select = $("#normaFilter");
@@ -386,13 +432,28 @@
         if (event && event.preventDefault) event.preventDefault();
         if (!canConsult) return;
         $("#resultCount").textContent = "Cargando expedientes...";
+        const consulta = ++consultaExpedientes;
+        if (state.abortoExpedientes) state.abortoExpedientes.abort();
+        const controlador = new AbortController();
+        state.abortoExpedientes = controlador;
         try {
-          const response = await api("/comite/expedientes-pendientes?" + filtrosActuales().toString());
+          const response = await api("/comite/expedientes-pendientes?" + filtrosActuales().toString(), { signal: controlador.signal });
+          if (consulta !== consultaExpedientes) return;
           cargarNormas(response && response.normas);
           state.expedientes = Array.isArray(response && response.expedientes) ? response.expedientes : [];
+          // Sugerencias: ciudades de las empresas vistas sin filtro de ubicación.
+          if (!FiltrosUbicacion.hayFiltros(ubicacionExpedientes())) {
+            $("#ciudadFilterLista").innerHTML = FiltrosUbicacion.valoresUnicos(state.expedientes.map((x) => x.empresa_ciudad))
+              .map((v) => '<option value="' + escapeHtml(v) + '"></option>').join("");
+            $("#departamentoFilterLista").innerHTML = FiltrosUbicacion.valoresUnicos(state.expedientes.map((x) => x.sedes_departamentos || []))
+              .map((v) => '<option value="' + escapeHtml(v) + '"></option>').join("");
+            $("#paisFilterLista").innerHTML = FiltrosUbicacion.valoresUnicos(state.expedientes.map((x) => x.sedes_paises || []))
+              .map((v) => '<option value="' + escapeHtml(v) + '"></option>').join("");
+          }
           renderExpedientes(state.expedientes);
           showFeedback("", "");
         } catch (error) {
+          if (error && error.name === "AbortError") return;
           renderExpedientes([]);
           showFeedback(error.message, "error");
         }
@@ -404,6 +465,9 @@
         $("#normaFilter").value = "";
         $("#fechaDesdeFilter").value = "";
         $("#fechaHastaFilter").value = "";
+        $("#ciudadFilter").value = "";
+        $("#departamentoFilter").value = "";
+        $("#paisFilter").value = "";
         loadExpedientes();
       }
 
@@ -411,7 +475,11 @@
         const body = $("#expedientesBody");
         $("#resultCount").textContent = items.length + (items.length === 1 ? " expediente" : " expedientes");
         if (!items.length) {
-          body.innerHTML = '<tr><td colspan="5"><div class="comite-table-empty">No hay expedientes para mostrar con los filtros actuales.</div></td></tr>';
+          const ubicacion = ubicacionExpedientes();
+          const mensaje = FiltrosUbicacion.hayFiltros(ubicacion) && !$("#searchInput").value.trim()
+            ? FiltrosUbicacion.mensajeVacio("expedientes", ubicacion)
+            : "No hay expedientes para mostrar con los filtros actuales.";
+          body.innerHTML = '<tr><td colspan="5"><div class="comite-table-empty">' + escapeHtml(mensaje) + '</div></td></tr>';
           return;
         }
         body.innerHTML = items.map((item) => {
@@ -420,7 +488,7 @@
           const status = item.estado || "Pendiente";
           return '<tr>' +
             '<td><strong>' + escapeHtml(item.codigo || id) + '</strong></td>' +
-            '<td>' + escapeHtml(company) + '</td>' +
+            '<td>' + escapeHtml(company) + (item.empresa_ciudad ? '<br><span class="comite-muted">' + escapeHtml(item.empresa_ciudad) + '</span>' : '') + '</td>' +
             '<td>' + escapeHtml(item.norma || "Sin norma") + '</td>' +
             '<td><span class="comite-status ' + statusClass(status) + '">' + escapeHtml(status) + '</span></td>' +
             '<td><button class="btn btn-secundario btn-sm" type="button" data-expediente="' + escapeHtml(id) + '">Revisar</button></td>' +
@@ -492,6 +560,7 @@
           fact("Resultado del auditor", reportData.resultado || "Sin informe disponible") +
           fact("Fecha del informe", reportData.fecha || "No disponible") +
           '</dl>' +
+          '<div class="comite-detail-section" id="calificacionesAuditores" aria-live="polite"><h4>Calificación de los auditores</h4><p class="comite-muted">Cargando calificaciones...</p></div>' +
           '<div class="comite-detail-section"><h4>Documentos</h4><div class="detalle-botones">' +
           '<button class="comite-button secondary btn btn-secundario btn-sm" data-resource="/comite/expediente-descargar/' + escapeHtml(id) + '">Descargar expediente digital</button>' +
           (actaFirmada ? '<button class="comite-button secondary btn btn-secundario btn-sm" data-resource="/comite/acta-firmada/' + escapeHtml(id) + '">Descargar acta firmada</button>' : '') +
@@ -544,7 +613,62 @@
         $("#volverCola").addEventListener("click", cerrarDetalle);
         $("#detailPanel").querySelectorAll("[data-decision]").forEach((button) => button.addEventListener("click", () => submitDecision(button.dataset.decision)));
         if (hasFinalDecision) bloquearAccionesDeDictamen(true);
+        cargarCalificacionesAuditores(id);
         $("#detailPanel").querySelectorAll("[data-resource]").forEach((button) => button.addEventListener("click", () => loadResource(button.dataset.resource)));
+      }
+
+      // Calificación (1 a 100 %) y comentarios que cada auditor del equipo dejó
+      // sobre la visita. Solo la consultan el Comité y el Coordinador.
+      async function cargarCalificacionesAuditores(id) {
+        const caja = document.getElementById("calificacionesAuditores");
+        if (!caja) return;
+        if (!canDecide) { caja.remove(); return; }
+        const titulo = "<h4>Calificación de los auditores</h4>";
+        try {
+          const datos = await api("/calificacion-visitas/expediente/" + encodeURIComponent(id));
+          if (state.selectedId !== id || !datos) return;
+          caja.innerHTML = titulo + renderCalificaciones(datos);
+        } catch (error) {
+          if (state.selectedId !== id) return;
+          caja.innerHTML = titulo + '<p class="comite-muted">No se pudieron consultar las calificaciones: ' + escapeHtml(error.message) + '</p>';
+        }
+      }
+
+      function renderCalificaciones(datos) {
+        const auditores = Array.isArray(datos.auditores) ? datos.auditores : [];
+        if (!auditores.length) {
+          return '<p class="comite-muted">El expediente no tiene visitas con auditores asignados, así que todavía no hay calificaciones.</p>';
+        }
+        const promedio = datos.promedio === null || datos.promedio === undefined ? null : Number(datos.promedio);
+        const cabecera = promedio === null
+          ? '<p class="comite-muted">Ningún auditor ha calificado todavía la visita (' + auditores.length + ' en el equipo). La decisión no depende de esto.</p>'
+          : '<div class="cal-promedio"><span>Promedio</span><strong>' + escapeHtml(promedio.toLocaleString("es-CO")) + ' %</strong>' +
+            '<span class="comite-muted">' + datos.calificados + ' de ' + datos.total_auditores + ' auditores calificaron</span></div>' +
+            '<div class="cal-barra" role="img" aria-label="Promedio ' + escapeHtml(String(promedio)) + ' por ciento"><span style="width:' + Math.max(0, Math.min(100, promedio)) + '%"></span></div>';
+        const comentarios = [
+          ["comentario_visita", "Comentarios sobre la visita"],
+          ["situaciones_encontradas", "Situaciones encontradas"],
+          ["oportunidades_mejora", "Oportunidades de mejora"]
+        ];
+        const items = auditores.map((a) => {
+          const nota = a.calificacion === null || a.calificacion === undefined ? null : Number(a.calificacion);
+          const fecha = a.fecha_actualizacion || a.fecha_registro;
+          const visita = a.fecha_inicio ? "Visita del " + fechaLegible(a.fecha_inicio) : "Visita";
+          if (nota === null) {
+            return '<li class="cal-item"><div class="cal-item-cab"><span><span class="cal-item-nombre">' + escapeHtml(a.nombre || "Auditor") + '</span>' +
+              '<span class="cal-item-rol">' + escapeHtml(a.rol || "Auditor") + '</span></span>' +
+              '<span class="cal-pendiente">Sin calificar</span></div><div class="cal-item-fecha">' + escapeHtml(visita) + '</div></li>';
+          }
+          const textos = comentarios.filter(([clave]) => a[clave]).map(([clave, etiqueta]) =>
+            '<div><dt>' + etiqueta + '</dt><dd>' + escapeHtml(a[clave]) + '</dd></div>').join("");
+          return '<li class="cal-item"><div class="cal-item-cab"><span><span class="cal-item-nombre">' + escapeHtml(a.nombre || "Auditor") + '</span>' +
+            '<span class="cal-item-rol">' + escapeHtml(a.rol || "Ya no está en el equipo") + '</span></span>' +
+            '<span class="cal-item-nota">' + nota + ' %</span></div>' +
+            '<div class="cal-barra" role="img" aria-label="' + nota + ' por ciento"><span style="width:' + Math.max(0, Math.min(100, nota)) + '%"></span></div>' +
+            '<div class="cal-item-fecha">' + escapeHtml(visita + " · calificada el " + fechaLegible(fecha) + (a.fecha_actualizacion ? " (editada)" : "")) + '</div>' +
+            (textos ? '<dl class="cal-comentarios">' + textos + '</dl>' : '') + '</li>';
+        }).join("");
+        return cabecera + '<ul class="cal-lista">' + items + '</ul>';
       }
 
       function fact(label, value) {
@@ -896,6 +1020,8 @@
       $("#searchForm").addEventListener("submit", loadExpedientes);
       $("#filterButton").addEventListener("click", () => loadExpedientes());
       $("#clearFiltersButton").addEventListener("click", limpiarFiltros);
+      const filtrarUbicacionLuego = FiltrosUbicacion.debounce(() => loadExpedientes(), 300);
+      ["#ciudadFilter", "#departamentoFilter", "#paisFilter"].forEach((id) => $(id).addEventListener("input", filtrarUbicacionLuego));
       $("#estadoFilter").addEventListener("change", () => loadExpedientes());
       $("#normaFilter").addEventListener("change", () => loadExpedientes());
       $("#refreshButton").addEventListener("click", () => loadExpedientes());

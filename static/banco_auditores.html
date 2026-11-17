@@ -8,6 +8,7 @@
     <title>CertiSENA | Banco de Auditores</title>
 
     <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+    <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
     <link rel="stylesheet" href="/static/styles.css?v=20261114a" />
 
     <style>
@@ -119,7 +120,7 @@
         .filters {
             display: grid;
             grid-template-columns:
-                minmax(220px, 2fr) minmax(180px, 1fr) auto auto;
+                minmax(220px, 2fr) repeat(3, minmax(150px, 1fr)) auto auto;
 
             gap: 14px;
             align-items: end;
@@ -361,6 +362,12 @@
             margin-bottom: 7px;
         }
 
+        @media (max-width: 1200px) and (min-width: 901px) {
+            .filters {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
         @media (max-width: 900px) {
 
             .admin-grid {
@@ -417,7 +424,6 @@
 
                 <a class="comite-back-button" href="/dashboard">Panel</a>
 
-                <a class="profile-link" href="/reportes">Reportes</a>
 
                 <a class="profile-link" href="/profile">Mi perfil</a>
 
@@ -586,6 +592,20 @@
                         </div>
 
 
+                        <!-- Residencia del auditor (el perfil no tiene país): filtran mientras se escribe. -->
+                        <div class="field">
+                            <label for="bancoCiudad">Ciudad de residencia</label>
+                            <input id="bancoCiudad" class="campo" type="search" list="bancoCiudadLista" autocomplete="off" maxlength="100" placeholder="Ej.: Bogotá" />
+                            <datalist id="bancoCiudadLista"></datalist>
+                        </div>
+
+                        <div class="field">
+                            <label for="bancoDepartamento">Departamento</label>
+                            <input id="bancoDepartamento" class="campo" type="search" list="bancoDepartamentoLista" autocomplete="off" maxlength="100" placeholder="Ej.: Risaralda" />
+                            <datalist id="bancoDepartamentoLista"></datalist>
+                        </div>
+
+
                         <button id="buscarBtn" type="button" class="btn btn-primario primary-action">
                             Buscar
                         </button>
@@ -597,6 +617,7 @@
 
 
                     </div>
+                    <p id="bancoEstado" class="fu-estado" role="status" aria-live="polite"></p>
 
 
                     <!-- =====================================
@@ -1396,10 +1417,15 @@
             const body = document.getElementById("solicitudesBody");
             const buscar = document.getElementById("buscar").value.trim().toLowerCase();
             const estadoFiltro = document.getElementById("estado").value.trim();
+            const ubicacion = filtrosUbicacionBanco.valores();
 
             const filtradas = solicitudesBanco.filter((solicitud) => {
                 const estado = (solicitud.estado_postulacion || solicitud.estado || "").trim();
                 if (estadoFiltro && estado !== estadoFiltro) return false;
+                if (!FiltrosUbicacion.cumple(ubicacion, {
+                    ciudad: solicitud.ciudad_residencia,
+                    departamento: solicitud.departamento_residencia
+                })) return false;
                 if (!buscar) return true;
                 const texto = [
                     solicitud.nombre,
@@ -1419,20 +1445,29 @@
             const inicio = (paginaBanco - 1) * POR_PAGINA_BANCO;
             const pagina = filtradas.slice(inicio, inicio + POR_PAGINA_BANCO);
 
+            const porUbicacion = FiltrosUbicacion.hayFiltros(ubicacion);
             body.textContent = "";
             if (!filtradas.length) {
-                body.innerHTML = `<tr><td colspan="7" class="empty-state">No se encontraron solicitudes de auditores.</td></tr>`;
+                const vacio = porUbicacion && !buscar && !estadoFiltro
+                    ? FiltrosUbicacion.mensajeVacio("auditores que residan", ubicacion)
+                    : "No se encontraron solicitudes de auditores.";
+                body.innerHTML = `<tr><td colspan="7" class="empty-state">${escapeHtml(vacio)}</td></tr>`;
+                filtrosUbicacionBanco.anunciar(porUbicacion ? vacio : "");
                 renderPaginacionBanco(0, 0);
                 return;
             }
+            filtrosUbicacionBanco.anunciar(porUbicacion
+                ? `${filtradas.length} ${filtradas.length === 1 ? "postulación" : "postulaciones"} en esa ubicación.`
+                : "");
 
             pagina.forEach((solicitud) => {
                 const tr = document.createElement("tr");
                 const estado = solicitud.estado_postulacion || solicitud.estado || "";
                 const nombre = solicitud.nombre || "Sin nombre";
                 const documento = [solicitud.tipo_doc, solicitud.num_doc].filter(Boolean).join(" ") || "-";
+                const lugar = [solicitud.ciudad_residencia, solicitud.departamento_residencia].filter(Boolean).join(", ");
                 tr.innerHTML = `
-            <td><strong>${escapeHtml(nombre)}</strong></td>
+            <td><strong>${escapeHtml(nombre)}</strong>${lugar ? `<br><small class="texto-suave">${escapeHtml(lugar)}</small>` : ""}</td>
             <td>${escapeHtml(documento)}</td>
             <td>${escapeHtml(solicitud.correo || "-")}</td>
             <td><span class="status-badge ${statusClass(estado)}">${escapeHtml(estado || "-")}</span></td>
@@ -1606,6 +1641,8 @@
 
 
                 solicitudesBanco = solicitudes;
+                filtrosUbicacionBanco.sugerir("ciudad", solicitudes.map((s) => s.ciudad_residencia));
+                filtrosUbicacionBanco.sugerir("departamento", solicitudes.map((s) => s.departamento_residencia));
                 paginaBanco = 1;
                 renderPaginaBanco();
 
@@ -1647,6 +1684,12 @@
            FILTROS
         ==================================================== */
 
+        const filtrosUbicacionBanco = FiltrosUbicacion.ligar(document, {
+            prefijo: "banco",
+            campos: ["ciudad", "departamento"],
+            alCambiar: () => { paginaBanco = 1; renderPaginaBanco(); }
+        });
+
         document.getElementById("buscar")?.addEventListener("input", () => {
             paginaBanco = 1;
             renderPaginaBanco();
@@ -1660,6 +1703,7 @@
         document.getElementById("limpiarBtn")?.addEventListener("click", () => {
             document.getElementById("buscar").value = "";
             document.getElementById("estado").value = "";
+            filtrosUbicacionBanco.limpiar(true);
             loadSolicitudes();
         });
 

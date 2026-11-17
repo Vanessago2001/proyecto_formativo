@@ -602,7 +602,6 @@
       </div>
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
-        <a class="profile-link" href="/reportes">Reportes</a>
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
       </div>
@@ -1810,7 +1809,14 @@
 
         if (data) {
           renderStatus(data.estado || decision);
-          setAlert(`La apelación fue ${decision.toLowerCase()} correctamente.`, 'success');
+          let mensaje = `La apelación fue ${decision.toLowerCase()} correctamente.`;
+          const certificado = data.certificacion && data.certificacion.certificado;
+          if (decision === 'APROBADA' && certificado) {
+            mensaje += certificado.creado
+              ? ` La solicitud quedó aprobada y el certificado ${certificado.codigo_verificacion} quedó pendiente de la firma del líder del Comité.`
+              : ` La solicitud quedó aprobada, pero no se creó el borrador del certificado: ${certificado.motivo} El Coordinador puede generarlo desde Gestión de certificados.`;
+          }
+          setAlert(mensaje, 'success');
         }
       } catch (error) {
         setAlert(error.message, 'error');

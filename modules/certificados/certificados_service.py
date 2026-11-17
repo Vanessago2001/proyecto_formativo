@@ -104,20 +104,19 @@ class CertificadosService:
                 c.id_certificado, c.codigo_verificacion, c.id_comite,
                 c.url_certificado, c.fecha_vencimiento, TRIM(c.estado_certificado) AS estado_certificado,
                 c.fecha_emision, c.publico_certificado, c.id_solicitud,
-                c.id_alcance, c.fecha_registro, c.fecha_revocacion,
+                c.fecha_registro, c.fecha_revocacion,
                 c.id_asignacion_lider, c.id_firmante, c.huella_firmante,
                 c.codigo_hash, c.huella_pdf, firmante.nombre AS nombre_firmante,
                 firmante.nombre AS firmante, c.huella_firmante AS huella_certificado,
                 s.numero_radicado, s.id_empresa,
                 e.nombre AS empresa, e.nit,
                 n.codigo AS norma_codigo, n.nombre AS norma,
-                n.version AS norma_version, a.descripcion AS alcance,
+                n.version AS norma_version,
                 e.estado AS estado_empresa
             FROM certificado c
             JOIN solicitud s ON s.id_solicitud = c.id_solicitud
             JOIN empresa e ON e.id_empresa = s.id_empresa
             LEFT JOIN norma n ON n.id_norma = s.id_norma
-            LEFT JOIN alcance_solicitud a ON a.id_alcance = c.id_alcance
             LEFT JOIN usuario firmante ON firmante.id_usuario = c.id_firmante
             WHERE c.id_certificado = :id_certificado;
         """), {"id_certificado": str(id_certificado)})
@@ -139,7 +138,7 @@ class CertificadosService:
             campos_publicos = {
                 "codigo_verificacion", "estado_certificado", "fecha_emision",
                 "fecha_vencimiento", "numero_radicado", "empresa", "nit",
-                "norma_codigo", "norma", "norma_version", "alcance", "estado_empresa",
+                "norma_codigo", "norma", "norma_version", "estado_empresa",
                 "firmante", "huella_pdf", "huella_certificado",
             }
             return {campo: valor for campo, valor in certificado.items() if campo in campos_publicos}
@@ -194,8 +193,23 @@ class CertificadosService:
             SELECT
                 c.id_certificado, c.codigo_verificacion, c.fecha_emision,
                 c.fecha_vencimiento, TRIM(c.estado_certificado) AS estado_certificado, c.publico_certificado,
-                c.id_solicitud, c.id_alcance, s.numero_radicado,
-                e.nombre AS empresa, e.nit, n.codigo AS norma_codigo
+                c.id_solicitud, s.numero_radicado,
+                e.nombre AS empresa, e.nit, n.codigo AS norma_codigo,
+                -- Ubicación (filtros de ciudad, departamento y país): la ciudad
+                -- de la empresa y las de las sedes incluidas en la solicitud.
+                e.ciudad AS empresa_ciudad,
+                COALESCE(ARRAY(SELECT DISTINCT se.ciudad FROM solicitud_sede ss
+                               JOIN sede_empresa se ON se.id_sede = ss.id_sede
+                               WHERE ss.id_solicitud = s.id_solicitud AND ss.estado <> 'Excluida'
+                                 AND se.ciudad IS NOT NULL), '{{}}') AS sedes_ciudades,
+                COALESCE(ARRAY(SELECT DISTINCT se.departamento FROM solicitud_sede ss
+                               JOIN sede_empresa se ON se.id_sede = ss.id_sede
+                               WHERE ss.id_solicitud = s.id_solicitud AND ss.estado <> 'Excluida'
+                                 AND se.departamento IS NOT NULL), '{{}}') AS sedes_departamentos,
+                COALESCE(ARRAY(SELECT DISTINCT se.pais FROM solicitud_sede ss
+                               JOIN sede_empresa se ON se.id_sede = ss.id_sede
+                               WHERE ss.id_solicitud = s.id_solicitud AND ss.estado <> 'Excluida'
+                                 AND se.pais IS NOT NULL), '{{}}') AS sedes_paises
             FROM certificado c
             JOIN solicitud s ON s.id_solicitud = c.id_solicitud
             JOIN empresa e ON e.id_empresa = s.id_empresa
@@ -400,17 +414,6 @@ class CertificadosService:
                     detail="La solicitud ya tiene un certificado. Use la operación de renovación.",
                 )
 
-        alcance_resultado = await self.db.execute(text("""
-            SELECT id_alcance
-            FROM alcance_solicitud
-            WHERE id_alcance = :id_alcance AND id_solicitud = :id_solicitud;
-        """), {
-            "id_alcance": str(data.id_alcance),
-            "id_solicitud": str(data.id_solicitud),
-        })
-        if not alcance_resultado.scalar_one_or_none():
-            raise HTTPException(status_code=422, detail="El alcance no pertenece a la solicitud indicada.")
-
         asignacion_lider = await self.db.execute(text("""
             SELECT id_asignacion
             FROM asignacion_lider_comite
@@ -440,12 +443,12 @@ class CertificadosService:
             INSERT INTO certificado (
                 id_certificado, codigo_hash, id_comite, fecha_vencimiento,
                 estado_certificado, fecha_emision, publico_certificado,
-                id_solicitud, id_alcance, fecha_registro, codigo_verificacion,
+                id_solicitud, fecha_registro, codigo_verificacion,
                 id_asignacion_lider
             ) VALUES (
                 :id_certificado, :codigo_hash, :id_comite, :fecha_vencimiento,
                 :estado, NULL, FALSE,
-                :id_solicitud, :id_alcance, CURRENT_TIMESTAMP, :codigo,
+                :id_solicitud, CURRENT_TIMESTAMP, :codigo,
                 :id_asignacion_lider
             )
             RETURNING id_certificado;
@@ -456,7 +459,6 @@ class CertificadosService:
             "fecha_vencimiento": fecha_vencimiento,
             "estado": ESTADO_PENDIENTE_FIRMA,
             "id_solicitud": str(data.id_solicitud),
-            "id_alcance": str(data.id_alcance),
             "codigo": codigo,
             "id_asignacion_lider": str(asignacion["id_asignacion"]),
         })
@@ -476,9 +478,9 @@ class CertificadosService:
         Al aprobarse una solicitud en el Comité se crea solo el borrador del
         certificado (pendiente de firma) para que llegue al panel del líder.
 
-        No lanza errores: si la solicitud ya tiene certificado, si no tiene un
-        alcance técnico o si no hay líder asignado, devuelve el motivo para
-        que el Coordinador lo genere a mano desde Gestión de certificados.
+        No lanza errores: si la solicitud ya tiene certificado o si no hay
+        líder asignado, devuelve el motivo para que el Coordinador lo genere a
+        mano desde Gestión de certificados. Ya no exige una línea de alcance.
         """
         existente = await self.db.execute(text("""
             SELECT codigo_verificacion FROM certificado
@@ -487,16 +489,6 @@ class CertificadosService:
         codigo = existente.scalar_one_or_none()
         if codigo:
             return {"creado": False, "motivo": f"La solicitud ya tiene el certificado {codigo}."}
-
-        alcance = await self.db.execute(text("""
-            SELECT id_alcance FROM alcance_solicitud
-            WHERE id_solicitud = :id_solicitud
-            ORDER BY id_alcance
-            LIMIT 1;
-        """), {"id_solicitud": str(id_solicitud)})
-        id_alcance = alcance.scalar_one_or_none()
-        if not id_alcance:
-            return {"creado": False, "motivo": "La solicitud no tiene un alcance técnico registrado."}
 
         hoy = date.today()
         try:
@@ -508,7 +500,7 @@ class CertificadosService:
 
         try:
             certificado = await self.crear(
-                CertificadoCrear(id_solicitud=id_solicitud, id_alcance=id_alcance, fecha_vencimiento=vencimiento),
+                CertificadoCrear(id_solicitud=id_solicitud, fecha_vencimiento=vencimiento),
                 usuario,
                 detalle_inicial="Borrador creado automáticamente al aprobar el Comité; pendiente de firma del líder.",
             )
@@ -534,7 +526,6 @@ class CertificadosService:
         return await self.crear(
             CertificadoCrear(
                 id_solicitud=anterior["id_solicitud"],
-                id_alcance=anterior["id_alcance"],
                 fecha_vencimiento=fecha_vencimiento,
             ),
             usuario,
@@ -875,15 +866,13 @@ class CertificadosService:
                     firmante.nombre AS firmante, e.nombre AS empresa,
                     e.nit, e.estado AS estado_empresa,
                     n.codigo AS norma_codigo, n.nombre AS norma,
-                    n.version AS norma_version,
-                    COALESCE(a.descripcion, s.alcance_certificacion) AS alcance
+                    n.version AS norma_version
                 FROM certificado c
                 JOIN solicitud s
                   ON s.id_solicitud = c.id_solicitud
                   OR s.id_certificado = c.id_certificado
                 JOIN empresa e ON e.id_empresa = s.id_empresa
                 LEFT JOIN norma n ON n.id_norma = s.id_norma
-                LEFT JOIN alcance_solicitud a ON a.id_alcance = c.id_alcance
                 LEFT JOIN usuario firmante ON firmante.id_usuario = c.id_firmante
                 WHERE regexp_replace(UPPER(COALESCE(c.codigo_verificacion, '')), '[^A-Z0-9]', '', 'g') = :codigo
                   AND c.publico_certificado IS TRUE
@@ -924,43 +913,6 @@ class CertificadosService:
         certificado.pop("id_certificado", None)
         certificado.pop("estado_empresa", None)
         return certificado
-
-    async def actualizar_alcance(self, id_certificado: UUID, id_alcance: UUID, usuario: dict) -> dict:
-        certificado = await self._obtener(id_certificado)
-        if not certificado_esta_vigente(certificado):
-            raise HTTPException(status_code=409, detail="Solo se puede cambiar el alcance de un certificado vigente.")
-        if str(certificado["id_alcance"]) == str(id_alcance):
-            raise HTTPException(status_code=409, detail="El alcance seleccionado ya está asociado al certificado.")
-        resultado = await self.db.execute(text("""
-            SELECT id_alcance
-            FROM alcance_solicitud
-            WHERE id_alcance = :id_alcance AND id_solicitud = :id_solicitud;
-        """), {"id_alcance": str(id_alcance), "id_solicitud": str(certificado["id_solicitud"])})
-        if not resultado.scalar_one_or_none():
-            raise HTTPException(status_code=422, detail="El alcance no pertenece a la solicitud del certificado.")
-        await self.db.execute(text("""
-            UPDATE certificado
-            SET id_alcance = :id_alcance,
-                estado_certificado = :estado_pendiente,
-                fecha_emision = NULL,
-                url_certificado = NULL,
-                publico_certificado = FALSE,
-                id_firmante = NULL,
-                huella_firmante = NULL,
-                huella_pdf = NULL
-            WHERE id_certificado = :id_certificado;
-        """), {
-            "id_alcance": str(id_alcance),
-            "estado_pendiente": ESTADO_PENDIENTE_FIRMA,
-            "id_certificado": str(id_certificado),
-        })
-        estado = str(certificado["estado_certificado"])
-        await self._registrar_historial(
-            id_certificado, estado, ESTADO_PENDIENTE_FIRMA, usuario,
-            f"Alcance actualizado a {id_alcance}.",
-        )
-        await self.db.commit()
-        return await self._obtener(id_certificado)
 
     async def metricas(self) -> dict:
         resultado = await self.db.execute(text(f"""
@@ -1134,13 +1086,11 @@ class CertificadosService:
         resultado = await self.db.execute(text("""
             SELECT c.codigo_verificacion, c.fecha_emision, c.fecha_vencimiento,
                    TRIM(c.estado_certificado) AS estado_certificado, c.publico_certificado, s.numero_radicado,
-                   e.nombre AS empresa, e.nit, n.codigo AS norma_codigo,
-                   a.descripcion AS alcance
+                   e.nombre AS empresa, e.nit, n.codigo AS norma_codigo
             FROM certificado c
             JOIN solicitud s ON s.id_solicitud = c.id_solicitud
             JOIN empresa e ON e.id_empresa = s.id_empresa
             LEFT JOIN norma n ON n.id_norma = s.id_norma
-            LEFT JOIN alcance_solicitud a ON a.id_alcance = c.id_alcance
             ORDER BY e.nombre, c.fecha_emision DESC NULLS LAST;
         """))
         return [dict(fila) for fila in resultado.mappings().all()]

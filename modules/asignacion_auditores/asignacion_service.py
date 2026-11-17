@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.filtros_ubicacion import condiciones_ubicacion_solicitud, patron_contiene, sql_comparable
 from modules.solicitudes import estado_solicitud as estados
 from modules.asignacion_auditores.asignacion_schema import AsignacionAuditorCrear
 
@@ -166,6 +167,8 @@ class AsignacionAuditorService:
         hasta: date | None = None,
         norma: str | None = None,
         sector: str | None = None,
+        departamento: str | None = None,
+        pais: str | None = None,
     ) -> dict:
         page = max(1, page)
         page_size = min(100, max(1, page_size))
@@ -192,9 +195,12 @@ class AsignacionAuditorService:
                 "OR COALESCE(n.codigo, '') ILIKE '%' || CAST(:buscar AS TEXT) || '%')"
             )
             params["buscar"] = buscar
-        if ciudad:
-            filtros.append("LOWER(COALESCE(e.ciudad, '')) LIKE LOWER(:ciudad)")
-            params["ciudad"] = f"%{ciudad.strip().lower()}%"
+        # Ubicación: sin distinguir mayúsculas ni tildes y por coincidencia
+        # parcial. La ciudad puede ser la de la empresa o la de alguna sede
+        # incluida en la solicitud; departamento y país solo existen en las sedes.
+        filtros_lugar, params_lugar = condiciones_ubicacion_solicitud(ciudad, departamento, pais)
+        filtros += filtros_lugar
+        params.update(params_lugar)
         if desde:
             filtros.append("CAST(s.fecha AS DATE) >= :desde")
             params["desde"] = desde
@@ -290,6 +296,32 @@ class AsignacionAuditorService:
             "total_pages": total_pages,
         }
 
+    async def sugerencias_ubicacion(self) -> dict:
+        """Valores existentes (DISTINCT) para el autocompletado de los filtros."""
+        consulta = text(
+            """
+            SELECT 'solicitudes' AS grupo, 'ciudades' AS campo, ciudad AS valor FROM empresa WHERE ciudad IS NOT NULL
+            UNION SELECT 'solicitudes', 'ciudades', ciudad FROM sede_empresa WHERE ciudad IS NOT NULL
+            UNION SELECT 'solicitudes', 'departamentos', departamento FROM sede_empresa WHERE departamento IS NOT NULL
+            UNION SELECT 'solicitudes', 'paises', pais FROM sede_empresa WHERE pais IS NOT NULL
+            UNION SELECT 'auditores', 'ciudades', ciudad_residencia FROM perfil_auditor WHERE ciudad_residencia IS NOT NULL
+            UNION SELECT 'auditores', 'departamentos', departamento_residencia FROM perfil_auditor
+                  WHERE departamento_residencia IS NOT NULL
+            """
+        )
+        salida = {
+            "solicitudes": {"ciudades": [], "departamentos": [], "paises": []},
+            "auditores": {"ciudades": [], "departamentos": []},
+        }
+        for fila in (await self.db.execute(consulta)).mappings().all():
+            valor = str(fila["valor"] or "").strip()
+            if valor:
+                salida[fila["grupo"]][fila["campo"]].append(valor)
+        for grupo in salida.values():
+            for campo, valores in grupo.items():
+                grupo[campo] = sorted(set(valores), key=str.lower)
+        return salida
+
     async def obtener_solicitud(self, id_solicitud: UUID) -> dict:
         resultado = await self.db.execute(
             text(
@@ -346,6 +378,7 @@ class AsignacionAuditorService:
         modalidad: str | None = None,
         competencia: str | None = None,
         conflicto: str | None = None,
+        departamento: str | None = None,
     ) -> dict:
         solicitud = await self.obtener_solicitud(id_solicitud)
         page = max(1, page)
@@ -373,7 +406,9 @@ class AsignacionAuditorService:
             "id_norma": str(solicitud["id_norma"]),
             "estados_activos": list(ESTADOS_ASIGNACION_ACTIVOS),
             "buscar": buscar,
-            "ciudad": ciudad,
+            # Patrones LIKE normalizados (sin tildes ni mayúsculas).
+            "ciudad": patron_contiene(ciudad),
+            "departamento": patron_contiene(departamento),
             "modalidad": modalidad,
             "competencia": competencia,
             "conflicto": conflicto,
@@ -389,7 +424,11 @@ class AsignacionAuditorService:
             )
               AND (
                 CAST(:ciudad AS TEXT) IS NULL
-                OR COALESCE(ciudad_residencia, '') ILIKE '%' || CAST(:ciudad AS TEXT) || '%'
+                OR """ + sql_comparable("ciudad_residencia") + """ LIKE CAST(:ciudad AS TEXT) ESCAPE '\\'
+            )
+              AND (
+                CAST(:departamento AS TEXT) IS NULL
+                OR """ + sql_comparable("departamento_residencia") + """ LIKE CAST(:departamento AS TEXT) ESCAPE '\\'
             )
               AND (
                 CAST(:modalidad AS TEXT) IS NULL

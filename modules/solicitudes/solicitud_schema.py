@@ -136,6 +136,11 @@ class SolicitudListadoRespuesta(SolicitudRespuesta):
     usuario_nombre: str | None = None
     usuario_correo: str | None = None
     usuario_rol: str | None = None
+    # Solo con ?incluir_ubicacion=true: ubicaciones de las sedes incluidas,
+    # para filtrar el listado por ciudad, departamento o país.
+    sedes_ciudades: list[str] | None = None
+    sedes_departamentos: list[str] | None = None
+    sedes_paises: list[str] | None = None
 
 
 class SolicitudEstadoRespuesta(BaseModel):

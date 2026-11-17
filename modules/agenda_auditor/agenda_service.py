@@ -1,6 +1,8 @@
 from datetime import date, datetime, time, timedelta
 import calendar
 import unicodedata
+
+from core.filtros_ubicacion import condicion_contiene, patron_contiene
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -23,10 +25,48 @@ from modules.asignacion_auditores.asignacion_service import (
 )
 
 
+def _filtros_ubicacion_visita(
+    ciudad: str | None,
+    departamento: str | None = None,
+    pais: str | None = None,
+    alias_sede: str = "sede",
+) -> tuple[list[str], dict]:
+    """Condiciones SQL de ciudad, departamento y país de una visita.
+
+    La ciudad es la del servicio (o, si falta, la de la sede o la empresa);
+    departamento y país son los de la sede de la visita. Se comparan sin
+    distinguir mayúsculas ni tildes y por coincidencia parcial.
+    """
+    filtros: list[str] = []
+    params: dict = {}
+    if patron_contiene(ciudad):
+        filtros.append(condicion_contiene(
+            f"COALESCE(NULLIF(TRIM(p.ciudad_servicio), ''), {alias_sede}.ciudad, e.ciudad)", "ciudad"
+        ))
+        params["ciudad"] = patron_contiene(ciudad)
+    if patron_contiene(departamento):
+        filtros.append(condicion_contiene(f"{alias_sede}.departamento", "departamento"))
+        params["departamento"] = patron_contiene(departamento)
+    if patron_contiene(pais):
+        filtros.append(condicion_contiene(f"{alias_sede}.pais", "pais"))
+        params["pais"] = patron_contiene(pais)
+    return filtros, params
+
+
 class AgendaAuditorService(AuditorService):
     """Consulta y administra la agenda de auditorías de cada auditor."""
 
     ESTADOS_PROGRAMACION_ACTIVOS = ("Programada", "Confirmada", "Reprogramada")
+
+    # Columnas de solo lectura para el detalle de un registro de disponibilidad
+    # (modal del calendario): cuándo se registró (historial) y, si el bloqueo
+    # nació de una programación, su radicado. ``{t}`` es la tabla o alias.
+    _SQL_DETALLE_REGISTRO = """{t}.id_programacion,
+                    (SELECT MIN(hd.fecha_evento) FROM historial_disponibilidad_auditor hd
+                      WHERE hd.id_disponibilidad = {t}.id_disponibilidad) AS registrado_en,
+                    (SELECT sx.numero_radicado FROM programacion_visita AS pvx
+                       LEFT JOIN solicitud sx ON sx.id_solicitud = pvx.id_solicitud
+                      WHERE pvx.id_programacion = {t}.id_programacion) AS radicado_relacionado"""
 
     async def consultar_agenda(
         self,
@@ -62,7 +102,8 @@ class AgendaAuditorService(AuditorService):
                     hora_inicio,
                     hora_fin,
                     motivo,
-                    estado
+                    estado,
+                    {self._SQL_DETALLE_REGISTRO.format(t='disponibilidad_auditor')}
                 FROM disponibilidad_auditor
                 WHERE {' AND '.join(filtros)}
                 ORDER BY fecha_inicio DESC NULLS LAST, dia_semana
@@ -527,6 +568,8 @@ class AgendaAuditorService(AuditorService):
         ciudad: str | None = None,
         modalidad: str | None = None,
         estado: str | None = None,
+        departamento: str | None = None,
+        pais: str | None = None,
     ):
         filtros = []
         params: dict = {}
@@ -536,9 +579,9 @@ class AgendaAuditorService(AuditorService):
         if hasta:
             filtros.append("p.fecha_inicio <= :hasta")
             params["hasta"] = datetime.combine(hasta, time.max)
-        if ciudad and ciudad.strip():
-            filtros.append("LOWER(COALESCE(p.ciudad_servicio, '')) LIKE :ciudad")
-            params["ciudad"] = f"%{ciudad.strip().lower()}%"
+        filtros_lugar, params_lugar = _filtros_ubicacion_visita(ciudad, departamento, pais)
+        filtros += filtros_lugar
+        params.update(params_lugar)
         if modalidad and modalidad.strip():
             filtros.append("LOWER(COALESCE(p.modalidad, '')) = LOWER(:modalidad)")
             params["modalidad"] = modalidad.strip()
@@ -577,6 +620,9 @@ class AgendaAuditorService(AuditorService):
                     u.num_doc AS auditor_num_doc,
                     p.direccion_servicio,
                     p.id_sede,
+                    sede.ciudad AS sede_ciudad,
+                    sede.departamento AS sede_departamento,
+                    sede.pais AS sede_pais,
                     p.fecha_inicio,
                     p.fecha_fin,
                     p.modalidad,
@@ -617,6 +663,8 @@ class AgendaAuditorService(AuditorService):
                     ON e.id_empresa = s.id_empresa
                 LEFT JOIN usuario u
                     ON u.id_usuario = d.id_usuario
+                LEFT JOIN sede_empresa sede
+                    ON sede.id_sede = p.id_sede
                 LEFT JOIN LATERAL (
                     SELECT da.id_disponibilidad, da.motivo
                     FROM disponibilidad_auditor da
@@ -645,6 +693,8 @@ class AgendaAuditorService(AuditorService):
         estado: str | None = None,
         ciudad: str | None = None,
         modalidad: str | None = None,
+        departamento: str | None = None,
+        pais: str | None = None,
     ) -> list[dict]:
         """
         Programaciones con fecha de inicio igual o superior a hoy + `dias`.
@@ -668,9 +718,9 @@ class AgendaAuditorService(AuditorService):
         if estado and estado.strip():
             filtros.append("UPPER(TRIM(COALESCE(p.estado, ''))) = UPPER(:estado)")
             params["estado"] = estado.strip()
-        if ciudad and ciudad.strip():
-            filtros.append("LOWER(COALESCE(p.ciudad_servicio, '')) LIKE :ciudad")
-            params["ciudad"] = f"%{ciudad.strip().lower()}%"
+        filtros_lugar, params_lugar = _filtros_ubicacion_visita(ciudad, departamento, pais, alias_sede="se")
+        filtros += filtros_lugar
+        params.update(params_lugar)
         if modalidad and modalidad.strip():
             filtros.append("LOWER(COALESCE(p.modalidad, '')) = LOWER(:modalidad)")
             params["modalidad"] = modalidad.strip()
@@ -686,6 +736,10 @@ class AgendaAuditorService(AuditorService):
                     e.nit AS empresa_nit,
                     p.id_sede,
                     se.nombre_sede,
+                    se.ciudad AS sede_ciudad,
+                    se.departamento AS sede_departamento,
+                    se.pais AS sede_pais,
+                    e.ciudad AS empresa_ciudad,
                     p.direccion_servicio,
                     p.ciudad_servicio,
                     p.fecha_inicio,
@@ -853,6 +907,8 @@ class AgendaAuditorService(AuditorService):
         ciudad: str | None = None,
         modalidad: str | None = None,
         estado: str | None = None,
+        departamento: str | None = None,
+        pais: str | None = None,
     ):
         filtros = ["d.id_usuario = :id_usuario"]
         params: dict = {"id_usuario": str(id_usuario)}
@@ -867,9 +923,9 @@ class AgendaAuditorService(AuditorService):
         if hasta:
             filtros.append("p.fecha_inicio <= :hasta")
             params["hasta"] = datetime.combine(hasta, time.max)
-        if ciudad and ciudad.strip():
-            filtros.append("LOWER(COALESCE(p.ciudad_servicio, '')) LIKE :ciudad")
-            params["ciudad"] = f"%{ciudad.strip().lower()}%"
+        filtros_lugar, params_lugar = _filtros_ubicacion_visita(ciudad, departamento, pais)
+        filtros += filtros_lugar
+        params.update(params_lugar)
         if modalidad and modalidad.strip():
             filtros.append("LOWER(COALESCE(p.modalidad, '')) = LOWER(:modalidad)")
             params["modalidad"] = modalidad.strip()
@@ -897,8 +953,15 @@ class AgendaAuditorService(AuditorService):
                     s.numero_radicado,
                     e.nombre AS empresa_nombre,
                     e.direccion AS direccion_servicio,
+                    e.nit AS empresa_nit,
+                    p.direccion_servicio AS direccion_programacion,
                     p.id_sede,
                     sede.nombre_sede AS sede_nombre,
+                    sede.direccion AS sede_direccion,
+                    sede.ciudad AS sede_ciudad,
+                    sede.departamento AS sede_departamento,
+                    sede.pais AS sede_pais,
+                    e.ciudad AS empresa_ciudad,
                     p.fecha_inicio,
                     p.fecha_fin,
                     p.modalidad,
@@ -922,6 +985,21 @@ class AgendaAuditorService(AuditorService):
                                 ELSE '' END
                         ELSE p.motivo_reprogramacion
                     END AS observacion_auditor,
+                    -- Equipo completo de la visita (el auditor solo recibe su propia fila,
+                    -- pero en el detalle y al exportar debe ver a todo el equipo). Sin
+                    -- documento de identidad de los compañeros, por privacidad.
+                    (
+                        SELECT COALESCE(json_agg(json_build_object(
+                            'id_usuario', ue.id_usuario,
+                            'nombre', ue.nombre,
+                            'correo', ue.correo,
+                            'rol', de.rol_auditor,
+                            'confirmado', COALESCE(de.confirmado, FALSE)
+                        ) ORDER BY ue.nombre), '[]'::json)
+                        FROM detalle_programacion_auditor de
+                        JOIN usuario ue ON ue.id_usuario = de.id_usuario
+                        WHERE de.id_programacion = p.id_programacion
+                    ) AS equipo,
                     bloq.id_disponibilidad AS bloqueo_id,
                     bloq.motivo AS bloqueo_motivo,
                     (bloq.id_disponibilidad IS NOT NULL) AS dia_no_disponible
@@ -2321,6 +2399,8 @@ class AgendaAuditorService(AuditorService):
         modalidad: str | None = None,
         id_usuario: UUID | None = None,
         incluir_canceladas: bool = False,
+        departamento: str | None = None,
+        pais: str | None = None,
     ) -> dict:
         """Calendario mensual del Coordinador.
 
@@ -2355,6 +2435,7 @@ class AgendaAuditorService(AuditorService):
             SELECT da.id_disponibilidad, da.id_usuario, da.tipo_registro, da.dia_semana,
                    da.fecha_inicio, da.fecha_fin, da.hora_inicio, da.hora_fin,
                    da.motivo, da.estado,
+                   {self._SQL_DETALLE_REGISTRO.format(t='da')},
                    u.nombre AS auditor_nombre
             FROM disponibilidad_auditor da
             INNER JOIN usuario u ON u.id_usuario = da.id_usuario
@@ -2388,6 +2469,7 @@ class AgendaAuditorService(AuditorService):
                    e.direccion AS empresa_direccion, e.ciudad AS empresa_ciudad,
                    sede.nombre_sede AS sede_nombre, sede.direccion AS sede_direccion,
                    sede.ciudad AS sede_ciudad,
+                   sede.departamento AS sede_departamento, sede.pais AS sede_pais,
                    d.id_usuario, d.rol_auditor, COALESCE(d.confirmado, FALSE) AS confirmado,
                    u.nombre AS auditor_nombre, u.correo AS auditor_correo
             FROM programacion_visita p
@@ -2426,10 +2508,16 @@ class AgendaAuditorService(AuditorService):
                 })
 
         ciudad_buscada = self._texto_comparable(ciudad)
+        departamento_buscado = self._texto_comparable(departamento)
+        pais_buscado = self._texto_comparable(pais)
         modalidad_buscada = self._texto_comparable(modalidad)
         auditorias = []
         for item in por_programacion.values():
             if ciudad_buscada and ciudad_buscada not in self._texto_comparable(item.get("ciudad")):
+                continue
+            if departamento_buscado and departamento_buscado not in self._texto_comparable(item.get("sede_departamento")):
+                continue
+            if pais_buscado and pais_buscado not in self._texto_comparable(item.get("sede_pais")):
                 continue
             if modalidad_buscada and modalidad_buscada != self._texto_comparable(item.get("modalidad")):
                 continue
@@ -2493,6 +2581,19 @@ class AgendaAuditorService(AuditorService):
                     "auditores_disponibles": len(disponibles),
                     "auditores_bloqueados": len(bloqueados),
                     "nombres_bloqueados": sorted({r.get("auditor_nombre") or "" for r in bloqueos} - {""}),
+                    # Detalle para el modal del día (el Coordinador ve todo).
+                    "nombres_disponibles": sorted({
+                        r.get("auditor_nombre") or "" for r in declarados
+                        if str(r["id_usuario"]) in disponibles
+                    } - {""}),
+                    "bloqueos": [
+                        {k: r.get(k) for k in (
+                            "id_disponibilidad", "id_usuario", "auditor_nombre", "tipo_registro",
+                            "fecha_inicio", "fecha_fin", "motivo", "registrado_en",
+                            "id_programacion", "radicado_relacionado",
+                        )}
+                        for r in bloqueos
+                    ],
                 })
             dias.append(dia)
         return {
@@ -2589,8 +2690,10 @@ class AgendaAuditorService(AuditorService):
         }
 
     async def _auditores_de_programacion(self, id_programacion: UUID):
+        # rol_auditor hace falta en finalizar_programacion para reconocer al
+        # auditor líder (sin él, el líder recibía siempre 403).
         result = await self.db.execute(text("""
-            SELECT d.id_usuario, u.nombre, u.correo
+            SELECT d.id_usuario, u.nombre, u.correo, d.rol_auditor
             FROM detalle_programacion_auditor d
             LEFT JOIN usuario u ON u.id_usuario = d.id_usuario
             WHERE d.id_programacion = :id

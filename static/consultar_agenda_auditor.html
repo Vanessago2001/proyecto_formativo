@@ -1347,6 +1347,7 @@
 .modal-box.success h3 { color:#256d00; }
 </style>
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
 </head>
 
 <body>
@@ -1361,7 +1362,6 @@
             </div>
             <div class="comite-header-user">
                 <a class="comite-back-button" href="/dashboard">Panel</a>
-                <a class="profile-link" href="/reportes">Reportes</a>
                 <a class="profile-link" href="/profile">Mi perfil</a>
                 <button class="comite-logout js-salir" type="button">Cerrar sesión</button>
             </div>
@@ -1434,6 +1434,12 @@
                                     <select id="assignmentSelect" class="selector-origen">
                                         <option value="">Cargando solicitudes...</option>
                                     </select>
+                                    <div class="field" style="margin:8px 0 4px;max-width:320px">
+                                        <label for="assignmentCiudad">Filtrar por ciudad de la empresa</label>
+                                        <input id="assignmentCiudad" type="search" class="campo" list="assignmentCiudadLista" placeholder="Ej.: Pereira" autocomplete="off" maxlength="100">
+                                        <datalist id="assignmentCiudadLista"></datalist>
+                                    </div>
+                                    <p id="assignmentCiudadEstado" class="fu-estado" role="status" aria-live="polite"></p>
                                     <div class="selector-tabla-contenedor" id="assignmentTabla"></div>
                                     <p class="hint">Cada solicitud aparece una sola vez, aunque tenga varios auditores
                                         asignados.</p>
@@ -1636,7 +1642,18 @@
                             </div>
                             <div class="field">
                                 <label for="cityFilter">Ciudad / municipio</label>
-                                <input id="cityFilter" maxlength="150" placeholder="Todas las ciudades" autocomplete="off">
+                                <input id="cityFilter" type="search" maxlength="150" placeholder="Todas las ciudades" autocomplete="off" list="cityFilterLista">
+                                <datalist id="cityFilterLista"></datalist>
+                            </div>
+                            <div class="field">
+                                <label for="deptFilter">Departamento</label>
+                                <input id="deptFilter" type="search" maxlength="100" placeholder="Todos los departamentos" autocomplete="off" list="deptFilterLista" title="Departamento de la sede visitada">
+                                <datalist id="deptFilterLista"></datalist>
+                            </div>
+                            <div class="field">
+                                <label for="countryFilter">País</label>
+                                <input id="countryFilter" type="search" maxlength="100" placeholder="Todos los países" autocomplete="off" list="countryFilterLista" title="País de la sede visitada">
+                                <datalist id="countryFilterLista"></datalist>
                             </div>
                             <div class="field">
                                 <label for="modalityFilter">Modalidad de auditoría</label>
@@ -1714,7 +1731,7 @@
 </div>
 
 <!-- Calendario mes/semana común (sección "Disponibilidad mensual y auditorías") -->
-<script src="/static/mi_disponibilidad.js?v=20261113b"></script>
+<script src="/static/mi_disponibilidad.js?v=20261117c"></script>
 <script>
     function showModal(message, type = 'success') {
         const overlay = document.getElementById('modalOverlay');
@@ -2058,9 +2075,13 @@
             selectId: "assignmentSelect",
             nombreRadio: "selectorSolicitud",
             titulos: ["Radicado", "Empresa", "Auditores asignados"],
-            textoVacio: (select) => select.options[0]?.textContent || "No hay solicitudes disponibles.",
+            textoVacio: (select) => ($("assignmentCiudad").value.trim() && Array.from(select.options).some((o) => o.value !== "")
+                ? FiltrosUbicacion.mensajeVacio("solicitudes por programar", { ciudad: $("assignmentCiudad").value })
+                : select.options[0]?.textContent || "No hay solicitudes disponibles."),
             filas: (select) => Array.from(select.options)
                 .filter((opcion) => opcion.value !== "")
+                // Filtro de ciudad (sin tildes ni mayúsculas, coincidencia parcial).
+                .filter((opcion) => FiltrosUbicacion.coincide((assignments[Number(opcion.value)] || {}).empresa_ciudad, $("assignmentCiudad").value))
                 .map((opcion) => {
                     const grupo = assignments[Number(opcion.value)] || {};
                     const auditores = grupo.auditores || [];
@@ -2960,11 +2981,14 @@
         const auditoriasCalendario = new Map(); // id_programacion -> auditoría
         let calendarioMes = null;
         let temporizadorCiudad = null;
+        const lugaresCalendario = { ciudad: new Set(), departamento: new Set(), pais: new Set() };
 
         function filtrosCalendario() {
             return {
                 auditor: $("monthAuditor").value,
                 ciudad: $("cityFilter").value.trim(),
+                departamento: $("deptFilter").value.trim(),
+                pais: $("countryFilter").value.trim(),
                 modalidad: $("modalityFilter").value,
                 canceladas: $("monthCanceladas").checked
             };
@@ -2991,6 +3015,8 @@
             const query = new URLSearchParams({ anio: String(anio), mes: String(mes) });
             if (f.auditor) query.set("id_usuario", f.auditor);
             if (f.ciudad) query.set("ciudad", f.ciudad);
+            if (f.departamento) query.set("departamento", f.departamento);
+            if (f.pais) query.set("pais", f.pais);
             if (f.modalidad) query.set("modalidad", f.modalidad);
             if (f.canceladas) query.set("incluir_canceladas", "true");
             try {
@@ -3000,7 +3026,20 @@
                 (data.dias || []).forEach(d => porFecha.set(d.fecha, d));
                 const total = (data.auditorias || []).length;
                 const nombreMes = new Date(anio, mes - 1, 1).toLocaleDateString("es-CO", { month: "long", year: "numeric" });
-                showNotice("monthNotice", `${nombreMes}: ${total} auditoría(s) con los filtros aplicados.`, "ok");
+                // Sugerencias de ubicación con lo que ya se ha visto en el calendario.
+                (data.auditorias || []).forEach(a => {
+                    [a.ciudad, a.sede_ciudad, a.empresa_ciudad].forEach(v => v && lugaresCalendario.ciudad.add(String(v).trim()));
+                    if (a.sede_departamento) lugaresCalendario.departamento.add(String(a.sede_departamento).trim());
+                    if (a.sede_pais) lugaresCalendario.pais.add(String(a.sede_pais).trim());
+                });
+                [["cityFilterLista", "ciudad"], ["deptFilterLista", "departamento"], ["countryFilterLista", "pais"]].forEach(([id, clave]) => {
+                    $(id).innerHTML = FiltrosUbicacion.valoresUnicos([...lugaresCalendario[clave]])
+                        .map(v => `<option value="${esc(v)}"></option>`).join("");
+                });
+                const ubicacionMes = { ciudad: f.ciudad, departamento: f.departamento, pais: f.pais };
+                showNotice("monthNotice", !total && FiltrosUbicacion.hayFiltros(ubicacionMes)
+                    ? `${nombreMes}: ${FiltrosUbicacion.mensajeVacio("auditorías", ubicacionMes)}`
+                    : `${nombreMes}: ${total} auditoría(s) con los filtros aplicados.`, "ok");
                 return porFecha;
             } catch (error) {
                 showNotice("monthNotice", `No se pudo cargar el calendario: ${error.message}`, "error");
@@ -3050,6 +3089,62 @@
             }
             if (!partes.length && detallado) partes.push('<span class="md-vacio">Sin auditorías</span>');
             return partes;
+        }
+
+        // Detalle del día (modal de static/mi_disponibilidad.js): todas las
+        // visitas del día, los bloqueos (con motivo y fecha de registro) y la
+        // disponibilidad declarada.
+        function visitasDelDia(dia) {
+            return (dia.auditorias || []).map(id => auditoriasCalendario.get(String(id))).filter(Boolean);
+        }
+        function bloqueosDelDia(dia) {
+            if (filtrosCalendario().auditor) {
+                if (!dia.bloqueado) return [];
+                const nombre = $("monthAuditor").selectedOptions[0]?.textContent || "";
+                return (dia.disponibilidad || []).map(b => ({ auditor_nombre: nombre, ...b }));
+            }
+            return dia.bloqueos || [];
+        }
+        function estadoDiaCalendario(dia) {
+            const partes = [];
+            const bloqueos = bloqueosDelDia(dia);
+            if (bloqueos.length) partes.push(filtrosCalendario().auditor ? "bloqueado" : `${bloqueos.length} auditor(es) con fecha bloqueada`);
+            const n = visitasDelDia(dia).length;
+            if (n) partes.push(n === 1 ? "ocupado con 1 visita" : `ocupado con ${n} visitas`);
+            if (!partes.length) {
+                if (filtrosCalendario().auditor ? (dia.disponibilidad || []).length : dia.auditores_disponibles) partes.push("disponible");
+            }
+            return partes.join(" y ");
+        }
+        function detalleDiaCalendario(dia, fecha) {
+            const D = window.MiDisponibilidad.detalle;
+            const conAuditor = Boolean(filtrosCalendario().auditor);
+            const bloqueos = bloqueosDelDia(dia);
+            let disponible = "";
+            if (conAuditor && !dia.bloqueado) {
+                disponible = D.disponible(dia.disponibilidad, "");
+            } else if (!conAuditor && (dia.nombres_disponibles || []).length) {
+                disponible = `<section class="md-dlg-sec md-libre"><h4><span class="md-dlg-etq md-libre">Disponible</span> ${dia.nombres_disponibles.length} auditor(es) con disponibilidad declarada</h4><p style="margin:0">${esc(dia.nombres_disponibles.join(", "))}</p></section>`;
+            }
+            const html = [
+                ...bloqueos.map(b => D.bloqueo(b, { conAuditor: true })),
+                ...visitasDelDia(dia).map(v => D.visita(v, {
+                    fecha,
+                    conCorreo: true,
+                    acciones: (a) => {
+                        const terminal = ESTADOS_TERMINALES_CAL.includes(String(a.estado_programacion || "").trim().toUpperCase());
+                        return !terminal && a.id_solicitud
+                            ? `<a class="btn btn-primario btn-sm" href="/consultar-agenda-auditor?solicitud=${encodeURIComponent(a.id_solicitud)}#schedule">Ir a la programación</a>`
+                            : "";
+                    }
+                })),
+                disponible
+            ].join("");
+            return {
+                html,
+                // "Ir a la programación" puede apuntar a esta misma página: se cierra el modal.
+                alAbrir: (cuerpo, cerrar) => cuerpo.querySelectorAll("a[href]").forEach(a => a.addEventListener("click", () => cerrar()))
+            };
         }
 
         function abrirDetalleAuditoria(id, origen) {
@@ -3121,13 +3216,28 @@
             if (chip) abrirDetalleAuditoria(chip.dataset.calAud, chip);
         });
         ["monthAuditor", "modalityFilter", "monthCanceladas"].forEach(id => $(id).addEventListener("change", () => loadMonth()));
-        $("cityFilter").addEventListener("input", () => {
+        ["cityFilter", "deptFilter", "countryFilter"].forEach(id => $(id).addEventListener("input", () => {
             clearTimeout(temporizadorCiudad);
-            temporizadorCiudad = setTimeout(() => loadMonth(), 350);
+            temporizadorCiudad = setTimeout(() => loadMonth(), 300);
+        }));
+        // Programar: el filtro de ciudad repinta la tabla de solicitudes mientras se escribe.
+        $("assignmentCiudad").addEventListener("focus", () => {
+            $("assignmentCiudadLista").innerHTML = FiltrosUbicacion.valoresUnicos((assignments || []).map(g => g.empresa_ciudad))
+                .map(v => `<option value="${esc(v)}"></option>`).join("");
         });
+        $("assignmentCiudad").addEventListener("input", FiltrosUbicacion.debounce(() => {
+            const ciudad = $("assignmentCiudad").value.trim();
+            pintarSelectorTabla("assignmentTabla");
+            const total = (assignments || []).filter(g => FiltrosUbicacion.coincide(g.empresa_ciudad, ciudad)).length;
+            $("assignmentCiudadEstado").textContent = ciudad
+                ? (total ? `${total} solicitud(es) en esa ciudad.` : FiltrosUbicacion.mensajeVacio("solicitudes por programar", { ciudad }))
+                : "";
+        }, 300));
         $("clearMonthFilters").addEventListener("click", () => {
             $("monthAuditor").value = "";
             $("cityFilter").value = "";
+            $("deptFilter").value = "";
+            $("countryFilter").value = "";
             $("modalityFilter").value = "";
             $("monthCanceladas").checked = false;
             loadMonth();
@@ -3151,7 +3261,9 @@
                     vistaInicial: window.matchMedia("(max-width: 640px)").matches ? "semana" : "mes",
                     maxPorDia: 3,
                     cargarMes: cargarMesCalendario,
-                    chips: chipsCalendario
+                    chips: chipsCalendario,
+                    estadoDia: estadoDiaCalendario,
+                    detalleDia: detalleDiaCalendario
                 });
                 return Promise.resolve();
             }

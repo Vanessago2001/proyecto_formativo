@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261114a">
   <style>
     body { background: #f1f5f9; }
@@ -51,7 +52,6 @@
       </div>
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
-        <a class="profile-link" href="/reportes">Reportes</a>
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
@@ -72,7 +72,9 @@
           <button class="comite-nav-link" type="button" data-view="sedes">Sedes</button>
           <button class="comite-nav-link" type="button" data-view="documentos">Documentos</button>
           <button class="comite-nav-link" type="button" data-view="auditores">Auditores asignados</button>
+          <button class="comite-nav-link" type="button" data-view="apelaciones">Mis apelaciones</button>
           <a class="comite-nav-link" style="text-decoration:none" href="/empresas">Datos de mi empresa</a>
+          <a class="comite-nav-link" style="text-decoration:none" href="/reportes">Reportes</a>
         </nav>
         <div class="comite-access-note">
           <span id="roleLabel">Validando sesión...</span>
@@ -146,6 +148,7 @@
         <section id="vista-sedes" class="comite-view-hidden"></section>
         <section id="vista-documentos" class="comite-view-hidden"></section>
         <section id="vista-auditores" class="comite-view-hidden"></section>
+        <section id="vista-apelaciones" class="comite-view-hidden"></section>
       </section>
     </div>
   </main>
@@ -174,7 +177,8 @@
         informacion: ["Información técnica", "Norma ISO, tamaño de la empresa, alcance técnico y procesos clave."],
         sedes: ["Sedes", "Sedes de la empresa que forman parte de la solicitud."],
         documentos: ["Documentos", "Documentos que respaldan la solicitud. Cada archivo conserva sus versiones anteriores."],
-        auditores: ["Auditores asignados", "Auditores asignados a sus solicitudes. Si necesita un cambio, solicítelo explicando la razón; el coordinador decide."]
+        auditores: ["Auditores asignados", "Auditores asignados a sus solicitudes. Si necesita un cambio, solicítelo explicando la razón; el coordinador decide."],
+        apelaciones: ["Mis apelaciones", "Apelaciones presentadas contra solicitudes rechazadas: en qué estado van, si el Comité le pidió documentos y qué decidió."]
       };
       const NECESITAN_SOLICITUD = ["informacion", "sedes", "documentos"];
       const CAMPOS_RADICAR = {
@@ -187,7 +191,10 @@
       const estado = {
         vista: "solicitudes",
         solicitudes: [],
+        apelaciones: [],
         filtroSolicitudes: "",
+        ubicacionSolicitudes: {},
+        ubicacionSedes: {},
         paginaSolicitudes: 1,
         normas: [],
         actual: null,
@@ -324,6 +331,7 @@
         if (vista === "solicitudes") return cargarSolicitudes();
         if (vista === "nueva") return prepararNueva();
         if (vista === "auditores") return cargarAuditoresAsignados();
+        if (vista === "apelaciones") return cargarApelaciones();
         if (!estado.actual) return sinSolicitud(vista);
         if (vista === "informacion") return cargarInformacion();
         if (vista === "sedes") return cargarSedes();
@@ -348,7 +356,7 @@
       }
 
       async function refrescarSolicitudes() {
-        estado.solicitudes = (await api("/solicitudes/?limite=200")) || [];
+        estado.solicitudes = (await api("/solicitudes/?limite=200&incluir_ubicacion=true")) || [];
         $("#solicitudSelect").innerHTML = '<option value="">Seleccione una solicitud</option>' + estado.solicitudes.map((s) =>
           '<option value="' + esc(s.id_solicitud) + '">' +
           esc((s.numero_radicado || "Borrador del " + fecha(s.fecha_creacion)) + " · " + nombreNorma(s.id_norma) + " · " + s.estado) +
@@ -361,8 +369,12 @@
         const normalizar = (valor) => String(valor == null ? "" : valor)
           .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
         const consulta = normalizar(estado.filtroSolicitudes.trim());
+        const ubicacion = estado.ubicacionSolicitudes || {};
+        const porUbicacion = FiltrosUbicacion.hayFiltros(ubicacion);
+        // Ciudad, departamento y país de las sedes incluidas en cada solicitud.
         const filtradas = estado.solicitudes.filter((s) =>
-          [s.estado, s.numero_radicado].some((valor) => normalizar(valor).includes(consulta))
+          [s.estado, s.numero_radicado].some((valor) => normalizar(valor).includes(consulta)) &&
+          FiltrosUbicacion.cumple(ubicacion, { ciudad: s.sedes_ciudades, departamento: s.sedes_departamentos, pais: s.sedes_paises })
         );
         const porPagina = 5;
         const totalPaginas = Math.ceil(filtradas.length / porPagina);
@@ -374,7 +386,9 @@
         if (!filtradas.length) {
           cuerpo.innerHTML = vacioTabla(
             6,
-            consulta
+            porUbicacion && !consulta
+              ? FiltrosUbicacion.mensajeVacio("solicitudes con sedes", ubicacion)
+              : consulta || porUbicacion
               ? "No se encontraron solicitudes que coincidan con el filtro."
               : 'Aún no tiene solicitudes. Use "Nueva solicitud" para crear la primera.'
           );
@@ -394,16 +408,21 @@
               accion("ir-sedes", "Sedes", s.id_solicitud) +
               accion("ir-documentos", "Documentos", s.id_solicitud) +
               (borrador ? accion("radicar", "Radicar", s.id_solicitud) : "") +
-              (rechazada ? '<a class="appeal-link btn btn-secundario btn-sm" href="/apelacion?solicitud=' + encodeURIComponent(s.id_solicitud) + '">Apelar</a>' : "") +
+              accionApelacion(s, rechazada) +
               accion("pdf", "PDF", s.id_solicitud) +
               "</div></td></tr>";
           }).join("");
         }
 
         const cantidadTexto = filtradas.length + (filtradas.length === 1 ? " solicitud" : " solicitudes");
-        $("#solicitudesConteo").textContent = consulta
+        $("#solicitudesConteo").textContent = consulta || porUbicacion
           ? cantidadTexto + " encontradas"
           : cantidadTexto;
+        if (estado.filtrosSolicitudes) {
+          estado.filtrosSolicitudes.anunciar(porUbicacion
+            ? (filtradas.length ? cantidadTexto + (filtradas.length === 1 ? " encontrada." : " encontradas.") : FiltrosUbicacion.mensajeVacio("solicitudes con sedes", ubicacion))
+            : "");
+        }
         const info = $("#solicitudesPaginacionInfo");
         const numeros = $("#solicitudesPaginas");
         if (!filtradas.length) {
@@ -435,20 +454,125 @@
         const caja = $("#vista-solicitudes");
         caja.innerHTML = cargando("Cargando solicitudes...");
         try {
-          await refrescarSolicitudes();
+          await Promise.all([refrescarSolicitudes(), refrescarApelaciones()]);
           caja.innerHTML = panel(
             '<div class="empresa-solicitudes-toolbar"><div><h3>Solicitudes de la empresa</h3><p id="solicitudesConteo"></p></div>' +
             '<label class="empresa-solicitudes-filter" for="filtroSolicitudes"><span>Buscar por estado o radicado</span>' +
             '<input id="filtroSolicitudes" type="search" autocomplete="off" placeholder="Ej.: Aprobada o RAD-2026-001" value="' +
             esc(estado.filtroSolicitudes) + '"></label>' +
             '<button class="comite-button primary btn btn-primario" type="button" data-ir="nueva">Nueva solicitud</button></div>' +
+            FiltrosUbicacion.html({
+              prefijo: "solFiltro", valores: estado.ubicacionSolicitudes, titulo: "Filtrar solicitudes por ubicación de sus sedes",
+              etiquetas: { ciudad: "Ciudad de la sede", departamento: "Departamento de la sede", pais: "País de la sede" }
+            }) +
             '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Norma</th><th>Estado</th><th>Alcance</th><th>Creada</th><th>Acciones</th></tr></thead><tbody id="solicitudesBody">' +
             '<tr><td colspan="6"><div class="comite-table-empty">Cargando solicitudes...</div></td></tr>' +
             '</tbody></table></div><div class="comite-pagination">' +
             '<span class="comite-pagination-info" id="solicitudesPaginacionInfo"></span>' +
             '<nav class="comite-pagination-numeros" id="solicitudesPaginas" aria-label="Paginación de solicitudes"></nav></div>'
           );
+          estado.filtrosSolicitudes = FiltrosUbicacion.ligar(caja, {
+            prefijo: "solFiltro",
+            alCambiar: (valores) => {
+              estado.ubicacionSolicitudes = valores;
+              estado.paginaSolicitudes = 1;
+              renderizarSolicitudes();
+            }
+          });
+          estado.filtrosSolicitudes.sugerir("ciudad", estado.solicitudes.map((s) => s.sedes_ciudades || []));
+          estado.filtrosSolicitudes.sugerir("departamento", estado.solicitudes.map((s) => s.sedes_departamentos || []));
+          estado.filtrosSolicitudes.sugerir("pais", estado.solicitudes.map((s) => s.sedes_paises || []));
           renderizarSolicitudes();
+        } catch (error) {
+          caja.innerHTML = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      // ---------------- Mis apelaciones ----------------
+      // El servidor solo devuelve las apelaciones de las empresas del usuario.
+      const APELACION_ABIERTA = ["ENVIADA", "EN_REVISION", "INFORMACION_SOLICITADA"];
+
+      function resultadoApelacion(a) {
+        const estadoAp = String(a.estado || "").toUpperCase();
+        if (APELACION_ABIERTA.includes(estadoAp)) return { texto: "Apelación en trámite", clase: "pending" };
+        if (estadoAp === "CANCELADA") return { texto: "Apelación cancelada", clase: "rejected" };
+        if (estadoAp === "RECHAZADA" || a.fallo === true) return { texto: "Apelación no aprobada", clase: "rejected" };
+        if (estadoAp === "APROBADA" || a.fallo === false) return { texto: "Apelación aprobada", clase: "approved" };
+        return { texto: "Apelación " + String(a.estado_texto || "").toLowerCase(), clase: "pending" };
+      }
+
+      function chipApelacion(a) {
+        const r = resultadoApelacion(a);
+        return '<span class="comite-status ' + r.clase + '">' + esc(a.estado_texto || a.estado || "-") + "</span>";
+      }
+
+      const enlaceApelacion = (idSolicitud, texto, primario) =>
+        '<a class="appeal-link btn btn-sm ' + (primario ? "btn-primario" : "btn-secundario") + '" href="/apelacion?solicitud=' +
+        encodeURIComponent(idSolicitud) + '">' + esc(texto) + "</a>";
+
+      async function refrescarApelaciones() {
+        try {
+          estado.apelaciones = (await api("/api/apelaciones/mias")) || [];
+        } catch (error) {
+          // Sin la lista se sigue mostrando "Apelar"; el servidor impide duplicarla.
+          estado.apelaciones = [];
+        }
+      }
+
+      // En "Mis solicitudes": si ya hay apelación se muestra su estado en vez de "Apelar".
+      function accionApelacion(s, rechazada) {
+        const apelacion = (estado.apelaciones || []).find((a) => String(a.id_solicitud) === String(s.id_solicitud));
+        if (apelacion) {
+          const r = resultadoApelacion(apelacion);
+          return '<span class="comite-status ' + r.clase + '" title="' + esc(apelacion.estado_texto || "") + '">' + esc(r.texto) + "</span>" +
+            enlaceApelacion(s.id_solicitud, "Ver apelación", false);
+        }
+        return rechazada ? enlaceApelacion(s.id_solicitud, "Apelar", false) : "";
+      }
+
+      function avanceCertificado(a) {
+        if (a.certificado_codigo) {
+          const estadoCert = String(a.certificado_estado || "").toUpperCase();
+          const texto = estadoCert === "PENDIENTE_FIRMA" ? "pendiente de firma del Comité"
+            : estadoCert === "VIGENTE" ? "vigente" : String(a.certificado_estado || "").toLowerCase();
+          return "Certificado " + a.certificado_codigo + ": " + texto;
+        }
+        return "Solicitud " + String(a.estado_solicitud || "-").toLowerCase();
+      }
+
+      async function cargarApelaciones() {
+        const caja = $("#vista-apelaciones");
+        caja.innerHTML = cargando("Cargando apelaciones...");
+        try {
+          await refrescarApelaciones();
+          const lista = estado.apelaciones || [];
+          const filas = lista.map((a) => {
+            const pendientes = Number(a.requerimientos_pendientes) || 0;
+            const decidida = !APELACION_ABIERTA.includes(String(a.estado || "").toUpperCase()) && String(a.estado || "").toUpperCase() !== "CANCELADA";
+            return "<tr>" +
+              "<td><strong>" + esc(a.numero_radicado || "-") + "</strong><br><small class=\"comite-muted\">" + esc(a.radicado || "") + "</small></td>" +
+              "<td>" + fecha(a.fecha) + "</td>" +
+              "<td>" + chipApelacion(a) + "</td>" +
+              "<td>" + (pendientes
+                ? '<span class="comite-status pending">' + pendientes + (pendientes === 1 ? " documento pedido" : " pedidos de documentos") + "</span>"
+                : '<span class="comite-muted">Sin pedidos pendientes</span>') + "</td>" +
+              "<td>" + (decidida
+                ? esc(resultadoApelacion(a).texto.replace("Apelación a", "A").replace("Apelación n", "N")) + " el " + fecha(a.fecha_decision) +
+                  (a.fallo === false ? '<br><small class="comite-muted">' + esc(avanceCertificado(a)) + "</small>" : "")
+                : '<span class="comite-muted">Sin decisión</span>') + "</td>" +
+              '<td><div class="acciones-tabla">' +
+              (pendientes ? enlaceApelacion(a.id_solicitud, "Responder/Adjuntar", true) : "") +
+              enlaceApelacion(a.id_solicitud, "Ver", false) +
+              "</div></td></tr>";
+          }).join("");
+          caja.innerHTML = panel(
+            '<div class="comite-panel-heading"><div><h3>Apelaciones de la empresa</h3><p>' + lista.length +
+            (lista.length === 1 ? " apelación" : " apelaciones") + "</p></div></div>" +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Solicitud</th><th>Presentada</th><th>Estado</th><th>Documentos pedidos</th><th>Decisión</th><th>Acciones</th></tr></thead><tbody>' +
+            (filas || vacioTabla(6, 'No ha presentado apelaciones. Si una solicitud es rechazada, puede apelarla desde "Mis solicitudes" con el botón "Apelar".')) +
+            "</tbody></table></div>"
+          );
         } catch (error) {
           caja.innerHTML = "";
           mostrar(error.message, "error");
@@ -717,15 +841,16 @@
           const incluidas = panel(
             '<div class="comite-panel-heading"><div><h3>Sedes incluidas</h3><p>' + sedes.length + (sedes.length === 1 ? " sede" : " sedes") + " en la solicitud.</p></div>" +
             '<button class="comite-button secondary btn btn-secundario" type="button" data-accion="excel">Exportar a Excel</button></div>' +
-            '<div class="comite-table-wrap"><table><thead><tr><th>Sede</th><th>Dirección</th><th>Ciudad</th><th>Departamento</th><th>País</th><th>Principal</th><th>Estado</th>' +
+            (sedes.length > 1 ? FiltrosUbicacion.html({ prefijo: "sedeFiltro", valores: estado.ubicacionSedes, titulo: "Filtrar sedes por ubicación" }) : "") +
+            '<div class="comite-table-wrap"><table id="tablaSedes"><thead><tr><th>Sede</th><th>Dirección</th><th>Ciudad</th><th>Departamento</th><th>País</th><th>Principal</th><th>Estado</th>' +
             (editable ? "<th>Acciones</th>" : "") + "</tr></thead><tbody>" +
-            (sedes.map((s) => "<tr><td><strong>" + esc(s.nombre_sede) + "</strong></td><td>" + esc(s.direccion) + "</td><td>" + esc(s.ciudad) + "</td>" +
+            (sedes.map((s) => "<tr data-sede-fila" + FiltrosUbicacion.atributos({ ciudad: s.ciudad, departamento: s.departamento, pais: s.pais }) + "><td><strong>" + esc(s.nombre_sede) + "</strong></td><td>" + esc(s.direccion) + "</td><td>" + esc(s.ciudad) + "</td>" +
               "<td>" + esc(s.departamento || "-") + "</td><td>" + esc(s.pais || "-") + "</td><td>" + (s.es_principal ? "Sí" : "No") + "</td>" +
               "<td>" + chip(s.estado_sede === "Inactiva" ? "Inactiva" : s.estado_en_solicitud) + "</td>" +
               (editable ? '<td><div class="acciones-tabla">' + accion("editar-sede", "Editar", s.id_sede) +
                 accion("quitar-sede", "Quitar", s.id_sede) + accion("inactivar-sede", "Inactivar", s.id_sede) + "</div></td>" : "") +
               "</tr>").join("") || vacioTabla(8, "La solicitud todavía no tiene sedes.")) +
-            "</tbody></table></div>" +
+            '</tbody></table><p id="sedesSinResultados" class="comite-table-empty" hidden></p></div>' +
             (editable ? "" : '<p class="comite-readonly-note">La solicitud ya no está en borrador: sus sedes no se pueden modificar.</p>')
           );
 
@@ -765,6 +890,12 @@
             ) + "</div>" : "";
 
           caja.innerHTML = '<div class="portal-stack">' + incluidas + edicion + agregar + "</div>";
+          if ($("#sedeFiltroCiudad")) {
+            FiltrosUbicacion.ligarFilas(caja, {
+              prefijo: "sedeFiltro", filas: "#tablaSedes tr[data-sede-fila]", vacio: "sedesSinResultados",
+              singular: "sede", plural: "sedes", alCambiar: (valores) => { estado.ubicacionSedes = valores; }
+            });
+          }
 
           const formulario = $("#formSedeNueva");
           if (formulario) formulario.addEventListener("submit", registrarSede);

@@ -57,6 +57,15 @@ async def registrar_apelacion(
     return await ApelacionesService(db).create_apelacion(data.model_dump(), current_user)
 
 
+@router.get("/mias")
+async def consultar_mis_apelaciones(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["empresa"]))
+):
+    """Portal de la empresa: sus apelaciones (solo las de sus empresas)."""
+    return await ApelacionesService(db).mis_apelaciones(current_user)
+
+
 @router.get("/solicitud/{id_solicitud}/contexto")
 async def contexto_de_solicitud(
     id_solicitud: UUID,
@@ -264,7 +273,13 @@ async def resolver_apelacion(
     updated = await ApelacionesService(db).registrar_decision_final(id, data.decision, data.observaciones, current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
-    return {"id": id, "estado": data.decision, "observaciones": data.observaciones}
+    return {
+        "id": id,
+        "estado": data.decision,
+        "observaciones": data.observaciones,
+        # Si la apelación se aprobó: estado de la solicitud y borrador del certificado.
+        "certificacion": updated.get("certificacion"),
+    }
 
 
 @router.post("/{id}/aprobar")
@@ -300,7 +315,11 @@ async def notificar_dictamen_final(
     updated = await ApelacionesService(db).cambiar_estado_dictamen(id, "NOTIFICADA", current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Apelación no encontrada.")
-    return {"mensaje": "Dictamen notificado exitosamente", "estado": updated["estado"]}
+    return {
+        "mensaje": "Dictamen notificado exitosamente",
+        "estado": updated["estado"],
+        "certificacion": updated.get("certificacion"),
+    }
 
 
 @router.post("/{id}/cerrar")

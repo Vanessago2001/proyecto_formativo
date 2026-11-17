@@ -8,6 +8,7 @@
   <title>CertiSENA | Asignación de Auditores</title>
 
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261114a" />
 
   <style>
@@ -1496,7 +1497,6 @@
 
         <a class="comite-back-button" href="/dashboard">Panel</a>
 
-        <a class="profile-link" href="/reportes">Reportes</a>
 
         <a class="profile-link" href="/profile">Mi perfil</a>
 
@@ -1579,9 +1579,26 @@
                       <div
                         style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:8px;">
                         <input id="solBuscar" class="form-control" aria-label="Buscar solicitudes" placeholder="Buscar..." autocomplete="off">
-                        <input id="solCiudad" class="form-control" aria-label="Filtrar por ciudad" placeholder="Ciudad" autocomplete="off">
                         <input id="solNorma" class="form-control" aria-label="Filtrar por norma ISO" placeholder="Norma ISO" autocomplete="off">
                         <input id="solSector" class="form-control" aria-label="Filtrar por sector IAF" placeholder="Sector IAF" autocomplete="off">
+                      </div>
+                      <!-- Ubicación: ciudad de la empresa o de una sede de la solicitud; departamento y país, de sus sedes. -->
+                      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:8px;" role="group" aria-label="Filtrar por ubicación">
+                        <label for="solCiudad" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
+                          Ciudad
+                          <input id="solCiudad" type="search" class="form-control campo" list="solCiudadLista" placeholder="Ej.: Bogotá" autocomplete="off" maxlength="100">
+                        </label>
+                        <label for="solDepartamento" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
+                          Departamento
+                          <input id="solDepartamento" type="search" class="form-control campo" list="solDepartamentoLista" placeholder="Ej.: Risaralda" autocomplete="off" maxlength="100" title="Departamento de alguna sede de la solicitud">
+                        </label>
+                        <label for="solPais" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
+                          País
+                          <input id="solPais" type="search" class="form-control campo" list="solPaisLista" placeholder="Ej.: Colombia" autocomplete="off" maxlength="100" title="País de alguna sede de la solicitud">
+                        </label>
+                        <datalist id="solCiudadLista"></datalist>
+                        <datalist id="solDepartamentoLista"></datalist>
+                        <datalist id="solPaisLista"></datalist>
                       </div>
                       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
                         <label for="solDesde" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
@@ -1616,8 +1633,9 @@
 
                     <div id="solicitudesEmpty" class="empty-state" style="display:none;">
                       <strong>No hay solicitudes</strong>
-                      <span>Ajuste los filtros para ver más resultados.</span>
+                      <span id="solicitudesEmptyTexto">Ajuste los filtros para ver más resultados.</span>
                     </div>
+                    <p id="solicitudesEstado" class="fu-solo-lector" role="status" aria-live="polite"></p>
 
                     <!-- Paginación -->
                     <div
@@ -1678,8 +1696,14 @@
                       autocomplete="off" />
                   </div>
                   <div class="form-group">
-                    <label for="auditorCityFilter">Ciudad</label>
-                    <input id="auditorCityFilter" type="search" placeholder="Ej. Pereira" autocomplete="off" />
+                    <label for="auditorCityFilter">Ciudad de residencia</label>
+                    <input id="auditorCityFilter" type="search" placeholder="Ej. Pereira" autocomplete="off" list="auditorCityLista" maxlength="100" />
+                    <datalist id="auditorCityLista"></datalist>
+                  </div>
+                  <div class="form-group">
+                    <label for="auditorDeptFilter">Departamento de residencia</label>
+                    <input id="auditorDeptFilter" type="search" placeholder="Ej. Risaralda" autocomplete="off" list="auditorDeptLista" maxlength="100" />
+                    <datalist id="auditorDeptLista"></datalist>
                   </div>
                   <div class="form-group">
                     <label for="auditorModalityFilter">Modalidad preferida</label>
@@ -1718,6 +1742,7 @@
                   </div>
                 </div>
 
+                <p id="auditorsEstado" class="fu-solo-lector" role="status" aria-live="polite"></p>
                 <div id="auditorsList" class="auditors-list"></div>
 
                 <div class="pagination-wrap" id="auditorPagination">
@@ -2025,6 +2050,11 @@
 
     const auditorSearchInput = document.getElementById("auditorSearch");
     const auditorCityFilter = document.getElementById("auditorCityFilter");
+    const auditorDeptFilter = document.getElementById("auditorDeptFilter");
+    // Solo se pinta la respuesta de la última búsqueda (las anteriores se cancelan).
+    let abortoSolicitudes = null;
+    let abortoAuditores = null;
+    const valoresUbicacionAuditores = () => ({ ciudad: auditorCityFilter.value.trim(), departamento: auditorDeptFilter.value.trim() });
     const auditorModalityFilter = document.getElementById("auditorModalityFilter");
     const auditorCompetenceFilter = document.getElementById("auditorCompetenceFilter");
     const auditorConflictFilter = document.getElementById("auditorConflictFilter");
@@ -2275,14 +2305,18 @@
         });
         if (auditorSearchInput.value.trim()) params.set("buscar", auditorSearchInput.value.trim());
         if (auditorCityFilter.value.trim()) params.set("ciudad", auditorCityFilter.value.trim());
+        if (auditorDeptFilter.value.trim()) params.set("departamento", auditorDeptFilter.value.trim());
         if (auditorModalityFilter.value) params.set("modalidad", auditorModalityFilter.value);
         if (auditorCompetenceFilter.value) params.set("competencia", auditorCompetenceFilter.value);
         const conflictoFiltro = auditorDescartarConflictos?.checked ? "no" : (auditorConflictFilter?.value || "");
         if (conflictoFiltro) params.set("conflicto", conflictoFiltro);
 
+        if (abortoAuditores) abortoAuditores.abort();
+        const controlador = new AbortController();
+        abortoAuditores = controlador;
         const response = await fetch(
           `/asignacion-auditores/solicitudes/${encodeURIComponent(solicitud.id_solicitud)}/auditores?${params.toString()}`,
-          { headers: headers() }
+          { headers: headers(), signal: controlador.signal }
         );
         const data = await response.json();
         if (!response.ok) {
@@ -2300,8 +2334,15 @@
         auditorPrevPage.disabled = paginaAuditores <= 1 || totalPaginasAuditores === 0;
         auditorNextPage.disabled = paginaAuditores >= totalPaginasAuditores || totalPaginasAuditores === 0;
         renderAuditors(auditores);
+        const ubicacionAud = valoresUbicacionAuditores();
+        document.getElementById("auditorsEstado").textContent = FiltrosUbicacion.hayFiltros(ubicacionAud)
+          ? (totalAuditoresFiltrados
+            ? `${totalAuditoresFiltrados} auditor(es) en esa ubicación.`
+            : FiltrosUbicacion.mensajeVacio("auditores que residan", ubicacionAud))
+          : "";
         updateAssignButton();
       } catch (error) {
+        if (error && error.name === "AbortError") return;
         console.error(error);
         auditores = [];
         auditorsList.innerHTML = `<div class="no-auditors">${escapeHTML(error.message)}</div>`;
@@ -2319,7 +2360,12 @@
     function renderAuditors(lista) {
       auditorsList.innerHTML = "";
       if (!lista.length) {
-        auditorsList.innerHTML = '<div class="no-auditors">No hay auditores que coincidan con los filtros. Prueba con otros criterios.</div>';
+        const ubicacionAud = valoresUbicacionAuditores();
+        const soloUbicacion = FiltrosUbicacion.hayFiltros(ubicacionAud) && !auditorSearchInput.value.trim() &&
+          !auditorModalityFilter.value && !auditorCompetenceFilter.value && !auditorConflictFilter.value && !auditorDescartarConflictos.checked;
+        auditorsList.innerHTML = '<div class="no-auditors">' + escapeHTML(soloUbicacion
+          ? FiltrosUbicacion.mensajeVacio("auditores que residan", ubicacionAud)
+          : "No hay auditores que coincidan con los filtros. Prueba con otros criterios.") + '</div>';
         return;
       }
 
@@ -2660,9 +2706,10 @@
        CAMBIOS DEL FORMULARIO
     ========================================================= */
 
-    const buscarSolicitudesDebounced = debounce(() => cargarSolicitudes(1), 350);
+    const buscarSolicitudesDebounced = debounce(() => cargarSolicitudes(1), 300);
     document.getElementById('solBuscar')?.addEventListener('input', buscarSolicitudesDebounced);
-    document.getElementById('solCiudad')?.addEventListener('input', buscarSolicitudesDebounced);
+    ['solCiudad', 'solDepartamento', 'solPais'].forEach((id) =>
+      document.getElementById(id)?.addEventListener('input', buscarSolicitudesDebounced));
     document.getElementById('solNorma')?.addEventListener('change', () => cargarSolicitudes(1));
     document.getElementById('solSector')?.addEventListener('change', () => cargarSolicitudes(1));
     // Fecha inicio <= Fecha fin: cada selector limita al otro.
@@ -2677,6 +2724,25 @@
       cargarSolicitudes(1);
     });
 
+    // Sugerencias (valores existentes) para los campos de ubicación; no obligan a elegir de la lista.
+    (async function cargarSugerenciasUbicacion() {
+      try {
+        const res = await fetch('/asignacion-auditores/ubicaciones', { headers: headers() });
+        if (!res.ok) return;
+        const datos = await res.json();
+        const llenar = (id, valores) => {
+          const lista = document.getElementById(id);
+          if (lista) lista.innerHTML = FiltrosUbicacion.valoresUnicos(valores || [])
+            .map((v) => `<option value="${escapeHTML(v)}"></option>`).join('');
+        };
+        llenar('solCiudadLista', datos.solicitudes?.ciudades);
+        llenar('solDepartamentoLista', datos.solicitudes?.departamentos);
+        llenar('solPaisLista', datos.solicitudes?.paises);
+        llenar('auditorCityLista', datos.auditores?.ciudades);
+        llenar('auditorDeptLista', datos.auditores?.departamentos);
+      } catch (_) { /* sin sugerencias: los filtros siguen funcionando */ }
+    })();
+
     function debounce(fn, delay = 350) {
       let timer = null;
       return (...args) => {
@@ -2685,9 +2751,10 @@
       };
     }
 
-    const buscarAuditoresDebounced = debounce(() => loadAuditores(1), 350);
+    const buscarAuditoresDebounced = debounce(() => loadAuditores(1), 300);
     auditorSearchInput.addEventListener("input", buscarAuditoresDebounced);
     auditorCityFilter.addEventListener("input", buscarAuditoresDebounced);
+    auditorDeptFilter.addEventListener("input", buscarAuditoresDebounced);
     auditorModalityFilter.addEventListener("change", () => loadAuditores(1));
     auditorCompetenceFilter.addEventListener("change", () => loadAuditores(1));
     auditorConflictFilter.addEventListener("change", () => loadAuditores(1));
@@ -2696,6 +2763,7 @@
     clearAuditorFilters.addEventListener("click", () => {
       auditorSearchInput.value = "";
       auditorCityFilter.value = "";
+      auditorDeptFilter.value = "";
       auditorModalityFilter.value = "";
       auditorCompetenceFilter.value = "";
       auditorConflictFilter.value = "";
@@ -2820,6 +2888,7 @@
       if (solicitudSelect) solicitudSelect.value = "";
       auditorSearchInput.value = "";
       auditorCityFilter.value = "";
+      auditorDeptFilter.value = "";
       auditorModalityFilter.value = "";
       auditorCompetenceFilter.value = "";
       requestInfo.classList.remove("show");
@@ -3182,7 +3251,7 @@
           : '';
         return `<tr>
           <td>${escapeHTML(radicado)}${equipo}</td>
-          <td>${escapeHTML(empresa)}</td>
+          <td>${escapeHTML(empresa)}${solicitud.empresa_ciudad ? `<br><span class="help-text">${escapeHTML(solicitud.empresa_ciudad)}</span>` : ''}</td>
           <td>${escapeHTML(normaCodigo)}<br><span class="help-text">${escapeHTML(normaNombre)}</span></td>
           <td>${escapeHTML(fecha)}</td>
           <td class="row-actions">
@@ -3200,6 +3269,8 @@
       params.set('page', page);
       const buscar = document.getElementById('solBuscar')?.value.trim();
       const ciudad = document.getElementById('solCiudad')?.value.trim();
+      const departamento = document.getElementById('solDepartamento')?.value.trim();
+      const pais = document.getElementById('solPais')?.value.trim();
       const desde = document.getElementById('solDesde')?.value;
       const hasta = document.getElementById('solHasta')?.value;
       const norma = document.getElementById('solNorma')?.value.trim();
@@ -3210,16 +3281,35 @@
       }
       if (buscar) params.set('buscar', buscar);
       if (ciudad) params.set('ciudad', ciudad);
+      if (departamento) params.set('departamento', departamento);
+      if (pais) params.set('pais', pais);
       if (desde) params.set('desde', desde);
       if (hasta) params.set('hasta', hasta);
       if (norma) params.set('norma', norma);
       if (sector) params.set('sector', sector);
       try {
-        const res = await fetch('/asignacion-auditores/solicitudes?' + params.toString(), { headers: headers() });
+        if (abortoSolicitudes) abortoSolicitudes.abort();
+        const controlador = new AbortController();
+        abortoSolicitudes = controlador;
+        const res = await fetch('/asignacion-auditores/solicitudes?' + params.toString(), { headers: headers(), signal: controlador.signal });
         const data = await res.json().catch(() => ({}));
         solicitudes = Array.isArray(data.items) ? data.items : [];
         renderSolicitudesTable(solicitudes);
         const total = Number(data.total || 0);
+        const ubicacionSol = { ciudad, departamento, pais };
+        const porUbicacion = FiltrosUbicacion.hayFiltros(ubicacionSol);
+        const vacioTexto = document.getElementById('solicitudesEmptyTexto');
+        if (vacioTexto) {
+          vacioTexto.textContent = porUbicacion && !buscar && !norma && !sector && !desde && !hasta
+            ? FiltrosUbicacion.mensajeVacio('solicitudes', ubicacionSol)
+            : 'Ajuste los filtros para ver más resultados.';
+        }
+        const estadoSol = document.getElementById('solicitudesEstado');
+        if (estadoSol) {
+          estadoSol.textContent = porUbicacion
+            ? (total ? `${total} solicitud(es) en esa ubicación.` : FiltrosUbicacion.mensajeVacio('solicitudes', ubicacionSol))
+            : '';
+        }
         const totalPages = Number(data.total_pages || 1);
         const info = document.getElementById('solicitudesSummary');
         if (info) info.textContent = `Mostrando ${Math.min((page - 1) * 12 + 1, total)}-${Math.min(page * 12, total)} de ${total} solicitudes. Página ${page} de ${totalPages}.`;
@@ -3228,12 +3318,13 @@
         if (prev) prev.disabled = page <= 1;
         if (next) next.disabled = page >= totalPages;
       } catch (error) {
+        if (error && error.name === 'AbortError') return;
         console.error('No se pudieron cargar las solicitudes:', error);
       }
     }
 
     function limpiarFiltrosSolicitudes() {
-      ['solBuscar', 'solCiudad', 'solNorma', 'solSector'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      ['solBuscar', 'solCiudad', 'solDepartamento', 'solPais', 'solNorma', 'solSector'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       ['solDesde', 'solHasta'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = ''; el.min = ''; el.max = ''; } });
       cargarSolicitudes(1);
     }

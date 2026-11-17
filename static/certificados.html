@@ -10,10 +10,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css?v=20261114a">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
   <style>
     /* Buscar y Estado en una fila; las exportaciones (secundarias) debajo, juntas. */
     .certificados-page .cert-toolbar { grid-template-columns: minmax(220px, 1fr) minmax(155px, .6fr); }
     .cert-exportes { grid-column: 1 / -1; }
+    .cert-ubicacion { grid-column: 1 / -1; }
     /* styles.css pone "* { margin: 0 }" y el dialogo nativo pierde su centrado. */
     .cert-dialog { margin: auto; }
     .cert-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
@@ -45,7 +47,6 @@
       </div>
       <div id="authControls" class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
-        <a class="profile-link" href="/reportes">Reportes</a>
         <a class="profile-link" href="/profile">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
@@ -151,12 +152,6 @@
                 </select>
               </div>
               <div class="cert-field">
-                <label for="alcanceSelect">Alcance técnico</label>
-                <select id="alcanceSelect" required disabled>
-                  <option value="">Selecciona una solicitud primero</option>
-                </select>
-              </div>
-              <div class="cert-field">
                 <label for="fechaVencimiento">Fecha de vencimiento</label>
                 <input id="fechaVencimiento" type="date" required>
               </div>
@@ -189,6 +184,7 @@
                     <option value="CANCELADO">Cancelado</option>
                   </select>
                 </div>
+                <div id="certUbicacion" class="cert-ubicacion" hidden></div>
                 <div class="grupo-botones cert-exportes">
                 <button id="exportButton" class="comite-button secondary btn btn-secundario" type="button" data-export="/certificados/exportar" data-nombre="certificados" data-formato="xlsx">Exportar certificados (Excel)</button>
                 <button id="exportPdfButton" class="comite-button secondary btn btn-secundario" type="button" data-export="/certificados/exportar" data-nombre="certificados" data-formato="pdf">Exportar certificados (PDF)</button>
@@ -280,10 +276,6 @@
         <label for="renewalDate">Nueva fecha de vencimiento</label>
         <input id="renewalDate" type="date">
       </div>
-      <div id="scopeField" class="cert-field" hidden>
-        <label for="scopeSelect">Nuevo alcance técnico</label>
-        <select id="scopeSelect"></select>
-      </div>
       <div id="signField" class="cert-field" hidden>
         <label for="signPassword">Contraseña de firma</label>
         <input id="signPassword" type="password" maxlength="72" autocomplete="off">
@@ -329,8 +321,8 @@
       const canEmail = ["admin", "auxiliar", "empresa", "auditor"].includes(role);
       const canDecide = ["admin", "comite"].includes(role);
       const canAssignLeader = ["admin"].includes(role);
-      // Retirar del portal (CER-022) y cambiar el alcance (CER-030) eran del Super
-      // Coordinador (retirado): ahora los hace el Coordinador.
+      // Retirar del portal (CER-022) era del Super Coordinador (retirado):
+      // ahora lo hace el Coordinador.
       const canWithdrawPublic = role === "admin";
       const canExport = ["admin", "auxiliar"].includes(role);
       // CER-024 (métricas internas): solo Coordinador y Auxiliar. El resto de
@@ -388,7 +380,7 @@
         if (Array.isArray(detalle)) {
           return detalle.map((d) => {
             const campo = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : "";
-            const nombres = { id_alcance: "Alcance técnico", id_solicitud: "Solicitud", fecha_vencimiento: "Fecha de vencimiento" };
+            const nombres = { id_solicitud: "Solicitud", fecha_vencimiento: "Fecha de vencimiento" };
             const mensaje = String(d.msg || "").replace(/^Value error, /, "");
             return (nombres[campo] ? nombres[campo] + ": " : "") + (/uuid|valid/i.test(mensaje) ? "falta seleccionar un valor válido." : mensaje);
           }).join(" · ");
@@ -488,6 +480,7 @@
         $("#resultCount").textContent = "Cargando certificados...";
         try {
           state.certificados = await api("/certificados/?limite=500") || [];
+          prepararFiltrosUbicacion();
           renderCertificates();
           if (state.seleccionado) {
             const current = state.certificados.find((item) => item.id_certificado === state.seleccionado);
@@ -500,14 +493,38 @@
         }
       }
 
+      // Filtros de ubicación: ciudad de la empresa o de una sede certificada;
+      // departamento y país de las sedes. Solo si el listado trae esos datos.
+      let filtrosUbicacion = null;
+      const ubicacionCertificado = (item) => ({
+        ciudad: [item.empresa_ciudad].concat(item.sedes_ciudades || []),
+        departamento: item.sedes_departamentos || [],
+        pais: item.sedes_paises || []
+      });
+      function prepararFiltrosUbicacion() {
+        const caja = $("#certUbicacion");
+        const conDatos = state.certificados.some((item) => "empresa_ciudad" in item);
+        caja.hidden = !conDatos;
+        if (!conDatos) return;
+        if (!filtrosUbicacion) {
+          caja.innerHTML = FiltrosUbicacion.html({ prefijo: "certFiltro" });
+          filtrosUbicacion = FiltrosUbicacion.ligar(caja, { prefijo: "certFiltro", alCambiar: renderCertificates });
+        }
+        filtrosUbicacion.sugerir("ciudad", state.certificados.map((item) => ubicacionCertificado(item).ciudad));
+        filtrosUbicacion.sugerir("departamento", state.certificados.map((item) => item.sedes_departamentos || []));
+        filtrosUbicacion.sugerir("pais", state.certificados.map((item) => item.sedes_paises || []));
+      }
+      const valoresUbicacion = () => (filtrosUbicacion ? filtrosUbicacion.valores() : {});
+
       function filteredCertificates() {
         const query = $("#searchInput").value.trim().toLowerCase();
         const status = $("#statusFilter").value;
+        const ubicacion = valoresUbicacion();
         return state.certificados.filter((item) => {
           const text = [item.codigo_verificacion, item.numero_radicado, item.empresa, item.nit, item.norma_codigo].join(" ").toLowerCase();
           const matchesQuery = !query || text.includes(query);
           const matchesStatus = !status || String(item.estado_certificado || "").trim().toUpperCase() === status;
-          return matchesQuery && matchesStatus;
+          return matchesQuery && matchesStatus && FiltrosUbicacion.cumple(ubicacion, ubicacionCertificado(item));
         });
       }
 
@@ -515,14 +532,24 @@
         const rows = filteredCertificates();
         $("#resultCount").textContent = rows.length + (rows.length === 1 ? " certificado" : " certificados");
         const body = $("#certificadosBody");
+        const ubicacion = valoresUbicacion();
+        const porUbicacion = FiltrosUbicacion.hayFiltros(ubicacion);
+        if (filtrosUbicacion) {
+          filtrosUbicacion.anunciar(porUbicacion
+            ? (rows.length ? $("#resultCount").textContent + " en esa ubicación." : FiltrosUbicacion.mensajeVacio("certificados", ubicacion))
+            : "");
+        }
         if (!rows.length) {
-          body.innerHTML = '<tr><td colspan="7"><div class="comite-table-empty">No hay certificados para los filtros seleccionados.</div></td></tr>';
+          const mensaje = porUbicacion && !$("#searchInput").value.trim() && !$("#statusFilter").value
+            ? FiltrosUbicacion.mensajeVacio("certificados", ubicacion)
+            : "No hay certificados para los filtros seleccionados.";
+          body.innerHTML = '<tr><td colspan="7"><div class="comite-table-empty">' + escapeHtml(mensaje) + '</div></td></tr>';
           return;
         }
         body.innerHTML = rows.map((item) => '<tr>' +
           '<td><button class="cert-code-button" type="button" data-open-cert="' + escapeHtml(item.id_certificado) + '">' + escapeHtml(item.codigo_verificacion || "Sin código") + '</button></td>' +
           '<td>' + escapeHtml(item.numero_radicado || "—") + '</td>' +
-          '<td>' + escapeHtml(item.empresa || "—") + '</td>' +
+          '<td>' + escapeHtml(item.empresa || "—") + (item.empresa_ciudad ? '<br><span class="comite-muted">' + escapeHtml(item.empresa_ciudad) + '</span>' : '') + '</td>' +
           '<td>' + escapeHtml(item.norma_codigo || "—") + '</td>' +
           '<td><span class="comite-status ' + statusClass(item.estado_certificado) + '">' + escapeHtml(item.estado_certificado || "Sin estado") + '</span></td>' +
           '<td>' + escapeHtml(formatDate(item.fecha_vencimiento)) + '</td>' +
@@ -587,9 +614,6 @@
         if (canWithdrawPublic && status === "VIGENTE" && certificate.publico_certificado) {
           actions.push('<button class="comite-button danger btn btn-peligro" type="button" data-action="unpublish">Retirar del portal</button>');
         }
-        if (role === "admin" && status === "VIGENTE") {
-          actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="change-scope">Cambiar alcance</button>');
-        }
         if (canSeeHistory) {
           actions.push('<button class="comite-resource" type="button" data-action="history">Consultar historial de estados <span>CER-020</span></button>');
         }
@@ -602,7 +626,7 @@
           '<dl class="comite-facts cert-facts">' +
           fact("Radicado", certificate.numero_radicado) + fact("Empresa titular", certificate.empresa) +
           fact("NIT", certificate.nit) + fact("Norma", [certificate.norma_codigo, certificate.norma, certificate.norma_version].filter(Boolean).join(" ")) +
-          fact("Alcance", certificate.alcance) + fact("Emisión", formatDate(certificate.fecha_emision)) +
+          fact("Emisión", formatDate(certificate.fecha_emision)) +
           fact("Vencimiento", formatDate(certificate.fecha_vencimiento)) + fact("Portal público", certificate.publico_certificado ? "Publicado" : "No publicado") +
           (certificate.nombre_firmante ? fact("Firmado por", certificate.nombre_firmante) : "") +
           (certificate.huella_firmante ? fact("Huella SHA-256 del certificado", certificate.huella_firmante) : "") +
@@ -657,46 +681,20 @@
         }
       }
 
-      async function loadScopes(idSolicitud) {
-        const select = $("#alcanceSelect");
-        select.disabled = true;
-        select.innerHTML = '<option value="">Cargando alcances...</option>';
-        if (!idSolicitud) {
-          select.innerHTML = '<option value="">Selecciona una solicitud primero</option>';
-          return;
-        }
-        try {
-          const detail = await api("/solicitudes/" + encodeURIComponent(idSolicitud) + "/informacion-general");
-          const scopes = detail && detail.alcances || [];
-          select.innerHTML = '<option value="">Selecciona un alcance</option>' + scopes.map((item) =>
-            '<option value="' + escapeHtml(item.id_alcance) + '">' + escapeHtml(item.descripcion || item.id_alcance) + '</option>'
-          ).join("");
-          if (!scopes.length) select.innerHTML = '<option value="">La solicitud no tiene alcances registrados</option>';
-          select.disabled = !scopes.length;
-        } catch (error) {
-          select.innerHTML = '<option value="">No fue posible cargar los alcances</option>';
-          showFeedback(error.message, "error");
-        }
-      }
-
       async function openAction(action, certificate) {
         state.accion = { action, id: certificate.id_certificado };
         const isRenewal = action === "renew";
-        const isScopeChange = action === "change-scope";
         const isSigning = action === "sign";
         const reasonField = $("#reasonField");
         const renewalField = $("#renewalField");
-        const scopeField = $("#scopeField");
-        reasonField.hidden = isRenewal || isScopeChange || isSigning;
+        reasonField.hidden = isRenewal || isSigning;
         renewalField.hidden = !isRenewal;
-        scopeField.hidden = !isScopeChange;
-        $("#actionReason").required = !isRenewal && !isScopeChange && !isSigning;
+        $("#actionReason").required = !isRenewal && !isSigning;
         $("#renewalDate").required = isRenewal;
-        $("#scopeSelect").required = isScopeChange;
-        $("#dialogTitle").textContent = isSigning ? "Firmar certificado" : isRenewal ? "Renovar certificado" : isScopeChange ? "Cambiar alcance" : action === "suspend" ? "Suspender certificado" : action === "cancel" ? "Cancelar certificado" : action === "reason-cancel" ? "Registrar motivo de cancelación" : action === "reason-suspend" ? "Registrar motivo de suspensión" : "Reactivar certificado";
+        $("#dialogTitle").textContent = isSigning ? "Firmar certificado" : isRenewal ? "Renovar certificado" : action === "suspend" ? "Suspender certificado" : action === "cancel" ? "Cancelar certificado" : action === "reason-cancel" ? "Registrar motivo de cancelación" : action === "reason-suspend" ? "Registrar motivo de suspensión" : "Reactivar certificado";
         $("#dialogDescription").textContent = isSigning
           ? "Vas a firmar el certificado " + (certificate.codigo_verificacion || "") + ". Ingresa tu contraseña de firma (distinta a la de inicio de sesión); el sistema verificará que pertenece a tu cuenta y aplicará la firma digital."
-          : isRenewal ? "Se creará un nuevo registro pendiente de firma vinculado al mismo radicado." : isScopeChange ? "Selecciona un alcance asociado al mismo radicado." : "El motivo quedará registrado en el historial del certificado.";
+          : isRenewal ? "Se creará un nuevo registro pendiente de firma vinculado al mismo radicado." : "El motivo quedará registrado en el historial del certificado.";
         $("#confirmDialog").textContent = isSigning ? "Firmar y emitir" : "Confirmar";
         $("#actionReason").value = "";
         $("#renewalDate").value = "";
@@ -715,18 +713,9 @@
           $("#signNewPassword").required = !state.firmaConfigurada;
           $("#confirmDialog").textContent = state.firmaConfigurada ? "Firmar y emitir" : "Crear contraseña de firma";
         }
-        if (isScopeChange) {
-          const detail = await api("/solicitudes/" + encodeURIComponent(certificate.id_solicitud) + "/informacion-general");
-          const scopes = detail && detail.alcances || [];
-          $("#scopeSelect").innerHTML = scopes.map((item) =>
-            '<option value="' + escapeHtml(item.id_alcance) + '"' + (item.id_alcance === certificate.id_alcance ? " selected" : "") + '>' + escapeHtml(item.descripcion || item.id_alcance) + '</option>'
-          ).join("");
-          if (!scopes.length) throw new Error("La solicitud no tiene alcances registrados.");
-        }
         $("#actionDialog").showModal();
         if (isSigning) $((state.firmaConfigurada ? "#signPassword" : "#signLoginPassword")).focus();
         else if (isRenewal) $("#renewalDate").focus();
-        else if (isScopeChange) $("#scopeSelect").focus();
         else $("#actionReason").focus();
       }
 
@@ -783,11 +772,6 @@
               body: JSON.stringify({ fecha_vencimiento: $("#renewalDate").value })
             });
             requiereAprobacion = Boolean(result && result.requiere_aprobacion);
-          } else if (action === "change-scope") {
-            await api("/certificados/" + encodeURIComponent(id) + "/alcance", {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id_alcance: $("#scopeSelect").value })
-            });
           } else {
             const endpoint = action === "reason-cancel" ? "motivo-cancelacion" : action === "reason-suspend" ? "motivo-suspension" : action === "suspend" ? "suspender" : action === "cancel" ? "cancelar" : "reactivar";
             const result = await api("/certificados/" + encodeURIComponent(id) + "/" + endpoint, {
@@ -820,7 +804,7 @@
         const certificate = state.certificadoActual;
         if (!certificate) return;
         const id = encodeURIComponent(certificate.id_certificado);
-        if (["sign", "suspend", "cancel", "reactivate", "renew", "reason-cancel", "reason-suspend", "change-scope"].includes(action)) {
+        if (["sign", "suspend", "cancel", "reactivate", "renew", "reason-cancel", "reason-suspend"].includes(action)) {
           try {
             await openAction(action, certificate);
           } catch (error) {
@@ -935,7 +919,7 @@
             '</p><dl class="comite-facts cert-public-facts">' +
             fact("Empresa", certificate.empresa) + fact("NIT", certificate.nit) +
             fact("Norma", [certificate.norma_codigo, certificate.norma, certificate.norma_version].filter(Boolean).join(" ")) +
-            fact("Alcance", certificate.alcance) + fact("Código", certificate.codigo_verificacion) +
+            fact("Código", certificate.codigo_verificacion) +
             (signed
               ? fact("Firmante", certificate.firmante) +
                 fact("Huella SHA-256 del certificado", certificate.huella_certificado) +
@@ -1034,10 +1018,6 @@
       });
       $("#createForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        if (!$("#alcanceSelect").value) {
-          showFeedback("La solicitud no tiene un alcance técnico registrado. La empresa debe registrar el alcance en su solicitud antes de generar el certificado.", "error");
-          return;
-        }
         const button = $("#createButton");
         button.disabled = true;
         try {
@@ -1045,7 +1025,6 @@
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id_solicitud: $("#solicitudSelect").value,
-              id_alcance: $("#alcanceSelect").value,
               fecha_vencimiento: $("#fechaVencimiento").value
             })
           });
@@ -1077,7 +1056,6 @@
           button.disabled = false;
         }
       });
-      $("#solicitudSelect").addEventListener("change", (event) => loadScopes(event.target.value));
       $("#searchInput").addEventListener("input", renderCertificates);
       $("#statusFilter").addEventListener("change", renderCertificates);
       $("#refreshButton").addEventListener("click", refreshAll);

@@ -17,9 +17,37 @@ ROLES_ADMINISTRACION = {"admin", "auxiliar"}
 
 APELACION_EDITABLE = {"ENVIADA", "EN_REVISION", "INFORMACION_SOLICITADA"}
 APELACION_FINAL = {"APROBADA", "RECHAZADA", "CANCELADA"}
+# Estados de una apelación que ya tiene el fallo favorable a la empresa.
+APELACION_FAVORABLE = {"APROBADA", "NOTIFICADA", "CERRADA"}
 RAIZ_PROYECTO = Path(__file__).resolve().parent.parent.parent
 CARPETA_EVIDENCIAS = RAIZ_PROYECTO / "storage" / "apelaciones"
 EXTENSIONES_EVIDENCIA = {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"}
+
+
+TEXTO_ESTADO_APELACION = {
+    "ENVIADA": "Enviada",
+    "EN_REVISION": "En revisión",
+    "INFORMACION_SOLICITADA": "Información solicitada",
+    "APROBADA": "Aprobada",
+    "RECHAZADA": "No aprobada",
+    "CANCELADA": "Cancelada",
+}
+
+
+def texto_estado_apelacion(estado, fallo=None) -> str:
+    """
+    El estado de la apelación como lo lee la empresa. NOTIFICADA y CERRADA
+    no dicen el resultado; se completa con el fallo (False = a favor).
+    """
+    clave = str(estado or "").strip().upper()
+    if clave in {"NOTIFICADA", "CERRADA"}:
+        etapa = "notificada" if clave == "NOTIFICADA" else "cerrada"
+        if fallo is False:
+            return f"Aprobada ({etapa})"
+        if fallo is True:
+            return f"No aprobada ({etapa})"
+        return etapa.capitalize()
+    return TEXTO_ESTADO_APELACION.get(clave, clave.capitalize() or "Sin estado")
 
 
 def estado_es_rechazada(estado) -> bool:
@@ -460,6 +488,50 @@ class ApelacionesService:
         })
         return [dict(row) for row in result.mappings().all()]
 
+    async def mis_apelaciones(self, usuario: dict) -> list[dict]:
+        """
+        Portal de la empresa: sus apelaciones con lo que necesita saber de
+        cada una (estado, requerimientos pendientes, decisión y en qué va la
+        solicitud y el certificado). Solo las de empresas a las que el usuario
+        está asociado y activo en user_empresa.
+        """
+        resultado = await self.db.execute(text("""
+            SELECT a.id, a.id_solicitud, a.radicado, a.estado, a.fecha, a.fallo,
+                   a.fecha_decision, a.observaciones,
+                   s.numero_radicado, s.estado AS estado_solicitud,
+                   e.nombre AS empresa,
+                   (SELECT COUNT(*) FROM requerimiento_apelacion r
+                     WHERE r.id_apelacion = a.id AND r.estado = 'Pendiente') AS requerimientos_pendientes,
+                   cert.codigo_verificacion AS certificado_codigo,
+                   TRIM(cert.estado_certificado) AS certificado_estado
+            FROM apelacion a
+            JOIN solicitud s ON s.id_solicitud = a.id_solicitud AND s.deleted_at IS NULL
+            JOIN empresa e ON e.id_empresa = s.id_empresa
+            LEFT JOIN LATERAL (
+                SELECT c.codigo_verificacion, c.estado_certificado
+                FROM certificado c
+                WHERE c.id_solicitud = a.id_solicitud
+                ORDER BY c.fecha_registro DESC NULLS LAST
+                LIMIT 1
+            ) cert ON TRUE
+            WHERE s.id_empresa IN (
+                SELECT ue.id_empresa FROM user_empresa ue
+                WHERE ue.id_usuario::TEXT = :id_usuario AND ue.estado = 'Activo'
+            )
+            ORDER BY a.fecha DESC, a.id DESC;
+        """), {"id_usuario": str(usuario.get("id_usuario"))})
+        filas = []
+        for fila in resultado.mappings().all():
+            fila = dict(fila)
+            estado = str(fila.get("estado") or "").upper()
+            # Registros antiguos: el pedido de documentos quedó solo en el
+            # estado, sin fila en requerimiento_apelacion.
+            if estado == "INFORMACION_SOLICITADA" and not fila["requerimientos_pendientes"]:
+                fila["requerimientos_pendientes"] = 1
+            fila["estado_texto"] = texto_estado_apelacion(estado, fila.get("fallo"))
+            filas.append(fila)
+        return filas
+
     async def get_apelacion_by_id(self, id_apelacion: UUID, usuario: dict | None = None) -> dict:
         query = text("""
             SELECT id, id_solicitud,
@@ -811,7 +883,12 @@ class ApelacionesService:
         })
         await self.db.commit()
         row = result.mappings().first()
-        return dict(row) if row else None
+        if not row:
+            return None
+        respuesta = dict(row)
+        if respuesta.get("estado") == "APROBADA":
+            respuesta["certificacion"] = await self.aplicar_apelacion_favorable(id_apelacion, usuario)
+        return respuesta
 
     async def cambiar_estado_dictamen(self, id_apelacion: UUID, nuevo_estado: str, usuario: dict) -> dict:
         apelacion = await self.get_apelacion_by_id(id_apelacion, usuario)
@@ -848,7 +925,117 @@ class ApelacionesService:
         })
         await self.db.commit()
         row = result.mappings().first()
-        return dict(row) if row else None
+        if not row:
+            return None
+        respuesta = dict(row)
+        if respuesta.get("estado") in APELACION_FAVORABLE and respuesta.get("fallo") is False:
+            respuesta["certificacion"] = await self.aplicar_apelacion_favorable(id_apelacion, usuario)
+        return respuesta
+
+    async def aplicar_apelacion_favorable(self, id_apelacion: UUID, usuario: dict) -> dict:
+        """
+        Una apelación aprobada revoca el rechazo: la solicitud vuelve a
+        'Aprobada' y se crea el borrador del certificado (PENDIENTE_FIRMA)
+        asignado al líder vigente del Comité, igual que al aprobar en el Comité.
+
+        Antes la apelación pasaba a APROBADA/NOTIFICADA/CERRADA y la solicitud
+        se quedaba en 'Rechazada': nadie podía generar el certificado (exige
+        solicitud aprobada) ni el Comité podía aprobarla (ya tenía dictamen).
+
+        Es idempotente: se llama al aprobar, notificar y cerrar; si la
+        solicitud ya está aprobada no la toca, y el borrador no se repite
+        porque `crear_borrador_automatico` no crea uno si ya hay certificado.
+        """
+        resultado = await self.db.execute(text("""
+            SELECT a.id_solicitud, a.radicado, a.estado, a.fallo,
+                   s.estado AS estado_solicitud, s.numero_radicado, s.id_empresa
+            FROM apelacion a
+            JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+            WHERE a.id = :id_apelacion
+              AND s.deleted_at IS NULL
+            FOR UPDATE OF s;
+        """), {"id_apelacion": str(id_apelacion)})
+        fila = resultado.mappings().first()
+        if not fila or fila["estado"] not in APELACION_FAVORABLE or fila["fallo"] is not False:
+            return {"solicitud_actualizada": False, "certificado": None}
+
+        id_solicitud = fila["id_solicitud"]
+        radicado = fila["radicado"] or "sin radicado"
+        solicitud_actualizada = False
+        if estado_es_rechazada(fila["estado_solicitud"]):
+            await self.db.execute(text("""
+                UPDATE solicitud SET estado = :estado
+                WHERE id_solicitud = :id_solicitud AND deleted_at IS NULL;
+            """), {"estado": estados.APROBADA, "id_solicitud": str(id_solicitud)})
+            await self.db.execute(text("""
+                INSERT INTO historial_estado (id_solicitud, estado, fecha, observacion)
+                VALUES (:id_solicitud, :estado, CURRENT_DATE, :observacion);
+            """), {
+                "id_solicitud": str(id_solicitud),
+                "estado": estados.APROBADA,
+                "observacion": (
+                    f"[APE] Apelación {radicado} aprobada: se revoca el rechazo y la solicitud "
+                    "queda aprobada para certificar."
+                )[:255],
+            })
+            solicitud_actualizada = True
+        await self.db.commit()
+
+        if not estados.es((await self._estado_solicitud(id_solicitud)), estados.APROBADA):
+            # Cerrada, cancelada u otro estado: no se certifica desde aquí.
+            return {"solicitud_actualizada": solicitud_actualizada, "certificado": None}
+
+        from modules.certificados.certificados_service import CertificadosService
+
+        certificados = CertificadosService(self.db)
+        borrador = await certificados.crear_borrador_automatico(id_solicitud, usuario)
+        if solicitud_actualizada or borrador.get("creado"):
+            await self._notificar_apelacion_favorable(fila, borrador, await certificados.lider_comite_actual())
+        return {"solicitud_actualizada": solicitud_actualizada, "certificado": borrador}
+
+    async def _estado_solicitud(self, id_solicitud) -> str | None:
+        resultado = await self.db.execute(text(
+            "SELECT estado FROM solicitud WHERE id_solicitud = :id_solicitud;"
+        ), {"id_solicitud": str(id_solicitud)})
+        return resultado.scalar_one_or_none()
+
+    async def _notificar_apelacion_favorable(self, fila: dict, borrador: dict, lider: dict | None) -> None:
+        """Avisa a la empresa y, si hay borrador, al líder que debe firmarlo."""
+        radicado = fila["radicado"] or "sin radicado"
+        solicitud = fila["numero_radicado"] or str(fila["id_solicitud"])
+        if borrador.get("creado"):
+            detalle = (
+                f"El certificado {borrador.get('codigo_verificacion')} quedó pendiente de la firma "
+                "del líder del Comité."
+            )
+        else:
+            detalle = "El certificado se generará desde Gestión de certificados."
+        mensaje_empresa = (
+            f"Su apelación {radicado} fue aprobada: la solicitud {solicitud} queda aprobada. {detalle}"
+        )[:255]
+        await self.db.execute(text("""
+            INSERT INTO notificacion (id_notificacion, id_usuario, asunto, mensaje, estado, fecha_envio)
+            SELECT gen_random_uuid(), ue.id_usuario, :asunto, :mensaje, 'Pendiente', CURRENT_DATE
+            FROM user_empresa ue
+            WHERE ue.id_empresa = :id_empresa AND ue.estado = 'Activo';
+        """), {
+            "asunto": "Apelación aprobada",
+            "mensaje": mensaje_empresa,
+            "id_empresa": str(fila["id_empresa"]),
+        })
+        if borrador.get("creado") and lider:
+            await self.db.execute(text("""
+                INSERT INTO notificacion (id_notificacion, id_usuario, asunto, mensaje, estado, fecha_envio)
+                VALUES (gen_random_uuid(), :id_usuario, :asunto, :mensaje, 'Pendiente', CURRENT_DATE);
+            """), {
+                "id_usuario": str(lider["id_usuario"]),
+                "asunto": "Certificado pendiente de firma",
+                "mensaje": (
+                    f"La apelación {radicado} fue aprobada. El certificado "
+                    f"{borrador.get('codigo_verificacion')} de la solicitud {solicitud} espera su firma."
+                )[:255],
+            })
+        await self.db.commit()
 
     async def obtener_archivo_evidencia(self, id_apelacion: UUID, id_evidencia: UUID, usuario: dict) -> tuple[Path, str] | None:
         if not await self.get_apelacion_by_id(id_apelacion, usuario):

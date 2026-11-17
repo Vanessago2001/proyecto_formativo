@@ -29,7 +29,6 @@ FILA_CERTIFICADO = {
     "empresa": "=HYPERLINK(\"https://malicioso.test\")",
     "nit": "900123456-7",
     "norma_codigo": "ISO-9001",
-    "alcance": "Diseño y producción",
     "fecha_emision": date(2026, 10, 2),
     "fecha_vencimiento": date(2027, 10, 2),
     "estado_certificado": "VIGENTE                     ",
@@ -129,7 +128,9 @@ def test_exportar_certificados_en_excel_y_pdf(monkeypatch):
     assert 'filename="certificados.xlsx"' in respuesta.headers["content-disposition"]
     hoja = load_workbook(BytesIO(respuesta.content)).active
     assert hoja["A4"].value == "Código de verificación"
-    assert hoja["I5"].value == "Vigente"
+    # Sin la columna de alcance, el estado pasa de la I a la H.
+    assert hoja["H5"].value == "Vigente"
+    assert "Alcance" not in [celda.value for celda in hoja[4]]
 
     pdf = client.get("/certificados/exportar?formato=pdf")
     assert pdf.status_code == 200

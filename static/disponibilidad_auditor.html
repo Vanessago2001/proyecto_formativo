@@ -600,7 +600,6 @@
             </div>
             <div class="comite-header-user">
               <a class="comite-back-button" href="/dashboard">Panel</a>
-              <a class="profile-link" href="/reportes">Reportes</a>
               <a class="profile-link" href="/perfil-auditor" title="Mi perfil" aria-label="Mi perfil"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
               <button id="logoutButton" class="comite-logout js-salir" type="button">Cerrar sesión</button>
             </div>
@@ -611,10 +610,9 @@
         <!-- MENÚ LATERAL: mismo diseno y tamano que el de static/auditor.html,
              con los apartados propios de esta pantalla. -->
         <nav class="side" aria-label="Navegación de disponibilidad">
-            <a href="#configurar-horario" data-seccion="configurar-horario" class="active">Horario semanal</a>
+            <a href="#configurar-horario" data-seccion="configurar-horario" class="active">Mi disponibilidad semanal</a>
             <a href="#bloquear-fecha" data-seccion="bloquear-fecha">Bloquear fecha</a>
             <a href="#desbloquear-fecha" data-seccion="desbloquear-fecha">Desbloquear fecha</a>
-            <a href="#disponibilidad-extraordinaria" data-seccion="disponibilidad-extraordinaria">Disponibilidad extraordinaria</a>
             <a href="#historial-disponibilidad" data-seccion="historial-disponibilidad">Historial</a>
         </nav>
 
@@ -624,7 +622,7 @@
         <section class="content">
 
             <div class="page-head">
-                <h1 id="pageTitle">Configurar horario semanal</h1>
+                <h1 id="pageTitle">Mi disponibilidad semanal</h1>
                 <p id="pageSubtitle">Define los días de la semana y la vigencia en los que estás disponible para atender auditorías.</p>
             </div>
 
@@ -633,7 +631,7 @@
             ================================================= -->
             <section id="configurar-horario" class="panel panel-section seccion-visible" data-seccion="configurar-horario">
                 <div class="panel-head">
-                    <h2>1. Configurar horario semanal</h2>
+                    <h2>1. Mi disponibilidad semanal</h2>
                     <span class="pill">Recurrente por día</span>
                 </div>
                 <div class="panel-body">
@@ -642,7 +640,8 @@
                         <span>
                             <strong>¿Cómo funciona?</strong> Selecciona los días de la semana en los que puedes
                             atender auditorías y define un rango de vigencia. El patrón se repetirá automáticamente
-                            dentro de ese rango. El calendario muestra las auditorías que ya tienes programadas.
+                            dentro de ese rango. Debajo, el calendario muestra lo disponible (verde), lo ocupado por auditorías (rojo)
+                            y las fechas bloqueadas (gris): pulsa un día para ver su detalle.
                         </span>
                     </div>
 
@@ -711,53 +710,11 @@
             </section>
 
             <!-- ================================================
-                 SECCIÓN 4: DISPONIBILIDAD EXTRAORDINARIA
-            ================================================= -->
-            <section id="disponibilidad-extraordinaria" class="panel panel-section" data-seccion="disponibilidad-extraordinaria">
-                <div class="panel-head">
-                    <h2>4. Registrar disponibilidad extraordinaria</h2>
-                    <span class="pill">Excepción al horario</span>
-                </div>
-                <div class="panel-body">
-                    <div class="section-note">
-                        <span class="note-icon" aria-hidden="true">ℹ</span>
-                        <span>
-                            <strong>Registra una franja disponible fuera de tu horario habitual.</strong> Ideal para
-                            cubrir un rango de fechas que no sigue el patrón semanal (reemplazos, jornadas
-                            especiales, etc.).
-                        </span>
-                    </div>
-
-                    <form id="extraForm">
-                        <div class="grid">
-                            <div class="field">
-                                <label for="extraFrom">Vigente desde</label>
-                                <input type="date" id="extraFrom" required>
-                            </div>
-                            <div class="field">
-                                <label for="extraUntil">Vigente hasta</label>
-                                <input type="date" id="extraUntil" required>
-                            </div>
-                        </div>
-
-                        <div class="field" style="margin-top:16px;">
-                            <label for="extraReason">Motivo</label>
-                            <input id="extraReason" maxlength="500" placeholder="Motivo de disponibilidad extraordinaria">
-                        </div>
-
-                        <div class="actions">
-                            <button type="submit" class="btn btn-primario btn-primary">Registrar disponibilidad</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
-
-            <!-- ================================================
-                 SECCIÓN 5: HISTORIAL DE DISPONIBILIDAD
+                 SECCIÓN 4: HISTORIAL DE DISPONIBILIDAD
             ================================================= -->
             <section id="historial-disponibilidad" class="panel panel-section" data-seccion="historial-disponibilidad">
                 <div class="panel-head">
-                    <h2>5. Historial de disponibilidad</h2>
+                    <h2>4. Historial de disponibilidad</h2>
                     <span class="pill">Trazabilidad</span>
                 </div>
                 <div class="panel-body">
@@ -849,7 +806,7 @@
         </form>
     </div>
 </div>
-<script src="/static/mi_disponibilidad.js?v=20261113b"></script>
+<script src="/static/mi_disponibilidad.js?v=20261117c"></script>
 <script>
     function esc(value) {
         return String(value ?? '')
@@ -1006,13 +963,20 @@
         });
     }
 
-    // Horario semanal y calendario: bloque común con el perfil del auditor.
+    // Mi disponibilidad semanal: formulario y, debajo, el calendario de lo
+    // ocupado/bloqueado/disponible (static/mi_disponibilidad.js). Un día del
+    // calendario abre su detalle en un modal; desde ahí se puede desbloquear.
+    let calendarioDisponibilidad = null;
     if (window.MiDisponibilidad) {
-        window.MiDisponibilidad.montar(document.getElementById('miDisponibilidad'), {
+        calendarioDisponibilidad = window.MiDisponibilidad.montar(document.getElementById('miDisponibilidad'), {
             idUsuario: id_usuario,
             token,
-            alGuardar: () => cargarHistorial()
+            alGuardar: () => cargarHistorial(),
+            alCambiar: () => { cargarHistorial(); cargarFechasBloqueadas(); }
         });
+    }
+    function recargarCalendario() {
+        if (calendarioDisponibilidad) calendarioDisponibilidad.recargar();
     }
 
     // Form: bloquear fecha
@@ -1025,21 +989,10 @@
             showModal('Fecha bloqueada correctamente.', 'success');
             cargarHistorial();
             cargarFechasBloqueadas();
+            recargarCalendario();
         }
     });
 
-
-    // Form: disponibilidad extraordinaria
-    enviarUnaVez(document.getElementById('extraForm'), async (e) => {
-        const desde = document.getElementById('extraFrom').value;
-        const hasta = document.getElementById('extraUntil').value || null;
-        const motivo = document.getElementById('extraReason').value;
-        const res = await apiPOST('/disponibilidad-extraordinaria', { fecha_inicio: desde, fecha_fin: hasta, motivo: motivo || 'Disponibilidad extraordinaria' });
-        if (res.ok) {
-            showModal('Disponibilidad extraordinaria registrada correctamente.', 'success');
-            cargarHistorial();
-        }
-    });
 
     // ---- Formato seguro de fechas (evita desfase por zona horaria) ----
     function formatearFechaHistorial(fechaStr) {
@@ -1130,7 +1083,7 @@
 
         let estructura = `
             <div class="panel-head">
-                <h2>5. Historial de disponibilidad</h2>
+                <h2>4. Historial de disponibilidad</h2>
                 <span class="pill">Trazabilidad</span>
             </div>
             <div class="panel-body">
@@ -1235,6 +1188,7 @@
             showModal('Fecha desbloqueada correctamente.', 'success');
             cargarHistorial();
             cargarFechasBloqueadas();
+            recargarCalendario();
         } else {
             showModal('No se pudo desbloquear la fecha.', 'error');
         }
@@ -1256,7 +1210,7 @@
     (function () {
         const secciones = {
             'configurar-horario': {
-                titulo: 'Configurar horario semanal',
+                titulo: 'Mi disponibilidad semanal',
                 subtitulo: 'Define los días de la semana y la vigencia en los que estás disponible para atender auditorías.'
             },
             'bloquear-fecha': {
@@ -1266,10 +1220,6 @@
             'desbloquear-fecha': {
                 titulo: 'Desbloquear fecha',
                 subtitulo: 'Libera un día previamente bloqueado para que vuelva a estar disponible.'
-            },
-            'disponibilidad-extraordinaria': {
-                titulo: 'Disponibilidad extraordinaria',
-                subtitulo: 'Registra una franja disponible fuera de tu horario habitual.'
             },
             'historial-disponibilidad': {
                 titulo: 'Historial de disponibilidad',
@@ -1319,6 +1269,12 @@
 
         const hash = (window.location.hash || '').replace('#', '');
         mostrarSeccion(hash && secciones[hash] ? hash : 'configurar-horario', false);
+        // El menú lleva a #configurar-horario y el modal del calendario a
+        // #desbloquear-fecha estando ya en esta página: se cambia de sección.
+        window.addEventListener('hashchange', () => {
+            const clave = (window.location.hash || '').replace('#', '');
+            if (secciones[clave]) mostrarSeccion(clave, false);
+        });
     })();
 </script>
  <script src="/static/session.js?v=20261117"></script>

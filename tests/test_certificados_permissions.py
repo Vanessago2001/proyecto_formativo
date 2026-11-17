@@ -101,7 +101,6 @@ def _public_certificate_row(**overrides):
         ("CER-010", ("V", "V", "REQ", "F", "F", "F", "F", "F")),
         ("CER-016", ("SA", "V", "F", "F", "F", "V", "F", "F")),
         ("CER-022", ("SA", "F", "F", "F", "F", "F", "F", "F")),
-        ("CER-030", ("SA", "F", "F", "F", "F", "F", "F", "F")),
     ],
 )
 def test_matriz_m9_transcribe_celdas(codigo, expected):
@@ -473,19 +472,28 @@ def test_reasignacion_actualiza_snapshot_de_certificados_pendientes():
     assert parametros_update["id_asignacion"]
 
 
-def test_no_invalida_firma_si_no_cambio_el_alcance():
+def test_el_alcance_ya_no_es_un_permiso_ni_una_ruta_de_certificados():
+    from modules.certificados.certificados_router import router
     from modules.certificados.certificados_service import CertificadosService
 
-    certificado = _public_certificate_row(publico_certificado=True)
-    servicio = CertificadosService(FakeDatabase(certificado))
-    with pytest.raises(HTTPException) as error:
-        asyncio.run(servicio.actualizar_alcance(
-            UUID(certificado["id_certificado"]),
-            UUID(certificado["id_alcance"]),
-            {"id_usuario": "admin"},
-        ))
+    assert "CER-008" not in PERMISOS_M9 and "CER-030" not in PERMISOS_M9
+    assert not any("alcance" in getattr(ruta, "path", "") for ruta in router.routes)
+    assert not hasattr(CertificadosService, "actualizar_alcance")
 
-    assert error.value.status_code == 409
+
+def test_pdf_del_certificado_no_muestra_alcance():
+    from core import pdf as modulo_pdf
+
+    capturado = {}
+    original = modulo_pdf.construir_pdf
+    try:
+        import modules.certificados.certificados_pdf as cert_pdf
+        cert_pdf.construir_pdf = lambda **kw: capturado.update(kw) or b"%PDF"
+        generar_pdf_certificado(_public_certificate_row())
+    finally:
+        cert_pdf.construir_pdf = original
+    etiquetas = [etiqueta for etiqueta, _ in capturado["campos"]]
+    assert not any("alcance" in etiqueta.lower() for etiqueta in etiquetas)
 
 
 def test_firma_pades_usa_el_p12_del_lider_y_devuelve_huellas(tmp_path, monkeypatch):
@@ -646,9 +654,10 @@ def test_apr_usa_el_permiso_de_administrador():
     assert nivel_permiso("CER-011", "Administrador") is NivelPermiso.CONCEDIDO
 
 
-def test_matriz_tiene_los_treinta_requisitos():
-    assert len(PERMISOS_M9) == 30
-    assert set(PERMISOS_M9) == {f"CER-{number:03}" for number in range(1, 31)}
+def test_matriz_tiene_los_requisitos_sin_los_de_alcance():
+    # CER-008 y CER-030 (alcance) se retiraron de la matriz.
+    assert len(PERMISOS_M9) == 28
+    assert set(PERMISOS_M9) == {f"CER-{number:03}" for number in range(1, 31)} - {"CER-008", "CER-030"}
 
 
 @pytest.mark.parametrize(

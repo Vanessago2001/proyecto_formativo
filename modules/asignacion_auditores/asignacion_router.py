@@ -60,6 +60,8 @@ async def listar_solicitudes_aprobadas(
     hasta: date | None = Query(None),
     norma: str | None = Query(None, max_length=80),
     sector: str | None = Query(None, max_length=80),
+    departamento: str | None = Query(None, max_length=100),
+    pais: str | None = Query(None, max_length=100),
     usuario: dict = Depends(requiere_gestion_asignaciones),
     db: AsyncSession = Depends(get_db),
 ):
@@ -77,7 +79,17 @@ async def listar_solicitudes_aprobadas(
         hasta=hasta,
         norma=norma,
         sector=sector,
+        departamento=departamento,
+        pais=pais,
     )
+
+
+@router.get("/ubicaciones", summary="Sugerencias de ciudad, departamento y país para los filtros")
+async def sugerencias_ubicacion(
+    usuario: dict = Depends(requiere_gestion_asignaciones),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AsignacionAuditorService(db).sugerencias_ubicacion()
 
 
 @router.get(
@@ -94,6 +106,7 @@ async def listar_auditores_elegibles(
     modalidad: str | None = Query(None, max_length=40),
     competencia: str | None = Query(None, pattern="^(si|no)$"),
     conflicto: str | None = Query(None, pattern="^(si|no)$"),
+    departamento: str | None = Query(None, max_length=100),
     usuario: dict = Depends(requiere_gestion_asignaciones),
     db: AsyncSession = Depends(get_db),
 ):
@@ -106,6 +119,7 @@ async def listar_auditores_elegibles(
         modalidad=modalidad,
         competencia=competencia,
         conflicto=conflicto,
+        departamento=departamento,
     )
 
 

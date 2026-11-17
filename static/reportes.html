@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
+  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261114a">
   <style>
     /* Solo hay un panel de resultados: ocupa todo el ancho (comite-workspace trae dos columnas). */
@@ -28,7 +29,6 @@
       </div>
       <div class="comite-header-user">
         <a class="comite-back-button" href="/dashboard">Panel</a>
-        <a class="profile-link" href="/reportes">Reportes</a>
         <a class="profile-link" href="/profile" id="profileLink">Mi perfil</a>
         <button id="logoutButton" class="comite-logout" type="button">Cerrar sesión</button>
       </div>
@@ -240,13 +240,24 @@
         }
 
         const claves = columnas(filas);
+        // Si el reporte trae columnas de ubicación, se pueden filtrar mientras se escribe.
+        const lugares = ["ciudad", "departamento", "pais"].filter((clave) => claves.includes(clave));
         const encabezado = claves.map((clave) => "<th>" + escapar(etiqueta(clave)) + "</th>").join("");
         const cuerpo = filas.map((fila) =>
-          "<tr>" + claves.map((clave) => "<td>" + celda(clave, fila[clave]) + "</td>").join("") + "</tr>"
+          "<tr data-fila-reporte" + FiltrosUbicacion.atributos(Object.fromEntries(lugares.map((c) => [c, fila[c]]))) + ">" +
+          claves.map((clave) => "<td>" + celda(clave, fila[clave]) + "</td>").join("") + "</tr>"
         ).join("");
 
         $("#tablaWrap").innerHTML =
-          '<table style="min-width:0"><thead><tr>' + encabezado + "</tr></thead><tbody>" + cuerpo + "</tbody></table>";
+          (lugares.length ? FiltrosUbicacion.html({ prefijo: "repFiltro", campos: lugares }) : "") +
+          '<table style="min-width:0"><thead><tr>' + encabezado + "</tr></thead><tbody>" + cuerpo + "</tbody></table>" +
+          '<p id="reporteSinResultados" class="comite-table-empty" hidden></p>';
+        if (lugares.length) {
+          FiltrosUbicacion.ligarFilas($("#tablaWrap"), {
+            prefijo: "repFiltro", campos: lugares, filas: "tr[data-fila-reporte]",
+            vacio: "reporteSinResultados", singular: "registro", plural: "registros"
+          });
+        }
       }
 
       function pintarCatalogo() {

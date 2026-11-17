@@ -24,7 +24,6 @@ def generar_pdf_certificado(certificado: dict, modo: str = "consulta") -> bytes:
             certificado.get("norma"),
             certificado.get("norma_version"),
         )))),
-        ("Alcance técnico", certificado.get("alcance")),
         ("Fecha de emisión", certificado.get("fecha_emision")),
         ("Fecha de vencimiento", certificado.get("fecha_vencimiento")),
         ("Estado", certificado.get("estado_certificado")),
