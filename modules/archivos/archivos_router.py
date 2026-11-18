@@ -103,8 +103,17 @@ async def firmar_archivo(
     return {"url": firmar_url(f"/uploads/{relativo}"), "vigencia_segundos": VIGENCIA_SEGUNDOS}
 
 
-@router.get("/{exp}/{firma}/{ruta:path}", response_class=FileResponse)
-async def descargar_archivo(exp: int, firma: str, ruta: str, db: AsyncSession = Depends(get_db)):
+@router.api_route(
+    "/{exp}/{firma}/{ruta:path}",
+    methods=["GET", "HEAD"],
+    response_class=FileResponse,
+)
+async def descargar_archivo(
+    exp: int,
+    firma: str,
+    ruta: str,
+    db: AsyncSession = Depends(get_db),
+):
     relativo = ruta_relativa(f"/uploads/{ruta}")
     if relativo is None or not verificar(relativo, exp, firma):
         raise _PROHIBIDO
