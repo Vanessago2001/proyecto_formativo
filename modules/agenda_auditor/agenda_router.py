@@ -291,6 +291,7 @@ async def fechas_disponibles_equipo(
     hasta: date | None = Query(None, description="Por defecto, desde + 90 días (máx. 180)"),
     limite: int = Query(10, ge=1, le=30),
     excluir_programacion: UUID | None = Query(None),
+    desde_hora: time | None = Query(None, description="Hora más temprana de inicio de la visita (por defecto 08:00); se buscan todos los días de la semana"),
     usuario: dict = Depends(_validar_administrador),
     db: AsyncSession = Depends(get_db),
 ):
@@ -304,6 +305,7 @@ async def fechas_disponibles_equipo(
         hasta=hasta,
         limite=limite,
         excluir_programacion=excluir_programacion,
+        desde_hora=desde_hora,
     )
 
 

@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="/static/tema.css?v=20261114a">
     <link
         rel="stylesheet"
-        href="/static/styles.css?v=20261114a"
+        href="/static/styles.css?v=20261118a"
     />
 
     <style>
@@ -546,6 +546,50 @@
             padding: 8px 10px;
         }
 
+        .status-pendiente-activar {
+            background: #fffbeb;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+
+        .activar-auditor-bloque {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .activar-auditor-bloque small {
+            flex-basis: 100%;
+            color: #475569;
+            font-size: 12px;
+        }
+
+        .modal-card label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 0 0 6px;
+            color: #1f2937;
+        }
+
+        .modal-card .modal-check {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            font-weight: 400;
+            margin-top: 12px;
+        }
+
+        .modal-card .modal-check input {
+            margin-top: 3px;
+        }
+
+        .modal-card textarea[aria-invalid="true"] {
+            border-color: #b42318;
+        }
+
         .modal-error {
             color: #b42318;
             font-size: 13px;
@@ -797,8 +841,8 @@
                 Gestionar usuarios
             </a>
 
-            <a href="/asignacion-auditores">
-                Asignación de auditores
+            <a href="/solicitudes">
+                Solicitudes
             </a>
 
             <a
@@ -1210,6 +1254,48 @@
             </button>
         </div>
     </div>
+</div>
+
+<div
+    id="activarModal"
+    class="modal-overlay hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="activarModalTitulo"
+    aria-describedby="activarModalDesc"
+>
+    <form class="modal-card" id="activarForm" novalidate>
+        <h3 id="activarModalTitulo">Activar auditor</h3>
+        <p id="activarModalDesc">
+            La postulación vigente de <strong id="activarModalNombre"></strong> está aprobada, pero su
+            estado de auditor no está activo: todavía no cuenta como auditor aprobado. Al activarlo, su
+            estado de auditor pasa a Activo, queda en el historial de la postulación con su nombre, la
+            fecha y el motivo, y se le envía una notificación.
+        </p>
+        <label for="activarMotivo">Motivo de la activación *</label>
+        <textarea
+            id="activarMotivo"
+            maxlength="1000"
+            required
+            aria-required="true"
+            aria-describedby="activarMotivoAyuda activarModalError"
+            placeholder="Ej.: la postulación se aprobó el 14/10/2026 y el estado de auditor quedó en Postulante por error."
+        ></textarea>
+        <p id="activarMotivoAyuda" style="font-size: 12px; margin: 4px 0 0;">Obligatorio, mínimo 10 caracteres.</p>
+        <label class="modal-check" for="activarConfirmo">
+            <input type="checkbox" id="activarConfirmo" required aria-required="true">
+            <span>Confirmo que revisé la postulación aprobada y quiero activar a este auditor.</span>
+        </label>
+        <p id="activarModalError" class="modal-error" role="alert"></p>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-secundario" id="activarCancelar">
+                Cancelar
+            </button>
+            <button type="submit" class="btn btn-primario" id="activarConfirmar">
+                Activar auditor
+            </button>
+        </div>
+    </form>
 </div>
 
 <div id="toast" class="toast hidden" role="status"></div>
@@ -2428,6 +2514,31 @@
 
             `;
 
+        // Postulación vigente aprobada con el auditor sin activar: el
+        // Banco no deja re-aprobar una postulación final, así que se ofrece
+        // "Activar auditor" (POST /admin/auditores-registrados/{id}/activar).
+        if (data.pendiente_activacion) {
+            document
+                .getElementById("estadoPostulacion")
+                .innerHTML = `
+                    <span class="status-badge status-pendiente-activar">
+                        Aprobado, pendiente de activar
+                    </span>
+                    <div class="activar-auditor-bloque">
+                        <button type="button" class="btn btn-primario btn-sm" id="btnActivarAuditor"
+                            aria-haspopup="dialog">
+                            Activar auditor
+                        </button>
+                        <small>Estado de auditor: ${escapeHtml(data.estado_auditor || "sin dato")}. Aún no cuenta como auditor aprobado.</small>
+                    </div>
+                `;
+            document
+                .getElementById("btnActivarAuditor")
+                .addEventListener("click", (evento) =>
+                    abrirActivacion(data.id_usuario, data.nombre, evento.currentTarget)
+                );
+        }
+
 
         document
             .getElementById(
@@ -2712,6 +2823,139 @@
         });
     }
 
+    /* =====================================================
+       ACTIVAR AUDITOR
+       Postulación vigente aprobada y estado de auditor sin
+       activar. Motivo obligatorio (mínimo 10) y confirmación.
+    ====================================================== */
+
+    const MIN_MOTIVO_ACTIVAR = 10;
+    let activacionEnCurso = null;
+
+    function abrirActivacion(idUsuario, nombre, origen) {
+        const overlay = document.getElementById("activarModal");
+        const motivo = document.getElementById("activarMotivo");
+        activacionEnCurso = { idUsuario, nombre, origen, ejecutando: false };
+        document.getElementById("activarModalNombre").textContent = nombre || "el auditor";
+        motivo.value = "";
+        motivo.removeAttribute("aria-invalid");
+        document.getElementById("activarConfirmo").checked = false;
+        document.getElementById("activarModalError").textContent = "";
+        const confirmar = document.getElementById("activarConfirmar");
+        confirmar.disabled = false;
+        confirmar.textContent = "Activar auditor";
+        document.getElementById("activarCancelar").disabled = false;
+        overlay.classList.remove("hidden");
+        motivo.focus();
+    }
+
+    function cerrarActivacion() {
+        if (!activacionEnCurso || activacionEnCurso.ejecutando) { return; }
+        const origen = activacionEnCurso.origen;
+        document.getElementById("activarModal").classList.add("hidden");
+        activacionEnCurso = null;
+        if (origen && document.body.contains(origen)) { origen.focus(); }
+    }
+
+    async function ejecutarActivacion(evento) {
+        evento.preventDefault();
+        if (!activacionEnCurso || activacionEnCurso.ejecutando) { return; }
+        const motivoEl = document.getElementById("activarMotivo");
+        const confirmoEl = document.getElementById("activarConfirmo");
+        const errorEl = document.getElementById("activarModalError");
+        const confirmar = document.getElementById("activarConfirmar");
+        const cancelar = document.getElementById("activarCancelar");
+        const motivo = motivoEl.value.trim();
+
+        if (motivo.length < MIN_MOTIVO_ACTIVAR) {
+            motivoEl.setAttribute("aria-invalid", "true");
+            errorEl.textContent = `Escriba el motivo de la activación (mínimo ${MIN_MOTIVO_ACTIVAR} caracteres).`;
+            motivoEl.focus();
+            return;
+        }
+        motivoEl.removeAttribute("aria-invalid");
+        if (!confirmoEl.checked) {
+            errorEl.textContent = "Marque la confirmación para activar al auditor.";
+            confirmoEl.focus();
+            return;
+        }
+
+        activacionEnCurso.ejecutando = true;
+        errorEl.textContent = "";
+        confirmar.disabled = true;
+        cancelar.disabled = true;
+        confirmar.textContent = "Activando...";
+        try {
+            const response = await fetch(
+                "/admin/auditores-registrados/" +
+                encodeURIComponent(activacionEnCurso.idUsuario) +
+                "/activar",
+                {
+                    method: "POST",
+                    headers: { ...headers(), "Content-Type": "application/json" },
+                    body: JSON.stringify({ motivo }),
+                }
+            );
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                localStorage.removeItem("access_token");
+                location.href = "/login";
+                return;
+            }
+            if (!response.ok) {
+                let detalle = data.detail;
+                if (Array.isArray(detalle)) {
+                    detalle = detalle.map((item) => item.msg || "").join(" ");
+                }
+                throw new Error(detalle || "No fue posible activar al auditor.");
+            }
+            activacionEnCurso.ejecutando = false;
+            activacionEnCurso.origen = null;
+            cerrarActivacion();
+            mostrarToast("Auditor activado. Su estado de registro ahora es Aprobado.");
+            await cargarSolicitud();
+        } catch (error) {
+            if (activacionEnCurso) { activacionEnCurso.ejecutando = false; }
+            errorEl.textContent = error.message || "No fue posible activar al auditor.";
+            confirmar.disabled = false;
+            cancelar.disabled = false;
+            confirmar.textContent = "Activar auditor";
+        }
+    }
+
+    document.getElementById("activarForm").addEventListener("submit", ejecutarActivacion);
+    // El aviso de error desaparece en cuanto se corrige el dato.
+    document.getElementById("activarMotivo").addEventListener("input", (evento) => {
+        if (evento.target.value.trim().length >= MIN_MOTIVO_ACTIVAR) {
+            evento.target.removeAttribute("aria-invalid");
+            document.getElementById("activarModalError").textContent = "";
+        }
+    });
+    document.getElementById("activarConfirmo").addEventListener("change", (evento) => {
+        if (evento.target.checked) { document.getElementById("activarModalError").textContent = ""; }
+    });
+    document.getElementById("activarCancelar").addEventListener("click", cerrarActivacion);
+    document.getElementById("activarModal").addEventListener("click", (evento) => {
+        if (evento.target === evento.currentTarget) { cerrarActivacion(); }
+    });
+    document.getElementById("activarModal").addEventListener("keydown", (evento) => {
+        if (evento.key === "Escape") { cerrarActivacion(); return; }
+        if (evento.key !== "Tab") { return; }
+        const enfocables = ["activarMotivo", "activarConfirmo", "activarCancelar", "activarConfirmar"]
+            .map((id) => document.getElementById(id))
+            .filter((el) => el && !el.disabled);
+        if (!enfocables.length) { return; }
+        const primero = enfocables[0];
+        const ultimo = enfocables[enfocables.length - 1];
+        if (evento.shiftKey && document.activeElement === primero) {
+            evento.preventDefault();
+            ultimo.focus();
+        } else if (!evento.shiftKey && document.activeElement === ultimo) {
+            evento.preventDefault();
+            primero.focus();
+        }
+    });
+
     function confirmarAprobacion(titulo, descripcion, etiqueta) {
         return new Promise((resolve) => {
             const overlay = document.getElementById("confirmModal");
@@ -2898,9 +3142,9 @@
 </script>
 
 
-<script src="/static/session.js?v=20261117"></script>
+<script src="/static/session.js?v=20261118pub"></script>
 
-<script src="/static/nav.js?v=20261117cat"></script>
+<script src="/static/nav.js?v=20261118sol"></script>
 </body>
 
 </html>

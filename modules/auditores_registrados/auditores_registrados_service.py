@@ -137,6 +137,71 @@ def clasificar_estado_registro(
     }
 
 
+# ----------------------------------------------------------------------
+# ACTIVAR AUDITOR (postulación aprobada, estado de auditor sin activar)
+#
+# Caso real (18/11/2026): la postulación vigente quedó Aprobado pero
+# usuario.estado_auditor quedó en 'Postulante' (un error ya corregido degradaba
+# al auditor al rechazar un documento de una postulación vieja). Sin
+# estado_auditor = 'Activo' no cuenta como auditor aprobado
+# (consultar_acceso_auditor / CTE_AUDITORES) y el Banco no deja re-aprobar una
+# postulación final, así que el Coordinador lo activa con un motivo.
+# ----------------------------------------------------------------------
+
+# Postulación vigente: la más reciente que no está cancelada (mismo orden que
+# consultar_acceso_auditor). Se usa como LEFT JOIN LATERAL con alias "vig".
+SQL_POSTULACION_VIGENTE = """
+    LEFT JOIN LATERAL (
+        SELECT pv.id_postulacion, pv.estado
+        FROM postulacion_auditor pv
+        WHERE pv.id_usuario = u.id_usuario
+          AND LOWER(TRIM(COALESCE(pv.estado, ''))) NOT IN ('cancelado', 'cancelada')
+        ORDER BY pv.fecha_postulacion DESC NULLS LAST,
+                 pv.fecha_revision DESC NULLS LAST
+        LIMIT 1
+    ) vig ON TRUE
+"""
+
+# Permiso delegado que necesita el Auxiliar: es "Aprobar auditor en el
+# sistema" (catálogo de permisos_auxiliar); activar completa esa aprobación.
+PERMISO_ACTIVAR_AUDITOR = "AUD-013"
+
+
+def motivo_no_activable(
+    rol: str | None,
+    estado_usuario: str | None,
+    estado_auditor: str | None,
+    estado_postulacion_vigente: str | None,
+) -> str | None:
+    """None si el auditor se puede activar; si no, el motivo para el 409."""
+    if str(rol or "").strip().lower() != "auditor":
+        return "El usuario no tiene el rol Auditor."
+    if str(estado_usuario or "").strip().lower() != "activo":
+        return (
+            "La cuenta del usuario no está activa. Reactive primero la cuenta "
+            "y luego active al auditor."
+        )
+    if str(estado_postulacion_vigente or "").strip().lower() not in ("aprobado", "aprobada"):
+        vigente = estado_postulacion_vigente or "sin postulación"
+        return (
+            "La postulación vigente del auditor no está aprobada "
+            f"(estado: {vigente}). Apruébela en Banco de auditores."
+        )
+    if str(estado_auditor or "").strip().lower() == "activo":
+        return "El auditor ya está activo."
+    return None
+
+
+def requiere_activacion(
+    rol: str | None,
+    estado_usuario: str | None,
+    estado_auditor: str | None,
+    estado_postulacion_vigente: str | None,
+) -> bool:
+    """True cuando la pantalla debe ofrecer el botón "Activar auditor"."""
+    return motivo_no_activable(rol, estado_usuario, estado_auditor, estado_postulacion_vigente) is None
+
+
 class AuditoresRegistradosService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -181,7 +246,8 @@ class AuditoresRegistradosService:
                 ) AS total_certificaciones,
                 ult.estado AS estado_postulacion,
                 rev.id_postulacion AS id_postulacion,
-                rev.estado AS estado_postulacion_revisar
+                rev.estado AS estado_postulacion_revisar,
+                vig.estado AS estado_postulacion_vigente
             FROM usuario u
             INNER JOIN rol r
                 ON r.id_rol = u.rol_id
@@ -220,6 +286,9 @@ class AuditoresRegistradosService:
                          pa.fecha_revision DESC NULLS LAST
                 LIMIT 1
             ) rev ON TRUE
+            -- Postulación vigente (la más reciente no cancelada): decide si
+            -- se ofrece "Activar auditor".
+        """ + SQL_POSTULACION_VIGENTE + """
             WHERE LOWER(TRIM(r.nombre)) = 'auditor'
         """
         parametros: dict[str, Any] = {}
@@ -248,6 +317,10 @@ class AuditoresRegistradosService:
             auditor.update(clasificar_estado_registro(
                 auditor.get("estado_auditor"), auditor.get("estado_postulacion")
             ))
+            auditor["pendiente_activacion"] = requiere_activacion(
+                "Auditor", auditor.get("estado"), auditor.get("estado_auditor"),
+                auditor.get("estado_postulacion_vigente"),
+            )
             auditores.append(auditor)
         return auditores
 
@@ -287,7 +360,8 @@ class AuditoresRegistradosService:
                         SELECT MIN(pa2.fecha_postulacion)
                         FROM postulacion_auditor pa2
                         WHERE pa2.id_usuario = u.id_usuario
-                    ) AS fecha_primera_postulacion
+                    ) AS fecha_primera_postulacion,
+                    vig.estado AS estado_postulacion_vigente
                 FROM usuario u
                 INNER JOIN rol r
                     ON r.id_rol = u.rol_id
@@ -328,6 +402,7 @@ class AuditoresRegistradosService:
                         ) DESC NULLS LAST
                     LIMIT 1
                 ) pa ON TRUE
+                """ + SQL_POSTULACION_VIGENTE + """
                 WHERE LOWER(TRIM(r.nombre)) = 'auditor'
                   AND u.id_usuario = :id_usuario
                 LIMIT 1
@@ -344,6 +419,13 @@ class AuditoresRegistradosService:
 
         detalle = dict(auditor)
         detalle.update(_info_archivo(detalle.get("foto_url")))
+        detalle.update(clasificar_estado_registro(
+            detalle.get("estado_auditor"), detalle.get("estado_postulacion")
+        ))
+        detalle["pendiente_activacion"] = requiere_activacion(
+            detalle.get("rol"), detalle.get("estado"), detalle.get("estado_auditor"),
+            detalle.get("estado_postulacion_vigente"),
+        )
 
         detalle["documentos"] = await self._documentos(id_usuario)
         detalle["conflictos"] = await self._conflictos(id_usuario)
@@ -688,6 +770,170 @@ class AuditoresRegistradosService:
             "en_curso": [],
             "terminales": [],
             "sin_programacion": [],
+        }
+
+    async def activar_auditor(
+        self,
+        id_usuario: UUID,
+        motivo: str,
+        id_usuario_actor: UUID,
+    ) -> dict[str, Any]:
+        """Pone usuario.estado_auditor = 'Activo' si la postulación vigente está aprobada.
+
+        Reglas (409 con el motivo si no se cumplen): rol Auditor, cuenta
+        'Activo', postulación vigente (la más reciente no cancelada) Aprobado
+        o Aprobada y estado de auditor distinto de 'Activo'. Deja el motivo
+        en historial_postulacion_auditor y notifica al auditor.
+        """
+        motivo = (motivo or "").strip()
+        resultado = await self.db.execute(
+            text(
+                """
+                SELECT
+                    u.id_usuario,
+                    u.nombre,
+                    u.estado,
+                    u.estado_auditor,
+                    r.nombre AS rol,
+                    vig.id_postulacion AS id_postulacion_vigente,
+                    vig.estado AS estado_postulacion_vigente
+                FROM usuario u
+                LEFT JOIN rol r
+                    ON r.id_rol = u.rol_id
+                """ + SQL_POSTULACION_VIGENTE + """
+                WHERE u.id_usuario = :id_usuario
+                LIMIT 1
+                FOR UPDATE OF u
+                """
+            ),
+            {"id_usuario": id_usuario},
+        )
+        auditor = resultado.mappings().first()
+        if auditor is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado.",
+            )
+
+        motivo_rechazo = motivo_no_activable(
+            auditor["rol"],
+            auditor["estado"],
+            auditor["estado_auditor"],
+            auditor["estado_postulacion_vigente"],
+        )
+        if motivo_rechazo:
+            await self.db.rollback()
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=motivo_rechazo)
+
+        estado_auditor_anterior = auditor["estado_auditor"] or "sin dato"
+        actualizado = await self.db.execute(
+            text(
+                """
+                UPDATE usuario
+                SET estado_auditor = 'Activo'
+                WHERE id_usuario = :id_usuario
+                  AND estado_auditor IS DISTINCT FROM 'Activo'
+                RETURNING id_usuario
+                """
+            ),
+            {"id_usuario": id_usuario},
+        )
+        if actualizado.mappings().first() is None:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El auditor ya está activo.",
+            )
+
+        # Historial de la postulación vigente: la postulación sigue Aprobado;
+        # lo que cambia es el estado del auditor, y eso queda en la observación
+        # junto con quién (id_usuario_administrador), cuándo y el motivo.
+        estado_postulacion = auditor["estado_postulacion_vigente"]
+        await self.db.execute(
+            text(
+                """
+                INSERT INTO historial_postulacion_auditor (
+                    id_historial,
+                    id_postulacion,
+                    id_usuario_auditor,
+                    id_usuario_administrador,
+                    estado_anterior,
+                    estado_nuevo,
+                    observaciones,
+                    fecha_cambio
+                )
+                VALUES (
+                    gen_random_uuid(),
+                    :id_postulacion,
+                    :id_usuario_auditor,
+                    :id_usuario_administrador,
+                    :estado_anterior,
+                    :estado_nuevo,
+                    :observaciones,
+                    CURRENT_TIMESTAMP
+                )
+                """
+            ),
+            {
+                "id_postulacion": auditor["id_postulacion_vigente"],
+                "id_usuario_auditor": id_usuario,
+                "id_usuario_administrador": id_usuario_actor,
+                "estado_anterior": estado_postulacion,
+                "estado_nuevo": estado_postulacion,
+                "observaciones": (
+                    f"Activación del auditor (estado de auditor: {estado_auditor_anterior} -> Activo). "
+                    f"Motivo: {motivo}"
+                ),
+            },
+        )
+
+        # Notificación al auditor, como las aprobaciones del Banco
+        # (notificacion.mensaje es VARCHAR(255)).
+        mensaje = (
+            "Su registro como auditor quedó activo: ya puede consultar y gestionar "
+            f"sus visitas asignadas. Observaciones del coordinador: {motivo}"
+        )
+        if len(mensaje) > 255:
+            mensaje = mensaje[:252].rstrip() + "..."
+        await self.db.execute(
+            text(
+                """
+                INSERT INTO notificacion (
+                    id_notificacion,
+                    id_usuario,
+                    asunto,
+                    mensaje,
+                    estado,
+                    fecha_envio
+                )
+                VALUES (
+                    gen_random_uuid(),
+                    :id_usuario,
+                    :asunto,
+                    :mensaje,
+                    'Pendiente',
+                    CURRENT_DATE
+                )
+                """
+            ),
+            {
+                "id_usuario": id_usuario,
+                "asunto": "Auditor activado",
+                "mensaje": mensaje,
+            },
+        )
+        await self.db.commit()
+
+        return {
+            "mensaje": "Auditor activado correctamente.",
+            "id_usuario": auditor["id_usuario"],
+            "nombre": auditor["nombre"],
+            "estado_auditor_anterior": auditor["estado_auditor"],
+            "estado_auditor": "Activo",
+            "id_postulacion": auditor["id_postulacion_vigente"],
+            "estado_postulacion": estado_postulacion,
+            "estado_registro": "Aprobado",
+            "notificacion_creada": True,
         }
 
     async def previsualizar_desactivacion(self, id_usuario: UUID) -> dict[str, Any]:

@@ -80,7 +80,6 @@ async def buscar_candidatos(
     norma: bool = Query(default=True, description="SOL-042 · exigir competencia en la norma"),
     sector_iaf: Optional[str] = Query(default=None, description="SOL-043 · sector IAF"),
     ciudad: Optional[str] = Query(default=None, description="SOL-044 · ciudad del auditor"),
-    solo_disponibles: bool = Query(default=False, description="SOL-045 · con disponibilidad registrada"),
     excluir_conflictos: bool = Query(default=True, description="SOL-046 · descartar conflictos de interés"),
     usuario: dict = Depends(requiere_permiso("SOL-041")),
     db: AsyncSession = Depends(get_db),
@@ -92,7 +91,6 @@ async def buscar_candidatos(
         filtrar_por_norma=norma,
         sector_iaf=sector_iaf,
         ciudad=ciudad,
-        solo_disponibles=solo_disponibles,
         excluir_conflictos=excluir_conflictos,
     )
 

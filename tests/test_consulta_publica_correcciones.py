@@ -88,7 +88,7 @@ def _fila_documento(**cambios):
     fila = {
         "id_solicitud": "s-1", "numero_radicado": "RAD-2026-001", "estado_tramite": "Aprobada",
         "fecha_tramite": date(2026, 1, 1), "fecha_radicacion": date(2026, 1, 1),
-        "alcance_certificacion": "ISO 9001", "id_empresa": EMPRESA_ACTIVA["id_empresa"],
+        "id_empresa": EMPRESA_ACTIVA["id_empresa"],
         "empresa": EMPRESA_ACTIVA["nombre"], "nit": EMPRESA_ACTIVA["nit"], "ciudad": "Manizales",
         "estado_empresa": "Activa", "norma_codigo": "NTC", "norma_nombre": "ISO 9001",
         "norma_version": "2015", "codigo_verificacion": "CERT-2026-0001", "cert_estado": "VIGENTE",
@@ -175,7 +175,7 @@ async def test_validar_un_certificado_de_empresa_inactiva_lo_dice(db, cliente):
         "codigo_verificacion": "CERT-2026-0001", "cert_estado": "VIGENTE",
         "cert_emision": date(2026, 1, 1), "cert_vence": date(2099, 1, 1),
         "numero_radicado": "RAD-1", "estado_tramite": "Aprobada", "fecha_radicacion": None,
-        "alcance_certificacion": None, "empresa": "Empresa Cerrada", "nit": "900123456-7",
+        "empresa": "Empresa Cerrada", "nit": "900123456-7",
         "ciudad": None, "estado_empresa": "Inactiva", "norma_codigo": None,
         "norma_nombre": None, "norma_version": None,
     })]

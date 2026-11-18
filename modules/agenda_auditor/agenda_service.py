@@ -24,7 +24,13 @@ from modules.asignacion_auditores.asignacion_service import (
     CTE_AUDITORES,
     ESTADOS_ASIGNACION_ACTIVOS,
 )
-from modules.agenda_auditor.fechas_disponibles import motivo_no_disponible, sugerir_fechas
+from modules.agenda_auditor.fechas_disponibles import (
+    bloqueo_en_franja,
+    mensaje_bloqueo,
+    mensaje_cruce,
+    registros_bloqueo,
+    sugerir_fechas,
+)
 
 
 def _filtros_ubicacion_visita(
@@ -318,10 +324,11 @@ class AgendaAuditorService(AuditorService):
         inicio_consulta = datetime.combine(fecha, hora_inicio or time.min) if fecha else None
         fin_consulta = datetime.combine(fecha, hora_fin or time.max) if fecha else None
 
-        # Validaciones de agenda aplicadas en bloque (disponibilidad y cruces).
+        # Validaciones de agenda aplicadas en bloque con la regla única
+        # (bloqueos y cruces; la disponibilidad declarada no restringe).
         ids = [str(fila["id_usuario"]) for fila in candidatos]
-        con_disponibilidad = await self._ids_con_disponibilidad(
-            ids, fecha, hora_inicio, hora_fin
+        bloqueados = await self._ids_bloqueados(
+            ids, inicio_consulta, fin_consulta
         ) if fecha is not None and ids else set()
         con_cruce = await self._ids_con_cruce(
             ids, inicio_consulta, fin_consulta
@@ -335,7 +342,7 @@ class AgendaAuditorService(AuditorService):
             conflicto_interes = bool(fila["conflicto_interes"])
             ya_asignado = bool(fila["ya_asignado"])
             ya_en_sede = bool(fila.get("ya_en_sede"))
-            disponible = None if fecha is None else (id_usuario in con_disponibilidad)
+            disponible = None if fecha is None else (id_usuario not in bloqueados)
             cruce = con_cruce.get(id_usuario) if fecha is not None else None
 
             # Solo se ofrecen los auditores que pueden asignarse a la sede.
@@ -393,73 +400,20 @@ class AgendaAuditorService(AuditorService):
             "total_no_disponibles": no_disponibles,
         }
 
-    async def _ids_con_disponibilidad(
+    async def _ids_bloqueados(
         self,
         ids: list[str],
-        fecha: date,
-        hora_inicio: time | None,
-        hora_fin: time | None,
+        inicio: datetime,
+        fin: datetime,
     ) -> set[str]:
-        """Auditores (del conjunto indicado) con disponibilidad activa para la fecha/hora."""
+        """Auditores (del conjunto indicado) con un bloqueo que toca la franja.
+
+        Misma regla que `verificar_franja_auditor` (fechas_disponibles.
+        bloqueo_en_franja), aplicada en bloque."""
         if not ids:
             return set()
-        dia_es = [
-            "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"
-        ][fecha.weekday()]
-        dia_numero = {
-            "lunes": 1, "martes": 2, "miercoles": 3, "jueves": 4,
-            "viernes": 5, "sabado": 6, "domingo": 7,
-        }[normalizar_dia(dia_es)]
-        tiene_horas = await self._tabla_tiene_columna("disponibilidad_auditor", "hora_inicio")
-        disp_time_clause = (
-            "AND (da.hora_inicio IS NULL OR da.hora_fin IS NULL "
-            "OR (da.hora_inicio <= :hora_inicio AND da.hora_fin >= :hora_fin))"
-            if tiene_horas else ""
-        )
-        bloqueo_time_clause = (
-            "AND (nd.hora_inicio IS NULL OR nd.hora_fin IS NULL "
-            "OR (nd.hora_inicio < :hora_fin AND nd.hora_fin > :hora_inicio))"
-            if tiene_horas else ""
-        )
-        params = {
-            "ids": ids,
-            "fecha": fecha,
-            "dia_numero": dia_numero,
-        }
-        if tiene_horas:
-            params["hora_inicio"] = hora_inicio or time.min
-            params["hora_fin"] = hora_fin or time.max
-        result = await self.db.execute(text(f"""
-            SELECT DISTINCT da.id_usuario
-            FROM disponibilidad_auditor da
-            WHERE da.id_usuario = ANY(CAST(:ids AS UUID[]))
-              AND UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')
-              AND CAST(da.fecha_inicio AS DATE) <= :fecha
-              AND (da.fecha_fin IS NULL OR CAST(da.fecha_fin AS DATE) >= :fecha)
-              AND (
-                  da.dia_semana IS NULL
-                  -- La disponibilidad extraordinaria cubre todo su rango de fechas;
-                  -- su dia_semana es solo el del primer día y no debe filtrar.
-                  OR LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN ('disponibilidad extra', 'disponibilidad_extra')
-                  OR da.dia_semana = :dia_numero
-                  OR (:dia_numero = 7 AND da.dia_semana = 0)
-              )
-              AND LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN
-                  ('disponible', 'disponibilidad', 'horario disponible', 'availability', 'semanal', 'horario semanal', 'disponibilidad extra', 'disponibilidad_extra')
-              {disp_time_clause}
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM disponibilidad_auditor nd
-                  WHERE nd.id_usuario = da.id_usuario
-                    AND UPPER(TRIM(COALESCE(nd.estado, ''))) IN ('ACTIVO', 'ACTIVA')
-                    AND LOWER(TRIM(COALESCE(nd.tipo_registro, ''))) IN
-                        ('no disponible', 'no_disponible', 'indisponible', 'bloqueo', 'bloqueo fecha')
-                    AND CAST(nd.fecha_inicio AS DATE) <= :fecha
-                    AND (nd.fecha_fin IS NULL OR CAST(nd.fecha_fin AS DATE) >= :fecha)
-                    {bloqueo_time_clause}
-              )
-        """), params)
-        return {str(fila["id_usuario"]) for fila in result.mappings().all()}
+        registros = await registros_bloqueo(self.db, ids, inicio.date(), fin.date())
+        return {i for i in ids if bloqueo_en_franja(registros.get(i, []), inicio, fin)}
 
     async def _ids_con_cruce(
         self,
@@ -949,37 +903,21 @@ class AgendaAuditorService(AuditorService):
         ).strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
             return {"disponible": False, "motivo": "El auditor no está activo/aprobado."}
 
-        # Primero el choque con otra auditoría: un hueco ocupado nunca se
-        # ofrece como libre, aunque el auditor haya declarado disponibilidad.
-        cruce = await self._buscar_cruce(id_usuario, hora_inicio, hora_fin, excluir_programacion)
-        if cruce:
-            return {
-                "disponible": False,
-                "ocupado": True,
-                "motivo": "Ocupado: " + self._describir_cruce("El auditor", cruce),
-                "conflicto": cruce,
-            }
-
-        tiene_disponibilidad = await self._tiene_disponibilidad_fecha(
-            id_usuario, fecha, hora_inicio.time(), hora_fin.time()
+        # Regla única: solo bloqueos y visitas que se crucen hacen que no esté
+        # disponible (la disponibilidad declarada no restringe).
+        nombre = (auditor.get("nombre") if hasattr(auditor, "get") else None) or "El auditor"
+        problema = await self.verificar_franja_auditor(
+            id_usuario, hora_inicio, hora_fin, excluir_programacion, nombre
         )
-        if not tiene_disponibilidad:
-            # Dice por qué (vigencia vencida, día no declarado, horas, bloqueo...).
-            nombre = (auditor.get("nombre") if hasattr(auditor, "get") else None) or "El auditor"
-            motivo = await motivo_no_disponible(
-                self.db, id_usuario, fecha, hora_inicio.time(), hora_fin.time(), nombre
-            )
-            return {
-                "disponible": False,
-                "motivo": motivo or "El auditor no tiene un intervalo de disponibilidad que cubra la fecha y las horas indicadas, o registró ese día como no disponible.",
-            }
-        return {"disponible": True, "motivo": "El auditor está disponible en el intervalo."}
+        if problema:
+            return {"disponible": False, **problema}
+        return {"disponible": True, "motivo": f"{nombre} está disponible en el intervalo (sin bloqueos ni otras visitas)."}
 
     async def sugerir_fechas_disponibles(self, auditores: list, **opciones) -> dict:
         """Próximas franjas libres para todo el equipo (ver fechas_disponibles.py).
 
-        Cada opción se confirma con `_tiene_disponibilidad_fecha` y
-        `_buscar_cruce`, las mismas validaciones de `crear_programacion`.
+        Cada opción se confirma con `verificar_franja_auditor`, la misma
+        validación de `crear_programacion`.
         """
         return await sugerir_fechas(self, auditores, **opciones)
 
@@ -1009,72 +947,55 @@ class AgendaAuditorService(AuditorService):
     async def _programacion_tiene_columna(self, columna: str) -> bool:
         return await self._tabla_tiene_columna("programacion_visita", columna)
 
-    async def _tiene_disponibilidad_fecha(
+    async def _bloqueo_en_franja(
         self,
         id_usuario: UUID,
-        fecha: date,
-        hora_inicio: time | None = None,
-        hora_fin: time | None = None,
-    ) -> bool:
-        """Verifica disponibilidad activa para el día y, si existen las columnas, sus horas."""
-        dia_es = [
-            "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"
-        ][fecha.weekday()]
-        dia_normalizado = normalizar_dia(dia_es)
-        dia_numero = {
-            "lunes": 1, "martes": 2, "miercoles": 3, "jueves": 4,
-            "viernes": 5, "sabado": 6, "domingo": 7,
-        }[dia_normalizado]
-        hora_inicio_consulta = hora_inicio or time.min
-        hora_fin_consulta = hora_fin or time.max
+        inicio: datetime,
+        fin: datetime,
+    ) -> tuple[date, dict] | None:
+        """Primer bloqueo activo del auditor que toca la franja (o None)."""
+        registros = await registros_bloqueo(self.db, [str(id_usuario)], inicio.date(), fin.date())
+        return bloqueo_en_franja(registros.get(str(id_usuario), []), inicio, fin)
 
-        tiene_horas = await self._tabla_tiene_columna("disponibilidad_auditor", "hora_inicio")
+    async def verificar_franja_auditor(
+        self,
+        id_usuario: UUID,
+        inicio: datetime,
+        fin: datetime,
+        excluir_programacion: UUID | None = None,
+        nombre: str | None = None,
+    ) -> dict | None:
+        """REGLA ÚNICA de disponibilidad para programar (18/11/2026).
 
-        disp_time_clause = "AND (da.hora_inicio IS NULL OR da.hora_fin IS NULL OR (da.hora_inicio <= :hora_inicio AND da.hora_fin >= :hora_fin))" if tiene_horas else ""
-        bloqueo_time_clause = "AND (nd.hora_inicio IS NULL OR nd.hora_fin IS NULL OR (nd.hora_inicio < :hora_fin AND nd.hora_fin > :hora_inicio))" if tiene_horas else ""
+        El auditor está disponible en la franja salvo que (a) tenga un bloqueo
+        activo que la toque o (b) ya tenga otra visita no cancelada ni
+        finalizada que se cruce. La disponibilidad declarada (semanal o
+        extraordinaria) NO restringe. El estado activo/aprobado del auditor
+        lo valida cada llamador.
 
-        sql = f"""
-            SELECT EXISTS (
-                SELECT 1
-                FROM disponibilidad_auditor da
-                WHERE da.id_usuario = :id_usuario
-                  AND UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')
-                  AND CAST(da.fecha_inicio AS DATE) <= :fecha
-                  AND (da.fecha_fin IS NULL OR CAST(da.fecha_fin AS DATE) >= :fecha)
-                  AND (
-                      da.dia_semana IS NULL
-                      -- La disponibilidad extraordinaria cubre todo su rango de fechas;
-                      -- su dia_semana es solo el del primer día y no debe filtrar.
-                      OR LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN ('disponibilidad extra', 'disponibilidad_extra')
-                      OR da.dia_semana = :dia_numero
-                      OR (:dia_numero = 7 AND da.dia_semana = 0)
-                  )
-                  AND LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN
-                      ('disponible', 'disponibilidad', 'horario disponible', 'availability', 'semanal', 'horario semanal', 'disponibilidad extra', 'disponibilidad_extra')
-                  {disp_time_clause}
-            )
-            AND NOT EXISTS (
-                SELECT 1
-                FROM disponibilidad_auditor nd
-                WHERE nd.id_usuario = :id_usuario
-                  AND UPPER(TRIM(COALESCE(nd.estado, ''))) IN ('ACTIVO', 'ACTIVA')
-                  AND LOWER(TRIM(COALESCE(nd.tipo_registro, ''))) IN
-                      ('no disponible', 'no_disponible', 'indisponible', 'bloqueo', 'bloqueo fecha')
-                  AND CAST(nd.fecha_inicio AS DATE) <= :fecha
-                  AND (nd.fecha_fin IS NULL OR CAST(nd.fecha_fin AS DATE) >= :fecha)
-                  {bloqueo_time_clause}
-            )
+        Devuelve None si está disponible; si no, un dict con ``motivo``
+        (texto listo para mostrar) y ``bloqueado`` u ``ocupado``.
         """
-        params = {
-            "id_usuario": str(id_usuario),
-            "fecha": fecha,
-            "dia_numero": dia_numero,
-        }
-        if tiene_horas:
-            params["hora_inicio"] = hora_inicio_consulta
-            params["hora_fin"] = hora_fin_consulta
-        result = await self.db.execute(text(sql), params)
-        return bool(result.scalar())
+        nombre = nombre or "El auditor"
+        bloqueo = await self._bloqueo_en_franja(id_usuario, inicio, fin)
+        if bloqueo:
+            fecha, registro = bloqueo
+            return {
+                "bloqueado": True,
+                "ocupado": False,
+                "fecha": fecha.isoformat(),
+                "motivo": mensaje_bloqueo(nombre, fecha, registro),
+                "motivo_bloqueo": registro.get("motivo"),
+            }
+        cruce = await self._buscar_cruce(id_usuario, inicio, fin, excluir_programacion)
+        if cruce:
+            return {
+                "bloqueado": False,
+                "ocupado": True,
+                "motivo": mensaje_cruce(nombre, cruce),
+                "conflicto": cruce,
+            }
+        return None
 
     async def _validar_sede_disponible(
         self,
@@ -1141,7 +1062,8 @@ class AgendaAuditorService(AuditorService):
                     p.fecha_fin,
                     p.estado,
                     e.direccion AS direccion_servicio,
-                    e.nombre AS empresa_nombre
+                    e.nombre AS empresa_nombre,
+                    s.numero_radicado
                 FROM detalle_programacion_auditor d
                 INNER JOIN programacion_visita p
                     ON p.id_programacion = d.id_programacion
@@ -1167,23 +1089,6 @@ class AgendaAuditorService(AuditorService):
         )
         row = result.mappings().first()
         return dict(row) if row else None
-
-    @staticmethod
-    def _describir_cruce(nombre_auditor: str, cruce: dict) -> str:
-        """Texto del choque: quién, cuándo y con qué empresa."""
-        inicio, fin = cruce.get("fecha_inicio"), cruce.get("fecha_fin")
-        cuando = ""
-        if isinstance(inicio, datetime) and isinstance(fin, datetime):
-            if inicio.date() == fin.date():
-                cuando = f" el {inicio.strftime('%d/%m/%Y')} de {inicio.strftime('%H:%M')} a {fin.strftime('%H:%M')}"
-            else:
-                cuando = f" del {inicio.strftime('%d/%m/%Y %H:%M')} al {fin.strftime('%d/%m/%Y %H:%M')}"
-        empresa = cruce.get("empresa_nombre")
-        return (
-            f"{nombre_auditor} ya tiene otra auditoría{cuando}"
-            + (f" ({empresa})" if empresa else "")
-            + " que se cruza con el horario elegido."
-        )
 
     async def _registrar_asignacion_auditor(
         self,
@@ -1302,29 +1207,14 @@ class AgendaAuditorService(AuditorService):
                     )
                     asignacion = {"especialidad": rol_solicitado, "estado_asignacion": "Agendada"}
 
-                tiene_disponibilidad = await self._tiene_disponibilidad_fecha(
-                    id_usuario, fecha_programacion, data.fecha_inicio.time(), data.fecha_fin.time()
+                # Regla única: bloqueos y visitas que se crucen.
+                problema = await self.verificar_franja_auditor(
+                    id_usuario, data.fecha_inicio, data.fecha_fin, None, nombre_auditor
                 )
-                if not tiene_disponibilidad:
-                    motivo = await motivo_no_disponible(
-                        self.db, id_usuario, fecha_programacion,
-                        data.fecha_inicio.time(), data.fecha_fin.time(), nombre_auditor,
-                    )
+                if problema:
                     raise HTTPException(
                         status_code=409,
-                        detail=(
-                            f"No se puede programar: {nombre_auditor} no tiene disponibilidad el "
-                            f"{data.fecha_inicio.strftime('%d/%m/%Y')} de {data.fecha_inicio.strftime('%H:%M')} "
-                            f"a {data.fecha_fin.strftime('%H:%M')}"
-                            + (f". {motivo}" if motivo else " (fuera de su horario o día bloqueado).")
-                        ),
-                    )
-
-                cruce = await self._buscar_cruce(id_usuario, data.fecha_inicio, data.fecha_fin)
-                if cruce:
-                    raise HTTPException(
-                        status_code=409,
-                        detail=f"No se puede programar: {self._describir_cruce(nombre_auditor, cruce)}",
+                        detail=f"No se puede programar: {problema['motivo']}",
                     )
 
                 rol_final = rol_solicitado or (asignacion.get("especialidad") if isinstance(asignacion, dict) else asignacion["especialidad"]) or "Auditor"
@@ -2309,9 +2199,10 @@ class AgendaAuditorService(AuditorService):
         calendario repetía la visita) con el equipo completo, la sede, la
         empresa y las observaciones; y por cada día del mes los
         ``id_programacion`` que lo cubren. Con ``id_usuario`` se limita a ese
-        auditor y cada día trae su disponibilidad declarada y sus bloqueos;
-        sin él, cada día trae cuántos auditores declararon disponibilidad y
-        cuántos bloquearon la fecha. Ciudad y modalidad se comparan sin
+        auditor y cada día trae sus bloqueos, su disponibilidad declarada
+        (informativa) y ``disponible`` (sin bloqueos ni visitas); sin él, cada
+        día trae cuántos auditores activos están libres (sin bloqueo ni
+        visita) y cuántos bloquearon la fecha. Ciudad y modalidad se comparan sin
         distinguir mayúsculas ni tildes.
         """
         if mes < 1 or mes > 12:
@@ -2427,6 +2318,36 @@ class AgendaAuditorService(AuditorService):
             auditorias.append(item)
 
         # ------------------------------------------------ calendario por día
+        # Ocupación real por día y auditor (sin filtros de ubicación y sin
+        # canceladas ni finalizadas): con la regla única, un día sin bloqueos
+        # ni visitas cuenta como disponible aunque no haya nada declarado.
+        terminales = {"CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO"}
+        ocupados_dia: dict[str, set[str]] = {}
+        for item in por_programacion.values():
+            if str(item.get("estado_programacion") or "").strip().upper() in terminales:
+                continue
+            inicio = item.get("fecha_inicio")
+            if not isinstance(inicio, datetime):
+                continue
+            fin = item.get("fecha_fin")
+            fin = fin.date() if isinstance(fin, datetime) else inicio.date()
+            dia_actual = max(inicio.date(), primer_dia)
+            while dia_actual <= min(fin, ultimo_dia):
+                ocupados_dia.setdefault(dia_actual.isoformat(), set()).update(
+                    str(e["id_usuario"]) for e in item["equipo"]
+                )
+                dia_actual += timedelta(days=1)
+        activos: dict[str, str] = {}
+        if not id_usuario:
+            result_activos = await self.db.execute(text("""
+                SELECT u.id_usuario, u.nombre
+                FROM usuario u
+                WHERE UPPER(TRIM(COALESCE(u.estado, ''))) = 'ACTIVO'
+                  AND UPPER(TRIM(COALESCE(u.estado_auditor, ''))) IN ('ACTIVO', 'APROBADO', 'APROBADA')
+                ORDER BY u.nombre
+            """))
+            activos = {str(f["id_usuario"]): f.get("nombre") or "" for f in result_activos.mappings().all()}
+
         # Una visita de varios días ocupa cada día entre su inicio y su fin
         # (recortado al mes consultado).
         por_dia_aud: dict[str, list[str]] = {}
@@ -2465,22 +2386,29 @@ class AgendaAuditorService(AuditorService):
                     declarados.append(registro)
             ids_aud = por_dia_aud.get(iso, [])
             dia = {"fecha": iso, "dia_semana": dia_nombre, "auditorias": ids_aud, "ocupado": bool(ids_aud)}
+            ocupados = ocupados_dia.get(iso, set())
             if id_usuario:
-                # Igual que la vista del propio auditor: el bloqueo manda.
+                # Igual que la vista del propio auditor: el bloqueo manda. La
+                # disponibilidad declarada es solo informativa.
                 dia.update({
                     "disponibilidad": bloqueos or declarados,
                     "bloqueado": bool(bloqueos),
                     "declarado": bool(declarados) and not bloqueos,
+                    "disponible": not bloqueos and str(id_usuario) not in ocupados,
                 })
             else:
                 bloqueados = {str(r["id_usuario"]) for r in bloqueos}
-                disponibles = {str(r["id_usuario"]) for r in declarados} - bloqueados
+                # Regla única: todo auditor activo y aprobado sin bloqueo ni
+                # visita ese día cuenta como disponible.
+                disponibles = set(activos) - bloqueados - ocupados
                 dia.update({
                     "auditores_disponibles": len(disponibles),
                     "auditores_bloqueados": len(bloqueados),
+                    "auditores_ocupados": len(ocupados & set(activos)),
                     "nombres_bloqueados": sorted({r.get("auditor_nombre") or "" for r in bloqueos} - {""}),
                     # Detalle para el modal del día (el Coordinador ve todo).
-                    "nombres_disponibles": sorted({
+                    "nombres_disponibles": sorted({activos[i] for i in disponibles} - {""}),
+                    "nombres_con_declaracion": sorted({
                         r.get("auditor_nombre") or "" for r in declarados
                         if str(r["id_usuario"]) in disponibles
                     } - {""}),
@@ -2567,8 +2495,8 @@ class AgendaAuditorService(AuditorService):
                 and str(item.get("estado") or "").strip().upper()
                 not in ("CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO")
             ]
-            # Un día con auditoría queda ocupado aunque el auditor haya
-            # declarado disponibilidad en él: nunca se trata como libre.
+            # Regla única: el día está disponible si no tiene bloqueos ni
+            # visitas, aunque el auditor no haya declarado disponibilidad.
             dias.append({
                 "fecha": fecha_actual.isoformat(),
                 "dia_semana": dia_nombre,
@@ -2577,6 +2505,7 @@ class AgendaAuditorService(AuditorService):
                 "bloqueado": bool(bloqueos),
                 "ocupado": bool(auditorias_dia),
                 "declarado": bool(aplican) and not bloqueos,
+                "disponible": not bloqueos and not auditorias_dia,
             })
         return {
             "id_usuario": id_usuario,
@@ -2660,7 +2589,7 @@ class AgendaAuditorService(AuditorService):
             auditor_result = await self.db.execute(
                 text(
                     """
-                    SELECT id_usuario, estado, estado_auditor
+                    SELECT id_usuario, nombre, estado, estado_auditor
                     FROM usuario
                     WHERE id_usuario = :id_usuario
                     FOR UPDATE
@@ -2719,19 +2648,11 @@ class AgendaAuditorService(AuditorService):
 
             inicio = programacion["fecha_inicio"]
             fin = programacion["fecha_fin"]
-            if not await self._tiene_disponibilidad_fecha(
-                id_usuario, inicio.date(), inicio.time(), fin.time()
-            ):
-                raise HTTPException(
-                    status_code=409,
-                    detail="El auditor no tiene disponibilidad activa para la fecha de la visita.",
-                )
-            cruce = await self._buscar_cruce(id_usuario, inicio, fin, id_programacion)
-            if cruce:
-                raise HTTPException(
-                    status_code=409,
-                    detail="El nuevo auditor tiene otra auditoria en ese horario.",
-                )
+            problema = await self.verificar_franja_auditor(
+                id_usuario, inicio, fin, id_programacion, auditor.get("nombre") or "El auditor"
+            )
+            if problema:
+                raise HTTPException(status_code=409, detail=f"No se puede agregar: {problema['motivo']}")
 
             asignacion_result = await self.db.execute(
                 text(
@@ -3314,9 +3235,10 @@ class AgendaAuditorService(AuditorService):
             auditores = [UUID(str(row[0])) for row in detalles.all()]
             if not auditores:
                 raise HTTPException(status_code=404, detail="No se encontró la programación ni sus auditores.")
+            nombres: dict = {}
             for auditor_id in sorted(auditores, key=str):
                 estado_result = await self.db.execute(text("""
-                    SELECT estado, estado_auditor
+                    SELECT estado, estado_auditor, nombre
                     FROM usuario
                     WHERE id_usuario = :id_usuario
                     FOR UPDATE
@@ -3326,12 +3248,14 @@ class AgendaAuditorService(AuditorService):
                     estado_row["estado_auditor"] or ""
                 ).strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
                     raise HTTPException(status_code=409, detail="Uno de los auditores está desactivado o no aprobado.")
+                nombres[auditor_id] = estado_row.get("nombre") or "El auditor"
             for auditor_id in auditores:
-                cruce = await self._buscar_cruce(auditor_id, fecha_inicio, fecha_fin, id_programacion)
-                if cruce:
-                    raise HTTPException(status_code=409, detail="El nuevo horario se cruza con otra auditoría del auditor.")
-                if not await self._tiene_disponibilidad_fecha(auditor_id, fecha_inicio.date(), fecha_inicio.time(), fecha_fin.time()):
-                    raise HTTPException(status_code=409, detail="Uno de los auditores no está disponible en la nueva fecha.")
+                # Regla única: bloqueos y visitas que se crucen (sin contar esta).
+                problema = await self.verificar_franja_auditor(
+                    auditor_id, fecha_inicio, fecha_fin, id_programacion, nombres.get(auditor_id)
+                )
+                if problema:
+                    raise HTTPException(status_code=409, detail=f"No se puede reprogramar: {problema['motivo']}")
             result = await self.db.execute(text("""
                 UPDATE programacion_visita
                 SET fecha_inicio = :fecha_inicio,
@@ -3413,7 +3337,7 @@ class AgendaAuditorService(AuditorService):
 
                 for auditor_id in auditores:
                     auditor_estado = await self.db.execute(text("""
-                        SELECT estado, estado_auditor
+                        SELECT estado, estado_auditor, nombre
                         FROM usuario
                         WHERE id_usuario = :id_usuario
                     """), {"id_usuario": str(auditor_id)})
@@ -3422,11 +3346,13 @@ class AgendaAuditorService(AuditorService):
                         estado_row["estado_auditor"] or ""
                     ).strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
                         raise HTTPException(status_code=409, detail="Uno de los auditores está desactivado o no aprobado.")
-                    if not await self._tiene_disponibilidad_fecha(auditor_id, inicio_nuevo.date(), inicio_nuevo.time(), fin_nuevo.time()):
-                        raise HTTPException(status_code=409, detail="Uno de los auditores no está disponible en la nueva fecha.")
-                    cruce = await self._buscar_cruce(auditor_id, inicio_nuevo, fin_nuevo, id_programacion)
-                    if cruce:
-                        raise HTTPException(status_code=409, detail="El nuevo horario se cruza con otra auditoría del auditor.")
+                    # Regla única: bloqueos y visitas que se crucen (sin contar esta).
+                    problema = await self.verificar_franja_auditor(
+                        auditor_id, inicio_nuevo, fin_nuevo, id_programacion,
+                        estado_row.get("nombre") or "El auditor",
+                    )
+                    if problema:
+                        raise HTTPException(status_code=409, detail=f"No se puede cambiar la fecha: {problema['motivo']}")
 
             await self.db.execute(text("""
                 UPDATE programacion_visita

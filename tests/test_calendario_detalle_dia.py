@@ -5,7 +5,8 @@ Detalle del día en los calendarios de programación (modal).
     registraron (historial_disponibilidad_auditor) y el radicado de la
     programación que originó el bloqueo, si existe.
   · El calendario general del Coordinador trae por día el detalle de cada
-    bloqueo (auditor, motivo, fechas) y los nombres de los disponibles.
+    bloqueo (auditor, motivo, fechas) y los nombres de los disponibles
+    (activos sin bloqueo ni visita, hayan declarado o no).
   · Las auditorías del auditor traen NIT, dirección de la sede y de la
     programación; siguen limitadas a sus propias filas (d.id_usuario).
   · La disponibilidad semanal salió del perfil y vive en su ventana del menú.
@@ -67,7 +68,8 @@ async def test_general_sin_auditor_detalla_bloqueos_y_disponibles_por_dia():
          "auditor_nombre": "Ana", "registrado_en": datetime(2026, 11, 2, 10, 30),
          "id_programacion": ID_PROG, "radicado_relacionado": "SOL-2026-0003"},
     ]
-    db = SesionGrabadora({"FROM disponibilidad_auditor da": disponibilidad})
+    activos = [{"id_usuario": ANA, "nombre": "Ana"}, {"id_usuario": LUIS, "nombre": "Luis"}]
+    db = SesionGrabadora({"FROM disponibilidad_auditor da": disponibilidad, "FROM usuario u WHERE": activos})
     r = await AgendaAuditorService(db).ver_disponibilidad_mensual_general(2026, 11)
 
     sql_disp = next(s for s in db.sql if "FROM disponibilidad_auditor da" in s)
@@ -79,7 +81,9 @@ async def test_general_sin_auditor_detalla_bloqueos_y_disponibles_por_dia():
     assert bloqueo["auditor_nombre"] == "Ana" and bloqueo["motivo"] == "Cita médica"
     assert bloqueo["registrado_en"] == datetime(2026, 11, 2, 10, 30)
     assert bloqueo["radicado_relacionado"] == "SOL-2026-0003"
-    assert dias["2026-11-12"]["bloqueos"] == [] and dias["2026-11-12"]["nombres_disponibles"] == []
+    # Regla única: sin bloqueos ni visitas ambos están disponibles el jueves,
+    # aunque ninguno declaró disponibilidad ese día.
+    assert dias["2026-11-12"]["bloqueos"] == [] and dias["2026-11-12"]["nombres_disponibles"] == ["Ana", "Luis"]
 
 
 async def test_auditorias_del_auditor_traen_nit_y_direcciones_sin_salir_de_lo_suyo():

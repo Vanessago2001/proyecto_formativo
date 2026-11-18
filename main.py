@@ -469,9 +469,22 @@ async def reset_password_page(request: Request):
     """Sirve la página para crear una nueva contraseña (enlace del correo)."""
     return FileResponse("static/reset-password.html")
 
+@app.get("/solicitudes", response_class=HTMLResponse)
+async def solicitudes_page(request: Request):
+    """
+    M5 + asignación: una sola pantalla sigue cada solicitud por etapas
+    (Radicadas, En revisión, Por asignar auditor, Con auditores y Todas).
+    Reemplaza a /revision-solicitudes y /asignacion-auditores.
+    """
+    return pagina_interna("static/solicitudes.html")
+
+
+# Direcciones anteriores a la pantalla unificada. Se redirige SIN fragmento:
+# así el navegador conserva el "#..." viejo (#radicadas, #revision, #todas)
+# y la pantalla lo traduce; sin fragmento abre la etapa de ?etapa=.
 @app.get("/asignacion-auditores")
 async def asignacion_auditores_page():
-    return pagina_interna("static/asignacion-auditores.html")
+    return RedirectResponse("/solicitudes?etapa=por-asignar", status_code=302)
 
 
 @app.get("/comite", response_class=HTMLResponse)
@@ -685,8 +698,8 @@ async def buscar_empresa_page(request: Request):
     return FileResponse("static/buscar_e.html")
 @app.get("/revision-solicitudes", response_class=HTMLResponse)
 async def revision_solicitudes_page(request: Request):
-    """M5: Administración revisa las solicitudes radicadas y valida sus sedes."""
-    return pagina_interna("static/revision-solicitudes.html")
+    """Dirección anterior: ahora es la etapa "Radicadas" de /solicitudes."""
+    return RedirectResponse("/solicitudes?etapa=radicadas", status_code=302)
 
 
 @app.get("/reportes", response_class=HTMLResponse)

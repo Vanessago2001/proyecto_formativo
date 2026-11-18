@@ -481,20 +481,31 @@ dialog.md-dialogo::backdrop { background: rgba(15,23,42,.55); }
             if (!dia.bloqueado) {
                 (dia.disponibilidad || []).forEach((r) => {
                     const franja = r.hora_inicio ? `${hora(r.hora_inicio)}–${hora(r.hora_fin)}` : "Todo el día";
-                    partes.push(`<span class="md-chip md-libre" title="${esc((r.tipo_registro || "Disponible") + " " + franja)}">${esc(detallado ? `Disponible ${franja} (${r.tipo_registro || "declarado"})` : franja)}</span>`);
+                    partes.push(`<span class="md-chip md-libre" title="${esc((r.tipo_registro || "Disponible") + " " + franja)}">${esc(detallado ? `Horario declarado ${franja} (${r.tipo_registro || "declarado"})` : franja)}</span>`);
                 });
             }
-            return partes.length ? partes : (detallado ? ['<span class="md-vacio">Sin disponibilidad declarada</span>'] : []);
+            // Regla única (18/11/2026): un día sin bloqueos ni visitas cuenta
+            // como disponible aunque no haya disponibilidad declarada.
+            if (diaLibre(dia) && !(dia.disponibilidad || []).length && dia.fecha >= iso(new Date())) {
+                partes.push(`<span class="md-chip md-libre" title="Sin bloqueos ni visitas">${esc(detallado ? "Disponible (sin bloqueos ni visitas)" : "Disponible")}</span>`);
+            }
+            return partes.length ? partes : (detallado ? ['<span class="md-vacio">Sin bloqueos ni visitas</span>'] : []);
         }
         // ------------------------------------------- detalle del día (modal)
         const visitasActivas = (dia) => (dia.auditorias || [])
             .filter((a) => !TERMINALES.includes(String(a.estado || "").trim().toUpperCase()));
+        // Disponible = sin bloqueo ni visita activa (lo declarado no restringe).
+        function diaLibre(dia) {
+            if (!dia || dia.bloqueado) return false;
+            if (typeof dia.disponible === "boolean") return dia.disponible;
+            return !visitasActivas(dia).length;
+        }
         function estadoDia(dia) {
             const p = [];
             if (dia.bloqueado) p.push("bloqueado");
             const n = visitasActivas(dia).length;
             if (n) p.push(n === 1 ? "ocupado con 1 visita" : `ocupado con ${n} visitas`);
-            if (!p.length && (dia.disponibilidad || []).length) p.push("disponible");
+            if (!p.length && diaLibre(dia)) p.push("disponible");
             return p.join(" y ");
         }
         function detalleDia(dia, f) {
@@ -510,7 +521,10 @@ dialog.md-dialogo::backdrop { background: rgba(15,23,42,.55); }
                         : "")
                 })),
                 ...visitasActivas(dia).map((v) => htmlVisita(v, { fecha: f, idPropio: idUsuario })),
-                dia.bloqueado ? "" : htmlDisponible(dia.disponibilidad, "")
+                dia.bloqueado ? "" : htmlDisponible(dia.disponibilidad, "Horario declarado (informativo)"),
+                diaLibre(dia)
+                    ? `<section class="md-dlg-sec md-libre"><h4><span class="md-dlg-etq md-libre">Disponible</span> Sin bloqueos ni visitas</h4><p style="margin:0">Pueden programarte una auditoría este día aunque no hayas declarado disponibilidad. Si no puedes atender, bloquea la fecha.</p></section>`
+                    : ""
             ].join("");
             return {
                 html,
@@ -564,7 +578,7 @@ dialog.md-dialogo::backdrop { background: rgba(15,23,42,.55); }
             titulo: "Mi calendario: lo ocupado y lo disponible",
             estadoDia,
             detalleDia,
-            leyenda: [["md-libre", "Disponible (declarado)"], ["md-ocupado", "Ocupado por auditoría"], ["md-bloqueado", "Fecha bloqueada"]],
+            leyenda: [["md-libre", "Disponible (sin bloqueos ni visitas) u horario declarado"], ["md-ocupado", "Ocupado por auditoría"], ["md-bloqueado", "Fecha bloqueada"]],
             cargarMes: async (anio, mes) => {
                 const res = await fetch(`${base}/disponibilidad-mensual?anio=${anio}&mes=${mes}`, {
                     headers: { Authorization: `Bearer ${token}` }

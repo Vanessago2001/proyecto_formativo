@@ -319,6 +319,63 @@ class AsignacionAuditorService:
                 grupo[campo] = sorted(set(valores), key=str.lower)
         return salida
 
+    # ------------------------------------------------------------------
+    # CONTADORES DE LA PANTALLA "SOLICITUDES" (17/11/2026)
+    # ------------------------------------------------------------------
+    async def conteo_etapas(self) -> dict:
+        """
+        Cuántas solicitudes hay en cada etapa de la pantalla unificada
+        (static/solicitudes.html). Solo lectura y con los mismos criterios
+        que cada lista:
+
+          · radicadas / revision: estado canónico de M5 (cualquier grafía);
+          · por_asignar: igual que GET /asignacion-auditores/solicitudes
+            (Aprobada y sin auditor con asignación activa);
+          · con_auditores: filas de GET /asignacion-auditores/ que la tabla
+            "Auditores asignados" muestra (todas menos las canceladas);
+          · todas: solicitudes no eliminadas, borradores incluidos.
+        """
+        canonico = estados.sql_canonico("s.estado")
+        resultado = await self.db.execute(
+            text(
+                f"""
+                SELECT
+                    COUNT(*) FILTER (WHERE ({canonico}) = :radicada) AS radicadas,
+                    COUNT(*) FILTER (WHERE ({canonico}) = :en_revision) AS revision,
+                    COUNT(*) FILTER (
+                        WHERE s.estado = :aprobada AND NOT {SQL_SOLICITUD_CON_EQUIPO_COMPLETO}
+                    ) AS por_asignar,
+                    COUNT(*) AS todas
+                FROM solicitud s
+                WHERE s.deleted_at IS NULL
+                """
+            ),
+            {
+                "radicada": estados.RADICADA,
+                "en_revision": estados.EN_REVISION,
+                "aprobada": estados.APROBADA,
+            },
+        )
+        fila = dict(resultado.mappings().first() or {})
+        asignadas = await self.db.execute(
+            text(
+                """
+                SELECT COUNT(*) AS total
+                FROM auditores_solicitud a
+                INNER JOIN solicitud s ON s.id_solicitud = a.id_solicitud
+                INNER JOIN usuario u ON u.id_usuario = a.id_auditor
+                WHERE UPPER(COALESCE(a.estado_asignacion, '')) <> 'CANCELADA'
+                """
+            )
+        )
+        return {
+            "radicadas": int(fila.get("radicadas") or 0),
+            "revision": int(fila.get("revision") or 0),
+            "por_asignar": int(fila.get("por_asignar") or 0),
+            "con_auditores": int(asignadas.scalar_one() or 0),
+            "todas": int(fila.get("todas") or 0),
+        }
+
     async def obtener_solicitud(self, id_solicitud: UUID) -> dict:
         resultado = await self.db.execute(
             text(

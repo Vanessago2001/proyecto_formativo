@@ -1187,6 +1187,11 @@ a.comite-nav-link:hover {
     gap: 7px;
 }
 
+/* El display:grid anulaba el atributo hidden (p. ej. #signField). */
+.cert-field[hidden] {
+    display: none;
+}
+
 .cert-field select,
 .cert-field input,
 .cert-field textarea {

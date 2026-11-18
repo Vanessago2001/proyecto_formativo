@@ -141,3 +141,70 @@ async def require_auditor_aprobado(
             detail=MENSAJE_AUDITOR_NO_APROBADO,
         )
     return current_user
+
+
+# ------------------------------------------------------------------
+# Solicitudes visibles para un Auditor (QA 18/11/2026: con rol Auditor la
+# API devolvía todas las solicitudes y certificados, incluso borradores).
+# Regla: el auditor APROBADO solo ve las solicitudes en las que está
+# asignado (auditores_solicitud con asignación no cancelada, reasignada ni
+# rechazada) y los certificados de esas solicitudes; el auditor NO aprobado
+# recibe el mismo 403 de `require_auditor_aprobado`. Los demás roles no
+# cambian.
+# ------------------------------------------------------------------
+ESTADOS_ASIGNACION_SIN_ACCESO = (
+    "CANCELADA", "CANCELADO", "REASIGNADA", "REASIGNADO", "RECHAZADA", "RECHAZADO",
+)
+
+
+def sql_auditor_asignado(columna_solicitud: str, parametro: str = "aud_usuario") -> str:
+    """EXISTS: el auditor `:parametro` tiene asignación vigente en la solicitud."""
+    sin_acceso = ", ".join(f"'{e}'" for e in ESTADOS_ASIGNACION_SIN_ACCESO)
+    return (
+        "EXISTS (SELECT 1 FROM auditores_solicitud aud_a"
+        f" WHERE aud_a.id_solicitud = {columna_solicitud}"
+        f" AND aud_a.id_auditor::TEXT = :{parametro}"
+        f" AND UPPER(TRIM(COALESCE(aud_a.estado_asignacion, ''))) NOT IN ({sin_acceso}))"
+    )
+
+
+async def exigir_auditor_aprobado(db: AsyncSession, usuario: dict) -> None:
+    """403 (mismo mensaje que `require_auditor_aprobado`) si no está aprobado."""
+    acceso = await consultar_acceso_auditor(db, usuario.get("id_usuario"))
+    if not acceso.get("aprobado"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=MENSAJE_AUDITOR_NO_APROBADO,
+        )
+
+
+async def filtro_auditor_asignado(
+    db: AsyncSession,
+    usuario: dict,
+    columna_solicitud: str,
+    params: dict,
+) -> str:
+    """
+    Condición SQL (sin "AND") que limita un listado a las solicitudes
+    asignadas al Auditor de la sesión; "" para cualquier otro rol.
+    403 si el auditor aún no está aprobado.
+    """
+    if not es_rol_auditor(usuario or {}):
+        return ""
+    await exigir_auditor_aprobado(db, usuario)
+    params["aud_usuario"] = str(usuario.get("id_usuario") or "")
+    return sql_auditor_asignado(columna_solicitud, "aud_usuario")
+
+
+async def exigir_auditor_asignado(db: AsyncSession, usuario: dict, id_solicitud, detalle: str) -> None:
+    """Para lecturas de detalle: 404 si el Auditor no está asignado a la solicitud."""
+    if not es_rol_auditor(usuario or {}):
+        return
+    await exigir_auditor_aprobado(db, usuario)
+    resultado = await db.execute(
+        text(f"SELECT {sql_auditor_asignado('CAST(:aud_solicitud AS UUID)')} AS auditor_asignado;"),
+        {"aud_solicitud": str(id_solicitud), "aud_usuario": str(usuario.get("id_usuario") or "")},
+    )
+    fila = resultado.mappings().first()
+    if not fila or not fila.get("auditor_asignado"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detalle)

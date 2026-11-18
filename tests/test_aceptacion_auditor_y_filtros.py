@@ -11,7 +11,8 @@ Cubre las correcciones de la verificación del 13/11:
   tener postulación.
 * Conflictos: tipo inválido -> 422; los declarados después del registro
   bloquean la asignación; el detalle del banco muestra todos con empresa.
-* Agenda: la disponibilidad extraordinaria cubre todo su rango de fechas.
+* Agenda: la disponibilidad declarada ya no restringe programar (regla única
+  del 18/11/2026: solo bloqueos y visitas).
 """
 
 import uuid
@@ -401,15 +402,13 @@ def test_estado_de_registro_avisa_del_borrador_pendiente():
 # ---------------------------------------------------------------------------
 # Agenda y búsqueda SOL-041
 # ---------------------------------------------------------------------------
-def test_disponibilidad_extra_no_se_filtra_por_dia_de_la_semana():
+def test_programar_ya_no_exige_disponibilidad_declarada():
+    """Regla única (18/11/2026): la disponibilidad declarada (semanal o
+    extraordinaria) ya no restringe; solo los bloqueos y las visitas."""
     fuente = (RAIZ / "modules/agenda_auditor/agenda_service.py").read_text(encoding="utf-8")
-    assert fuente.count(
-        "OR LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN ('disponibilidad extra', 'disponibilidad_extra')"
-    ) == 2
+    assert "_tiene_disponibilidad_fecha" not in fuente
+    assert "async def verificar_franja_auditor" in fuente
+    regla = (RAIZ / "modules/agenda_auditor/fechas_disponibles.py").read_text(encoding="utf-8")
+    assert "'horario semanal'" not in regla and "'bloqueo fecha'" in regla
 
 
-def test_busqueda_sol041_reconoce_los_tipos_reales_de_disponibilidad():
-    fuente = (RAIZ / "modules/solicitudes/auditor_service.py").read_text(encoding="utf-8")
-    assert "d.tipo_registro = 'Disponibilidad'" not in fuente
-    assert "'horario semanal', 'disponibilidad extra'" in fuente
-    assert "c.fecha_fin >= CURRENT_DATE" in fuente

@@ -1545,6 +1545,12 @@
                             </div>
                             <p id="schedulePeriodSummary" class="hint" aria-live="polite" style="margin-top:12px;">
                                 Selecciona una solicitud para consultar si ya tiene un periodo programado.</p>
+                            <!-- Hora desde la que se buscan fechas disponibles (todos los días de la semana). -->
+                            <div class="field" style="max-width:260px;margin-top:12px;">
+                                <label for="scheduleEarliest">Buscar visitas desde las</label>
+                                <input id="scheduleEarliest" type="time" value="08:00" aria-describedby="scheduleEarliestHelp">
+                                <small id="scheduleEarliestHelp" class="hint">Hora más temprana de inicio para "Ver fechas disponibles". Se buscan todos los días, incluidos sábados y domingos.</small>
+                            </div>
                             <div class="actions">
                                 <button type="button" class="btn btn-secundario secondary" id="checkScheduleAvailability">Comprobar
                                     disponibilidad</button>
@@ -1640,8 +1646,10 @@
                             <span class="note-icon" aria-hidden="true">ℹ</span>
                             <span>
                                 <strong>Calendario de auditorías.</strong> Cada día muestra las auditorías que lo
-                                ocupan (hora, empresa y sede). Selecciona una para ver su detalle. Si eliges un
-                                auditor, también verás su disponibilidad declarada y sus fechas bloqueadas.
+                                ocupan (hora, empresa y sede). Selecciona una para ver su detalle. Un auditor está
+                                disponible todo día que no tenga bloqueado ni ocupado con otra visita, aunque no haya
+                                declarado disponibilidad. Si eliges un auditor, también verás su horario declarado
+                                (informativo) y sus fechas bloqueadas.
                             </span>
                         </div>
 
@@ -1744,7 +1752,7 @@
 </div>
 
 <!-- Calendario mes/semana común (sección "Disponibilidad mensual y auditorías") -->
-<script src="/static/mi_disponibilidad.js?v=20261117d"></script>
+<script src="/static/mi_disponibilidad.js?v=20261118a"></script>
 <script>
     function showModal(message, type = 'success') {
         const overlay = document.getElementById('modalOverlay');
@@ -2355,7 +2363,7 @@
                     : disp
                         ? (disp.disponible
                             ? '<span class="team-tag ok">Disponible en el horario</span>'
-                            : `<span class="team-tag fail">No disponible: ${esc(disp.motivo || "horario no disponible")}</span>`)
+                            : `<span class="team-tag fail">No disponible: ${esc(disp.motivo || "bloqueo u otra visita")}</span>`)
                         : "";
                 const card = document.createElement("div");
                 card.className = `team-card${incluido ? " selected" : ""}`;
@@ -2930,7 +2938,7 @@
                             <td>${esc(row.motivo || "—")}</td>
                         </tr>`;
                     }).join("")}</tbody></table>`
-                    : '<div class="empty">El auditor no ha declarado disponibilidad vigente.</div>';
+                    : '<div class="empty">El auditor no ha declarado disponibilidad vigente. Para programar se considera disponible salvo en sus fechas bloqueadas o cuando ya tiene otra visita.</div>';
             } else {
                 tabla.innerHTML = `<div class="empty">No se pudo consultar la disponibilidad: ${esc(disp.reason?.message || "")}</div>`;
             }
@@ -3052,18 +3060,23 @@
                     const motivo = (dia.disponibilidad || [])[0]?.motivo || "";
                     partes.push(`<span class="md-chip md-bloqueado" title="${esc("Fecha bloqueada " + motivo)}">Bloqueado${detallado && motivo ? ": " + esc(motivo) : ""}</span>`);
                 } else {
+                    // Regla única: sin bloqueo ni visita el día está disponible;
+                    // el horario declarado solo se muestra como información.
                     (dia.disponibilidad || []).forEach(r => {
                         const franja = r.hora_inicio ? `${asTimeInput(r.hora_inicio)}–${asTimeInput(r.hora_fin)}` : "Todo el día";
-                        partes.push(`<span class="md-chip md-libre" title="${esc((r.tipo_registro || "Disponible") + " " + franja)}">${esc(detallado ? `Disponible ${franja} (${r.tipo_registro || "declarado"})` : franja)}</span>`);
+                        partes.push(`<span class="md-chip md-libre" title="${esc((r.tipo_registro || "Disponible") + " " + franja)}">${esc(detallado ? `Horario declarado ${franja} (${r.tipo_registro || "declarado"})` : franja)}</span>`);
                     });
+                    if (dia.disponible && !(dia.disponibilidad || []).length && fecha >= localDateNow()) {
+                        partes.push(`<span class="md-chip md-libre" title="Sin bloqueos ni visitas">${esc(detallado ? "Disponible (sin bloqueos ni visitas)" : "Disponible")}</span>`);
+                    }
                 }
             } else {
                 if (dia.auditores_bloqueados) {
                     const nombres = (dia.nombres_bloqueados || []).join(", ");
                     partes.push(`<span class="md-chip md-bloqueado" title="${esc("Fecha bloqueada por: " + nombres)}">${esc(detallado ? `Fecha bloqueada por: ${nombres}` : `${dia.auditores_bloqueados} bloq.`)}</span>`);
                 }
-                if (dia.auditores_disponibles) {
-                    partes.push(`<span class="md-chip md-libre" title="${esc(dia.auditores_disponibles + " auditor(es) con disponibilidad declarada")}">${esc(detallado ? `${dia.auditores_disponibles} auditor(es) con disponibilidad declarada` : `${dia.auditores_disponibles} disp.`)}</span>`);
+                if (dia.auditores_disponibles && fecha >= localDateNow()) {
+                    partes.push(`<span class="md-chip md-libre" title="${esc(dia.auditores_disponibles + " auditor(es) sin bloqueos ni visitas")}">${esc(detallado ? `${dia.auditores_disponibles} auditor(es) disponibles (sin bloqueos ni visitas)` : `${dia.auditores_disponibles} disp.`)}</span>`);
                 }
             }
             if (!partes.length && detallado) partes.push('<span class="md-vacio">Sin auditorías</span>');
@@ -3091,7 +3104,7 @@
             const n = visitasDelDia(dia).length;
             if (n) partes.push(n === 1 ? "ocupado con 1 visita" : `ocupado con ${n} visitas`);
             if (!partes.length) {
-                if (filtrosCalendario().auditor ? (dia.disponibilidad || []).length : dia.auditores_disponibles) partes.push("disponible");
+                if (filtrosCalendario().auditor ? dia.disponible : dia.auditores_disponibles) partes.push("disponible");
             }
             return partes.join(" y ");
         }
@@ -3101,9 +3114,10 @@
             const bloqueos = bloqueosDelDia(dia);
             let disponible = "";
             if (conAuditor && !dia.bloqueado) {
-                disponible = D.disponible(dia.disponibilidad, "");
+                disponible = D.disponible(dia.disponibilidad, "Horario declarado (informativo)")
+                    + (dia.disponible ? `<section class="md-dlg-sec md-libre"><h4><span class="md-dlg-etq md-libre">Disponible</span> Sin bloqueos ni visitas este día</h4><p style="margin:0">Se puede programar aunque no haya declarado disponibilidad.</p></section>` : "");
             } else if (!conAuditor && (dia.nombres_disponibles || []).length) {
-                disponible = `<section class="md-dlg-sec md-libre"><h4><span class="md-dlg-etq md-libre">Disponible</span> ${dia.nombres_disponibles.length} auditor(es) con disponibilidad declarada</h4><p style="margin:0">${esc(dia.nombres_disponibles.join(", "))}</p></section>`;
+                disponible = `<section class="md-dlg-sec md-libre"><h4><span class="md-dlg-etq md-libre">Disponible</span> ${dia.nombres_disponibles.length} auditor(es) sin bloqueos ni visitas</h4><p style="margin:0">${esc(dia.nombres_disponibles.join(", "))}</p></section>`;
             }
             const html = [
                 ...bloqueos.map(b => D.bloqueo(b, { conAuditor: true })),
@@ -3234,7 +3248,7 @@
                     leyenda: [
                         ["md-ocupado", "Auditoría programada"],
                         ["md-finalizada", "Auditoría finalizada"],
-                        ["md-libre", "Disponibilidad declarada"],
+                        ["md-libre", "Disponible (sin bloqueos ni visitas) u horario declarado"],
                         ["md-bloqueado", "Fecha bloqueada o auditoría cancelada"]
                     ],
                     vistaInicial: window.matchMedia("(max-width: 640px)").matches ? "semana" : "mes",
@@ -3542,6 +3556,8 @@
             const query = new URLSearchParams();
             equipo.forEach(a => query.append("auditores", a.id_usuario));
             if (inicio && fin) { query.set("hora_inicio", inicio); query.set("hora_fin", fin); }
+            const desdeHora = $("scheduleEarliest") ? $("scheduleEarliest").value : "";
+            if (desdeHora) query.set("desde_hora", desdeHora);
             if (programacionActual && programacionEnEdicion && programacionActual.id_programacion) {
                 query.set("excluir_programacion", String(programacionActual.id_programacion));
             }
@@ -3550,7 +3566,7 @@
             panel.classList.remove("hidden");
             lista.innerHTML = "";
             detalle.innerHTML = "";
-            info.textContent = "Buscando fechas disponibles para todo el equipo (próximos 90 días)...";
+            info.textContent = `Buscando fechas disponibles para todo el equipo desde las ${desdeHora || "08:00"}, todos los días (próximos 90 días)...`;
             boton.disabled = true;
             try {
                 const data = await api(`/programacion/fechas-disponibles?${query}`);
@@ -3652,7 +3668,7 @@
                 });
                 renderEquipoSede();
                 const lineas = results.map(({ auditor, result }) =>
-                    `• ${auditor.nombre}: ${result.disponible ? "disponible" : "NO disponible — " + (result.motivo || "horario no disponible")}`
+                    `• ${auditor.nombre}: ${result.disponible ? "disponible (sin bloqueos ni otras visitas)" : "NO disponible — " + (result.motivo || "bloqueo u otra visita")}`
                 ).join("\n");
                 const unavailable = results.filter(item => !item.result.disponible);
                 if (unavailable.length) {
@@ -3661,7 +3677,7 @@
                     cargarFechasSugeridas();
                     return false;
                 }
-                const texto = `Todo el equipo tiene disponibilidad el ${fecha} de ${inicio} a ${fin}:\n${lineas}`;
+                const texto = `Todo el equipo está disponible el ${fecha} de ${inicio} a ${fin}:\n${lineas}`;
                 if (opciones.silencioso) showNotice("scheduleActionNotice", texto, "ok");
                 else avisoJuntoAccion("scheduleActionNotice", texto, "ok");
                 return true;
@@ -3995,8 +4011,8 @@
         });
     </script>
 
-    <script src="/static/session.js?v=20261117"></script>
-<script src="/static/nav.js?v=20261117cat"></script>
+    <script src="/static/session.js?v=20261118pub"></script>
+<script src="/static/nav.js?v=20261118sol"></script>
 </body>
 
 </html>

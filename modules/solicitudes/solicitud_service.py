@@ -14,6 +14,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.datetime_utils import system_now
+from modules.auth.dependencies import exigir_auditor_asignado, filtro_auditor_asignado
+from modules.comite.imparcialidad import filtro_visible
 from modules.solicitudes.solicitud_permissions import (
     ROL_EMP,
     normalizar_rol,
@@ -170,6 +172,12 @@ class SolicitudService:
         solicitud = await self._obtener_o_404(id_solicitud)
 
         if self._ve_todas(usuario):
+            # El Auditor solo accede a las solicitudes que tiene asignadas
+            # (QA 18/11/2026); el resto de roles internos, a todas.
+            await exigir_auditor_asignado(
+                self.db, usuario, solicitud["id_solicitud"],
+                "La solicitud no existe o fue eliminada.",
+            )
             return solicitud
 
         empresas = await self._empresas_del_usuario(usuario)
@@ -586,6 +594,15 @@ class SolicitudService:
                 return []
             condiciones.append("s.id_empresa = ANY(:empresas)")
             parametros["empresas"] = empresas
+
+        # Auditor: solo las solicitudes donde está asignado (403 si no está
+        # aprobado). Comité: sin las que tiene impedidas (imparcialidad).
+        solo_asignadas = await filtro_auditor_asignado(self.db, usuario, "s.id_solicitud", parametros)
+        if solo_asignadas:
+            condiciones.append(solo_asignadas)
+        sin_impedidas = filtro_visible(usuario, "s.id_solicitud", parametros)
+        if sin_impedidas:
+            condiciones.append(sin_impedidas.strip().removeprefix("AND").strip())
 
         if estado is not None:
             condiciones.append("s.estado = :estado")

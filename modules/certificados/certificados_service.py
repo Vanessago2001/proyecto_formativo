@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core import almacen_archivos
 from core.config import settings
 from core.security import _normalize_role_name
+from modules.auth.dependencies import exigir_auditor_asignado, filtro_auditor_asignado
 from modules.certificados.certificados_pdf import generar_pdf_certificado
 from modules.certificados.firma_pades import FirmaPadesError, firmar_pdf_pades
 from modules.certificados.firma_service import FirmaService
@@ -153,6 +154,11 @@ class CertificadosService:
             empresas = await self._empresas_del_usuario(usuario)
             if str(certificado["id_empresa"]) not in empresas:
                 raise HTTPException(status_code=404, detail="Certificado no encontrado.")
+        if usuario and certificado.get("id_solicitud"):
+            # Auditor: solo los certificados de sus solicitudes asignadas.
+            await exigir_auditor_asignado(
+                self.db, usuario, certificado["id_solicitud"], "Certificado no encontrado."
+            )
         if usuario and es_usuario_comite(usuario) and certificado.get("id_solicitud"):
             # Imparcialidad: el miembro impedido no lo ve (404), salvo que sea
             # el líder del comité del expediente (debe firmarlo).
@@ -222,6 +228,12 @@ class CertificadosService:
                 f":empresa_{i}" for i in range(len(empresas))
             ) + ")"
             params.update({f"empresa_{i}": empresa for i, empresa in enumerate(empresas)})
+
+        # Auditor (QA 18/11/2026): solo los certificados de las solicitudes en
+        # las que está asignado; 403 si su registro no está aprobado.
+        solo_asignadas = await filtro_auditor_asignado(self.db, usuario, "c.id_solicitud", params)
+        if solo_asignadas:
+            filtro_empresa += " AND " + solo_asignadas
 
         resultado = await self.db.execute(text(f"""
             SELECT

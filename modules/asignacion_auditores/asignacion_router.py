@@ -92,6 +92,15 @@ async def sugerencias_ubicacion(
     return await AsignacionAuditorService(db).sugerencias_ubicacion()
 
 
+@router.get("/conteo-etapas", summary="Contadores de las etapas de la pantalla Solicitudes")
+async def conteo_etapas(
+    usuario: dict = Depends(requiere_gestion_asignaciones),
+    db: AsyncSession = Depends(get_db),
+):
+    """Radicadas, en revisión, por asignar auditor, con auditores y todas (solo lectura)."""
+    return await AsignacionAuditorService(db).conteo_etapas()
+
+
 @router.get(
     "/solicitudes/{id_solicitud}/auditores",
     summary="Consultar y filtrar auditores candidatos con paginación",

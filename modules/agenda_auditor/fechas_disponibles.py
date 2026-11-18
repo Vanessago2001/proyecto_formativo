@@ -1,17 +1,22 @@
 """
-Disponibilidad del equipo de auditores: explicación del rechazo y sugerencias.
+Regla única de disponibilidad para programar auditorías (18/11/2026).
 
-· `explicar_no_disponible` dice POR QUÉ un auditor no cubre una franja (sin
-  disponibilidad declarada, vigencia vencida, día no declarado, horas fuera
-  del horario o día bloqueado) a partir de sus registros de
-  `disponibilidad_auditor`.
-· `sugerir_fechas` busca las próximas franjas en que TODO el equipo está
-  disponible. Primero filtra en memoria con las mismas reglas que la consulta
-  SQL de `_tiene_disponibilidad_fecha`, y luego CADA sugerencia se confirma
-  con las funciones que usa `crear_programacion` (`_tiene_disponibilidad_fecha`
-  y `_buscar_cruce`, más el estado del auditor). Así una sugerencia nunca es
-  rechazada al programar: si el filtro en memoria y la validación real
-  discreparan, la franja simplemente no se ofrece.
+Un auditor activo y aprobado está DISPONIBLE en una franja salvo que:
+  (a) tenga ese día (o parte de la franja) BLOQUEADO en `disponibilidad_auditor`
+      (registros activos de tipo 'Bloqueo Fecha' y equivalentes), o
+  (b) ya tenga OTRA visita no cancelada ni finalizada que se cruce
+      (`programacion_visita` + `detalle_programacion_auditor`).
+
+La disponibilidad semanal o extraordinaria declarada YA NO restringe: no
+importa si el auditor no declaró nada, si su vigencia venció o si la franja
+queda fuera de su horario. Se sigue mostrando como información.
+
+· `bloqueo_en_franja` es la regla del punto (a) (pura, sin base de datos);
+  la usa `AgendaAuditorService.verificar_franja_auditor`, que añade el punto
+  (b) con `_buscar_cruce` y es la función que valida programar, reprogramar,
+  editar, agregar auditor, comprobar disponibilidad y cada sugerencia.
+· `sugerir_fechas` busca las próximas franjas en que TODO el equipo está libre
+  de bloqueos y choques; cada opción se confirma con `verificar_franja_auditor`.
 
 Solo hace SELECT.
 """
@@ -21,12 +26,6 @@ from datetime import date, datetime, time, timedelta
 from fastapi import HTTPException, status
 from sqlalchemy import text
 
-# Mismas listas que las consultas SQL de agenda_service.
-TIPOS_DISPONIBLE = {
-    "disponible", "disponibilidad", "horario disponible", "availability",
-    "semanal", "horario semanal", "disponibilidad extra", "disponibilidad_extra",
-}
-TIPOS_EXTRA = {"disponibilidad extra", "disponibilidad_extra"}
 TIPOS_BLOQUEO = {"no disponible", "no_disponible", "indisponible", "bloqueo", "bloqueo fecha"}
 ESTADOS_ACTIVOS = {"ACTIVO", "ACTIVA"}
 ESTADOS_AUDITOR_OK = {"ACTIVO", "APROBADO", "APROBADA"}
@@ -73,26 +72,8 @@ def _vigente_en(registro: dict, fecha: date) -> bool:
     return inicio is not None and inicio <= fecha and (fin is None or fin >= fecha)
 
 
-def _dia_coincide(registro: dict, fecha: date) -> bool:
-    """dia_semana ISO (lunes=1 … domingo=7; 0 también es domingo)."""
-    dia = registro.get("dia_semana")
-    if dia is None or _tipo(registro) in TIPOS_EXTRA:
-        return True
-    numero = fecha.weekday() + 1
-    return int(dia) == numero or (numero == 7 and int(dia) == 0)
-
-
-def es_disponibilidad(registro: dict) -> bool:
-    return _activo(registro) and _tipo(registro) in TIPOS_DISPONIBLE
-
-
 def es_bloqueo(registro: dict) -> bool:
     return _activo(registro) and _tipo(registro) in TIPOS_BLOQUEO
-
-
-def _cubre_horas(registro: dict, inicio: time, fin: time) -> bool:
-    h_ini, h_fin = _como_hora(registro.get("hora_inicio")), _como_hora(registro.get("hora_fin"))
-    return h_ini is None or h_fin is None or (h_ini <= inicio and h_fin >= fin)
 
 
 def _bloquea(registro: dict, fecha: date, inicio: time, fin: time) -> bool:
@@ -102,89 +83,77 @@ def _bloquea(registro: dict, fecha: date, inicio: time, fin: time) -> bool:
     return h_ini is None or h_fin is None or (h_ini < fin and h_fin > inicio)
 
 
+def tramos_por_dia(inicio: datetime, fin: datetime) -> list[tuple[date, time, time]]:
+    """Parte la franja en un tramo por día (una visita puede durar varios días)."""
+    tramos = []
+    dia = inicio.date()
+    while dia <= fin.date():
+        h_ini = inicio.time() if dia == inicio.date() else time.min
+        h_fin = fin.time() if dia == fin.date() else time.max
+        if dia == fin.date() and dia != inicio.date() and h_fin == time.min:
+            break  # termina a las 00:00: no ocupa ese día
+        tramos.append((dia, h_ini, h_fin))
+        dia += timedelta(days=1)
+    return tramos
+
+
+def bloqueo_en_franja(registros: list[dict], inicio: datetime, fin: datetime) -> tuple[date, dict] | None:
+    """Primer bloqueo activo que toca la franja: (fecha, registro); None si no hay.
+
+    Solo cuentan los bloqueos: la disponibilidad declarada no restringe."""
+    for dia, h_ini, h_fin in tramos_por_dia(inicio, fin):
+        for registro in registros:
+            if _bloquea(registro, dia, h_ini, h_fin):
+                return dia, registro
+    return None
+
+
 def cubre_franja(registros: list[dict], fecha: date, inicio: time, fin: time) -> bool:
-    """Réplica en memoria de `_tiene_disponibilidad_fecha` (misma regla SQL)."""
-    declarado = any(
-        es_disponibilidad(r) and _vigente_en(r, fecha) and _dia_coincide(r, fecha)
-        and _cubre_horas(r, inicio, fin)
-        for r in registros
-    )
-    return declarado and not any(_bloquea(r, fecha, inicio, fin) for r in registros)
+    """La franja del día está libre de bloqueos (las visitas se miran aparte)."""
+    return bloqueo_en_franja(registros, datetime.combine(fecha, inicio), datetime.combine(fecha, fin)) is None
 
 
 def _fmt(fecha: date) -> str:
     return fecha.strftime("%d/%m/%Y")
 
 
-def _hhmm(valor) -> str:
-    hora = _como_hora(valor)
-    return hora.strftime("%H:%M") if hora else ""
+def mensaje_bloqueo(nombre: str, fecha: date, registro: dict) -> str:
+    """'X tiene bloqueado el dd/mm/aaaa (motivo).'"""
+    h_ini, h_fin = _como_hora(registro.get("hora_inicio")), _como_hora(registro.get("hora_fin"))
+    horas = f" de {h_ini:%H:%M} a {h_fin:%H:%M}" if h_ini and h_fin else ""
+    motivo = str(registro.get("motivo") or "").strip()
+    return f"{nombre} tiene bloqueado el {_fmt(fecha)}{horas}" + (f" ({motivo})." if motivo else ".")
 
 
-def fin_de_vigencia(registros: list[dict]) -> date | None:
-    """Último día cubierto por la disponibilidad declarada (None = sin fin)."""
-    disponibles = [r for r in registros if es_disponibilidad(r)]
-    if not disponibles or any(r.get("fecha_fin") is None for r in disponibles):
-        return None
-    return max(_como_fecha(r["fecha_fin"]) for r in disponibles)
+def mensaje_cruce(nombre: str, cruce: dict) -> str:
+    """'X ya tiene la visita SOL-… el dd/mm/aaaa de hh:mm a hh:mm.'"""
+    radicado = str(cruce.get("numero_radicado") or "").strip()
+    visita = f"la visita {radicado}" if radicado else "otra visita"
+    inicio, fin = cruce.get("fecha_inicio"), cruce.get("fecha_fin")
+    cuando = ""
+    if isinstance(inicio, datetime) and isinstance(fin, datetime):
+        if inicio.date() == fin.date():
+            cuando = f" el {_fmt(inicio.date())} de {inicio:%H:%M} a {fin:%H:%M}"
+        else:
+            cuando = f" del {inicio:%d/%m/%Y %H:%M} al {fin:%d/%m/%Y %H:%M}"
+    return f"{nombre} ya tiene {visita}{cuando}."
 
 
 def explicar_no_disponible(
     registros: list[dict], fecha: date, inicio: time, fin: time, nombre: str = "El auditor"
 ) -> str | None:
-    """Motivo concreto por el que `nombre` no cubre la franja (None si la cubre)."""
-    disponibles = [r for r in registros if es_disponibilidad(r)]
-    franja = f"{inicio:%H:%M} a {fin:%H:%M}"
-    dia = DIAS[fecha.weekday()]
-    if not disponibles:
-        return (
-            f"{nombre} no ha declarado disponibilidad (ni horario semanal ni disponibilidad "
-            "extraordinaria). Debe registrarla en «Mi disponibilidad»."
-        )
-    vigentes = [r for r in disponibles if _vigente_en(r, fecha)]
-    if not vigentes:
-        posteriores = sorted(
-            _como_fecha(r["fecha_inicio"]) for r in disponibles
-            if _como_fecha(r.get("fecha_inicio")) and _como_fecha(r["fecha_inicio"]) > fecha
-        )
-        if posteriores:
-            return (
-                f"{nombre} no tiene disponibilidad vigente el {_fmt(fecha)}: su próxima "
-                f"disponibilidad declarada comienza el {_fmt(posteriores[0])}."
-            )
-        vence = fin_de_vigencia(disponibles)
-        if vence:
-            return (
-                f"La disponibilidad declarada de {nombre} vence el {_fmt(vence)}; no cubre el "
-                f"{_fmt(fecha)}. El auditor debe ampliar su vigencia en «Mi disponibilidad»."
-            )
-        return f"{nombre} no tiene disponibilidad vigente el {_fmt(fecha)}."
-    del_dia = [r for r in vigentes if _dia_coincide(r, fecha)]
-    if not del_dia:
-        dias = sorted({int(r["dia_semana"]) % 7 or 7 for r in vigentes if r.get("dia_semana") is not None})
-        lista = ", ".join(DIAS[d - 1] for d in dias)
-        return (
-            f"{nombre} no declaró disponibilidad los {dia} para el {_fmt(fecha)}"
-            + (f" (días declarados vigentes: {lista})." if lista else ".")
-        )
-    if not any(_cubre_horas(r, inicio, fin) for r in del_dia):
-        horarios = sorted({f"{_hhmm(r.get('hora_inicio'))}–{_hhmm(r.get('hora_fin'))}" for r in del_dia})
-        return (
-            f"El horario declarado de {nombre} el {dia} {_fmt(fecha)} es {', '.join(horarios)}; "
-            f"la franja de {franja} queda fuera."
-        )
-    bloqueos = [r for r in registros if _bloquea(r, fecha, inicio, fin)]
-    if bloqueos:
-        motivo = str(bloqueos[0].get("motivo") or "").strip()
-        return f"{nombre} registró el {_fmt(fecha)} como no disponible" + (f" ({motivo})." if motivo else ".")
-    return None
+    """Motivo por bloqueo de la franja del día (None si no hay bloqueo)."""
+    hallado = bloqueo_en_franja(registros, datetime.combine(fecha, inicio), datetime.combine(fecha, fin))
+    return mensaje_bloqueo(nombre, *hallado) if hallado else None
 
 
 # ------------------------------------------------------------ consultas
 
 
-async def registros_disponibilidad(db, ids: list[str]) -> dict[str, list[dict]]:
-    """Registros activos (disponibilidad y bloqueos) de los auditores indicados."""
+async def registros_bloqueo(
+    db, ids: list[str], desde: date | None = None, hasta: date | None = None
+) -> dict[str, list[dict]]:
+    """Bloqueos activos de los auditores indicados (opcionalmente en un rango)."""
     if not ids:
         return {}
     result = await db.execute(text("""
@@ -193,20 +162,16 @@ async def registros_disponibilidad(db, ids: list[str]) -> dict[str, list[dict]]:
         FROM disponibilidad_auditor da
         WHERE da.id_usuario = ANY(CAST(:ids AS UUID[]))
           AND UPPER(TRIM(COALESCE(da.estado, ''))) IN ('ACTIVO', 'ACTIVA')
-    """), {"ids": ids})
+          AND LOWER(TRIM(COALESCE(da.tipo_registro, ''))) IN
+              ('no disponible', 'no_disponible', 'indisponible', 'bloqueo', 'bloqueo fecha')
+          AND (CAST(:hasta AS DATE) IS NULL OR CAST(da.fecha_inicio AS DATE) <= CAST(:hasta AS DATE))
+          AND (CAST(:desde AS DATE) IS NULL OR da.fecha_fin IS NULL
+               OR CAST(da.fecha_fin AS DATE) >= CAST(:desde AS DATE))
+    """), {"ids": ids, "desde": desde, "hasta": hasta})
     por_auditor: dict[str, list[dict]] = {i: [] for i in ids}
     for fila in result.mappings().all():
         por_auditor.setdefault(str(fila["id_usuario"]), []).append(dict(fila))
     return por_auditor
-
-
-async def motivo_no_disponible(db, id_usuario, fecha: date, inicio: time, fin: time, nombre: str) -> str | None:
-    """Motivo legible; None si no se pudo determinar (nunca rompe la validación)."""
-    try:
-        registros = (await registros_disponibilidad(db, [str(id_usuario)])).get(str(id_usuario), [])
-        return explicar_no_disponible(registros, fecha, inicio, fin, nombre)
-    except Exception:  # noqa: BLE001 - el motivo es informativo
-        return None
 
 
 # ------------------------------------------------------------ sugerencias
@@ -215,24 +180,30 @@ async def motivo_no_disponible(db, id_usuario, fecha: date, inicio: time, fin: t
 def _inicios_candidatos(
     fecha: date, duracion: timedelta, preferida: time | None,
     registros_equipo: list[list[dict]], ocupaciones: list[tuple[datetime, datetime]],
+    minima: time | None = None,
 ) -> list[time]:
-    """Horas de inicio a probar: la preferida, el inicio de cada horario declarado
-    y el final de cada ocupación/bloqueo (la franja más temprana posible siempre
-    empieza en uno de esos puntos)."""
-    candidatas = {HORA_JORNADA}
+    """Horas de inicio a probar: la preferida, el inicio de jornada y el final
+    de cada bloqueo parcial u ocupación (la franja más temprana posible
+    siempre empieza en uno de esos puntos)."""
+    # Hora más temprana a la que puede empezar la visita (la elige quien
+    # programa; por defecto el inicio de jornada). Toda la semana cuenta.
+    minima = minima or HORA_JORNADA
+    candidatas = {minima}
     for registros in registros_equipo:
         for r in registros:
-            if _vigente_en(r, fecha):
-                for clave in ("hora_inicio", "hora_fin") if es_bloqueo(r) else ("hora_inicio",):
-                    hora = _como_hora(r.get(clave))
-                    if hora:
-                        candidatas.add(hora)
+            if es_bloqueo(r) and _vigente_en(r, fecha):
+                hora = _como_hora(r.get("hora_fin"))
+                if hora:
+                    candidatas.add(hora)
     for ini, fin in ocupaciones:
         if fin.date() == fecha:
             candidatas.add(fin.time().replace(second=0, microsecond=0))
     limite = datetime.combine(fecha, ULTIMA_HORA)
-    validas = sorted(h for h in candidatas if datetime.combine(fecha, h) + duracion <= limite)
-    if preferida and datetime.combine(fecha, preferida) + duracion <= limite:
+    validas = sorted(
+        h for h in candidatas
+        if h >= minima and datetime.combine(fecha, h) + duracion <= limite
+    )
+    if preferida and preferida >= minima and datetime.combine(fecha, preferida) + duracion <= limite:
         validas = [preferida] + [h for h in validas if h != preferida]
     return validas
 
@@ -245,15 +216,16 @@ def _franja_del_dia(
     fecha: date, duracion: timedelta, preferida: time | None, equipo: list[str],
     registros: dict[str, list[dict]], ocupacion: dict[str, list[tuple[datetime, datetime]]],
     descartadas: set[tuple[date, time]] | None = None,
+    minima: time | None = None,
 ) -> tuple[datetime, datetime] | None:
     todas = [o for i in equipo for o in ocupacion.get(i, [])]
-    for hora in _inicios_candidatos(fecha, duracion, preferida, [registros.get(i, []) for i in equipo], todas):
+    for hora in _inicios_candidatos(fecha, duracion, preferida, [registros.get(i, []) for i in equipo], todas, minima):
         if descartadas and (fecha, hora) in descartadas:
             continue
         inicio = datetime.combine(fecha, hora)
         fin = inicio + duracion
         if all(
-            cubre_franja(registros.get(i, []), fecha, inicio.time(), fin.time())
+            bloqueo_en_franja(registros.get(i, []), inicio, fin) is None
             and _libre(ocupacion.get(i, []), inicio, fin)
             for i in equipo
         ):
@@ -272,8 +244,13 @@ async def sugerir_fechas(
     limite: int = 10,
     excluir_programacion=None,
     hoy: date | None = None,
+    desde_hora: time | None = None,
 ) -> dict:
-    """Próximas franjas en que todo el equipo está disponible."""
+    """Próximas franjas en que todo el equipo no tiene bloqueos ni choques.
+
+    `desde_hora`: hora más temprana de inicio de la visita (por defecto 08:00).
+    Se buscan todos los días de la semana, incluidos sábados y domingos.
+    """
     db = servicio.db
     ids = list(dict.fromkeys(str(a) for a in auditores if a))
     if not ids:
@@ -303,7 +280,7 @@ async def sugerir_fechas(
         WHERE id_usuario = ANY(CAST(:ids AS UUID[]))
     """), {"ids": ids})
     usuarios = {str(u["id_usuario"]): dict(u) for u in usuarios_res.mappings().all()}
-    registros = await registros_disponibilidad(db, ids)
+    registros = await registros_bloqueo(db, ids, desde, hasta)
     ocupacion_res = await db.execute(text("""
         SELECT d.id_usuario, p.fecha_inicio, p.fecha_fin
         FROM detalle_programacion_auditor d
@@ -336,36 +313,20 @@ async def sugerir_fechas(
         or str(usuarios[i].get("estado_auditor") or "").strip().upper() not in ESTADOS_AUDITOR_OK
     }
 
-    # La comprobación de columnas de _tiene_disponibilidad_fecha no cambia
-    # durante la búsqueda: se memoriza solo en esta instancia del servicio.
-    original_columna = getattr(servicio, "_tabla_tiene_columna", None)
-    if original_columna is not None:
-        columnas: dict = {}
-
-        async def columna_memo(tabla, columna):
-            if (tabla, columna) not in columnas:
-                columnas[(tabla, columna)] = await original_columna(tabla, columna)
-            return columnas[(tabla, columna)]
-
-        servicio._tabla_tiene_columna = columna_memo
-
     opciones: list[dict] = []
     descartadas: set[tuple[date, time]] = set()
     if not inactivos:
         fecha = desde
         while fecha <= hasta and len(opciones) < limite:
-            franja = _franja_del_dia(fecha, duracion, hora_inicio, ids, registros, ocupacion, descartadas)
+            franja = _franja_del_dia(fecha, duracion, hora_inicio, ids, registros, ocupacion, descartadas, minima=desde_hora)
             if franja is None:
                 fecha += timedelta(days=1)
                 continue
             inicio, fin = franja
-            # Confirmación con las MISMAS funciones que crear_programacion.
+            # Confirmación con la MISMA función que valida programar.
             confirmada = True
             for i in ids:
-                if not await servicio._tiene_disponibilidad_fecha(i, fecha, inicio.time(), fin.time()):
-                    confirmada = False
-                    break
-                if await servicio._buscar_cruce(i, inicio, fin, excluir_programacion):
+                if await servicio.verificar_franja_auditor(i, inicio, fin, excluir_programacion, nombre_de(i)):
                     confirmada = False
                     break
             if not confirmada:
@@ -380,7 +341,7 @@ async def sugerir_fechas(
             })
             fecha += timedelta(days=1)
 
-    # Diagnóstico por auditor (siempre: avisa de vigencias que vencen pronto).
+    # Diagnóstico por auditor: solo causas reales (bloqueos y visitas).
     detalle = []
     for i in ids:
         info = {"id_usuario": i, "nombre": nombre_de(i), "dias_disponibles": 0, "proxima_fecha": None, "motivo": None}
@@ -388,25 +349,16 @@ async def sugerir_fechas(
             info["motivo"] = inactivos[i]
             detalle.append(info)
             continue
-        propios = registros.get(i, [])
         fecha = desde
         while fecha <= hasta:
-            if _franja_del_dia(fecha, duracion, hora_inicio, [i], registros, ocupacion):
+            if _franja_del_dia(fecha, duracion, hora_inicio, [i], registros, ocupacion, minima=desde_hora):
                 info["dias_disponibles"] += 1
                 info["proxima_fecha"] = info["proxima_fecha"] or fecha.isoformat()
             fecha += timedelta(days=1)
-        vence = fin_de_vigencia(propios)
-        if not any(es_disponibilidad(r) for r in propios):
-            info["motivo"] = explicar_no_disponible(propios, desde, time(8), time(9), nombre_de(i))
-        elif vence and vence < hasta:
-            info["motivo"] = (
-                f"La disponibilidad declarada de {nombre_de(i)} vence el {_fmt(vence)}"
-                + ("." if vence >= desde else "; no cubre ninguna fecha del rango buscado.")
-            )
-        elif info["dias_disponibles"] == 0:
+        if info["dias_disponibles"] == 0:
             info["motivo"] = (
                 f"{nombre_de(i)} no tiene ninguna franja de {_duracion_texto(duracion)} libre "
-                "en el rango (horario declarado más corto, días bloqueados u ocupados)."
+                "en el rango: todos los días están bloqueados u ocupados con visitas."
             )
         detalle.append(info)
 
@@ -416,11 +368,11 @@ async def sugerir_fechas(
         mensaje = "Hay auditores del equipo que no pueden programarse; revise el detalle por auditor."
     elif all(d["dias_disponibles"] for d in detalle):
         mensaje = (
-            "Cada auditor tiene días disponibles, pero no coinciden entre sí en el rango. "
+            "Cada auditor tiene días libres, pero no coinciden entre sí en el rango (bloqueos o visitas). "
             "Pruebe con menos auditores, una duración menor o un rango más amplio."
         )
     else:
-        mensaje = "No hay fechas en que todo el equipo esté disponible en el rango; revise el detalle por auditor."
+        mensaje = "No hay fechas en que todo el equipo esté libre en el rango; revise el detalle por auditor."
     return {
         "desde": desde.isoformat(),
         "hasta": hasta.isoformat(),

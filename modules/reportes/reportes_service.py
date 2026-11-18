@@ -11,12 +11,18 @@ filas de más, así que cada consulta agrega su filtro según el rol:
   apelaciones): su `id_usuario` se inyecta como `:yo`.
 
 Los roles de dirección y control no llevan filtro: su trabajo es ver todo.
+Excepciones (QA 18/11/2026):
+- Comité: no le aparecen las solicitudes, certificados ni apelaciones de los
+  expedientes en los que está impedido (modules/comite/imparcialidad.py).
+- Auditor: de certificados solo ve los de las solicitudes donde está asignado.
 """
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import _normalize_role_name
+from modules.auth.dependencies import sql_auditor_asignado
+from modules.comite.imparcialidad import filtro_visible
 from modules.solicitudes import estado_solicitud as estados
 from modules.reportes import reportes_roles as roles_m12
 
@@ -27,6 +33,7 @@ AUDITOR = roles_m12.AUDITOR
 class ReportesService:
     def __init__(self, db: AsyncSession, usuario: dict):
         self.db = db
+        self.usuario = usuario
         self.rol = _normalize_role_name(usuario.get("role_name"))
         self.id_usuario = usuario.get("id_usuario")
         self.id_empresa = None
@@ -72,6 +79,21 @@ class ReportesService:
             condiciones.append(f"AND {yo} = :yo")
             params["yo"] = self.id_usuario
         return " ".join(condiciones), params
+
+    def _solo_solicitudes_visibles(self, columna_solicitud: str, params: dict,
+                                   columna_apelacion_propia: str | None = None,
+                                   auditor_asignado: bool = False) -> str:
+        """
+        Filtro extra por solicitud (" AND ..."): al Comité le quita los
+        expedientes en los que está impedido; con `auditor_asignado`, al
+        Auditor le deja solo las solicitudes donde está asignado. "" para el
+        resto de roles.
+        """
+        extra = filtro_visible(self.usuario, columna_solicitud, params, columna_apelacion_propia)
+        if auditor_asignado and self.rol == AUDITOR:
+            params["aud_usuario"] = str(self.id_usuario or "")
+            extra += f" AND {sql_auditor_asignado(columna_solicitud)}"
+        return extra
 
     # ------------------------------------------------------------
     # 1. Estadístico de empresas
@@ -126,6 +148,7 @@ class ReportesService:
     async def _solicitudes_criticas(self):
         extra, params = self._filtros(empresa=True)
         params["dias"] = roles_m12.DIAS_SOLICITUD_CRITICA
+        visibles = self._solo_solicitudes_visibles("s.id_solicitud", params, auditor_asignado=True)
         # Los estados salen del catalogo de M5: antes se enumeraban aqui las
         # grafias una por una y bastaba con que apareciera otra para que el
         # reporte dejara de ver esas solicitudes.
@@ -143,7 +166,7 @@ class ReportesService:
             JOIN empresa e ON e.id_empresa = s.id_empresa
             WHERE s.estado IN (:radicada, :en_revision)
               AND s.fecha IS NOT NULL
-              AND (CURRENT_DATE - s.fecha::date) > :dias {extra}
+              AND (CURRENT_DATE - s.fecha::date) > :dias {extra}{visibles}
             ORDER BY dias_abierta DESC;
         """), params)
         return resultado.mappings().all()
@@ -179,6 +202,7 @@ class ReportesService:
     # ------------------------------------------------------------
     async def _certificados_vigentes(self):
         extra, params = self._filtros(empresa=True)
+        visibles = self._solo_solicitudes_visibles("s.id_solicitud", params, auditor_asignado=True)
         resultado = await self.db.execute(text(f"""
             SELECT
                 c.codigo_verificacion,
@@ -194,7 +218,7 @@ class ReportesService:
               OR s.id_certificado = c.id_certificado
             JOIN empresa e ON e.id_empresa = s.id_empresa
             WHERE c.fecha_vencimiento IS NOT NULL
-              AND c.fecha_vencimiento >= CURRENT_DATE {extra}
+              AND c.fecha_vencimiento >= CURRENT_DATE {extra}{visibles}
             ORDER BY c.fecha_vencimiento;
         """), params)
         return resultado.mappings().all()
@@ -206,32 +230,37 @@ class ReportesService:
         condiciones = []
         params: dict = {}
         if self.id_empresa is not None:
-            condiciones.append("AND ap.id_empresa = :eid")
+            condiciones.append("AND apl.id_empresa = :eid")
             params["eid"] = self.id_empresa
         if self.solo_yo:
             condiciones.append(
-                "AND (ap.id_usuario_presenta = :yo OR ap.id_auditor_evaluador = :yo)"
+                "AND (apl.id_usuario_presenta = :yo OR apl.id_auditor_evaluador = :yo)"
             )
             params["yo"] = self.id_usuario
         extra = " ".join(condiciones)
+        # Comité: sin las apelaciones de expedientes impedidos (la que él
+        # mismo decidió sí le aparece, como en la bandeja de apelaciones).
+        # Alias "apl" y no "ap": el SQL de imparcialidad usa "ap" por dentro y
+        # lo taparía.
+        extra += self._solo_solicitudes_visibles("apl.id_solicitud", params, columna_apelacion_propia="apl.id")
 
         resultado = await self.db.execute(text(f"""
             SELECT
-                ap.radicado,
-                TRIM(ap.estado) AS estado,
-                ap.fecha,
-                ap.motivo,
-                ap.fallo,
-                ap.fecha_resolucion,
+                apl.radicado,
+                TRIM(apl.estado) AS estado,
+                apl.fecha,
+                apl.motivo,
+                apl.fallo,
+                apl.fecha_resolucion,
                 e.nombre AS empresa,
                 u_p.nombre AS presenta,
                 u_r.nombre AS revisa
-            FROM apelacion ap
-            LEFT JOIN empresa e ON e.id_empresa = ap.id_empresa
-            LEFT JOIN usuario u_p ON u_p.id_usuario = ap.id_usuario_presenta
-            LEFT JOIN usuario u_r ON u_r.id_usuario = ap.id_usuario_revisa
+            FROM apelacion apl
+            LEFT JOIN empresa e ON e.id_empresa = apl.id_empresa
+            LEFT JOIN usuario u_p ON u_p.id_usuario = apl.id_usuario_presenta
+            LEFT JOIN usuario u_r ON u_r.id_usuario = apl.id_usuario_revisa
             WHERE TRUE {extra}
-            ORDER BY ap.fecha DESC NULLS LAST;
+            ORDER BY apl.fecha DESC NULLS LAST;
         """), params)
         return resultado.mappings().all()
 
@@ -340,6 +369,7 @@ class ReportesService:
     async def _critico_vencimiento(self):
         extra, params = self._filtros(empresa=True)
         params["dias"] = roles_m12.DIAS_VENCIMIENTO_CRITICO
+        visibles = self._solo_solicitudes_visibles("s.id_solicitud", params, auditor_asignado=True)
         resultado = await self.db.execute(text(f"""
             SELECT
                 c.codigo_verificacion,
@@ -354,7 +384,7 @@ class ReportesService:
               OR s.id_certificado = c.id_certificado
             JOIN empresa e ON e.id_empresa = s.id_empresa
             WHERE c.fecha_vencimiento IS NOT NULL
-              AND (c.fecha_vencimiento - CURRENT_DATE) <= :dias {extra}
+              AND (c.fecha_vencimiento - CURRENT_DATE) <= :dias {extra}{visibles}
             ORDER BY c.fecha_vencimiento;
         """), params)
         return resultado.mappings().all()

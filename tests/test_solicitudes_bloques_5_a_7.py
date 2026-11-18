@@ -145,6 +145,9 @@ class BaseFalsa:
 
         if "FROM user_empresa" in sql:
             return Respuesta(todas=[{"id_empresa": ID_EMPRESA}], escalar=ID_EMPRESA)
+        if "AS auditor_asignado" in sql:
+            # El auditor de estas pruebas está asignado a la solicitud.
+            return Respuesta(primera={"auditor_asignado": True})
         if "FROM documento_solicitud" in sql:
             return Respuesta(primera=self.documentos)
         # La comprobacion de conflicto es una consulta propia; la busqueda de
@@ -707,6 +710,8 @@ async def test_el_resultado_del_calculo_lo_ve_tambien_el_auditor_y_el_comite():
                 return Respuesta(todas=[{"id_empresa": ID_EMPRESA}], escalar=ID_EMPRESA)
             if "FROM calculo_auditoria" in sql:
                 return Respuesta(primera=calculo())
+            if "AS auditor_asignado" in sql:
+                return Respuesta(primera={"auditor_asignado": True})
             return Respuesta(primera=solicitud())
 
     for rol in ("Auditor", "Comité", "Administrador"):

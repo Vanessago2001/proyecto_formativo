@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
   <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
-  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261118a">
   <style>
     /* ==========================================================
        MÓDULO DE AUDITORES REGISTRADOS
@@ -939,6 +939,53 @@
       font-weight: 600;
     }
 
+    .audit-activar-form {
+      display: grid;
+      gap: 10px;
+      text-align: left;
+      margin-top: 14px;
+    }
+
+    .audit-activar-form label {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .audit-activar-form textarea {
+      width: 100%;
+      min-height: 96px;
+      resize: vertical;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font: inherit;
+    }
+
+    .audit-activar-form textarea[aria-invalid="true"] {
+      border-color: #b91c1c;
+    }
+
+    .audit-activar-ayuda {
+      font-size: 0.82rem;
+      color: #475569;
+    }
+
+    .audit-activar-check {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-weight: 400 !important;
+    }
+
+    .audit-activar-check input {
+      flex: 0 0 auto;
+      width: 18px !important;
+      height: 18px;
+      min-height: 0;
+      margin: 2px 0 0;
+      padding: 0;
+    }
+
     .audit-confirm-error {
       margin-top: 12px;
       color: #a5261e;
@@ -1231,10 +1278,9 @@
           <a class="comite-nav-link" href="/dashboard">Resumen</a>
           <a class="comite-nav-link active" href="/auditores-registrados" aria-current="page">Auditores registrados</a>
           <a class="comite-nav-link" href="/empresas">Empresas registradas</a>
-          <a class="comite-nav-link" href="/asignacion-auditores">Asignación de auditores</a>
+          <a class="comite-nav-link" href="/solicitudes">Solicitudes</a>
           <a class="comite-nav-link" href="/consultar-auditorias-programadas-admin">Auditorías programadas</a>
           <a class="comite-nav-link" href="/consultar-agenda-auditor">Agenda de auditor</a>
-          <a class="comite-nav-link" href="/revision-solicitudes">Revisión de solicitudes</a>
           <a class="comite-nav-link" href="/banco-auditores">Banco de auditores</a>
           <a class="comite-nav-link" href="/comite">Comité de certificación</a>
           <a class="comite-nav-link" href="/reportes">Reportes</a>
@@ -1432,11 +1478,53 @@
     </div>
   </div>
 
+  <!-- ==========================================================
+       MODAL: ACTIVAR AUDITOR (postulación aprobada, auditor sin activar)
+       ========================================================== -->
+  <div class="audit-modal" id="modalActivar" role="dialog" aria-modal="true"
+    aria-labelledby="tituloActivar" aria-describedby="textoActivar">
+    <div class="audit-modal-card confirmar" role="document">
+      <form class="audit-modal-body" id="formActivar" novalidate>
+        <div class="audit-confirm-icon success" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <h3 id="tituloActivar">Activar auditor</h3>
+        <div class="audit-confirm-nombre" id="activarNombre"></div>
+        <p class="audit-confirm-texto" id="textoActivar">
+          Su postulación vigente está aprobada, pero su estado de auditor no está activo, así que todavía
+          no cuenta como auditor aprobado: no ve sus visitas ni recibe asignaciones. Al activarlo, su estado
+          de auditor pasa a <strong>Activo</strong>, queda registrado en el historial de la postulación con
+          su nombre, la fecha y el motivo, y se le envía una notificación.
+        </p>
+        <div class="audit-activar-form">
+          <label for="activarMotivo">Motivo de la activación <span aria-hidden="true">*</span></label>
+          <textarea id="activarMotivo" name="motivo" maxlength="1000" required aria-required="true"
+            aria-describedby="activarMotivoAyuda activarError"
+            placeholder="Ej.: la postulación se aprobó el 14/10/2026 y el estado de auditor quedó en Postulante por error."></textarea>
+          <span class="audit-activar-ayuda" id="activarMotivoAyuda">Obligatorio, mínimo 10 caracteres.</span>
+          <label class="audit-activar-check" for="activarConfirmo">
+            <input type="checkbox" id="activarConfirmo" required aria-required="true">
+            <span>Confirmo que revisé la postulación aprobada y quiero activar a este auditor.</span>
+          </label>
+        </div>
+        <div class="audit-confirm-error" id="activarError" role="alert"></div>
+      </form>
+      <div class="audit-modal-foot">
+        <button class="btn btn-secundario comite-button secondary" type="button" id="btnCancelarActivar">Cancelar</button>
+        <button class="btn btn-primario comite-button primary" type="submit" form="formActivar" id="btnEjecutarActivar">Activar auditor</button>
+      </div>
+    </div>
+  </div>
+
   <div class="audit-toast-wrap" id="toastWrap" aria-live="polite" aria-atomic="false"></div>
 
-<script src="/static/session.js?v=20261117"></script>
+<script src="/static/session.js?v=20261118pub"></script>
     <script src="/static/session-guard.js"></script>
-  <script src="/static/nav.js?v=20261117cat"></script>
+  <script src="/static/nav.js?v=20261118sol"></script>
   <script>
     (() => {
       "use strict";
@@ -1481,6 +1569,10 @@
       const ROLES_ESCRITURA = ["admin"];
       let rolActual = normalizarRol(payload.role_name);
       let puedeGestionar = ROLES_ESCRITURA.includes(rolActual);
+      // Activar auditor: Coordinador siempre; Auxiliar solo con el permiso
+      // delegado AUD-013 (se consulta en /api/permisos-auxiliar/mios).
+      const PERMISO_ACTIVAR = "AUD-013";
+      let puedeActivar = puedeGestionar;
 
       if (!ROLES_LECTURA.includes(rolActual)) {
         window.location.replace("/dashboard");
@@ -1629,6 +1721,12 @@
       // Postulante / Aprobado / Rechazado... (estado_registro lo calcula el
       // backend con estado_auditor y la última postulación).
       function badgeRegistro(auditor) {
+        if (auditor.pendiente_activacion) {
+          const detallePendiente = auditor.estado_registro_detalle ||
+            `Postulación aprobada; estado de auditor: ${auditor.estado_auditor || "sin dato"}`;
+          return `<span class="audit-badge pendiente" title="${escapar(detallePendiente)}">Aprobado, pendiente de activar</span>` +
+            `<small class="audit-registro-detalle">${escapar(detallePendiente)}</small>`;
+        }
         const estado = auditor.estado_registro || "Sin postulación";
         const clases = {
           "aprobado": "aprobado",
@@ -1777,6 +1875,15 @@
 
           rolActual = normalizarRol(sesion.role_name);
           puedeGestionar = ROLES_ESCRITURA.includes(rolActual);
+          puedeActivar = puedeGestionar;
+          if (rolActual === "auxiliar") {
+            try {
+              const mios = await api("/api/permisos-auxiliar/mios");
+              puedeActivar = Array.isArray(mios.codigos) && mios.codigos.includes(PERMISO_ACTIVAR);
+            } catch (_) {
+              puedeActivar = false;
+            }
+          }
           $("#roleLabel").textContent = "Rol: " + (sesion.role_name || "Usuario");
 
           if (!ROLES_LECTURA.includes(rolActual)) {
@@ -1976,6 +2083,11 @@
                   <div class="audit-actions">
                     <button class="btn btn-secundario btn-sm audit-action" type="button" data-accion="detalle" data-id="${id}">Detalles</button>
                     ${botonRevisarSolicitud(auditor)}
+                    ${puedeActivar && auditor.pendiente_activacion
+                      ? `<button class="btn btn-primario btn-sm audit-action" type="button"
+                           data-accion="activar" data-id="${id}" data-nombre="${escapar(auditor.nombre || "")}"
+                           aria-haspopup="dialog">Activar auditor</button>`
+                      : ""}
                     ${puedeGestionar
                       ? `<button class="btn btn-sm audit-action ${estado ? "btn-peligro-contorno danger" : "btn-secundario success"}" type="button"
                            data-accion="estado" data-id="${id}" data-nombre="${escapar(auditor.nombre || "")}"
@@ -2128,7 +2240,9 @@
 
         detalleBadges.innerHTML =
           badgeEstado(auditor.estado) +
-          (auditor.estado_auditor
+          (auditor.pendiente_activacion
+            ? `<span class="audit-badge pendiente" title="Postulación aprobada; estado de auditor: ${escapar(auditor.estado_auditor || "sin dato")}">Aprobado, pendiente de activar</span>`
+            : auditor.estado_auditor
             ? `<span class="audit-badge neutral">${escapar(auditor.estado_auditor)}</span>`
             : "");
 
@@ -2772,6 +2886,8 @@
           app.ejecutando = false;
           cerrarModal(modalConfirmar);
           app.confirmacion = null;
+          const inactivar = nuevoEstado === "Inactivo";
+          const retiros = data.retiros || {};
           let detalleToast = `${nombre}: ${nuevoEstado.toLowerCase()}.`;
           if (inactivar && Number(retiros.retiros_realizados || 0) > 0) {
             detalleToast += ` Retiros: ${retiros.retiros_realizados}.`;
@@ -2782,8 +2898,6 @@
           toast("success", data.mensaje || "Estado actualizado", detalleToast);
           mostrarFeedback("success", data.mensaje || "Estado actualizado correctamente.");
 
-          const inactivar = nuevoEstado === "Inactivo";
-          const retiros = data.retiros || {};
           const auditor = app.auditores.find((item) => String(item.id_usuario) === String(id));
           if (auditor) auditor.estado = data.estado || nuevoEstado;
 
@@ -2803,6 +2917,117 @@
           toast("error", "No se pudo actualizar el estado", error.message || "Inténtalo nuevamente.");
         }
       }
+
+      // ------------------------------------------------------------
+      // Activar auditor (postulación aprobada, estado de auditor sin activar)
+      // ------------------------------------------------------------
+      const MIN_MOTIVO_ACTIVAR = 10;
+      const modalActivar = $("#modalActivar");
+      const formActivar = $("#formActivar");
+      const activarMotivo = $("#activarMotivo");
+      const activarConfirmo = $("#activarConfirmo");
+      const activarError = $("#activarError");
+      const btnEjecutarActivar = $("#btnEjecutarActivar");
+      const btnCancelarActivar = $("#btnCancelarActivar");
+      let activacion = null;
+
+      function abrirActivacion(id, nombre, origen) {
+        activacion = { id, nombre, origen, ejecutando: false };
+        $("#activarNombre").textContent = nombre || "Auditor";
+        activarMotivo.value = "";
+        activarMotivo.removeAttribute("aria-invalid");
+        activarConfirmo.checked = false;
+        activarError.textContent = "";
+        btnEjecutarActivar.disabled = false;
+        btnCancelarActivar.disabled = false;
+        btnEjecutarActivar.textContent = "Activar auditor";
+        abrirModal(modalActivar);
+        activarMotivo.focus();
+      }
+
+      function cerrarActivacion() {
+        if (!activacion || activacion.ejecutando) return;
+        const origen = activacion.origen;
+        cerrarModal(modalActivar);
+        activacion = null;
+        if (origen && document.body.contains(origen)) origen.focus();
+      }
+
+      async function ejecutarActivacion(evento) {
+        evento.preventDefault();
+        if (!activacion || activacion.ejecutando) return;
+        const motivo = activarMotivo.value.trim();
+        if (motivo.length < MIN_MOTIVO_ACTIVAR) {
+          activarMotivo.setAttribute("aria-invalid", "true");
+          activarError.textContent = `Escriba el motivo de la activación (mínimo ${MIN_MOTIVO_ACTIVAR} caracteres).`;
+          activarMotivo.focus();
+          return;
+        }
+        activarMotivo.removeAttribute("aria-invalid");
+        if (!activarConfirmo.checked) {
+          activarError.textContent = "Marque la confirmación para activar al auditor.";
+          activarConfirmo.focus();
+          return;
+        }
+
+        const { id, nombre } = activacion;
+        activacion.ejecutando = true;
+        activarError.textContent = "";
+        btnEjecutarActivar.disabled = true;
+        btnCancelarActivar.disabled = true;
+        btnEjecutarActivar.textContent = "Activando...";
+        try {
+          const data = await api(`/admin/auditores-registrados/${encodeURIComponent(id)}/activar`, {
+            method: "POST",
+            body: JSON.stringify({ motivo }),
+          });
+          activacion.ejecutando = false;
+          activacion.origen = null;
+          cerrarActivacion();
+          toast("success", data.mensaje || "Auditor activado", `${nombre || "El auditor"} ya figura como Aprobado.`);
+          mostrarFeedback("success", `${nombre || "El auditor"} fue activado. Su estado de registro ahora es Aprobado.`);
+          await cargarAuditores({ silencioso: true });
+          if (app.detalleId && String(app.detalleId) === String(id)) abrirDetalle(id);
+        } catch (error) {
+          activacion.ejecutando = false;
+          activarError.textContent = error.message || "No fue posible activar al auditor.";
+          btnEjecutarActivar.disabled = false;
+          btnCancelarActivar.disabled = false;
+          btnEjecutarActivar.textContent = "Activar auditor";
+        }
+      }
+
+      formActivar.addEventListener("submit", ejecutarActivacion);
+      // El aviso de error desaparece en cuanto se corrige el dato.
+      activarMotivo.addEventListener("input", () => {
+        if (activarMotivo.value.trim().length >= MIN_MOTIVO_ACTIVAR) {
+          activarMotivo.removeAttribute("aria-invalid");
+          activarError.textContent = "";
+        }
+      });
+      activarConfirmo.addEventListener("change", () => {
+        if (activarConfirmo.checked) activarError.textContent = "";
+      });
+      btnCancelarActivar.addEventListener("click", cerrarActivacion);
+      modalActivar.addEventListener("click", (evento) => {
+        if (evento.target === modalActivar) cerrarActivacion();
+      });
+      // Mantiene el foco dentro del diálogo mientras está abierto.
+      modalActivar.addEventListener("keydown", (evento) => {
+        if (evento.key !== "Tab") return;
+        const enfocables = [activarMotivo, activarConfirmo, btnCancelarActivar, btnEjecutarActivar]
+          .filter((el) => !el.disabled);
+        if (!enfocables.length) return;
+        const primero = enfocables[0];
+        const ultimo = enfocables[enfocables.length - 1];
+        if (evento.shiftKey && document.activeElement === primero) {
+          evento.preventDefault();
+          ultimo.focus();
+        } else if (!evento.shiftKey && document.activeElement === ultimo) {
+          evento.preventDefault();
+          primero.focus();
+        }
+      });
 
       // ------------------------------------------------------------
       // Eventos
@@ -2869,6 +3094,8 @@
           abrirDetalle(id);
         } else if (accion === "estado") {
           abrirConfirmacion(id, boton.dataset.nombre || "", boton.dataset.estado);
+        } else if (accion === "activar") {
+          abrirActivacion(id, boton.dataset.nombre || "", boton);
         }
       });
 
@@ -2969,7 +3196,10 @@
 
       document.addEventListener("keydown", (evento) => {
         if (evento.key !== "Escape") return;
-        if (modalConfirmar.classList.contains("open")) {
+        if (modalActivar.classList.contains("open")) {
+          evento.stopPropagation();
+          cerrarActivacion();
+        } else if (modalConfirmar.classList.contains("open")) {
           evento.stopPropagation();
           cerrarConfirmacion();
         } else if (modalDetalle.classList.contains("open")) {

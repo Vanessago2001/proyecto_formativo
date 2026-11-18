@@ -325,7 +325,7 @@ async def test_validar_codigo_inexistente_lo_dice(limite_limpio):
 
 INTERNAS = [
     "/dashboard", "/empresas", "/comite", "/pqrs-gestion", "/permisos-auxiliar", "/reportes",
-    "/revision-solicitudes", "/auditores-registrados", "/banco-auditores", "/asignacion-auditores",
+    "/solicitudes", "/auditores-registrados", "/banco-auditores",
     "/gestion-certificados", "/consultar-agenda-auditor", "/empresa", "/apelacion", "/profile",
 ]
 PUBLICAS = [

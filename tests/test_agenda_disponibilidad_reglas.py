@@ -5,10 +5,11 @@ Reglas de la agenda al programar y al configurar disponibilidad.
     (403 para otros auditores y para el Coordinador).
   · Programar exige solicitud 'Aprobada' (canon de M5: el literal 'APROBADO'
     rechazaba toda programación real) y responde 409 con el nombre del
-    auditor y el choque (otra auditoría, día bloqueado o fuera de horario).
+    auditor y la causa real (otra visita o día bloqueado).
+  · Regla única (18/11/2026): solo los bloqueos y las visitas que se cruzan
+    impiden programar; lo declarado (horario semanal, vigencia) no restringe.
   · Un hueco ocupado por una auditoría nunca se ofrece como libre, aunque el
     auditor haya declarado disponibilidad en él.
-  · El horario semanal ('Horario Semanal') cuenta como disponibilidad.
 """
 
 import uuid
@@ -145,14 +146,20 @@ def _datos():
     )
 
 
+async def _sin_bloqueo(self, *a, **k):
+    return None
+
+
+async def _bloqueado(self, id_usuario, inicio, fin):
+    return inicio.date(), {"motivo": "Viaje", "hora_inicio": None, "hora_fin": None}
+
+
 async def test_programar_rechaza_choque_con_otra_auditoria(monkeypatch):
-    async def disponible(self, *a, **k):
-        return True
-
     async def cruce(self, *a, **k):
-        return {"fecha_inicio": datetime(2099, 1, 7, 8, 0), "fecha_fin": datetime(2099, 1, 7, 12, 0), "empresa_nombre": "Café del Eje"}
+        return {"fecha_inicio": datetime(2099, 1, 7, 8, 0), "fecha_fin": datetime(2099, 1, 7, 12, 0),
+                "empresa_nombre": "Café del Eje", "numero_radicado": "SOL-2099-0001"}
 
-    monkeypatch.setattr(AgendaAuditorService, "_tiene_disponibilidad_fecha", disponible)
+    monkeypatch.setattr(AgendaAuditorService, "_bloqueo_en_franja", _sin_bloqueo)
     monkeypatch.setattr(AgendaAuditorService, "_buscar_cruce", cruce)
     db = SesionProgramar()
     with pytest.raises(HTTPException) as error:
@@ -160,27 +167,46 @@ async def test_programar_rechaza_choque_con_otra_auditoria(monkeypatch):
     assert error.value.status_code == 409
     detalle = error.value.detail
     assert isinstance(detalle, str)  # antes era un dict y la pantalla mostraba JSON
-    assert "Ana Auditora" in detalle and "07/01/2099 de 08:00 a 12:00" in detalle and "Café del Eje" in detalle
+    assert detalle == "No se puede programar: Ana Auditora ya tiene la visita SOL-2099-0001 el 07/01/2099 de 08:00 a 12:00."
 
 
-async def test_programar_rechaza_dia_bloqueado_o_fuera_de_horario(monkeypatch):
-    async def no_disponible(self, *a, **k):
-        return False
-
-    monkeypatch.setattr(AgendaAuditorService, "_tiene_disponibilidad_fecha", no_disponible)
+async def test_programar_rechaza_dia_bloqueado_con_su_motivo(monkeypatch):
+    monkeypatch.setattr(AgendaAuditorService, "_bloqueo_en_franja", _bloqueado)
     with pytest.raises(HTTPException) as error:
         await AgendaAuditorService(SesionProgramar()).crear_programacion(_datos())
     assert error.value.status_code == 409
-    assert "Ana Auditora no tiene disponibilidad el 07/01/2099 de 09:00 a 11:00" in error.value.detail
+    assert error.value.detail == "No se puede programar: Ana Auditora tiene bloqueado el 07/01/2099 (Viaje)."
+
+
+async def test_programar_sin_disponibilidad_declarada_pasa_la_validacion(monkeypatch):
+    """Sin bloqueos ni visitas no se exige nada declarado: sigue a crear la visita."""
+    class Llego(Exception):
+        pass
+
+    class Sesion(SesionProgramar):
+        async def execute(self, sentencia, params=None):
+            sql = _plano(sentencia)
+            if "FROM disponibilidad_auditor" in sql:
+                assert "horario semanal" not in sql  # lo declarado no se consulta
+                return ResultadoFalso([])
+            if "FROM detalle_programacion_auditor d INNER JOIN programacion_visita p" in sql:
+                return ResultadoFalso([])
+            return await super().execute(sentencia, params)
+
+    async def nombre_empresa(self, *a, **k):
+        raise Llego()
+
+    monkeypatch.setattr(AgendaAuditorService, "_nombre_empresa", nombre_empresa)
+    with pytest.raises(HTTPException) as error:
+        await AgendaAuditorService(Sesion()).crear_programacion(_datos())
+    # El servicio envuelve el error inesperado en un 500: llegó a crear la visita.
+    assert error.value.status_code == 500 and "Llego" in error.value.detail
 
 
 @pytest.mark.parametrize("estado", ["Aprobada", "APROBADA", "Aprobado"])
 async def test_programar_acepta_la_solicitud_aprobada_en_su_forma_canonica(monkeypatch, estado):
     """Con 'Aprobada' se llega a validar al auditor (antes: 409 'solicitud aprobada')."""
-    async def no_disponible(self, *a, **k):
-        return False
-
-    monkeypatch.setattr(AgendaAuditorService, "_tiene_disponibilidad_fecha", no_disponible)
+    monkeypatch.setattr(AgendaAuditorService, "_bloqueo_en_franja", _bloqueado)
     with pytest.raises(HTTPException) as error:
         await AgendaAuditorService(SesionProgramar(estado)).crear_programacion(_datos())
     assert "solicitud aprobada" not in error.value.detail
@@ -215,36 +241,30 @@ class SesionUsuarioActivo:
 
 
 async def test_comprobar_disponibilidad_marca_ocupado_aunque_haya_horario_declarado(monkeypatch):
-    async def declarado(self, *a, **k):
-        return True
-
     async def cruce(self, *a, **k):
         return {"fecha_inicio": datetime(2099, 1, 7, 9), "fecha_fin": datetime(2099, 1, 7, 10), "empresa_nombre": "Empresa X"}
 
-    monkeypatch.setattr(AgendaAuditorService, "_tiene_disponibilidad_fecha", declarado)
+    monkeypatch.setattr(AgendaAuditorService, "_bloqueo_en_franja", _sin_bloqueo)
     monkeypatch.setattr(AgendaAuditorService, "_buscar_cruce", cruce)
     r = await AgendaAuditorService(SesionUsuarioActivo()).consultar_disponibilidad(
         ID_AUDITOR, date(2099, 1, 7), datetime(2099, 1, 7, 9), datetime(2099, 1, 7, 11)
     )
     assert r["disponible"] is False and r["ocupado"] is True
-    assert r["motivo"].startswith("Ocupado:") and "Empresa X" in r["motivo"]
+    assert r["motivo"] == "El auditor ya tiene otra visita el 07/01/2099 de 09:00 a 10:00."
 
 
-async def test_el_horario_semanal_cuenta_como_disponibilidad():
+async def test_solo_los_bloqueos_se_consultan_en_disponibilidad_auditor():
     class Sesion:
         sql = ""
 
         async def execute(self, sentencia, params=None):
             Sesion.sql = _plano(sentencia)
-            return ResultadoFalso(escalar=True)
+            return ResultadoFalso([])
 
-    async def con_horas(self, tabla, columna):
-        return True
-
-    servicio = AgendaAuditorService(Sesion())
-    servicio._tabla_tiene_columna = con_horas.__get__(servicio)
-    await servicio._tiene_disponibilidad_fecha(ID_AUDITOR, date(2099, 1, 7), time(9), time(11))
-    assert "'horario semanal'" in Sesion.sql
+    hallado = await AgendaAuditorService(Sesion())._bloqueo_en_franja(
+        ID_AUDITOR, datetime(2099, 1, 7, 9), datetime(2099, 1, 7, 11))
+    assert hallado is None
+    assert "'bloqueo fecha'" in Sesion.sql and "horario semanal" not in Sesion.sql
 
 
 async def test_calendario_mensual_marca_ocupado_sobre_disponibilidad_declarada(monkeypatch):
@@ -265,9 +285,12 @@ async def test_calendario_mensual_marca_ocupado_sobre_disponibilidad_declarada(m
     r = await AgendaAuditorService(None).ver_disponibilidad_mensual(ID_AUDITOR, 2099, 1)
     dias = {d["fecha"]: d for d in r["dias"]}
     miercoles = dias["2099-01-07"]   # declarado y con auditoría
-    assert miercoles["declarado"] and miercoles["ocupado"]
+    assert miercoles["declarado"] and miercoles["ocupado"] and not miercoles["disponible"]
     assert dias["2099-01-14"]["declarado"] and not dias["2099-01-14"]["ocupado"]
     assert dias["2099-01-09"]["bloqueado"] and not dias["2099-01-09"]["declarado"]
+    assert not dias["2099-01-09"]["disponible"]
+    # Regla única: un jueves sin nada declarado, sin bloqueo ni visita, está disponible.
+    assert dias["2099-01-08"]["disponible"] and not dias["2099-01-08"]["declarado"]
 
 
 async def test_configurar_horario_avisa_las_franjas_ya_ocupadas(monkeypatch):

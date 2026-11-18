@@ -220,7 +220,7 @@ async def test_un_auditor_solo_ve_sus_apelaciones(db, cliente):
 
     assert respuesta.status_code == status.HTTP_200_OK
     sql, params = _sql_y_params(db)[0]
-    assert "ap.id_usuario_presenta = :yo" in sql
+    assert "apl.id_usuario_presenta = :yo" in sql
     assert params["yo"] == ID_USUARIO
 
 
@@ -242,11 +242,10 @@ async def test_el_reporte_critico_usa_el_umbral_de_90_dias(db, cliente):
 # Páginas del panel que deben ofrecer una entrada al módulo de reportes.
 PAGINAS_CON_ENLACE = [
     "/dashboard",
-    "/asignacion-auditores",
+    "/solicitudes",
     "/banco-auditores",
     "/banco-auditores/solicitud/44444444-4444-4444-4444-444444444444",
     "/empresas",
-    "/revision-solicitudes",
     "/empresa",
     "/comite",
     "/auditor",

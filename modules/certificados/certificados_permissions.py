@@ -47,7 +47,9 @@ PERMISOS_M9: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
     "CER-024": ("Consultar publicación y métricas",          (V, V, V, F, F, F, F, V)),
     "CER-025": ("Exportar base de certificados",             (V, V, REQ, F, F, F, F, F)),
     "CER-026": ("Generar listado oficial de empresas",       (V, V, V, F, F, F, F, F)),
-    "CER-027": ("Alertas de próximos vencimientos",          (V, V, V, V, V, F, F, F)),
+    # El Auditor no recibe alertas de vencimiento (QA 18/11/2026): ninguna
+    # pantalla suya las usa y listaban certificados de todas las empresas.
+    "CER-027": ("Alertas de próximos vencimientos",          (V, V, V, V, F, F, F, F)),
     "CER-028": ("Notificar vencimiento por correo",          (V, V, V, V, V, F, F, F)),
     "CER-029": ("Registrar renovación en plataforma",        (V, V, REQ, F, F, F, F, F)),
 }

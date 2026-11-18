@@ -134,7 +134,6 @@ class AuditorSolicitudService:
         filtrar_por_norma: bool = True,
         sector_iaf: str | None = None,
         ciudad: str | None = None,
-        solo_disponibles: bool = False,
         excluir_conflictos: bool = True,
     ) -> dict:
         """
@@ -152,8 +151,8 @@ class AuditorSolicitudService:
             pedidos.append("SOL-043")
         if ciudad:
             pedidos.append("SOL-044")
-        if solo_disponibles:
-            pedidos.append("SOL-045")
+        # SOL-045 "solo disponibles" se quitó (18/11/2026): sin fecha de visita no
+        # tiene sentido; la disponibilidad se revisa al programar en la Agenda.
         if excluir_conflictos:
             pedidos.append("SOL-046")
         if pedidos:
@@ -203,15 +202,19 @@ class AuditorSolicitudService:
                       AND ci.bloquea_asignacion = TRUE
                       AND ci.estado = 'Activo'
                 ) AS tiene_conflicto,
-                EXISTS (
+                -- Regla única de disponibilidad (18/11/2026, ver
+                -- modules/agenda_auditor/fechas_disponibles.py): el auditor
+                -- está disponible salvo que tenga bloqueada la fecha; la
+                -- disponibilidad declarada ya no restringe. Sin fecha de
+                -- visita, se mira el día de hoy (los cruces con visitas se
+                -- validan al programar en la Agenda).
+                NOT EXISTS (
                     SELECT 1 FROM disponibilidad_auditor d
                     WHERE d.id_usuario = u.id_usuario
-                      AND d.estado = 'Activo'
-                      -- La base guarda 'Horario Semanal' y 'Disponibilidad
-                      -- Extra'; el literal 'Disponibilidad' no existía y el
-                      -- filtro "solo disponibles" descartaba a todos.
+                      AND UPPER(TRIM(COALESCE(d.estado, ''))) IN ('ACTIVO', 'ACTIVA')
                       AND LOWER(TRIM(COALESCE(d.tipo_registro, ''))) IN
-                          ('disponibilidad', 'horario semanal', 'disponibilidad extra')
+                          ('no disponible', 'no_disponible', 'indisponible', 'bloqueo', 'bloqueo fecha')
+                      AND CAST(d.fecha_inicio AS DATE) <= CURRENT_DATE
                       AND (d.fecha_fin IS NULL OR CAST(d.fecha_fin AS DATE) >= CURRENT_DATE)
                 ) AS tiene_disponibilidad,
                 EXISTS (
@@ -264,8 +267,6 @@ class AuditorSolicitudService:
                 motivos.append(f"No tiene competencia en el sector IAF {sector_iaf}.")
             if excluir_conflictos and candidato["tiene_conflicto"]:
                 motivos.append("Tiene un conflicto de interés con la empresa.")
-            if solo_disponibles and not candidato["tiene_disponibilidad"]:
-                motivos.append("No registró disponibilidad.")
             if candidato["ya_en_la_solicitud"]:
                 motivos.append("Ya está en esta solicitud.")
 
@@ -280,7 +281,6 @@ class AuditorSolicitudService:
                 "norma": filtrar_por_norma,
                 "sector_iaf": sector_iaf,
                 "ciudad": ciudad,
-                "solo_disponibles": solo_disponibles,
                 "excluir_conflictos": excluir_conflictos,
                 "texto": texto,
             },

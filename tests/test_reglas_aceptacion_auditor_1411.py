@@ -340,7 +340,10 @@ async def test_declarar_conflicto_sin_asignaciones_no_notifica(monkeypatch):
 def test_listado_de_asignaciones_marca_el_conflicto():
     fuente = (RAIZ / "modules/asignacion_auditores/asignacion_service.py").read_text(encoding="utf-8")
     assert "{SQL_CONFLICTO_ASIGNACION} AS conflicto_interes" in fuente
-    pagina = (RAIZ / "static/asignacion-auditores.html").read_text(encoding="utf-8")
+    # La antigua Asignación de auditores es ahora la etapa "Con auditores"
+    # de /solicitudes: el HTML en solicitudes.html y su JS aparte.
+    pagina = (RAIZ / "static/solicitudes.html").read_text(encoding="utf-8") + (
+        RAIZ / "static/solicitudes-asignacion.js").read_text(encoding="utf-8")
     assert "Conflicto de interés: debe reasignarse" in pagina
     assert "/retirar-por-conflicto" in pagina
     assert 'id="retiroConflictoModal" class="modal-overlay" role="dialog" aria-modal="true"' in pagina

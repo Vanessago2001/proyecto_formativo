@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261118a">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
   <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
   <style>
@@ -328,7 +328,7 @@
       // CER-024 (métricas internas): solo Coordinador y Auxiliar. El resto de
       // roles (Comité, Empresa, Auditor) no la pide y resume lo que ve.
       const canSeeInternalMetrics = ["admin", "auxiliar"].includes(role);
-      const canSeeAlerts = ["admin", "auxiliar", "empresa", "auditor"].includes(role);
+      const canSeeAlerts = ["admin", "auxiliar", "empresa"].includes(role);
       const canSeeHistory = ["admin", "auxiliar", "empresa", "auditor", "public"].includes(role);
       const publicOnly = publicMode || role === "public";
       const roleLabel = rolePayload && (rolePayload.role_name || rolePayload.rol) || "Usuario";
@@ -1103,8 +1103,8 @@
       }
     })();
   </script>
-<script src="/static/nav.js?v=20261117cat"></script>
-<script src="/static/session.js?v=20261117"></script>
+<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/session.js?v=20261118pub"></script>
 <script src="/static/pqrs-enlace.js?v=20261106"></script>
 </body>
 

@@ -59,6 +59,10 @@ class SesionFalsa:
         self.solicitud_sedes: dict[str, dict] = {}
         self.commits = 0
         self._consecutivo = 0
+        # auditores_solicitud vigentes como pares (id_auditor, id_solicitud).
+        # None = sin restricción (las pruebas de la matriz dan al auditor por
+        # asignado); con asignar_auditor() se usa la lista.
+        self.asignaciones: list[tuple[str, str]] | None = None
 
     # -- utilidades del test -------------------------------------------------
 
@@ -71,6 +75,17 @@ class SesionFalsa:
                 "estado": estado,
             }
         )
+
+    def asignar_auditor(self, id_auditor, id_solicitud) -> None:
+        """Asignación vigente del auditor a la solicitud (auditores_solicitud)."""
+        if self.asignaciones is None:
+            self.asignaciones = []
+        self.asignaciones.append((str(id_auditor), str(id_solicitud)))
+
+    def _auditor_asignado(self, id_auditor, id_solicitud) -> bool:
+        if self.asignaciones is None:
+            return True
+        return (str(id_auditor), str(id_solicitud)) in self.asignaciones
 
     def sembrar(self, **campos) -> dict:
         """Inserta una solicitud directamente, sin pasar por el servicio."""
@@ -157,6 +172,10 @@ class SesionFalsa:
 
         # Las tablas de los bloques 2 y 3 se atienden primero: sus nombres
         # contienen "solicitud" y el despacho del Bloque 1 las capturaría.
+        if "AS auditor_asignado" in sql:
+            asignado = self._auditor_asignado(parametros["aud_usuario"], parametros["aud_solicitud"])
+            return ResultadoFalso([{"auditor_asignado": asignado}])
+
         if "solicitud_sede" in sql:
             return self._solicitud_sede(sql, parametros)
 
@@ -274,6 +293,9 @@ class SesionFalsa:
 
         if "estado = :estado" in sql:
             filas = [f for f in filas if f["estado"] == parametros["estado"]]
+
+        if "FROM auditores_solicitud" in sql:
+            filas = [f for f in filas if self._auditor_asignado(parametros["aud_usuario"], f["id_solicitud"])]
 
         filas.sort(key=lambda f: f["fecha_creacion"], reverse=True)
 

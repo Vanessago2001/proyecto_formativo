@@ -339,9 +339,58 @@
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", enlazarLogos);
-  } else {
-    enlazarLogos();
+  /* Cabecera pública con sesión abierta (QA 18/11/2026): en las páginas
+     públicas (buscador, login, registro, consultas, verificar certificado...)
+     "Iniciar sesión" pasa a ser "Ir a mi panel" (mismo destino que el logo)
+     y "Registrarse" pasa a ser "Cerrar sesión". Se hace aquí, una sola vez,
+     sobre los enlaces existentes de .header-buttons y .mobile-menu (también
+     los que nav.js arma en /verificar-certificado), sin duplicar cabeceras.
+     PQRS sigue oculto con sesión (pqrs-enlace.js): la empresa lo tiene en
+     su portal. */
+  var CLAVES_SESION = ["access_token", "token_type", "token", "accessToken", "correo_expirado"];
+  var ZONAS_PUBLICAS = ".header-buttons a[href], .mobile-menu a[href]";
+
+  function rutaDe(enlace) {
+    return (enlace.getAttribute("href") || "").split(/[?#]/)[0].replace(/\/$/, "");
   }
+
+  function cerrarSesion(evento) {
+    evento.preventDefault();
+    CLAVES_SESION.forEach(function (clave) {
+      try { localStorage.removeItem(clave); } catch (_) { /* sin almacenamiento */ }
+    });
+    window.location.href = "/login";
+  }
+
+  function ajustarCabeceraPublica() {
+    var destino = destinoDelLogo();
+    if (destino === "/") return;                        // sin sesión: nada cambia
+    document.querySelectorAll(ZONAS_PUBLICAS).forEach(function (enlace) {
+      if (enlace.getAttribute("data-sesion-publica")) return;
+      var ruta = rutaDe(enlace);
+      if (ruta === "/login") {
+        enlace.setAttribute("data-sesion-publica", "panel");
+        enlace.setAttribute("href", destino);
+        enlace.textContent = "Ir a mi panel";
+      } else if (ruta === "/register") {
+        enlace.setAttribute("data-sesion-publica", "salir");
+        enlace.setAttribute("href", "/login");
+        enlace.textContent = "Cerrar sesión";
+        enlace.addEventListener("click", cerrarSesion);
+      }
+    });
+  }
+
+  function alCargar() {
+    enlazarLogos();
+    ajustarCabeceraPublica();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", alCargar);
+  } else {
+    alCargar();
+  }
+  // nav.js arma la cabecera de /verificar-certificado al cargar la página.
+  window.addEventListener("load", ajustarCabeceraPublica);
 })();

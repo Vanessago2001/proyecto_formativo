@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
   <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
-  <link rel="stylesheet" href="/static/styles.css?v=20261114a">
+  <link rel="stylesheet" href="/static/styles.css?v=20261118a">
   <style>
     .historial-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 6px 0 14px; }
     .historial-filtro { display: flex; flex-direction: column; gap: 5px; min-width: 170px; }
@@ -68,6 +68,9 @@
     /* Vista unificada de expedientes */
     .aviso-firmas { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; padding: 12px 16px; border: 1px solid #b7dfa0; background: #f3fbee; border-radius: 10px; font-weight: 600; color: #1f4d00; }
     .aviso-firmas[hidden] { display: none; }
+    /* display:grid de .firma-config anulaba el atributo hidden: el líder con
+       contraseña ya creada seguía viendo "Antes de firmar, cree su contraseña". */
+    .firma-config[hidden] { display: none; }
     .aviso-lider { border-color: #f0c36d; background: #fff8e6; color: #7c4a00; }
     .fila-impedida td { background: #fafafa; }
     .impedimento { display: block; max-width: 240px; font-size: 12px; color: #7c3d00; }
@@ -1359,8 +1362,8 @@
       prepararPanelLider();
     })();
   </script>
-<script src="/static/nav.js?v=20261117cat"></script>
-<script src="/static/session.js?v=20261117"></script>
+<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/session.js?v=20261118pub"></script>
 </body>
 
 </html>

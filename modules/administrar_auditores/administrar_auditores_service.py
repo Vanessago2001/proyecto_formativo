@@ -46,6 +46,21 @@ def competencias_vigentes_y_faltantes(filas: list[dict], hoy) -> tuple[list[dict
     return vigentes, faltantes
 
 
+def _pendiente_activacion(solicitud) -> bool:
+    """True si esta es la postulación vigente, está aprobada y el auditor no está activo."""
+    from modules.auditores_registrados.auditores_registrados_service import requiere_activacion
+
+    vigente = solicitud.get("id_postulacion_vigente")
+    if vigente is None or str(vigente) != str(solicitud.get("id_postulacion")):
+        return False
+    return requiere_activacion(
+        solicitud.get("rol"),
+        solicitud.get("estado_usuario"),
+        solicitud.get("estado_auditor"),
+        solicitud.get("estado_postulacion"),
+    )
+
+
 class AdministrarAuditoresService:
 
     def __init__(self, db: AsyncSession):
@@ -322,7 +337,19 @@ class AdministrarAuditoresService:
 
                     u.estado_auditor,
 
-                    r.nombre AS rol
+                    r.nombre AS rol,
+
+                    -- Postulación vigente del usuario (la más reciente no
+                    -- cancelada): solo en ella se ofrece "Activar auditor".
+                    (
+                        SELECT pv.id_postulacion
+                        FROM postulacion_auditor pv
+                        WHERE pv.id_usuario = pa.id_usuario
+                          AND LOWER(TRIM(COALESCE(pv.estado, ''))) NOT IN ('cancelado', 'cancelada')
+                        ORDER BY pv.fecha_postulacion DESC NULLS LAST,
+                                 pv.fecha_revision DESC NULLS LAST
+                        LIMIT 1
+                    ) AS id_postulacion_vigente
 
                 FROM postulacion_auditor pa
 
@@ -804,6 +831,10 @@ class AdministrarAuditoresService:
             "rol": solicitud["rol"],
 
             "estado_postulacion": solicitud["estado_postulacion"],
+
+            # Postulación aprobada con el auditor sin activar (ver
+            # POST /admin/auditores-registrados/{id_usuario}/activar).
+            "pendiente_activacion": _pendiente_activacion(solicitud),
 
             "observaciones_tecnicas": (
 

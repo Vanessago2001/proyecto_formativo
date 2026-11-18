@@ -411,7 +411,21 @@
           // Historial de decisiones del Comité.
         ]
       },
-      { texto: "Asignación de auditores", href: "/asignacion-auditores" },
+      // "Revisión de solicitudes" y "Asignación de auditores" se unificaron
+      // (18/11/2026) en una pantalla que sigue la solicitud por etapas
+      // (static/solicitudes.html): cada opción pulsa su button[data-etapa].
+      {
+        grupo: "Solicitudes",
+        opciones: [
+          ["radicadas", "Radicadas"],
+          ["revision", "En revisión"],
+          ["por-asignar", "Por asignar auditor"],
+          ["con-auditores", "Con auditores"],
+          ["todas", "Todas"]
+        ].map(function (e) {
+          return { texto: e[1], href: "/solicitudes#" + e[0], proxy: 'button[data-etapa="' + e[0] + '"]' };
+        })
+      },
       {
         grupo: "Auditorías",
         opciones: [
@@ -439,8 +453,6 @@
           return { texto: s[1], href: "/consultar-agenda-auditor#" + s[0], proxy: '.agenda-menu a[data-seccion="' + s[0] + '"]' };
         })
       },
-      // Una sola opción: el estado se filtra dentro de la pantalla.
-      { texto: "Revisión de solicitudes", href: "/revision-solicitudes" },
       {
         grupo: "Banco de auditores",
         opciones: [

@@ -58,9 +58,12 @@ def _fila(id_prog, id_usuario, nombre, rol, **extra):
 class SesionMes:
     """Devuelve disponibilidad y programaciones según la consulta."""
 
-    def __init__(self, disponibilidad=None, programaciones=None):
+    def __init__(self, disponibilidad=None, programaciones=None, activos=None):
         self.disponibilidad = disponibilidad or []
         self.programaciones = programaciones or []
+        # Auditores activos y aprobados (los que pueden estar disponibles).
+        self.activos = activos if activos is not None else [
+            {"id_usuario": ANA, "nombre": "Ana"}, {"id_usuario": LUIS, "nombre": "Luis"}]
         self.sql = []
         self.params = []
 
@@ -72,6 +75,9 @@ class SesionMes:
             return ResultadoFalso(self.disponibilidad)
         if "FROM programacion_visita p" in sql:
             return ResultadoFalso(self.programaciones)
+        if "FROM usuario u WHERE" in sql:
+            assert "estado_auditor" in sql
+            return ResultadoFalso(self.activos)
         raise AssertionError("Consulta inesperada: " + sql[:160])
 
 
@@ -145,6 +151,7 @@ async def test_con_auditor_filtra_su_equipo_y_trae_disponibilidad_y_bloqueos():
     db = SesionMes(disponibilidad=disponibilidad, programaciones=_programaciones_base())
     r = await AgendaAuditorService(db).ver_disponibilidad_mensual_general(2026, 11, id_usuario=ANA)
 
+    assert not any("FROM usuario u WHERE" in sql for sql in db.sql)
     for sql, params in zip(db.sql, db.params):
         assert params["id_usuario"] == str(ANA)
         if "FROM programacion_visita p" in sql:
@@ -157,6 +164,9 @@ async def test_con_auditor_filtra_su_equipo_y_trae_disponibilidad_y_bloqueos():
     assert dias["2026-11-09"]["bloqueado"] and not dias["2026-11-09"]["declarado"]
     assert dias["2026-11-09"]["disponibilidad"][0]["motivo"] == "Cita médica"
     assert not dias["2026-11-04"]["declarado"]  # miércoles sin horario
+    # Regla única: sin bloqueo ni visita está disponible aunque no declare nada.
+    assert dias["2026-11-04"]["disponible"]
+    assert not lunes_2["disponible"] and not dias["2026-11-09"]["disponible"]
 
 
 async def test_sin_auditor_cuenta_disponibles_y_bloqueados_por_dia():
@@ -171,14 +181,30 @@ async def test_sin_auditor_cuenta_disponibles_y_bloqueados_por_dia():
          "fecha_inicio": datetime(2026, 11, 13), "fecha_fin": datetime(2026, 11, 13, 23, 59),
          "hora_inicio": None, "hora_fin": None, "motivo": "x", "estado": "Activo", "auditor_nombre": "Ana"},
     ]
-    r = await AgendaAuditorService(SesionMes(disponibilidad=disponibilidad)).ver_disponibilidad_mensual_general(2026, 11)
+    db = SesionMes(disponibilidad=disponibilidad, programaciones=_programaciones_base())
+    r = await AgendaAuditorService(db).ver_disponibilidad_mensual_general(2026, 11)
     dias = {d["fecha"]: d for d in r["dias"]}
-    assert dias["2026-11-12"]["auditores_disponibles"] == 1          # jueves: solo Ana
-    assert dias["2026-11-06"]["auditores_disponibles"] == 2          # viernes: Ana y Luis
+    # Regla única: cuentan todos los activos sin bloqueo ni visita ese día,
+    # hayan declarado o no (Luis solo declaró los viernes).
+    assert dias["2026-11-12"]["auditores_disponibles"] == 2
+    assert dias["2026-11-12"]["nombres_disponibles"] == ["Ana", "Luis"]
+    assert dias["2026-11-12"]["nombres_con_declaracion"] == ["Ana"]
     viernes_13 = dias["2026-11-13"]                                  # Ana bloqueó ese viernes
     assert viernes_13["auditores_disponibles"] == 1 and viernes_13["auditores_bloqueados"] == 1
-    assert viernes_13["nombres_bloqueados"] == ["Ana"]
+    assert viernes_13["nombres_bloqueados"] == ["Ana"] and viernes_13["nombres_disponibles"] == ["Luis"]
     assert "disponibilidad" not in viernes_13
+    # Días con visita: el equipo queda ocupado (01–03/11 Ana y Luis; 20/11 Ana).
+    assert dias["2026-11-02"]["auditores_disponibles"] == 0 and dias["2026-11-02"]["auditores_ocupados"] == 2
+    assert dias["2026-11-20"]["nombres_disponibles"] == ["Luis"]
+
+
+async def test_sin_auditor_una_visita_cancelada_no_ocupa():
+    canceladas = [_fila(ID_PROG, ANA, "Ana", "Auditor", estado_programacion="Cancelada")]
+    r = await AgendaAuditorService(SesionMes(programaciones=canceladas)).ver_disponibilidad_mensual_general(
+        2026, 11, incluir_canceladas=True)
+    dias = {d["fecha"]: d for d in r["dias"]}
+    assert dias["2026-11-02"]["auditorias"] == [str(ID_PROG)]          # se muestra
+    assert dias["2026-11-02"]["auditores_disponibles"] == 2             # pero no ocupa
 
 
 async def test_el_endpoint_pasa_auditor_y_canceladas_al_servicio(monkeypatch):
@@ -248,11 +274,11 @@ async def test_comprobar_disponibilidad_al_editar_no_choca_con_la_misma_visita(m
         excluidas.append(excluir)
         return None
 
-    async def declarado(self, *a, **k):
-        return True
+    async def sin_bloqueo(self, *a, **k):
+        return None
 
     monkeypatch.setattr(AgendaAuditorService, "_buscar_cruce", cruce)
-    monkeypatch.setattr(AgendaAuditorService, "_tiene_disponibilidad_fecha", declarado)
+    monkeypatch.setattr(AgendaAuditorService, "_bloqueo_en_franja", sin_bloqueo)
     r = await AgendaAuditorService(SesionUsuarioActivo()).consultar_disponibilidad(
         ANA, date(2026, 11, 2), datetime(2026, 11, 2, 9), datetime(2026, 11, 2, 11), excluir_programacion=ID_PROG
     )
@@ -315,12 +341,17 @@ async def test_reprogramar_rechaza_con_409_si_el_nuevo_horario_se_cruza(monkeypa
         llamadas.append(excluir)
         return {"fecha_inicio": inicio, "fecha_fin": fin}
 
+    async def sin_bloqueo(self, *a, **k):
+        return None
+
     monkeypatch.setattr(AgendaAuditorService, "_buscar_cruce", cruce)
+    monkeypatch.setattr(AgendaAuditorService, "_bloqueo_en_franja", sin_bloqueo)
     db = SesionReprogramar()
     with pytest.raises(HTTPException) as error:
         await AgendaAuditorService(db).reprogramar_programacion(
             ID_PROG, datetime(2026, 11, 20, 9), datetime(2026, 11, 20, 11), "Cambio")
-    assert error.value.status_code == 409 and "se cruza" in error.value.detail
+    assert error.value.status_code == 409
+    assert error.value.detail == "No se puede reprogramar: El auditor ya tiene otra visita el 20/11/2026 de 09:00 a 11:00."
     assert llamadas == [ID_PROG]          # la propia visita no cuenta
     assert db.updates == [] and db.commits == 0
 
@@ -329,14 +360,11 @@ async def test_reprogramar_mueve_las_fechas_de_la_misma_programacion(monkeypatch
     async def sin_cruce(self, *a, **k):
         return None
 
-    async def disponible(self, *a, **k):
-        return True
-
     async def notificar(self, *a, **k):
         return None
 
     monkeypatch.setattr(AgendaAuditorService, "_buscar_cruce", sin_cruce)
-    monkeypatch.setattr(AgendaAuditorService, "_tiene_disponibilidad_fecha", disponible)
+    monkeypatch.setattr(AgendaAuditorService, "_bloqueo_en_franja", sin_cruce)
     monkeypatch.setattr(AgendaAuditorService, "_crear_notificacion", notificar)
     db = SesionReprogramar()
     await AgendaAuditorService(db).reprogramar_programacion(
