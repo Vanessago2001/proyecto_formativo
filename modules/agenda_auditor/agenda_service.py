@@ -578,6 +578,8 @@ class AgendaAuditorService(AuditorService):
                     u.num_doc AS auditor_num_doc,
                     p.direccion_servicio,
                     p.id_sede,
+                    sede.nombre_sede AS sede_nombre,
+                    sede.direccion AS sede_direccion,
                     sede.ciudad AS sede_ciudad,
                     sede.departamento AS sede_departamento,
                     sede.pais AS sede_pais,
@@ -3315,18 +3317,55 @@ class AgendaAuditorService(AuditorService):
             await self.db.rollback()
             raise HTTPException(status_code=500, detail="No fue posible cancelar la programación.")
 
+    @staticmethod
+    def _exigir_misma_solicitud_y_sede(
+        actual: dict,
+        id_solicitud: UUID | None,
+        id_sede: UUID | None,
+    ) -> None:
+        """
+        La edición se aplica solo a la programación de la solicitud y la sede
+        que la pantalla tiene seleccionadas (18/11/2026). Si el cliente envía
+        otra solicitud u otra sede, se rechaza: editar nunca mueve la visita.
+        """
+        if id_solicitud is not None and str(actual.get("id_solicitud") or "") != str(id_solicitud):
+            raise HTTPException(
+                status_code=409,
+                detail="La programación no pertenece a la solicitud seleccionada. Recargue la página y vuelva a intentarlo.",
+            )
+        if id_sede is not None and str(actual.get("id_sede") or "") != str(id_sede):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "La programación no corresponde a la sede seleccionada; editar no cambia la sede de la visita. "
+                    "Seleccione la sede de esa programación o cancele la visita y programe la otra sede."
+                ),
+            )
+
     async def reprogramar_programacion(
         self,
         id_programacion: UUID,
         fecha_inicio: datetime,
         fecha_fin: datetime,
         motivo: str,
+        id_solicitud: UUID | None = None,
+        id_sede: UUID | None = None,
     ):
         if fecha_fin <= fecha_inicio:
             raise HTTPException(status_code=422, detail="La fecha/hora final debe ser posterior a la inicial.")
         if not motivo.strip():
             raise HTTPException(status_code=422, detail="Debe indicar el motivo de reprogramación.")
         try:
+            if id_solicitud is not None or id_sede is not None:
+                pertenencia = await self.db.execute(text("""
+                    SELECT id_solicitud, id_sede
+                    FROM programacion_visita
+                    WHERE id_programacion = :id
+                """), {"id": str(id_programacion)})
+                fila = pertenencia.mappings().first()
+                if not fila:
+                    raise HTTPException(status_code=404, detail="Programación no encontrada.")
+                self._exigir_misma_solicitud_y_sede(dict(fila), id_solicitud, id_sede)
             detalles = await self.db.execute(text("""
                 SELECT d.id_usuario
                 FROM detalle_programacion_auditor d
@@ -3395,11 +3434,20 @@ class AgendaAuditorService(AuditorService):
         fecha_fin: datetime | None = None,
         direccion_servicio: str | None = None,
         observacion: str | None = None,
+        id_solicitud: UUID | None = None,
+        id_sede: UUID | None = None,
     ):
-        """Edita datos de la visita y revalida si cambia el intervalo."""
+        """
+        Edita datos de la visita y revalida si cambia el intervalo.
+
+        Solo se actualiza la fila ``id_programacion``; ``id_sede`` nunca
+        cambia. Si se envían ``id_solicitud``/``id_sede`` deben ser los de esa
+        programación (409 si no): así un formulario desincronizado no edita la
+        visita de otra sede u otra solicitud.
+        """
         try:
             actual_result = await self.db.execute(text("""
-                SELECT id_programacion, fecha_inicio, fecha_fin, estado
+                SELECT id_programacion, id_solicitud, id_sede, fecha_inicio, fecha_fin, estado
                 FROM programacion_visita
                 WHERE id_programacion = :id
                 FOR UPDATE
@@ -3407,6 +3455,7 @@ class AgendaAuditorService(AuditorService):
             actual = actual_result.mappings().first()
             if not actual:
                 raise HTTPException(status_code=404, detail="Programación no encontrada.")
+            self._exigir_misma_solicitud_y_sede(dict(actual), id_solicitud, id_sede)
 
             inicio_nuevo = fecha_inicio or actual["fecha_inicio"]
             fin_nuevo = fecha_fin or actual["fecha_fin"]

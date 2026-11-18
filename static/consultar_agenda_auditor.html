@@ -723,6 +723,23 @@
         .sugerencias-detalle { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
         .sugerencias-detalle:empty { display: none; }
 
+        /* Visita de la sede seleccionada (solo lectura; "Editar" abre el formulario). */
+        .resumen-sede {
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--sena-green-bright);
+            border-radius: 10px;
+            background: #fff;
+        }
+        .resumen-sede.editando { border-left-color: #b45309; }
+        .resumen-sede h4 { margin: 0 0 4px; font-size: 15px; color: var(--sena-green-dark); }
+        .resumen-sede > .hint { margin: 0 0 12px; }
+        .resumen-sede .actions { margin-top: 12px; }
+        .resumen-sede .resumen-secundario { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+        /* Fila de la sede seleccionada en "Programaciones de la solicitud". */
+        #scheduleList tr.fila-sede-actual td { background: #f4faf0; }
+        #scheduleList tr.fila-sede-actual td:first-child { box-shadow: inset 3px 0 0 var(--sena-green); }
+
         /* Anclas JS (ocultas, mantienen la lógica del sistema) */
         .hidden-js-anchor {
             display: none !important;
@@ -1612,21 +1629,24 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="field full">
+                                <!-- Visita de la sede seleccionada (solo lectura). El formulario
+                                     de edición queda oculto hasta pulsar "Editar". -->
+                                <div class="field full hidden" id="scheduleResumen" aria-live="polite"></div>
+                                <div class="field full campo-programacion">
                                     <label for="scheduleAddress">Dirección de la auditoría</label>
                                     <input id="scheduleAddress" readonly minlength="5" maxlength="500" required
                                         placeholder="Dirección establecida por la empresa">
                                 </div>
-                                <div class="field">
+                                <div class="field campo-programacion">
                                     <label for="scheduleCity">Ciudad / municipio</label>
                                     <input id="scheduleCity" readonly minlength="2" maxlength="100" required
                                         placeholder="Ciudad establecida por la empresa">
                                 </div>
-                                <div class="field full">
+                                <div class="field full campo-programacion solo-edicion">
                                     <label for="scheduleObservacion">Observación del cambio (opcional)</label>
                                     <textarea id="scheduleObservacion" rows="3" placeholder="Motivo o detalle del cambio realizado"></textarea>
                                 </div>
-                                <div class="field">
+                                <div class="field campo-programacion">
                                     <label for="scheduleModality">Modalidad</label>
                                     <select id="scheduleModality">
                                         <option value="Presencial">Presencial</option>
@@ -1634,28 +1654,28 @@
                                         <option value="Híbrida">Híbrida</option>
                                     </select>
                                 </div>
-                                <div class="field">
+                                <div class="field campo-programacion">
                                     <label for="scheduleDate">Fecha</label>
                                     <input id="scheduleDate" type="date" required>
                                 </div>
-                                <div class="field">
+                                <div class="field campo-programacion">
                                     <label for="scheduleStart">Hora de inicio</label>
                                     <input id="scheduleStart" type="time" required>
                                 </div>
-                                <div class="field">
+                                <div class="field campo-programacion">
                                     <label for="scheduleEnd">Hora final</label>
                                     <input id="scheduleEnd" type="time" required>
                                 </div>
                             </div>
-                            <p id="schedulePeriodSummary" class="hint" aria-live="polite" style="margin-top:12px;">
+                            <p id="schedulePeriodSummary" class="hint campo-programacion" aria-live="polite" style="margin-top:12px;">
                                 Selecciona una solicitud para consultar si ya tiene un periodo programado.</p>
                             <!-- Hora desde la que se buscan fechas disponibles (todos los días de la semana). -->
-                            <div class="field" style="max-width:260px;margin-top:12px;">
+                            <div class="field campo-programacion" style="max-width:260px;margin-top:12px;">
                                 <label for="scheduleEarliest">Buscar visitas desde las</label>
                                 <input id="scheduleEarliest" type="time" value="08:00" aria-describedby="scheduleEarliestHelp">
                                 <small id="scheduleEarliestHelp" class="hint">Hora más temprana de inicio para "Ver fechas disponibles". Se buscan todos los días, incluidos sábados y domingos.</small>
                             </div>
-                            <div class="actions">
+                            <div class="actions campo-programacion">
                                 <button type="button" class="btn btn-secundario secondary" id="checkScheduleAvailability">Comprobar
                                     disponibilidad</button>
                                 <button type="button" class="btn btn-secundario secondary" id="scheduleSuggest"
@@ -1691,6 +1711,13 @@
                                     <option value="">Sin canceladas</option>
                                     <option value="Cancelada">Solo canceladas</option>
                                     <option value="Todos">Todos</option>
+                                </select>
+                            </div>
+                            <div class="filtro-campo">
+                                <label for="filtroProgramacionSede">Sede</label>
+                                <select id="filtroProgramacionSede" class="form-control">
+                                    <option value="actual">Solo la sede seleccionada</option>
+                                    <option value="todas">Todas las sedes</option>
                                 </select>
                             </div>
                             <div class="filtro-campo">
@@ -2036,11 +2063,13 @@
             return mapa;
         }
 
-        async function cargarSedes(idEmpresa, idSolicitud) {
+        async function cargarSedes(idEmpresa, idSolicitud, conservarSede = false) {
             const select = $("scheduleSede");
             if (!select) return;
             // Flujo 18/11/2026: la visita se programa en una sede INCLUIDA en la
             // solicitud (el backend lo exige); ya no en la dirección principal.
+            // Al recargar (p. ej. tras guardar una edición) se conserva la sede elegida.
+            const sedePrevia = conservarSede ? select.value : "";
             select.innerHTML = '<option value="">Seleccione la sede de la solicitud</option>';
             pintarSelectorTabla("sedeTabla");
             if (!idSolicitud) return;
@@ -2067,22 +2096,40 @@
                     option.dataset.nombre = sede.nombre_sede || "Sede";
                     const ocupada = ocupadas.get(String(sede.id_sede));
                     if (ocupada) {
-                        option.textContent += ` — ya programada (${formatDateTime(ocupada.fecha_inicio)})`;
-                        option.dataset.ocupada = "1";
+                        const propia = String(ocupada.id_solicitud || "") === String(idSolicitud);
+                        option.textContent += propia
+                            ? ` — ya programada (${formatDateTime(ocupada.fecha_inicio)})`
+                            : ` — visita de otra solicitud (${ocupada.numero_radicado || "otra solicitud"})`;
+                        option.dataset.ocupada = propia ? "1" : "otra";
                         sedesOcupadas += 1;
                     }
                     select.appendChild(option);
                 });
+                // Visitas vigentes de esta solicitud en sedes que ya no están
+                // incluidas: se listan para poder verlas y editarlas.
+                const incluidas = new Set(sedes.map(sd => String(sd.id_sede)));
+                programacionesActivasDeSolicitud(idSolicitud)
+                    .filter(p => p.id_sede && !incluidas.has(String(p.id_sede)))
+                    .forEach(p => {
+                        incluidas.add(String(p.id_sede));
+                        agregarOpcionSedeDeProgramacion(select, p);
+                        sedesOcupadas += 1;
+                    });
+                if (!sedes.length && select.options.length > 1) {
+                    select.options[0].textContent = "Seleccione la sede de la visita";
+                }
                 window.__avisoSedesOcupadas = sedesOcupadas > 0
-                    ? `Hay ${sedesOcupadas} sede(s) con programación vigente. Puedes seleccionarlas para consultarlas, pero no programarlas de nuevo.`
+                    ? `Hay ${sedesOcupadas} sede(s) con programación vigente. Al seleccionarlas se muestra su visita; para cambiarla use "Editar".`
                     : "";
                 if (sedesOcupadas > 0) {
                     showNotice("scheduleNotice", window.__avisoSedesOcupadas, "info");
                 }
-                // Se preselecciona la sede que ya tiene una programación vigente
-                // para que el formulario muestre esa visita bloqueada.
+                // Se conserva la sede que ya estaba elegida; si no hay, se
+                // preselecciona la sede que ya tiene una programación vigente.
                 const activas = programacionesActivasDeSolicitud(idSolicitud);
-                if (activas.length) {
+                if (sedePrevia && select.querySelector(`option[value="${CSS.escape(sedePrevia)}"]`)) {
+                    select.value = sedePrevia;
+                } else if (activas.length) {
                     const sedeProgramada = String(activas[0].id_sede || "");
                     const opcion = sedeProgramada
                         ? select.querySelector(`option[value="${CSS.escape(sedeProgramada)}"]`)
@@ -2099,6 +2146,17 @@
         if (scheduleSedeSelect) {
             scheduleSedeSelect.addEventListener("change", async () => {
                 const grupo = currentAssignment();
+                // Cambiar de sede con una edición abierta la descarta (previo aviso):
+                // la edición pertenece a la visita de la otra sede.
+                if (programacionActual && programacionEnEdicion
+                    && String(programacionActual.id_sede || "") !== String(scheduleSedeSelect.value || "")) {
+                    if (!confirm("Hay una edición sin guardar de otra sede. ¿Desea descartarla y ver la sede seleccionada?")) {
+                        scheduleSedeSelect.value = String(programacionActual.id_sede || "");
+                        pintarSelectorTabla("sedeTabla");
+                        return;
+                    }
+                }
+                programacionEnEdicion = false;
                 aplicarDatosSedeSeleccionada(grupo);
                 $("scheduleCandidatesWrap").classList.add("hidden");
                 candidatosSede = [];
@@ -2106,7 +2164,14 @@
                 if (programacionActivaDeSede(grupo.id_solicitud, scheduleSedeSelect.value || "")) {
                     $("scheduleSave").disabled = true;
                 }
-                await loadScheduleList(grupo);
+                // Con las programaciones de la solicitud ya cargadas basta con
+                // mostrar la sede elegida y filtrar la tabla a esa sede.
+                if (programacionesSolicitudDe === String(grupo.id_solicitud)) {
+                    renderTablaProgramaciones(grupo);
+                    sincronizarFormularioConSede(grupo);
+                } else {
+                    await loadScheduleList(grupo);
+                }
                 // Solo un auditor por solicitud: cada sede se programa con el
                 // auditor asignado; ya no se ofrecen otros auditores.
             });
@@ -2272,14 +2337,15 @@
                 const principal = false; // 18/11/2026: solo sedes de la solicitud
                 const grupo = currentAssignment() || {};
                 const ocupada = opcion.dataset.ocupada === "1";
+                const deOtra = opcion.dataset.ocupada === "otra";
                 return {
                     valor: opcion.value,
                     deshabilitado: Boolean(opcion.disabled),
                     celdas: [
-                        `<span class="cell-strong">${esc(principal ? "Dirección principal de la empresa" : (opcion.dataset.nombre || opcion.textContent))}</span>`,
+                        `<span class="cell-strong">${esc(principal ? "Dirección principal de la empresa" : (opcion.dataset.nombre || opcion.textContent))}</span>${opcion.dataset.noIncluida ? '<span class="cell-meta">No incluida en la solicitud</span>' : ""}`,
                         `<span class="cell-line">${esc(principal ? (grupo.empresa_ciudad || "-") : (opcion.dataset.ciudad || "-"))}</span>`,
                         `<span class="cell-line">${esc(principal ? (grupo.empresa_direccion || "-") : (opcion.dataset.direccion || "-"))}</span>`,
-                        `<span class="pill${ocupada ? " blocked" : ""}">${ocupada ? "Ya programada" : "Disponible"}</span>`
+                        `<span class="pill${ocupada || deOtra ? " blocked" : ""}">${ocupada ? "Ya programada" : deOtra ? "Visita de otra solicitud" : "Disponible"}</span>`
                     ]
                 };
             })
@@ -2366,6 +2432,7 @@
             prepararEquipoSede(group, null);
             $("scheduleMoreAuditors").disabled = !group;
             $("scheduleCandidatesWrap").classList.add("hidden");
+            actualizarVistaProgramacion();
         }
         function applyExistingSchedule(row, editing = false) {
             if (!row) return;
@@ -2377,20 +2444,22 @@
             $("scheduleStart").value = start.time;
             $("scheduleEnd").value = end.time;
             if (row.modalidad) $("scheduleModality").value = row.modalidad;
-            if (row.direccion_servicio) $("scheduleAddress").value = row.direccion_servicio;
-            if (row.ciudad_servicio) $("scheduleCity").value = row.ciudad_servicio;
-            $("scheduleObservacion").value = row.motivo_reprogramacion || "";
+            // Lugar de la visita (la sede), no la dirección principal de la empresa.
+            const lugar = lugarProgramacion(row, currentAssignment());
+            $("scheduleAddress").value = lugar.direccion;
+            $("scheduleCity").value = lugar.ciudad;
+            // Observación del cambio: se escribe una nueva (vacía = se conserva la anterior).
+            $("scheduleObservacion").value = "";
             $("schedulePeriodSummary").textContent = `Periodo actualmente guardado — Fecha/hora de inicio: ${formatDateTime(row.fecha_inicio)} · Fecha/hora de fin: ${formatDateTime(row.fecha_fin)}.`;
             setScheduleFormMode(!editing, editing);
             clearNotice("scheduleActionNotice");
             prepararEquipoSede(currentAssignment(), row);
             $("scheduleMoreAuditors").disabled = true;
             $("scheduleCandidatesWrap").classList.add("hidden");
-            if (editing) {
-                showNotice("scheduleNotice", "Modo de edición activado. Revise las fechas, horas y modalidad; el cambio solo se guardará al confirmar.", "info");
-            } else {
-                showNotice("scheduleNotice", "Esta solicitud ya está programada en la sede seleccionada. La fecha de inicio y fin se muestran en modo de solo lectura. Para modificarlas, use el botón Editar de la programación.", "info");
-            }
+            // El resumen de la sede explica el estado; el formulario solo se
+            // muestra en modo de edición.
+            clearNotice("scheduleNotice");
+            actualizarVistaProgramacion();
         }
 
         /* =========================================================
@@ -2704,7 +2773,7 @@
                 if (excluidos > 0) {
                     showNotice(
                         "scheduleCandidatesNotice",
-                        `${excluidos} auditor(es) del equipo no figuran como disponibles para esta sede${$("scheduleDate").value ? " en la fecha y horas indicadas" : ""}. Siguen seleccionados: pulse "Comprobar disponibilidad" para ver el motivo de cada uno.`,
+                        `${excluidos} auditor(es) seleccionado(s) no figuran como disponibles para esta sede${$("scheduleDate").value ? " en la fecha y horas indicadas" : ""}. Siguen seleccionados: pulse "Comprobar disponibilidad" para ver el motivo de cada uno.`,
                         "info"
                     );
                 } else if (noDisponibles > 0) {
@@ -2926,18 +2995,16 @@
             await onAuditorChanged();
         }
 
-        // Filtro de la tabla de programaciones (nombre / documento / rol / estado)
-        ["filtroAuditorTexto", "filtroProgramacionEstado"].forEach(id => {
+        // Filtro de la tabla de programaciones (nombre / documento / estado / sede).
+        // Solo vuelve a pintar la tabla: no recarga ni toca el formulario, así
+        // filtrar no saca a la persona del modo de edición.
+        ["filtroAuditorTexto", "filtroProgramacionEstado", "filtroProgramacionSede"].forEach(id => {
             const el = $(id);
             if (!el) return;
-            el.addEventListener("input", () => {
+            ["input", "change"].forEach(tipo => el.addEventListener(tipo, () => {
                 const group = currentAssignment();
-                if (group) loadScheduleList(group);
-            });
-            el.addEventListener("change", () => {
-                const group = currentAssignment();
-                if (group) loadScheduleList(group);
-            });
+                if (group) renderTablaProgramaciones(group);
+            }));
         });
         const filtroLimpiar = $("filtroAuditorLimpiar");
         if (filtroLimpiar) {
@@ -2945,8 +3012,9 @@
                 $("filtroAuditorTexto").value = "";
                 if ($("filtroAuditorRol")) $("filtroAuditorRol").value = "";
                 $("filtroProgramacionEstado").value = "";
+                $("filtroProgramacionSede").value = "actual";
                 const group = currentAssignment();
-                if (group) loadScheduleList(group);
+                if (group) renderTablaProgramaciones(group);
             });
         }
 
@@ -3439,6 +3507,8 @@
         async function loadScheduleList(group) {
             if (!group || !Array.isArray(group.auditores) || !group.auditores.length) {
                 window.__programacionesActuales = [];
+                programacionesSolicitud = [];
+                programacionesSolicitudDe = "";
                 $("scheduleList").innerHTML = '<div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>';
                 prepareNewScheduleForm(group);
                 return;
@@ -3491,125 +3561,275 @@
                         : [group.id_solicitud || row.id_solicitud || row.numero_radicado || "", row.fecha_inicio || "", row.fecha_fin || "", row.modalidad || "", row.ciudad_servicio || ""].join("|");
                     if (!consolidated.has(key)) consolidated.set(key, { ...row, auditores_programados: [], auditores_detalle: [], auditores_equipo: [] });
                     const item = consolidated.get(key);
-                    if (row.__auditorNombre && !item.auditores_programados.includes(row.__auditorNombre)) item.auditores_programados.push(row.__auditorNombre);
-                    const detalle = {
-                        nombre: row.__auditorNombreSimple || row.auditor_nombre || "",
-                        documento: row.__auditorDocumento || "",
-                        rol: ROL_AUDITOR
-                    };
-                    if (!item.auditores_detalle.some(a => a.nombre === detalle.nombre && a.rol === detalle.rol)) {
-                        item.auditores_detalle.push(detalle);
-                    }
-                    const equipo = {
-                        id_usuario: row.__auditorId || String(row.id_usuario || ""),
-                        nombre: row.__auditorNombreSimple || row.auditor_nombre || "",
-                        correo: row.__auditorCorreo || "",
-                        tipo_doc: row.__auditorTipoDoc || "",
-                        num_doc: row.__auditorNumDoc || "",
-                        rol: ROL_AUDITOR
-                    };
-                    if (equipo.id_usuario && !item.auditores_equipo.some(a => a.id_usuario === equipo.id_usuario)) {
-                        item.auditores_equipo.push(equipo);
-                    }
+                    // Auditor de la visita: el equipo que envía el servidor
+                    // (row.equipo: nombre y correo de cada auditor de ESA
+                    // programación). Si no llega, el auditor cuya agenda trajo la fila.
+                    const equipoServidor = Array.isArray(row.equipo) ? row.equipo : [];
+                    const integrantes = equipoServidor.length
+                        ? equipoServidor.map(e => ({ id_usuario: String(e.id_usuario || ""), nombre: e.nombre || "", correo: e.correo || "", confirmado: Boolean(e.confirmado) }))
+                        : [{ id_usuario: row.__auditorId || String(row.id_usuario || ""), nombre: row.__auditorNombreSimple || row.auditor_nombre || "", correo: row.__auditorCorreo || "" }];
+                    integrantes.forEach(a => {
+                        if (!a.nombre && !a.id_usuario) return;
+                        // El documento solo se conoce del auditor asignado (privacidad del equipo).
+                        const esAsignado = a.id_usuario && a.id_usuario === String(row.__auditorId || "");
+                        const integrante = {
+                            ...a,
+                            nombre: a.nombre || (esAsignado ? row.__auditorNombreSimple : "") || "Auditor sin nombre",
+                            correo: a.correo || (esAsignado ? row.__auditorCorreo : "") || "",
+                            tipo_doc: esAsignado ? (row.__auditorTipoDoc || "") : "",
+                            num_doc: esAsignado ? (row.__auditorNumDoc || "") : "",
+                            rol: ROL_AUDITOR
+                        };
+                        const existente = item.auditores_equipo.find(x => integrante.id_usuario ? x.id_usuario === integrante.id_usuario : x.nombre === integrante.nombre);
+                        if (!existente) item.auditores_equipo.push(integrante);
+                        else if (esAsignado) Object.assign(existente, { tipo_doc: integrante.tipo_doc, num_doc: integrante.num_doc });
+                    });
+                    item.auditores_detalle = item.auditores_equipo.map(a => ({
+                        nombre: a.nombre, correo: a.correo, rol: ROL_AUDITOR,
+                        documento: [a.tipo_doc, a.num_doc].filter(Boolean).join(" ")
+                    }));
+                    item.auditores_programados = item.auditores_equipo.map(etiquetaAuditorVisita);
                 });
-                const rows = Array.from(consolidated.values()).sort((a, b) => String(a.fecha_inicio || "").localeCompare(String(b.fecha_inicio || "")));
-                window.__programacionesActuales = rows;
-                if (!rows.length) {
-                    $("scheduleList").innerHTML = '<div class="empty">No hay auditorías programadas para esta solicitud.</div>';
-                    prepareNewScheduleForm(group);
-                    return;
-                }
+                programacionesSolicitud = Array.from(consolidated.values()).sort((a, b) => String(a.fecha_inicio || "").localeCompare(String(b.fecha_inicio || "")));
+                programacionesSolicitudDe = String(group.id_solicitud || "");
+                renderTablaProgramaciones(group);
+                sincronizarFormularioConSede(group);
+            } catch (error) {
+                programacionesSolicitud = [];
+                programacionesSolicitudDe = "";
+                window.__programacionesActuales = [];
+                $("scheduleList").innerHTML = `<div class="empty">Error consultando las programaciones: ${esc(error.message)}</div>`;
+            }
+        }
 
-                // Las canceladas solo se ven si se filtra por ese estado.
-                const estadoFiltro = ($("filtroProgramacionEstado")?.value || "").trim();
-                const visibles = rows.filter((row) => {
-                    if (estadoFiltro === "Cancelada") return esProgramacionCancelada(row);
-                    if (estadoFiltro === "Todos") return true;
-                    return !esProgramacionCancelada(row);
-                });
-                const filasFiltradas = aplicarFiltroAuditores(visibles);
-                if (!filasFiltradas.length) {
-                    $("scheduleList").innerHTML = visibles.length
-                        ? '<div class="empty">No hay programaciones que coincidan con el filtro.</div>'
+        /* =========================================================
+           VISITA DE LA SEDE SELECCIONADA (18/11/2026)
+           Al elegir una sede: si tiene una programación vigente de esta
+           solicitud se muestra en un resumen de solo lectura y el
+           formulario queda oculto hasta pulsar "Editar"; si no, se muestra
+           el formulario para programarla. La edición se guarda siempre
+           sobre esa programación (id_programacion) y esa sede.
+        ========================================================= */
+        let programacionesSolicitud = [];   // todas (también canceladas) de la solicitud elegida
+        let programacionesSolicitudDe = "";
+
+        function etiquetaAuditorVisita(a) {
+            const documento = [a.tipo_doc, a.num_doc].filter(Boolean).join(" ");
+            return [a.nombre || "Auditor sin nombre", a.correo, documento ? `Documento: ${documento}` : ""].filter(Boolean).join(" · ");
+        }
+
+        // auditorias-programadas envía en direccion_servicio la dirección de la
+        // EMPRESA; la de la visita es direccion_programacion (o la de la sede).
+        function lugarProgramacion(row, group) {
+            const opcion = row.id_sede ? $("scheduleSede")?.querySelector(`option[value="${CSS.escape(String(row.id_sede))}"]`) : null;
+            return {
+                sede: row.sede_nombre || opcion?.dataset.nombre || (row.id_sede ? "Sede de la solicitud" : "Dirección principal de la empresa"),
+                direccion: row.direccion_programacion || row.sede_direccion || opcion?.dataset.direccion || row.direccion_servicio || group?.empresa_direccion || "",
+                ciudad: row.ciudad_servicio || row.sede_ciudad || opcion?.dataset.ciudad || group?.empresa_ciudad || ""
+            };
+        }
+
+        function programacionVigenteDeSedeEnSolicitud(idSede) {
+            if (!idSede) return null;
+            return programacionesSolicitud.find(row => row.id_programacion && !isTerminalSchedule(row)
+                && String(row.id_sede || "") === String(idSede)) || null;
+        }
+
+        function horaCorta(valor) {
+            const fecha = new Date(String(valor || "").replace(" ", "T"));
+            return Number.isNaN(fecha.getTime()) ? "—" : fecha.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
+        }
+        function fechaVisita(valor) {
+            const fecha = new Date(String(valor || "").replace(" ", "T"));
+            return Number.isNaN(fecha.getTime()) ? "—" : fecha.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        }
+
+        function renderTablaProgramaciones(group) {
+            const rows = programacionesSolicitud;
+            if (!rows.length) {
+                window.__programacionesActuales = [];
+                $("scheduleList").innerHTML = '<div class="empty">No hay auditorías programadas para esta solicitud.</div>';
+                return;
+            }
+            const sedeSeleccionada = $("scheduleSede")?.value || "";
+            const soloSede = ($("filtroProgramacionSede")?.value || "actual") === "actual" && Boolean(sedeSeleccionada);
+            // Las canceladas solo se ven si se filtra por ese estado.
+            const estadoFiltro = ($("filtroProgramacionEstado")?.value || "").trim();
+            const porEstado = rows.filter((row) => {
+                if (estadoFiltro === "Cancelada") return esProgramacionCancelada(row);
+                if (estadoFiltro === "Todos") return true;
+                return !esProgramacionCancelada(row);
+            });
+            const visibles = porEstado.filter(row => !soloSede || String(row.id_sede || "") === sedeSeleccionada);
+            const filasFiltradas = aplicarFiltroAuditores(visibles);
+            // El detalle de "Ver" se abre por el índice de lo que se pinta.
+            window.__programacionesActuales = filasFiltradas;
+            if (!filasFiltradas.length) {
+                $("scheduleList").innerHTML = visibles.length
+                    ? '<div class="empty">No hay programaciones que coincidan con el filtro.</div>'
+                    : soloSede && porEstado.length
+                        ? '<div class="empty">La sede seleccionada no tiene programaciones con este estado. Elija "Todas las sedes" en el filtro Sede para ver las de las demás sedes.</div>'
                         : '<div class="empty">No hay programaciones activas. Elige "Solo canceladas" en el filtro de estado para verlas.</div>';
-                    return;
-                }
-                // El detalle de "Ver" se abre por el índice de lo que se pinta.
-                window.__programacionesActuales = filasFiltradas;
-                const tableRows = filasFiltradas.map((row, idx) => {
-                    const terminal = isTerminalSchedule(row);
-                    const id = row.id_programacion || "";
-                    const auditoresLista = (row.auditores_programados || []).map(a => `<span class="cell-line">${esc(a)}</span>`).join("") || '<span class="cell-meta">Sin auditores registrados</span>';
-                    return `<tr>
-                        <td><span class="cell-strong">${esc(row.numero_radicado || row.id_solicitud || group.numero_radicado || "—")}</span></td>
-                        <td><span class="cell-line">${esc(row.empresa_nombre || group.empresa_nombre || "—")}</span></td>
-                        <td>
-                            <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="auditores" aria-expanded="false" title="Ver los auditores de esta programación">Ver</button>
-                            <div class="auditores-lista" hidden>${auditoresLista}</div>
-                        </td>
-                        <td><span class="cell-line">${esc(row.direccion_servicio || group.empresa_direccion || "—")}</span><span class="cell-meta">${esc(row.ciudad_servicio || group.empresa_ciudad || "")}</span></td>
+                return;
+            }
+            const tableRows = filasFiltradas.map((row, idx) => {
+                const terminal = isTerminalSchedule(row);
+                const id = row.id_programacion || "";
+                const lugar = lugarProgramacion(row, group);
+                const actual = sedeSeleccionada && String(row.id_sede || "") === sedeSeleccionada;
+                const enEdicion = programacionEnEdicion && programacionActual && String(programacionActual.id_programacion) === String(id);
+                return `<tr class="${actual ? "fila-sede-actual" : ""}">
+                        <td><span class="cell-strong">${esc(lugar.sede)}</span><span class="cell-line">${esc(lugar.direccion || "—")}</span><span class="cell-meta">${esc(lugar.ciudad)}</span></td>
+                        <td>${auditoresCelda(row)}</td>
                         <td><span class="cell-line">${esc(formatDateTime(row.fecha_inicio))}</span></td>
                         <td><span class="cell-line">${esc(formatDateTime(row.fecha_fin))}</span></td>
                         <td><span class="cell-line">${esc(row.modalidad || "—")}</span></td>
-                        <td><span class="pill ${terminal ? "blocked" : "audit"}">${esc(row.estado || "—")}</span></td>
+                        <td><span class="pill ${terminal ? "blocked" : "audit"}">${esc(row.estado || "—")}</span>${enEdicion ? '<span class="cell-meta">En edición</span>' : ""}</td>
                         <td><span class="cell-line">${esc(row.motivo_cancelacion || row.motivo_reprogramacion || "—")}</span></td>
                         <td class="row-actions">
                             <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="toggle" aria-expanded="false">Ver acciones</button>
                             <div class="acciones-lista" hidden>
                                 <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="view" data-program-index="${idx}" title="Ver detalle completo">Ver</button>
-                                <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="edit" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Editar programación">Editar</button>
+                                <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="edit" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Editar la programación de esta sede">Editar</button>
                                 <button class="btn btn-peligro-contorno btn-sm danger" type="button" data-program-action="cancel" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Cancelar programación">Cancelar</button>
                             </div>
                         </td>
                     </tr>`;
-                }).join("");
-                $("scheduleList").innerHTML = `<table><thead><tr><th>Solicitud</th><th>Empresa</th><th>Auditor asignado</th><th>Lugar</th><th>Inicio</th><th>Fin</th><th>Modalidad</th><th>Estado</th><th>Observación</th><th>Acciones</th></tr></thead><tbody>${tableRows}</tbody></table>`;
+            }).join("");
+            $("scheduleList").innerHTML = `<table><thead><tr><th>Sede y lugar</th><th>Auditor asignado</th><th>Inicio</th><th>Fin</th><th>Modalidad</th><th>Estado</th><th>Observación</th><th>Acciones</th></tr></thead><tbody>${tableRows}</tbody></table>`;
 
-                $("scheduleList").querySelectorAll('[data-program-action="view"]').forEach(button => {
-                    button.addEventListener("click", () => verProgramacion(Number(button.dataset.programIndex)));
-                });
-                $("scheduleList").querySelectorAll('[data-program-action="edit"]').forEach(button => {
-                    button.addEventListener("click", () => editarProgramacion(button.dataset.programId));
-                });
-                $("scheduleList").querySelectorAll('[data-program-action="cancel"]').forEach(button => {
-                    button.addEventListener("click", () => cancelarProgramacion(button.dataset.programId));
-                });
-                $("scheduleList").querySelectorAll('[data-program-action="auditores"]').forEach(button => {
-                    button.addEventListener("click", () => alternarRevelado(button, "auditores-lista", "Ver"));
-                });
-                $("scheduleList").querySelectorAll('[data-program-action="toggle"]').forEach(button => {
-                    button.addEventListener("click", () => alternarRevelado(button, "acciones-lista", "Ver acciones"));
-                });
+            $("scheduleList").querySelectorAll('[data-program-action="view"]').forEach(button => {
+                button.addEventListener("click", () => verProgramacion(Number(button.dataset.programIndex)));
+            });
+            $("scheduleList").querySelectorAll('[data-program-action="edit"]').forEach(button => {
+                button.addEventListener("click", () => editarProgramacion(button.dataset.programId));
+            });
+            $("scheduleList").querySelectorAll('[data-program-action="cancel"]').forEach(button => {
+                button.addEventListener("click", () => cancelarProgramacion(button.dataset.programId));
+            });
+            $("scheduleList").querySelectorAll('[data-program-action="toggle"]').forEach(button => {
+                button.addEventListener("click", () => alternarRevelado(button, "acciones-lista", "Ver acciones"));
+            });
+        }
 
-                const activeRows = rows.filter(row => !isTerminalSchedule(row) && row.id_programacion);
-                // La programación vigente se busca para la sede seleccionada:
-                // de ese modo cada sede se programa de forma independiente.
-                const sedeSeleccionada = $("scheduleSede")?.value || "";
-                const rowsDeLaSede = activeRows.filter(row => String(row.id_sede || "") === String(sedeSeleccionada));
-                if (rowsDeLaSede.length) {
-                    applyExistingSchedule(rowsDeLaSede[0], false);
-                } else {
-                    prepareNewScheduleForm(group);
-                    const programacionSede = programacionActivaDeSede(group.id_solicitud, sedeSeleccionada);
-                    if (programacionSede) {
-                        showNotice(
-                            "scheduleNotice",
-                            `La sede seleccionada ya tiene una programación vigente (${formatDateTime(programacionSede.fecha_inicio)}). No se puede programar de nuevo.`,
-                            "info"
-                        );
-                    } else if (activeRows.length) {
-                        showNotice(
-                            "scheduleNotice",
-                            `La sede seleccionada (${nombreSedeSeleccionada()}) está libre. Se programa con el auditor asignado a la solicitud; las programaciones de las demás sedes no se modifican.`,
-                            "info"
-                        );
-                    }
-                }
-            } catch (error) {
-                window.__programacionesActuales = [];
-                $("scheduleList").innerHTML = `<div class="empty">Error consultando las programaciones: ${esc(error.message)}</div>`;
+        // Nombre (y correo, como línea secundaria) del auditor de la visita.
+        function auditoresCelda(row) {
+            const equipo = row.auditores_equipo || [];
+            if (!equipo.length) return '<span class="cell-meta">Sin auditor registrado</span>';
+            return equipo.map(a => `<span class="cell-line">${esc(a.nombre || "Auditor sin nombre")}</span>${a.correo ? `<span class="cell-meta">${esc(a.correo)}</span>` : ""}`).join("");
+        }
+
+        // Deja el formulario según la sede elegida: resumen de su visita
+        // vigente (formulario oculto) o formulario para programarla.
+        function sincronizarFormularioConSede(group) {
+            const sede = $("scheduleSede")?.value || "";
+            const propia = programacionVigenteDeSedeEnSolicitud(sede);
+            if (propia) {
+                applyExistingSchedule(propia, false);
+                return;
+            }
+            prepareNewScheduleForm(group);
+            const otra = sede && group ? programacionActivaDeSede(group.id_solicitud, sede) : null;
+            if (otra && String(otra.id_solicitud || "") !== String(group.id_solicitud)) {
+                actualizarVistaProgramacion(otra);
             }
         }
+
+        // Muestra u oculta el formulario y pinta el resumen de la sede.
+        function actualizarVistaProgramacion(ocupacionAjena = null) {
+            const editando = Boolean(programacionActual && programacionEnEdicion);
+            const ocultarCampos = Boolean((programacionActual && !programacionEnEdicion) || ocupacionAjena);
+            document.querySelectorAll("#scheduleForm .campo-programacion").forEach(el => el.classList.toggle("hidden", ocultarCampos));
+            document.querySelectorAll("#scheduleForm .solo-edicion").forEach(el => el.classList.toggle("hidden", !editando));
+            if (ocultarCampos) ocultarFechasSugeridas();
+            renderResumenSede(ocupacionAjena);
+        }
+
+        function renderResumenSede(ocupacionAjena = null) {
+            const cont = $("scheduleResumen");
+            if (!cont) return;
+            const row = programacionActual;
+            const group = currentAssignment();
+            if (!row && !ocupacionAjena) {
+                cont.classList.add("hidden");
+                cont.innerHTML = "";
+                return;
+            }
+            cont.classList.remove("hidden");
+            if (!row) {
+                cont.innerHTML = `<div class="resumen-sede">
+                    <h4>Sede con una visita de otra solicitud</h4>
+                    <p class="hint">Esta sede ya tiene una visita vigente (${esc(ocupacionAjena.numero_radicado || "otra solicitud")}) el ${esc(formatDateTime(ocupacionAjena.fecha_inicio))}. No se puede programar de nuevo hasta que esa visita se cancele.</p>
+                </div>`;
+                return;
+            }
+            const lugar = lugarProgramacion(row, group);
+            const equipo = row.auditores_equipo || [];
+            const editando = Boolean(programacionEnEdicion);
+            const item = (etiqueta, valor, completo, secundario = "") =>
+                `<div class="detail-item${completo ? " full" : ""}"><span>${esc(etiqueta)}</span><strong>${esc(valor || "—")}</strong>${secundario ? `<small class="resumen-secundario">${esc(secundario)}</small>` : ""}</div>`;
+            cont.innerHTML = `<div class="resumen-sede${editando ? " editando" : ""}">
+                <h4>${editando ? "Editando la visita de" : "Visita programada en"} ${esc(lugar.sede)}</h4>
+                <p class="hint">${editando
+                    ? "Cambie la fecha, las horas o la modalidad en el formulario de abajo y pulse “Guardar cambios”. La visita sigue en esta sede."
+                    : "Esta sede ya tiene una programación vigente. Para cambiar la fecha, las horas o la modalidad pulse “Editar”."}</p>
+                <div class="detail-grid">
+                    ${item("Sede", lugar.sede)}
+                    ${item("Ciudad / municipio", lugar.ciudad)}
+                    ${item("Dirección", lugar.direccion, true)}
+                    ${item("Auditor", equipo.map(a => a.nombre).join(", ") || "Sin auditor registrado", false, equipo.map(a => a.correo).filter(Boolean).join(", "))}
+                    ${item("Estado", row.estado)}
+                    ${item("Fecha", fechaVisita(row.fecha_inicio))}
+                    ${item("Horario", `${horaCorta(row.fecha_inicio)} – ${horaCorta(row.fecha_fin)}`)}
+                    ${item("Modalidad", row.modalidad)}
+                    ${item("Observación", row.motivo_reprogramacion || "Sin observación")}
+                </div>
+                ${editando ? "" : `<div class="actions">
+                    <button type="button" class="btn btn-primario primary" data-resumen-accion="editar">Editar</button>
+                    <button type="button" class="btn btn-secundario secondary" data-resumen-accion="ver">Ver detalle</button>
+                    <button type="button" class="btn btn-peligro-contorno danger" data-resumen-accion="cancelar">Cancelar visita</button>
+                </div>`}
+            </div>`;
+        }
+
+        $("scheduleResumen").addEventListener("click", (event) => {
+            const boton = event.target.closest("[data-resumen-accion]");
+            if (!boton || !programacionActual) return;
+            const accion = boton.dataset.resumenAccion;
+            if (accion === "editar") editarProgramacion(programacionActual.id_programacion);
+            else if (accion === "cancelar") cancelarProgramacion(programacionActual.id_programacion);
+            else if (accion === "ver") verProgramacion(programacionActual);
+        });
+
+        // Una programación de la solicitud en una sede que ya no está incluida
+        // (dato anterior a la regla) se agrega al selector para poder verla y editarla.
+        function agregarOpcionSedeDeProgramacion(select, p) {
+            const option = document.createElement("option");
+            option.value = p.id_sede;
+            option.dataset.nombre = p.sede_nombre || "Sede de la visita";
+            option.dataset.direccion = p.sede_direccion || p.direccion_programacion || p.direccion_servicio || "";
+            option.dataset.ciudad = p.sede_ciudad || p.ciudad_servicio || "";
+            option.dataset.ocupada = "1";
+            option.dataset.noIncluida = "1";
+            option.textContent = `${option.dataset.nombre} - ${option.dataset.ciudad} - ${option.dataset.direccion} — ya programada (${formatDateTime(p.fecha_inicio)}); no incluida en la solicitud`;
+            select.appendChild(option);
+            return option;
+        }
+
+        // Lleva el formulario a la sede de la programación y activa su edición.
+        function entrarEdicion(row) {
+            const select = $("scheduleSede");
+            const idSede = String(row.id_sede || "");
+            if (select && select.value !== idSede) {
+                if (idSede && !select.querySelector(`option[value="${CSS.escape(idSede)}"]`)) agregarOpcionSedeDeProgramacion(select, row);
+                select.value = idSede;
+                pintarSelectorTabla("sedeTabla");
+                aplicarDatosSedeSeleccionada(currentAssignment());
+            }
+            applyExistingSchedule(row, true);
+            renderTablaProgramaciones(currentAssignment());
+        }
+
 
         let accionProgramacionPendiente = null;
         let focoAntesDelModalAccion = null;
@@ -3668,7 +3888,8 @@
             if (!pendiente || accionProgramacionEnviando) return;
             if (pendiente.accion === "editar") {
                 cerrarModalAccionProgramacion();
-                applyExistingSchedule(pendiente.row, true);
+                // Se edita exactamente esta programación, en su propia sede.
+                entrarEdicion(pendiente.row);
                 $("scheduleForm").scrollIntoView({ behavior: "smooth", block: "start" });
                 $("scheduleDate").focus({ preventScroll: true });
                 return;
@@ -3697,7 +3918,7 @@
                 const group = currentAssignment();
                 await cargarProgramacionesAgenda();
                 if (group) {
-                    await cargarSedes(group.id_empresa, group.id_solicitud);
+                    await cargarSedes(group.id_empresa, group.id_solicitud, true);
                     await loadScheduleList(group);
                 }
                 accionProgramacionEnviando = false;
@@ -3727,7 +3948,7 @@
         });
 
         function editarProgramacion(idProgramacion) {
-            const row = (window.__programacionesActuales || []).find(item => String(item.id_programacion) === String(idProgramacion));
+            const row = programacionesSolicitud.find(item => String(item.id_programacion) === String(idProgramacion));
             if (!row || isTerminalSchedule(row)) {
                 showNotice("scheduleNotice", "Esta programación no se puede editar porque ya fue cancelada o finalizada.", "error");
                 return;
@@ -3736,7 +3957,7 @@
         }
 
         function cancelarProgramacion(idProgramacion) {
-            const row = (window.__programacionesActuales || []).find(item => String(item.id_programacion) === String(idProgramacion));
+            const row = programacionesSolicitud.find(item => String(item.id_programacion) === String(idProgramacion));
             if (!row || isTerminalSchedule(row)) {
                 showNotice("scheduleNotice", "Esta programación ya está cancelada o finalizada.", "error");
                 return;
@@ -3757,10 +3978,12 @@
             if (group) {
                 await loadScheduleList(group);
                 if (window.__avisoSedesOcupadas) {
-                    showNotice("scheduleNotice", window.__avisoSedesOcupadas, "error");
+                    showNotice("scheduleNotice", window.__avisoSedesOcupadas, "info");
                 }
             } else {
                 window.__programacionesActuales = [];
+                programacionesSolicitud = [];
+                programacionesSolicitudDe = "";
                 $("scheduleList").innerHTML = '<div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>';
                 prepareNewScheduleForm(null);
             }
@@ -3770,11 +3993,13 @@
             if (!programacionActual || !programacionEnEdicion) return;
             if (!confirm("¿Desea descartar los cambios sin guardar y volver a mostrar la programación actual?")) return;
             applyExistingSchedule(programacionActual, false);
+            renderTablaProgramaciones(currentAssignment());
+            try { $("scheduleResumen").scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) { }
         });
 
         $("checkScheduleAvailability").addEventListener("click", async () => {
             if (programacionActual && !programacionEnEdicion) {
-                avisoJuntoAccion("scheduleActionNotice", "La solicitud ya está programada en esta sede. Use Editar en la tabla de programaciones para modificar el periodo y luego compruebe la disponibilidad.", "info");
+                avisoJuntoAccion("scheduleActionNotice", "La solicitud ya está programada en esta sede. Pulse Editar en el resumen de la sede para modificar el periodo y luego compruebe la disponibilidad.", "info");
                 return;
             }
             await checkCurrentScheduleAvailability();
@@ -3863,7 +4088,7 @@
         }
         $("scheduleSuggest").addEventListener("click", () => {
             if (programacionActual && !programacionEnEdicion) {
-                avisoJuntoAccion("scheduleActionNotice", "La solicitud ya está programada en esta sede. Use Editar en la tabla de programaciones para cambiar el periodo.", "info");
+                avisoJuntoAccion("scheduleActionNotice", "La solicitud ya está programada en esta sede. Pulse Editar en el resumen de la sede para cambiar el periodo.", "info");
                 return;
             }
             clearNotice("scheduleActionNotice");
@@ -3948,12 +4173,12 @@
             if (!group) { avisoJuntoAccion("scheduleActionNotice", "Selecciona una solicitud / empresa.", "error", ["assignmentTabla"]); return; }
             const editing = Boolean(programacionActual && programacionEnEdicion);
             if (programacionActual && !editing) {
-                avisoJuntoAccion("scheduleActionNotice", "La sede seleccionada ya tiene una programación. Los datos están bloqueados; use el botón Editar de la tabla para modificarlos.", "error");
+                avisoJuntoAccion("scheduleActionNotice", "La sede seleccionada ya tiene una programación. Pulse Editar en el resumen de la sede para modificarla.", "error");
                 return;
             }
             if (!editing && programacionActivaDeSede(group.id_solicitud, $("scheduleSede").value || "")) {
                 $("scheduleSave").disabled = true;
-                avisoJuntoAccion("scheduleActionNotice", "La sede seleccionada ya tiene una programación. Use el botón Editar de la tabla para modificarla.", "error");
+                avisoJuntoAccion("scheduleActionNotice", "La sede seleccionada ya tiene una visita vigente; no se puede programar de nuevo.", "error");
                 return;
             }
             const equipo = equipoActivo();
@@ -3975,12 +4200,19 @@
                 avisoJuntoAccion("scheduleActionNotice", "No se encontró el identificador de la programación para guardar los cambios.", "error");
                 return;
             }
+            // La edición se guarda sobre la programación de la sede seleccionada:
+            // si el formulario quedó desincronizado, no se envía nada.
+            if (editing && (String(programacionActual.id_solicitud || "") !== String(group.id_solicitud)
+                || String(programacionActual.id_sede || "") !== String($("scheduleSede").value || ""))) {
+                avisoJuntoAccion("scheduleActionNotice", "La programación en edición no corresponde a la sede seleccionada. Pulse Editar de nuevo en la sede que desea cambiar.", "error");
+                return;
+            }
             if (!editing) {
                 const available = await checkCurrentScheduleAvailability({ silencioso: true });
                 if (!available) return;
             }
             const confirmMessage = editing
-                ? "Advertencia: va a modificar una programación existente. ¿Desea guardar los cambios?"
+                ? `Advertencia: va a modificar la visita de ${lugarProgramacion(programacionActual, group).sede}. ¿Desea guardar los cambios?`
                 : `Advertencia: va a registrar la programación de ${nombreSedeSeleccionada()} con el auditor ${equipo[0].nombre}. ¿Desea continuar?`;
             if (!confirm(confirmMessage)) return;
 
@@ -3992,9 +4224,16 @@
                 fecha_inicio: fechaInicio,
                 fecha_fin: fechaFin
             };
+            // Edición: solo fechas, modalidad y observación de ESTA programación.
+            // id_solicitud e id_sede van para que el servidor compruebe que es
+            // la visita de esa sede (la sede nunca cambia al editar).
             const payload = editing ? {
-                ...commonPayload,
-                observacion: $("scheduleObservacion").value.trim()
+                modalidad: commonPayload.modalidad,
+                fecha_inicio: fechaInicio,
+                fecha_fin: fechaFin,
+                observacion: $("scheduleObservacion").value.trim(),
+                id_solicitud: group.id_solicitud,
+                id_sede: programacionActual.id_sede || null
             } : {
                 id_solicitud: group.id_solicitud,
                 id_sede: $("scheduleSede").value || null,
@@ -4014,6 +4253,9 @@
                 programacionEnEdicion = false;
                 borradorFechas = null;
                 await cargarProgramacionesAgenda();
+                // cargarSedes conserva la sede elegida: el resumen vuelve a
+                // mostrar la misma sede con los datos guardados.
+                await cargarSedes(group.id_empresa, group.id_solicitud, true);
                 await loadScheduleList(group);
                 // loadScheduleList deja el formulario en modo lectura: el
                 // resultado se anuncia después, junto al botón.
@@ -4140,8 +4382,8 @@
            MODAL DE DETALLE DE PROGRAMACIÓN (nuevo, no altera la lógica existente)
         ========================================================= */
         function verProgramacion(index) {
-            const rows = window.__programacionesActuales || [];
-            const row = rows[index];
+            // Recibe el índice de la fila pintada o la programación misma (resumen de la sede).
+            const row = (index && typeof index === 'object') ? index : (window.__programacionesActuales || [])[index];
             if (!row) return;
 
             const group = currentAssignment();
@@ -4149,8 +4391,10 @@
             const solicitud = row.numero_radicado || row.id_solicitud || group?.numero_radicado || '—';
             const empresa = row.empresa_nombre || group?.empresa_nombre || '—';
             const nit = row.nit || row.empresa_nit || group?.empresa_nit || group?.nit || '—';
-            const direccion = row.direccion_servicio || group?.empresa_direccion || '—';
-            const ciudad = row.ciudad_servicio || group?.empresa_ciudad || '—';
+            const lugar = lugarProgramacion(row, group);
+            const sede = lugar.sede || '—';
+            const direccion = lugar.direccion || '—';
+            const ciudad = lugar.ciudad || '—';
             const modalidad = row.modalidad || '—';
             const inicio = formatDateTime(row.fecha_inicio);
             const fin = formatDateTime(row.fecha_fin);
@@ -4181,7 +4425,11 @@
                 <div class="modal-section-group">
                     <h4 class="modal-section-label">Ubicación y modalidad</h4>
                     <div class="detail-grid">
-                        <div class="detail-item full">
+                        <div class="detail-item">
+                            <span>Sede</span>
+                            <strong>${esc(sede)}</strong>
+                        </div>
+                        <div class="detail-item">
                             <span>Dirección</span>
                             <strong>${esc(direccion)}</strong>
                         </div>
@@ -4215,7 +4463,7 @@
                 </div>
 
                 <div class="modal-section-group">
-                    <h4 class="modal-section-label">Auditores programados (${auditores.length})</h4>
+                    <h4 class="modal-section-label">${auditores.length > 1 ? `Auditores programados (${auditores.length})` : 'Auditor de la visita'}</h4>
                     ${auditores.length
                     ? `<ul class="auditores-list">${auditores.map(a => `<li>${esc(a)}</li>`).join('')}</ul>`
                     : `<div class="auditores-list"><li>Sin auditores registrados para esta programación.</li></div>`}
@@ -4285,7 +4533,7 @@
     </script>
 
     <script src="/static/session.js?v=20261118pub"></script>
-<script src="/static/nav.js?v=20261118menu"></script>
+<script src="/static/nav.js?v=20261118sincert"></script>
 </body>
 
 </html>

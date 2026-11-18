@@ -625,8 +625,23 @@ async def reprogramar_programacion(
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).reprogramar_programacion(
-        id_programacion, data.fecha_inicio, data.fecha_fin, data.motivo
+        id_programacion, data.fecha_inicio, data.fecha_fin, data.motivo,
+        data.id_solicitud, data.id_sede,
     )
+
+
+def _uuid_opcional(data: dict, clave: str) -> UUID | None:
+    """UUID opcional del cuerpo de la edición (422 si viene mal formado)."""
+    valor = data.get(clave)
+    if valor in (None, ""):
+        return None
+    try:
+        return UUID(str(valor))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"El campo {clave} no es un identificador válido.",
+        )
 
 
 @router.put("/programacion/{id_programacion}")
@@ -644,6 +659,8 @@ async def editar_programacion(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Formato de fecha/hora inválido: {exc}",
         )
+    # id_solicitud / id_sede (opcionales): la programación debe ser de esa
+    # solicitud y esa sede; la edición nunca cambia la sede (409 si no coincide).
     return await AgendaAuditorService(db).editar_programacion(
         id_programacion,
         data.get("modalidad"),
@@ -652,6 +669,8 @@ async def editar_programacion(
         fecha_fin,
         data.get("direccion_servicio"),
         data.get("observacion"),
+        id_solicitud=_uuid_opcional(data, "id_solicitud"),
+        id_sede=_uuid_opcional(data, "id_sede"),
     )
 
 

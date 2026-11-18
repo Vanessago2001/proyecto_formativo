@@ -743,7 +743,9 @@
     titulo: "Comité de certificación",
     items: [
       GRUPO_COMITE("Comité de certificación"),
-      GRUPO_CERTIFICADOS,
+      // "Gestión de certificados" se quitó del Comité (18/11/2026): el líder
+      // firma sus certificados en /comite ("Pendientes de firma" y la fila
+      // del expediente). /gestion-certificados lo redirige a /comite.
       GRUPO_APELACIONES("Apelaciones asignadas"),
       REPORTES,
       { texto: "Mi perfil", href: "/profile" },

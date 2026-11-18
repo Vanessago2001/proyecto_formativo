@@ -333,6 +333,19 @@
       const publicOnly = publicMode || role === "public";
       const roleLabel = rolePayload && (rolePayload.role_name || rolePayload.rol) || "Usuario";
 
+      // El Comité ya no tiene "Gestión de certificados" (18/11/2026): lo que
+      // necesita el líder (firmar sus certificados) está en /comite. Si entra
+      // escribiendo la dirección se le lleva allí ("Pendientes de firma" si
+      // es líder). La consulta pública (/verificar-certificado) no cambia.
+      if (!publicMode && role === "comite") {
+        document.documentElement.style.visibility = "hidden";
+        fetch("/certificados/lider-comite/actual", { headers: { Authorization: "Bearer " + token } })
+          .then((respuesta) => (respuesta.ok ? respuesta.json() : null))
+          .catch(() => null)
+          .then((liderazgo) => window.location.replace(liderazgo && liderazgo.es_lider ? "/comite#firmas" : "/comite"));
+        return;
+      }
+
       function parseToken(value) {
         try {
           const part = value.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -1103,7 +1116,7 @@
       }
     })();
   </script>
-<script src="/static/nav.js?v=20261118menu"></script>
+<script src="/static/nav.js?v=20261118sincert"></script>
 <script src="/static/session.js?v=20261118pub"></script>
 <script src="/static/pqrs-enlace.js?v=20261106"></script>
 </body>

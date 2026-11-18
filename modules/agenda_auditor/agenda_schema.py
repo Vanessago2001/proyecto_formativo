@@ -159,6 +159,9 @@ class ReprogramarProgramacion(BaseModel):
     fecha_inicio: datetime
     fecha_fin: datetime
     motivo: str = Field(min_length=3, max_length=1000)
+    # Opcionales: si llegan, la programación debe ser de esa solicitud y sede.
+    id_solicitud: UUID | None = None
+    id_sede: UUID | None = None
 
     @model_validator(mode="after")
     def validar_intervalo(self):

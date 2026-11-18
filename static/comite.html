@@ -79,6 +79,19 @@
     .impedimento { display: block; max-width: 240px; font-size: 12px; color: #7c3d00; }
     .acciones-fila { display: flex; flex-wrap: wrap; gap: 6px; }
     .decision-meta { display: block; font-size: 12px; color: #64748b; margin-top: 3px; }
+    /* Firma del acta en el mismo detalle, justo después de aprobar o rechazar (líder). */
+    .firma-tras-dictamen { margin: 0 0 16px; }
+    .firma-tras-dictamen p { margin: 0; }
+    .firma-tras-dictamen label { font-size: 12px; font-weight: 600; color: #374151; display: block; margin-bottom: 5px; }
+    .firma-tras-dictamen .firma-fila input { width: 220px; }
+    .firma-tras-campos[hidden], .firma-tras-aviso[hidden] { display: none; }
+    .firma-tras-aviso { font-size: 13px; color: #7c3d00; }
+    .firma-tras-enlace { all: unset; cursor: pointer; color: #256d00; font-weight: 700; text-decoration: underline; }
+    .firma-tras-enlace:focus-visible { outline: 2px solid #3baa01; outline-offset: 2px; }
+    .firma-tras-error { color: #8a2020; font-size: 13px; font-weight: 600; }
+    .firma-tras-error:empty { display: none; }
+    .firma-tras-ok { border-color: #b7dfa0; background: #f3fbee; }
+    .firma-tras-ok #firmaTrasDictamenEstado { color: #1f4d00; font-weight: 600; }
   </style>
 </head>
 
@@ -110,7 +123,7 @@
           <!-- "Expedientes pendientes" e "Historial de decisiones" se unificaron en "Expedientes". -->
           <button class="comite-nav-link active" type="button" data-view="expedientes">Expedientes</button>
           <button class="comite-nav-link" type="button" data-view="firmas" id="firmasNav" hidden>Pendientes de firma</button>
-          <a class="comite-nav-link certificados-nav-anchor" href="/gestion-certificados">Gestión de certificados</a>
+          <!-- "Gestión de certificados" se quitó del Comité: el líder firma sus certificados en "Pendientes de firma". -->
           <a class="comite-nav-link" href="/apelacion">Apelaciones asignadas</a>
         </nav>
         <div class="comite-access-note">
@@ -134,6 +147,8 @@
         <section id="expedientesView">
           <!-- Acceso directo del líder del Comité a lo que espera su firma. -->
           <div id="avisoLider" class="aviso-firmas aviso-lider" role="status" hidden></div>
+          <!-- Resultado de aprobar o rechazar cuando quien decide no es el líder que firma el acta. -->
+          <div id="avisoDictamen" class="aviso-firmas" role="status" aria-live="polite" hidden></div>
           <div id="avisoFirmas" class="aviso-firmas" role="status" hidden>
             <span id="avisoFirmasTexto"></span>
             <button id="avisoFirmasVer" class="comite-button primary btn btn-primario btn-sm" type="button">Ver los pendientes de firma</button>
@@ -773,6 +788,8 @@
 
       async function loadDetail(id) {
         state.selectedId = id;
+        state.firmaTrasDictamen = null;
+        mostrarAvisoDictamen("");
         document.querySelector(".comite-workspace").classList.add("detalle-abierto");
         window.scrollTo({ top: 0, behavior: "smooth" });
         const panel = $("#detailPanel");
@@ -1091,6 +1108,12 @@
         if (esDictamen) bloquearAccionesDeDictamen(true);   // evita un doble envio
         try {
           const result = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expediente_id: state.selectedId, comentario: comment }) });
+          // Aprobar o rechazar fija el dictamen y abre el acta: el líder la
+          // firma aquí mismo; a los demás se les cierra el detalle con aviso.
+          if (DICTAMENES_CON_ACTA.includes(path) && result && esDecisionFinal(result.estado)) {
+            await trasDictamen(path, state.selectedId, comment);
+            return;
+          }
           await loadExpedientes();
           if (["/comite/acta-definitiva", "/comite/cerrar-expediente", "/comite/reabrir-dictamen"].includes(path)) {
             await loadDetail(state.selectedId);
@@ -1107,6 +1130,173 @@
           if (esDictamen) bloquearAccionesDeDictamen(false);   // se puede reintentar
           showFeedback(error.message, "error");
           mostrarAvisoArriba();
+        }
+      }
+
+      // ------------- Tras aprobar o rechazar: firma del acta por el líder -------------
+      // El acta existe para los dos dictámenes (el backend la genera con la
+      // solicitud Aprobada o Rechazada), así que el flujo es el mismo.
+      const DICTAMENES_CON_ACTA = ["/comite/aprobar", "/comite/rechazar"];
+
+      function mostrarAvisoDictamen(texto) {
+        const aviso = $("#avisoDictamen");
+        aviso.textContent = texto || "";
+        aviso.hidden = !texto;
+      }
+
+      async function trasDictamen(path, id, comentario) {
+        const aprobado = path === "/comite/aprobar";
+        const titulo = aprobado ? "Otorgamiento aprobado." : "Rechazo registrado.";
+        // Líder que firma ESTE expediente (el asignado por el Coordinador o,
+        // sin el SQL de líder por expediente, el líder global).
+        let estadoActa = null;
+        try { estadoActa = await api("/comite/acta-estado/" + encodeURIComponent(id)); } catch (_) { estadoActa = null; }
+        const lider = estadoActa && estadoActa.lider;
+        const soyLider = Boolean(lider && miId && String(lider.id_usuario) === miId);
+
+        if (!soyLider) {
+          cerrarDetalle();
+          await Promise.all([loadExpedientes(), state.esLider ? cargarPendientesDeFirma().catch(() => null) : null]);
+          let texto;
+          if (!estadoActa) texto = titulo + " El acta pasará al líder del comité de este expediente para su firma.";
+          else if (lider) texto = titulo + " El acta pasará al líder del comité (" + (lider.nombre || "líder asignado") + ") para su firma.";
+          else texto = titulo + " El acta pasará al líder del comité para su firma, pendiente de que el Coordinador asigne el líder.";
+          mostrarAvisoDictamen(texto);
+          mostrarAvisoArriba();
+          return;
+        }
+
+        // Es el líder: el bloque de firma aparece en el mismo detalle.
+        const insignia = $("#detailPanel .comite-status");
+        if (insignia) {
+          insignia.textContent = aprobado ? "Aprobada" : "Rechazada";
+          insignia.className = "comite-status " + (aprobado ? "approved" : "rejected");
+        }
+        bloquearAccionesDeDictamen(true);
+        const bloque = pintarFirmaTrasDictamen(titulo);
+        state.firmaTrasDictamen = { id: id, comentario: comentario, aprobado: aprobado, actaLista: false };
+        loadExpedientes();
+        await prepararActaTrasDictamen(estadoActa && estadoActa.acta);
+        bloque.scrollIntoView({ block: "nearest" });
+      }
+
+      function pintarFirmaTrasDictamen(titulo) {
+        $("#detailPanel").querySelectorAll("[data-pestana]").forEach((b) => b.classList.toggle("activa", b.dataset.pestana === "dictamen"));
+        $("#detailPanel").querySelectorAll(".detalle-seccion").forEach((s) => { s.hidden = s.dataset.seccion !== "dictamen"; });
+        const seccion = $('#detailPanel .detalle-seccion[data-seccion="dictamen"]');
+        const previo = $("#firmaTrasDictamen");
+        if (previo) previo.remove();
+        seccion.insertAdjacentHTML("afterbegin",
+          '<form id="firmaTrasDictamen" class="firma-config firma-tras-dictamen" aria-labelledby="firmaTrasDictamenTitulo">' +
+          '<strong id="firmaTrasDictamenTitulo">' + escapeHtml(titulo) + ' Usted es el líder del comité de este expediente: firme el acta ahora.</strong>' +
+          '<p id="firmaTrasDictamenEstado" class="comite-muted" role="status" aria-live="polite">Preparando el acta...</p>' +
+          '<p id="firmaTrasDictamenSinClave" class="firma-tras-aviso" hidden>Antes de firmar debe crear su contraseña de firma en ' +
+          '<button type="button" class="firma-tras-enlace" id="firmaTrasDictamenIrFirmas">Pendientes de firma</button>.</p>' +
+          '<div class="firma-tras-campos">' +
+          '<label for="firmaTrasDictamenClave">Contraseña de firma</label>' +
+          '<div class="firma-fila"><input id="firmaTrasDictamenClave" type="password" autocomplete="off" required disabled>' +
+          '<button id="firmaTrasDictamenBoton" class="comite-button primary btn btn-primario" type="submit" disabled>Firmar acta</button></div>' +
+          '</div>' +
+          '<p id="firmaTrasDictamenError" class="firma-tras-error" role="alert"></p>' +
+          '<div id="firmaTrasDictamenListo" class="detalle-botones" hidden></div>' +
+          '</form>');
+        const bloque = $("#firmaTrasDictamen");
+        bloque.addEventListener("submit", enviarFirmaTrasDictamen);
+        $("#firmaTrasDictamenIrFirmas").addEventListener("click", () => showView("firmas"));
+        return bloque;
+      }
+
+      // Genera el acta si todavía no hay una pendiente (el líder es quien la
+      // genera) y activa la firma. Los errores salen junto al botón.
+      async function prepararActaTrasDictamen(acta) {
+        const datos = state.firmaTrasDictamen;
+        const estadoTexto = $("#firmaTrasDictamenEstado");
+        const boton = $("#firmaTrasDictamenBoton");
+        const campo = $("#firmaTrasDictamenClave");
+        const error = $("#firmaTrasDictamenError");
+        error.textContent = "";
+        boton.disabled = true;
+        campo.disabled = true;
+        if (!acta || !["GENERADA", "FIRMADA"].includes(String(acta.estado || "").toUpperCase())) {
+          estadoTexto.textContent = "Generando el acta definitiva...";
+          try {
+            await api("/comite/acta-definitiva", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ expediente_id: datos.id, comentario: datos.comentario || "Acta definitiva generada por el líder del comité." })
+            });
+          } catch (fallo) {
+            estadoTexto.textContent = "No se pudo generar el acta.";
+            error.textContent = fallo.message;
+            boton.textContent = "Reintentar generar el acta";
+            boton.disabled = false;
+            return;
+          }
+        } else if (String(acta.estado).toUpperCase() === "FIRMADA") {
+          estadoTexto.textContent = "El acta ya está firmada.";
+          $("#firmaTrasDictamen .firma-tras-campos").hidden = true;
+          return;
+        }
+        datos.actaLista = true;
+        boton.textContent = "Firmar acta";
+        let configurada = firmaConfigurada;
+        try {
+          const estadoFirma = await api("/certificados/firma/estado");
+          configurada = firmaConfigurada = Boolean(estadoFirma && estadoFirma.configurada);
+        } catch (_) { /* se valida al firmar */ }
+        estadoTexto.textContent = "Acta generada: queda pendiente de su firma.";
+        $("#firmaTrasDictamenSinClave").hidden = configurada;
+        campo.disabled = !configurada;
+        boton.disabled = !configurada;
+        if (configurada) campo.focus();
+      }
+
+      async function enviarFirmaTrasDictamen(evento) {
+        evento.preventDefault();
+        const datos = state.firmaTrasDictamen;
+        if (!datos) return;
+        if (!datos.actaLista) return prepararActaTrasDictamen(null);
+        const boton = $("#firmaTrasDictamenBoton");
+        const campo = $("#firmaTrasDictamenClave");
+        const error = $("#firmaTrasDictamenError");
+        error.textContent = "";
+        boton.disabled = true;
+        try {
+          const resultado = await api("/comite/firmar-acta", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expediente_id: datos.id, password_firma: campo.value })
+          });
+          campo.value = "";
+          $("#firmaTrasDictamen .firma-tras-campos").hidden = true;
+          $("#firmaTrasDictamen").classList.add("firma-tras-ok");
+          $("#firmaTrasDictamenEstado").textContent = (resultado && resultado.mensaje) || "Acta firmada digitalmente.";
+          await refrescarTrasActa();
+          // Al aprobar se crea el borrador del certificado: acceso directo a su firma.
+          let certificado = null;
+          if (datos.aprobado) {
+            try {
+              const lista = await api("/certificados/?limite=200");
+              certificado = (lista || []).find((c) => String(c.id_solicitud) === String(datos.id) &&
+                String(c.estado_certificado || "").trim().toUpperCase() === "PENDIENTE_FIRMA") || null;
+            } catch (_) { certificado = null; }
+          }
+          if (certificado) {
+            const listo = $("#firmaTrasDictamenListo");
+            listo.innerHTML = '<button type="button" class="comite-button primary btn btn-primario btn-sm">Firmar certificado</button>';
+            listo.hidden = false;
+            listo.querySelector("button").addEventListener("click", () => abrirFirmaCertificado({
+              id_certificado: certificado.id_certificado,
+              codigo: certificado.numero_radicado,
+              empresa: certificado.empresa,
+              codigo_verificacion: certificado.codigo_verificacion
+            }));
+          }
+        } catch (fallo) {
+          error.textContent = fallo.message;
+          boton.disabled = false;
+          campo.value = "";
+          campo.focus();
         }
       }
 
@@ -1519,7 +1709,7 @@
       prepararPanelLider();
     })();
   </script>
-<script src="/static/nav.js?v=20261118menu"></script>
+<script src="/static/nav.js?v=20261118sincert"></script>
 <script src="/static/session.js?v=20261118pub"></script>
 </body>
 
