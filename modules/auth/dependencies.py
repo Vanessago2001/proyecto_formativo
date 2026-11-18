@@ -19,9 +19,36 @@ ROLES_PERMITIDOS_LOGS = {
 }
 
 
-def es_rol_administrativo(usuario: dict) -> bool:
+def es_rol_administrativo(usuario: dict, *codigos: str) -> bool:
+    """
+    Coordinador: siempre. Auxiliar: solo si el Coordinador le delegó al menos
+    uno de `codigos` (sin códigos, nunca: no tiene permisos propios; ver
+    modules/permisos_auxiliar/regla_auxiliar.py).
+    """
     rol = (usuario.get("role_name") or "").strip().lower()
-    return rol in ROLES_PERMITIDOS_LOGS
+    if rol not in ROLES_PERMITIDOS_LOGS:
+        return False
+    if _normalize_role_name(rol) == "auxiliar":
+        from modules.permisos_auxiliar.regla_auxiliar import tiene_delegado
+
+        return bool(codigos) and tiene_delegado(usuario, *codigos)
+    return True
+
+
+def _exigir_propio(id_usuario, current_user: dict) -> dict:
+    if str(id_usuario) != str(current_user.get("id_usuario")):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para acceder a los datos de otro usuario.",
+        )
+    return current_user
+
+
+def _error_auxiliar(current_user: dict, codigos: tuple[str, ...]) -> None:
+    """403 claro para el Auxiliar sin el permiso delegado."""
+    from modules.permisos_auxiliar.regla_auxiliar import exigir_permiso_auxiliar
+
+    exigir_permiso_auxiliar(current_user, *codigos)
 
 
 async def require_self_or_admin(
@@ -30,32 +57,50 @@ async def require_self_or_admin(
 ) -> dict:
     if es_rol_administrativo(current_user):
         return current_user
+    return _exigir_propio(id_usuario, current_user)
 
-    if str(id_usuario) != str(current_user.get("id_usuario")):
+
+def require_self_or_admin_con(*codigos: str):
+    """Como `require_self_or_admin`; el Auxiliar entra con alguno de `codigos`."""
+
+    async def dependencia(
+        id_usuario: UUID,
+        current_user: dict = Depends(get_current_user),
+    ) -> dict:
+        if es_rol_administrativo(current_user, *codigos):
+            return current_user
+        if str(id_usuario) != str(current_user.get("id_usuario")):
+            _error_auxiliar(current_user, codigos)
+        return _exigir_propio(id_usuario, current_user)
+
+    return dependencia
+
+
+def _exigir_acceso_administrativo(current_user: dict, codigos: tuple[str, ...]) -> dict:
+    rol = (current_user.get("role_name") or "").lower()
+    if rol not in ROLES_PERMITIDOS_LOGS:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tiene permisos para acceder a los datos de otro usuario.",
+            detail="No tiene permisos para visualizar el historial de accesos.",
         )
-
+    _error_auxiliar(current_user, codigos)
     return current_user
 
 
 async def require_admin_access(
     current_user=Depends(get_current_user),
 ):
+    """Coordinador. El Auxiliar no pasa sin código: usar `require_admin_access_con`."""
+    return _exigir_acceso_administrativo(current_user, ())
 
-    rol = (
-        current_user.get("role_name")
-        or ""
-    ).lower()
 
-    if rol not in ROLES_PERMITIDOS_LOGS:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tiene permisos para visualizar el historial de accesos.",
-        )
+def require_admin_access_con(*codigos: str):
+    """Coordinador; el Auxiliar con alguno de `codigos` delegado."""
 
-    return current_user
+    async def dependencia(current_user=Depends(get_current_user)):
+        return _exigir_acceso_administrativo(current_user, codigos)
+
+    return dependencia
 
 # ============================================================
 # AUDITOR APROBADO

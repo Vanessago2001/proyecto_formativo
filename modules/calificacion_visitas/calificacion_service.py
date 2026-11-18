@@ -40,7 +40,9 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import almacen_archivos
 from core.security import _normalize_role_name
+from modules.calificacion_visitas import evaluacion_excel
 from modules.comite.imparcialidad import exigir_imparcialidad
 from modules.solicitudes import estado_solicitud as estados
 
@@ -151,8 +153,28 @@ def _ya_empezo(fecha_inicio, ahora: datetime | None = None) -> bool:
     return fecha_inicio <= ahora
 
 
-def _decision_tomada(estado_solicitud) -> bool:
-    return (estados.normalizar(estado_solicitud) or "") in ESTADOS_SOLICITUD_BLOQUEADA
+# Acciones del Comité que fijan su decisión (ver comite_service).
+ACCIONES_DECISION_COMITE = ("aprobar", "rechazar", "decisiones", "decision-definitiva")
+SQL_COMITE_DECIDIO = (
+    "EXISTS (SELECT 1 FROM comite_accion ca WHERE ca.id_solicitud = s.id_solicitud "
+    "AND ca.accion IN ('aprobar', 'rechazar', 'decisiones', 'decision-definitiva'))"
+)
+
+
+def _decision_tomada(estado_solicitud, comite_decidio: bool | None = True) -> bool:
+    """¿El expediente ya tiene la decisión del Comité (o se cerró/canceló)?
+
+    'Aprobada' es ambiguo: el Coordinador aprueba la solicitud ANTES de asignar
+    el auditor y programar las visitas (asignacion_service exige 'Aprobada'),
+    y el Comité también deja 'Aprobada' al otorgar. Con 'Aprobada' solo cuenta
+    como decidido si el Comité registró su decisión (`comite_accion`); así el
+    auditor puede evaluar y finalizar las visitas de una solicitud aprobada
+    por el Coordinador. Rechazada, Cerrada y Cancelada siempre bloquean.
+    """
+    canonico = estados.normalizar(estado_solicitud) or ""
+    if canonico == estados.APROBADA:
+        return bool(comite_decidio)
+    return canonico in ESTADOS_SOLICITUD_BLOQUEADA
 
 
 class CalificacionVisitaService:
@@ -172,11 +194,12 @@ class CalificacionVisitaService:
         if _rol(usuario) != "auditor":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo los auditores califican visitas.")
         await self._exigir_tabla()
-        resultado = await self.db.execute(text("""
+        resultado = await self.db.execute(text(f"""
             SELECT c.id_calificacion, c.id_programacion, c.id_solicitud, c.calificacion,
                    c.comentario_visita, c.situaciones_encontradas, c.oportunidades_mejora,
                    c.fecha_registro, c.fecha_actualizacion,
-                   s.estado AS estado_solicitud
+                   s.estado AS estado_solicitud,
+                   {SQL_COMITE_DECIDIO} AS comite_decidio
             FROM calificacion_visita c
             LEFT JOIN solicitud s ON s.id_solicitud = c.id_solicitud
             WHERE c.id_auditor = :id_auditor
@@ -185,7 +208,9 @@ class CalificacionVisitaService:
         filas = []
         for fila in resultado.mappings().all():
             dato = dict(fila)
-            dato["bloqueada"] = _decision_tomada(dato.pop("estado_solicitud", None))
+            dato["bloqueada"] = _decision_tomada(
+                dato.pop("estado_solicitud", None), dato.pop("comite_decidio", True)
+            )
             filas.append(dato)
         # Visitas a las que está asignado: en todas ve el botón de evaluar.
         asignaciones = await self.db.execute(text("""
@@ -198,9 +223,41 @@ class CalificacionVisitaService:
         return {"calificaciones": filas, "visitas_asignadas": visitas, "visitas_lider": visitas}
 
     async def guardar(self, id_programacion: UUID, datos: dict, usuario: dict) -> dict:
+        valores = self._validar_para(usuario, datos)
+        try:
+            fila = await self.registrar(id_programacion, valores, usuario)
+            await self.db.commit()
+        except DBAPIError as exc:
+            await self.db.rollback()
+            if _es_tabla_inexistente(exc):
+                raise _falta_sql() from exc
+            raise
+        creada = bool(fila.pop("creada", True))
+        fila.pop("id_solicitud_visita", None)
+        return {
+            "mensaje": "Calificación registrada." if creada else "Calificación actualizada.",
+            "calificacion": fila,
+        }
+
+    @staticmethod
+    def _validar_para(usuario: dict, datos: dict) -> dict:
         if _rol(usuario) != "auditor":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo los auditores califican visitas.")
-        valores = validar_calificacion(datos)
+        return validar_calificacion(datos)
+
+    async def registrar(
+        self,
+        id_programacion: UUID,
+        valores: dict,
+        usuario: dict,
+        exigir_inicio: bool = False,
+    ) -> dict:
+        """Inserta o actualiza la calificación SIN confirmar (quien llama hace commit).
+
+        `valores` ya pasó por `validar_calificacion`. `exigir_inicio`: la
+        visita debe haber empezado aunque ya figure como terminada (al
+        finalizarla en la misma transacción su estado ya cambió).
+        """
         await self._exigir_tabla()
         id_auditor = _id_usuario(usuario)
 
@@ -223,10 +280,15 @@ class CalificacionVisitaService:
         estado_visita = str(visita["estado"] or "").strip().upper()
         if estado_visita in ESTADOS_VISITA_CANCELADA:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No se puede calificar una visita cancelada.")
-        if estado_visita not in ESTADOS_VISITA_TERMINADA and not _ya_empezo(visita["fecha_inicio"]):
+        terminada = estado_visita in ESTADOS_VISITA_TERMINADA and not exigir_inicio
+        if not terminada and not _ya_empezo(visita["fecha_inicio"]):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="La visita todavía no ha empezado: podrás calificarla desde su fecha de inicio.",
+                detail=(
+                    "La visita todavía no ha empezado: podrás "
+                    + ("finalizarla y evaluarla" if exigir_inicio else "calificarla")
+                    + " desde su fecha de inicio."
+                ),
             )
         if not visita["id_solicitud"]:
             raise HTTPException(
@@ -236,15 +298,16 @@ class CalificacionVisitaService:
 
         # Se bloquea la solicitud como lo hace el Comité al decidir, así una
         # calificación no se cuela justo mientras se aprueba o rechaza.
-        resultado = await self.db.execute(text("""
-            SELECT estado FROM solicitud
-            WHERE id_solicitud = :id_solicitud AND deleted_at IS NULL
-            FOR UPDATE;
+        resultado = await self.db.execute(text(f"""
+            SELECT s.estado, {SQL_COMITE_DECIDIO} AS comite_decidio
+            FROM solicitud s
+            WHERE s.id_solicitud = :id_solicitud AND s.deleted_at IS NULL
+            FOR UPDATE OF s;
         """), {"id_solicitud": str(visita["id_solicitud"])})
         solicitud = resultado.mappings().first()
         if not solicitud:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La solicitud de la visita no existe o fue eliminada.")
-        if _decision_tomada(solicitud["estado"]):
+        if _decision_tomada(solicitud["estado"], solicitud.get("comite_decidio", True)):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
@@ -253,8 +316,7 @@ class CalificacionVisitaService:
                 ),
             )
 
-        try:
-            guardado = await self.db.execute(text("""
+        guardado = await self.db.execute(text("""
                 INSERT INTO calificacion_visita (
                     id_programacion, id_solicitud, id_auditor, calificacion,
                     comentario_visita, situaciones_encontradas, oportunidades_mejora
@@ -278,18 +340,9 @@ class CalificacionVisitaService:
                 "id_auditor": id_auditor,
                 **valores,
             })
-            fila = dict(guardado.mappings().first() or {})
-            await self.db.commit()
-        except DBAPIError as exc:
-            await self.db.rollback()
-            if _es_tabla_inexistente(exc):
-                raise _falta_sql() from exc
-            raise
-        creada = bool(fila.pop("creada", True))
-        return {
-            "mensaje": "Calificación registrada." if creada else "Calificación actualizada.",
-            "calificacion": fila,
-        }
+        fila = dict(guardado.mappings().first() or {})
+        fila["id_solicitud_visita"] = visita["id_solicitud"]
+        return fila
 
     # ------------------------------------------------------------------
     # Comité
@@ -413,6 +466,7 @@ class CalificacionVisitaService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El expediente no existe o fue eliminado.")
 
         visitas = await self._visitas_con_evaluaciones(id_solicitud)
+        await self._adjuntar_excel(visitas)
         faltantes = self._faltantes(visitas)
         # Nota de cada visita = promedio de sus evaluaciones.
         notas = [v["calificacion"] for v in visitas if v.get("calificacion") is not None]
@@ -430,3 +484,63 @@ class CalificacionVisitaService:
             "faltantes": [{**f, "texto": self.describir_faltante(f)} for f in faltantes],
             "puede_decidir": not faltantes,
         }
+
+    # ------------------------------------------------------------------
+    # Excel de la evaluación (adjunto obligatorio al finalizar la visita)
+    # ------------------------------------------------------------------
+    async def _adjuntar_excel(self, visitas: list[dict]) -> None:
+        """Agrega a cada evaluación `excel` = {nombre, tamano_bytes, fecha_subida} o None."""
+        for visita in visitas:
+            for evaluacion in visita.get("evaluaciones") or []:
+                meta = await evaluacion_excel.leer_metadatos(
+                    self.db, visita.get("id_programacion"), evaluacion.get("id_auditor")
+                )
+                evaluacion["excel"] = (
+                    {
+                        "nombre": meta.get("nombre_original"),
+                        "tamano_bytes": meta.get("tamano_bytes"),
+                        "fecha_subida": meta.get("fecha_subida"),
+                    }
+                    if meta else None
+                )
+
+    async def descargar_excel(
+        self, id_solicitud: UUID, id_programacion: UUID, id_auditor: UUID, usuario: dict
+    ) -> tuple[bytes, str, str]:
+        """Contenido, nombre y tipo del Excel de una evaluación (mismos permisos del expediente)."""
+        if _rol(usuario) not in ROLES_LECTURA_COMITE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo el Comité y el Coordinador pueden descargar la evaluación de la visita.",
+            )
+        # Un miembro del Comité impedido para la solicitud no la ve.
+        await exigir_imparcialidad(self.db, id_solicitud, usuario)
+        resultado = await self.db.execute(text("""
+            SELECT p.id_programacion
+            FROM programacion_visita p
+            JOIN solicitud s ON s.id_solicitud = p.id_solicitud AND s.deleted_at IS NULL
+            WHERE p.id_programacion = :id_programacion
+              AND p.id_solicitud = :id_solicitud
+              AND EXISTS (SELECT 1 FROM detalle_programacion_auditor d
+                          WHERE d.id_programacion = p.id_programacion
+                            AND d.id_usuario = :id_auditor);
+        """), {
+            "id_programacion": str(id_programacion),
+            "id_solicitud": str(id_solicitud),
+            "id_auditor": str(id_auditor),
+        })
+        if not resultado.mappings().first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La visita no pertenece a este expediente.")
+        meta = await evaluacion_excel.leer_metadatos(self.db, id_programacion, id_auditor)
+        contenido = None
+        if meta:
+            contenido = await almacen_archivos.leer(
+                evaluacion_excel.ruta_excel(id_programacion, id_auditor, meta["extension"]), db=self.db
+            )
+        if not contenido:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Esta evaluación no tiene el archivo Excel adjunto en este servidor.",
+            )
+        nombre = meta.get("nombre_original") or f"evaluacion_visita{meta['extension']}"
+        return contenido, nombre, evaluacion_excel.TIPOS_CONTENIDO[meta["extension"]]

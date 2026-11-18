@@ -181,6 +181,11 @@ async def cambiar_estado(
     db: AsyncSession = Depends(get_db),
 ):
     if _requiere_aprobacion(usuario):
+        # No se deja pendiente una aprobación que de todos modos fallaría.
+        servicio = TrazabilidadService(db)
+        await servicio.exigir_aprobable(
+            await SolicitudService(db).consultar(id_solicitud, usuario), datos.estado
+        )
         return await _dejar_pendiente(
             db, usuario, "SOL-054", id_solicitud,
             {"estado": datos.estado, "motivo": datos.motivo},

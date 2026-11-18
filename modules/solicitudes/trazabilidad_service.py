@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.solicitudes import bitacora
 from modules.solicitudes import estado_solicitud as estados
+from modules.empresas.requisitos_empresa import exigir_requisitos_para_aprobar
 from modules.solicitudes.solicitud_service import SolicitudService
 
 # Estados que la administración puede fijar con SOL-054. Se incluyen los que
@@ -140,6 +141,16 @@ class TrazabilidadService:
                 detail="La solicitud está cerrada definitivamente y no admite cambios.",
             )
 
+    async def exigir_aprobable(self, solicitud: dict, nuevo_estado: str) -> None:
+        """
+        Flujo 18/11/2026: aprobar exige los documentos legales obligatorios de
+        la empresa aprobados y al menos una sede incluida en la solicitud.
+        """
+        if estados.es(nuevo_estado, estados.APROBADA):
+            await exigir_requisitos_para_aprobar(
+                self.db, solicitud["id_empresa"], solicitud["id_solicitud"]
+            )
+
     async def cambiar_estado(
         self, id_solicitud: UUID, nuevo_estado: str, motivo: str | None, usuario: dict
     ) -> dict:
@@ -156,6 +167,7 @@ class TrazabilidadService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"La solicitud ya está en estado '{solicitud.get('estado')}'.",
             )
+        await self.exigir_aprobable(solicitud, nuevo_estado)
 
         anterior = solicitud.get("estado")
         resultado = await self.db.execute(

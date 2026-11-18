@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import require_role
+from modules.permisos_auxiliar.regla_auxiliar import delegable
 from modules.apelaciones.apelaciones_service import ApelacionesService
 
 router = APIRouter(prefix="/api/apelaciones", tags=["Apelaciones"])
@@ -70,7 +71,7 @@ async def consultar_mis_apelaciones(
 async def contexto_de_solicitud(
     id_solicitud: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"], auxiliar=delegable("APE-011")))
 ):
     """Si la solicitud se puede apelar y el motivo del rechazo del Comité."""
     return await ApelacionesService(db).contexto_de_solicitud(id_solicitud, current_user)
@@ -80,7 +81,7 @@ async def contexto_de_solicitud(
 async def consultar_apelacion(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"], auxiliar=delegable("APE-004")))
 ):
     apelacion = await ApelacionesService(db).get_apelacion_by_id(id, current_user)
     if not apelacion:
@@ -92,7 +93,7 @@ async def consultar_apelacion(
 async def consultar_expediente_apelacion(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"], auxiliar=delegable("APE-011", "APE-012")))
 ):
     """
     Expediente completo de la apelación: la solicitud original, la evaluación
@@ -160,7 +161,7 @@ async def editar_apelacion(
 @router.get("/")
 async def consultar_apelaciones_radicadas(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"], auxiliar=delegable("APE-004")))
 ):
     return await ApelacionesService(db).get_all_apelaciones(current_user)
 
@@ -169,7 +170,7 @@ async def consultar_apelaciones_radicadas(
 async def consultar_estado_tramite(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"], auxiliar=delegable("APE-006")))
 ):
     apelacion = await ApelacionesService(db).get_apelacion_by_id(id, current_user)
     if not apelacion:
@@ -210,7 +211,7 @@ async def asignar_comite_apelacion(
 async def consultar_historial_apelacion(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"], auxiliar=delegable("APE-009")))
 ):
     return await ApelacionesService(db).get_historial(id, current_user)
 
@@ -219,7 +220,7 @@ async def consultar_historial_apelacion(
 async def consultar_evidencias_previas(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "admin"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"], auxiliar=delegable("APE-012")))
 ):
     return await ApelacionesService(db).get_evidencias_previas(id, current_user)
 
@@ -229,7 +230,7 @@ async def descargar_evidencia(
     id: UUID,
     id_evidencia: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "admin"])),
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"], auxiliar=delegable("APE-005"))),
 ):
     archivo = await ApelacionesService(db).obtener_archivo_evidencia(id, id_evidencia, current_user)
     if not archivo:
@@ -242,7 +243,7 @@ async def descargar_evidencia(
 async def consultar_requerimientos(
     id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"]))
+    current_user: dict = Depends(require_role(["empresa", "comite", "admin", "auxiliar"], auxiliar=delegable("APE-014", "APE-009")))
 ):
     """Lo que el Comité ha pedido en esta apelación y si ya fue atendido."""
     return await ApelacionesService(db).listar_requerimientos(id, current_user)

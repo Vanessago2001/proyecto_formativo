@@ -4,7 +4,7 @@ Una solicitud con auditor asignado no se vuelve a ofrecer en Asignación.
 Rol único "Auditor" (17/11/2026): ya no hay roles. Una solicitud queda
 completa en cuanto tiene AL MENOS UN auditor con asignación activa: deja de
 listarse en Asignación y el backend responde 409 si se intenta asignar otro
-(los demás se suman desde Agenda al programar). Las solicitudes que solo
+(18/11/2026: "Solo un auditor por solicitud"). Las solicitudes que solo
 tienen asignaciones canceladas vuelven a estar disponibles.
 """
 
@@ -116,8 +116,8 @@ async def test_validar_equipo_incompleto_rechaza_con_409_si_ya_hay_un_auditor():
     assert error.value.status_code == 409
     assert "SOL-2026-0001" in error.value.detail
     assert "Ana Auditora" in error.value.detail
-    assert "ya tiene 1 auditor(es) asignado(s)" in error.value.detail
-    assert "Agenda" in error.value.detail
+    assert "Solo un auditor por solicitud" in error.value.detail
+    assert "Agenda" not in error.value.detail  # la Agenda ya no suma auditores
     sql = db.sentencias[0]
     assert "especialidad" not in sql and "lider" not in sql.lower()
 
@@ -159,7 +159,8 @@ async def test_post_asignacion_responde_409_por_la_api():
         app.dependency_overrides.clear()
 
     assert respuesta.status_code == 409
-    assert "ya tiene 2 auditor(es) asignado(s)" in respuesta.json()["detail"]
+    detalle = respuesta.json()["detail"]
+    assert "Solo un auditor por solicitud" in detalle and "y 1 más" in detalle
 
 
 # ---------------------------------------------------------------- rol único

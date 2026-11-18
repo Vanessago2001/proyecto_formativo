@@ -37,3 +37,26 @@ def _almacen_archivos_solo_disco(monkeypatch):
     from core import almacen_archivos
 
     monkeypatch.setattr(almacen_archivos, "backend", _AlmacenSoloDisco())
+
+
+@pytest.fixture(autouse=True)
+def _sede_de_la_visita_por_defecto(request, monkeypatch):
+    """
+    Flujo 18/11/2026: crear_programacion exige una sede incluida en la
+    solicitud (modules/empresas/requisitos_empresa.exigir_sede_de_la_solicitud).
+    Las pruebas de Agenda anteriores usan bases simuladas estrictas que no
+    conocen esa consulta, así que por defecto se da la sede por válida; las
+    pruebas de esa regla se marcan con @pytest.mark.sede_real.
+    """
+    if request.node.get_closest_marker("sede_real"):
+        return
+    from modules.agenda_auditor import agenda_service
+
+    async def _sede_valida(_db, _id_solicitud, _id_sede):
+        return None
+
+    monkeypatch.setattr(agenda_service, "exigir_sede_de_la_solicitud", _sede_valida)
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "sede_real: usa la regla real de la sede de la visita")

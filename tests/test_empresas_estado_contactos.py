@@ -47,10 +47,13 @@ def sesion(registro: dict | None = None) -> AsyncMock:
 
 
 async def pedir(db, rol, metodo, ruta, **kwargs):
+    # "Auxiliar+EMP-027": Auxiliar con ese permiso delegado por el Coordinador.
+    rol, *delegados = rol.split("+")
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_current_user] = lambda: {
         "id_usuario": str(uuid.uuid4()),
         "role_name": rol,
+        **({"permisos_delegados": tuple(delegados)} if delegados else {}),
     }
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as cliente:
@@ -145,7 +148,7 @@ async def test_cambiar_estado_no_acepta_inactiva():
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Empresa", 201), ("Auxiliar", 201), ("Administrador", 201), ("Auditor", 403), ("Comité", 403)],
+    [("Empresa", 201), ("Auxiliar", 403), ("Auxiliar+EMP-027", 201), ("Administrador", 201), ("Auditor", 403), ("Comité", 403)],
 )
 async def test_registrar_contacto_segun_la_hoja(rol, esperado):
     db = sesion(fila())

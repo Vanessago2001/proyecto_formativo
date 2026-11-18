@@ -14,6 +14,8 @@ La conformidad de las filas con permisos.xlsx la comprueba
 import uuid
 
 import pytest
+
+from tests.permisos_aux import MENSAJE_SIN_PERMISO, es_aux
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -23,6 +25,7 @@ from modules.solicitudes.informacion_router import router as informacion_router
 from modules.solicitudes.solicitud_permissions import (
     PERMISOS_M5,
     ROLES_DEL_SISTEMA,
+    nivel_permiso,
     tiene_permiso,
 )
 from tests.fake_db import SesionFalsa
@@ -61,7 +64,7 @@ def app(sesion) -> FastAPI:
     return aplicacion
 
 
-def autenticar(app: FastAPI, rol: str, id_usuario: uuid.UUID = ID_USUARIO) -> None:
+def autenticar(app: FastAPI, rol: str, id_usuario: uuid.UUID = ID_USUARIO, permisos: tuple = ()) -> None:
     async def _usuario():
         return {
             "id_usuario": id_usuario,
@@ -70,6 +73,7 @@ def autenticar(app: FastAPI, rol: str, id_usuario: uuid.UUID = ID_USUARIO) -> No
             "estado": "Activo",
             "rol_id": 1,
             "role_name": rol,
+            **({"permisos_delegados": tuple(permisos)} if permisos else {}),
         }
 
     app.dependency_overrides[get_current_user] = _usuario
@@ -115,9 +119,16 @@ def test_el_endpoint_de_informacion_aplica_la_matriz(
 ):
     """Si la matriz dice F, la respuesta debe ser 403; si dice V, nunca 403."""
     solicitud = sesion.sembrar(id_empresa=ID_EMPRESA)
-    autenticar(app, rol)
-
     url = plantilla.format(s=solicitud["id_solicitud"], d=uuid.uuid4())
+    # Regla del Auxiliar: sin permiso delegado, una celda V es 403 con el
+    # aviso de "Permisos de auxiliares"; con él (simulado), permitido.
+    if es_aux(rol) and nivel_permiso(codigo, rol).value == "V":
+        autenticar(app, rol)
+        sin_permiso = getattr(cliente, metodo)(url, **extra)
+        assert sin_permiso.status_code == 403
+        assert MENSAJE_SIN_PERMISO in sin_permiso.json()["detail"]
+        assert codigo in sin_permiso.json()["detail"]
+    autenticar(app, rol, permisos=(codigo,))
     respuesta = getattr(cliente, metodo)(url, **extra)
 
     if tiene_permiso(codigo, rol):

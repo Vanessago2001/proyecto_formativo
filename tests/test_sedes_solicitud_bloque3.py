@@ -16,6 +16,8 @@ import zipfile
 import xml.etree.ElementTree as ET
 
 import pytest
+
+from tests.permisos_aux import MENSAJE_SIN_PERMISO, es_aux
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
@@ -27,6 +29,7 @@ from modules.solicitudes.solicitud_permissions import (
     PERMISOS_M5,
     ROLES_DEL_SISTEMA,
     exigir_permisos,
+    nivel_permiso,
     tiene_permiso,
 )
 from tests.fake_db import SesionFalsa
@@ -70,7 +73,7 @@ def app(sesion) -> FastAPI:
     return aplicacion
 
 
-def autenticar(app: FastAPI, rol: str, id_usuario: uuid.UUID = ID_USUARIO) -> None:
+def autenticar(app: FastAPI, rol: str, id_usuario: uuid.UUID = ID_USUARIO, permisos: tuple = ()) -> None:
     async def _usuario():
         return {
             "id_usuario": id_usuario,
@@ -79,6 +82,7 @@ def autenticar(app: FastAPI, rol: str, id_usuario: uuid.UUID = ID_USUARIO) -> No
             "estado": "Activo",
             "rol_id": 1,
             "role_name": rol,
+            **({"permisos_delegados": tuple(permisos)} if permisos else {}),
         }
 
     app.dependency_overrides[get_current_user] = _usuario
@@ -141,8 +145,6 @@ def test_el_endpoint_de_sedes_aplica_la_matriz(
     """Si la matriz dice F, la respuesta debe ser 403; si dice V, nunca 403."""
     solicitud = sesion.sembrar(id_empresa=ID_EMPRESA)
     sede = sede_incluida(sesion, solicitud)
-    autenticar(app, rol)
-
     url = ruta(solicitud, sufijo.format(d=sede["id_sede"]))
     extra = {}
     if cuerpo is not None:
@@ -150,6 +152,15 @@ def test_el_endpoint_de_sedes_aplica_la_matriz(
             clave: (valor.format(d=sede["id_sede"]) if isinstance(valor, str) else valor)
             for clave, valor in cuerpo.items()
         }
+    # Regla del Auxiliar: sin permiso delegado, una celda V es 403 con el
+    # aviso de "Permisos de auxiliares"; con él (simulado), permitido.
+    if es_aux(rol) and nivel_permiso(codigo, rol).value == "V":
+        autenticar(app, rol)
+        sin_permiso = getattr(cliente, metodo)(url, **extra)
+        assert sin_permiso.status_code == 403
+        assert MENSAJE_SIN_PERMISO in sin_permiso.json()["detail"]
+        assert codigo in sin_permiso.json()["detail"]
+    autenticar(app, rol, permisos=(codigo,))
     respuesta = getattr(cliente, metodo)(url, **extra)
 
     if tiene_permiso(codigo, rol):
@@ -464,7 +475,8 @@ def test_validar_detecta_una_sede_inactiva(app, cliente, sesion):
 def test_validar_sin_observaciones(app, cliente, sesion):
     solicitud = sesion.sembrar(id_empresa=ID_EMPRESA, estado="Radicada", numero_sedes=1)
     sede_incluida(sesion, solicitud, es_principal=True)
-    autenticar(app, "Auxiliar", id_usuario=uuid.uuid4())
+    # Auxiliar con SOL-029 delegado por el Coordinador (regla_auxiliar).
+    autenticar(app, "Auxiliar", id_usuario=uuid.uuid4(), permisos=("SOL-029",))
 
     cuerpo = cliente.post(ruta(solicitud, "/validar")).json()
 

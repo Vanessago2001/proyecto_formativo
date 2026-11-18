@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.datetime_utils import system_now
 from modules.auth.dependencies import exigir_auditor_asignado, filtro_auditor_asignado
 from modules.comite.imparcialidad import filtro_visible
+from modules.empresas.requisitos_empresa import exigir_requisitos_para_radicar
 from modules.solicitudes.solicitud_permissions import (
     ROL_EMP,
     normalizar_rol,
@@ -493,6 +494,12 @@ class SolicitudService:
                     f"({', '.join(faltantes)})."
                 ),
             )
+
+        # Flujo 18/11/2026: documentos legales obligatorios de la empresa y al
+        # menos una sede incluida (modules/empresas/requisitos_empresa.py).
+        await exigir_requisitos_para_radicar(
+            self.db, solicitud["id_empresa"], id_solicitud
+        )
 
         radicado = await self._generar_radicado()
 

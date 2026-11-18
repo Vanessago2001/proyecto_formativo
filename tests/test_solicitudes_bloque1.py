@@ -14,6 +14,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
+
+from tests.permisos_aux import MENSAJE_SIN_PERMISO, es_aux
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -67,7 +69,7 @@ def app(sesion) -> FastAPI:
     return aplicacion
 
 
-def autenticar(app: FastAPI, rol: str, id_usuario: uuid.UUID = ID_USUARIO) -> None:
+def autenticar(app: FastAPI, rol: str, id_usuario: uuid.UUID = ID_USUARIO, permisos: tuple = ()) -> None:
     """Sustituye al usuario autenticado por uno con el rol indicado."""
 
     async def _usuario():
@@ -78,6 +80,7 @@ def autenticar(app: FastAPI, rol: str, id_usuario: uuid.UUID = ID_USUARIO) -> No
             "estado": "Activo",
             "rol_id": 1,
             "role_name": rol,
+            **({"permisos_delegados": tuple(permisos)} if permisos else {}),
         }
 
     app.dependency_overrides[get_current_user] = _usuario
@@ -261,9 +264,17 @@ def test_el_endpoint_aplica_la_matriz_de_permisos(
     debe ser 403; si dice V, nunca puede ser 403.
     """
     solicitud = sesion.sembrar(id_empresa=ID_EMPRESA)
-    autenticar(app, rol, id_usuario=ID_USUARIO)
-
     ruta = plantilla.format(id=solicitud["id_solicitud"])
+    extra = {"json": cuerpo} if cuerpo is not None else {}
+    # Regla del Auxiliar: sin permiso delegado, una celda V es 403 con el
+    # aviso de "Permisos de auxiliares"; con él (simulado), permitido.
+    if es_aux(rol) and nivel_permiso(codigo, rol).value == "V":
+        autenticar(app, rol, id_usuario=ID_USUARIO)
+        sin_permiso = getattr(cliente, metodo)(ruta, **extra)
+        assert sin_permiso.status_code == 403
+        assert MENSAJE_SIN_PERMISO in sin_permiso.json()["detail"]
+        assert codigo in sin_permiso.json()["detail"]
+    autenticar(app, rol, id_usuario=ID_USUARIO, permisos=(codigo,))
     respuesta = getattr(cliente, metodo)(
         ruta,
         **({"json": cuerpo} if cuerpo is not None else {}),
@@ -316,6 +327,7 @@ def test_la_solicitud_nace_en_borrador_y_sin_radicado(app, cliente):
 def test_radicar_asigna_consecutivo_y_congela_la_edicion(app, cliente, sesion):
     autenticar(app, "Empresa")
     solicitud = sesion.sembrar(id_empresa=ID_EMPRESA)
+    sesion.cumplir_requisitos(solicitud)  # documentos legales y una sede
     id_solicitud = solicitud["id_solicitud"]
 
     radicada = cliente.post(f"/solicitudes/{id_solicitud}/radicar")
@@ -337,6 +349,7 @@ def test_el_radicado_es_consecutivo(app, cliente, sesion):
     radicados = []
     for _ in range(3):
         solicitud = sesion.sembrar(id_empresa=ID_EMPRESA)
+        sesion.cumplir_requisitos(solicitud)
         respuesta = cliente.post(f"/solicitudes/{solicitud['id_solicitud']}/radicar")
         radicados.append(respuesta.json()["numero_radicado"])
 
@@ -436,8 +449,9 @@ def test_la_administracion_si_ve_las_solicitudes_de_todas_las_empresas(
     sesion.sembrar(id_empresa=ID_OTRA_EMPRESA, estado="Radicada")
     sesion.sembrar(id_empresa=ID_EMPRESA, estado="Radicada")
 
+    # El Auxiliar, con SOL-006 delegado por el Coordinador.
     for rol in ("Administrador", "Auxiliar", "Auditor", "Comite", "Aprobador"):
-        autenticar(app, rol, id_usuario=uuid.uuid4())
+        autenticar(app, rol, id_usuario=uuid.uuid4(), permisos=("SOL-006",))
         listado = cliente.get("/solicitudes/")
         assert listado.status_code == 200
         assert len(listado.json()) == 2, f"El rol {rol} debería ver ambas."
@@ -465,6 +479,7 @@ def test_cada_accion_queda_en_el_historial_de_estados(app, cliente, sesion):
     ).json()
     id_solicitud = creada["id_solicitud"]
     cliente.patch(f"/solicitudes/{id_solicitud}", json={"numero_sedes": 3})
+    sesion.cumplir_requisitos(creada)
     cliente.post(f"/solicitudes/{id_solicitud}/radicar")
 
     assert [h["estado"] for h in sesion.historial] == [

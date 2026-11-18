@@ -33,6 +33,7 @@ from modules.asignacion_auditores.asignacion_service import CTE_AUDITORES
 from modules.auditores.auditor_schema import ConflictoInteresCrear
 from modules.auditores.auditor_service import AuditorService
 from tests.fake_db import ResultadoFalso
+from tests.permisos_aux import MENSAJE_SIN_PERMISO, con_permisos
 
 RAIZ = Path(__file__).resolve().parents[1]
 ID_USUARIO = uuid.UUID("11111111-1111-1111-1111-111111111111")
@@ -201,9 +202,14 @@ def cliente_banco(monkeypatch):
     monkeypatch.setattr(AdministrarAuditoresService, "cambiar_estado", _cambiar_estado)
     app.dependency_overrides[get_db] = _db
 
-    def con_rol(rol, permiso=False):
+    def con_rol(rol, permiso=False, delegados=None):
+        # `delegados`: códigos V que el Coordinador otorgó al Auxiliar
+        # (regla_auxiliar); con permiso=True se le otorga todo el catálogo.
         async def _usuario():
-            return {"id_usuario": str(ID_ACTOR), "role_name": rol}
+            usuario = {"id_usuario": str(ID_ACTOR), "role_name": rol}
+            if permiso or delegados:
+                con_permisos(usuario, *(delegados or ()))
+            return usuario
 
         async def _permiso(db, usuario, codigo, detalle=None):
             return permiso
@@ -242,9 +248,20 @@ def test_coordinador_aprueba_sin_permiso_delegado(cliente_banco):
     assert llamadas == ["Rechazado"]
 
 
-def test_auxiliar_puede_pasar_a_revision_sin_permiso(cliente_banco):
+def test_auxiliar_sin_permiso_no_pasa_a_revision(cliente_banco):
+    """Regla del Auxiliar: AUD-012 (V) también lo otorga el Coordinador."""
     con_rol, llamadas = cliente_banco
     r = con_rol("Auxiliar").patch(f"/administradores/auditores/solicitudes/{ID_POSTULACION}/revision", json={})
+    assert r.status_code == 403
+    assert MENSAJE_SIN_PERMISO in r.json()["detail"]
+    assert llamadas == []
+
+
+def test_auxiliar_con_aud_012_pasa_a_revision(cliente_banco):
+    con_rol, llamadas = cliente_banco
+    r = con_rol("Auxiliar", delegados=("AUD-012",)).patch(
+        f"/administradores/auditores/solicitudes/{ID_POSTULACION}/revision", json={}
+    )
     assert r.status_code == 200
     assert llamadas == ["En Revisión"]
 

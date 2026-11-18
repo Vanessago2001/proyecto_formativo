@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import es_coordinador, require_role
+from modules.permisos_auxiliar.regla_auxiliar import delegable
 from modules.auditores_registrados.auditores_registrados_schema import (
     ActivarAuditor,
     CambioEstadoAuditor,
@@ -27,7 +28,12 @@ router = APIRouter(
 
 # Consultar hojas de vida y documentos: administradores y auxiliares.
 # Inactivar o reactivar: solo perfiles con permisos de administraciÃ³n.
-require_lectura = require_role(["Coordinador", "Auxiliar"])
+# El Auxiliar no tiene permisos propios: cada ruta pide su código delegado.
+def require_lectura_con(*codigos: str):
+    return require_role(["Coordinador", "Auxiliar"], auxiliar=delegable(*codigos))
+
+
+require_lectura = require_lectura_con("AUD-056")
 require_escritura = require_role(["Coordinador"])
 
 
@@ -35,7 +41,7 @@ require_escritura = require_role(["Coordinador"])
 async def listar_auditores(
     q: str | None = Query(default=None, description="Nombre, documento o correo."),
     estado: str | None = Query(default=None, description="Activo o Inactivo."),
-    current_user=Depends(require_lectura),
+    current_user=Depends(require_lectura_con("AUD-056", "AUD-057", "AUD-058")),
     db: AsyncSession = Depends(get_db),
 ):
     servicio = AuditoresRegistradosService(db)
@@ -49,7 +55,7 @@ async def listar_auditores(
 @router.get("/{id_usuario}")
 async def obtener_auditor(
     id_usuario: UUID,
-    current_user=Depends(require_lectura),
+    current_user=Depends(require_lectura_con("AUD-056")),
     db: AsyncSession = Depends(get_db),
 ):
     servicio = AuditoresRegistradosService(db)
@@ -92,7 +98,7 @@ def _id_actor(current_user: dict) -> UUID | None:
 async def activar_auditor(
     id_usuario: UUID,
     payload: ActivarAuditor,
-    current_user=Depends(require_lectura),
+    current_user=Depends(require_lectura_con("AUD-013")),
     db: AsyncSession = Depends(get_db),
 ):
     """Activa al auditor cuya postulación vigente ya está aprobada.
@@ -134,7 +140,7 @@ async def previsualizar_asignaciones_afectadas(
 @router.get("/{id_usuario}/historial-asignaciones")
 async def historial_asignaciones_auditor(
     id_usuario: UUID,
-    current_user=Depends(require_lectura),
+    current_user=Depends(require_lectura_con("AUD-058")),
     db: AsyncSession = Depends(get_db),
 ):
     servicio = AuditoresRegistradosService(db)
@@ -170,7 +176,7 @@ async def ver_documento_auditor(
     id_usuario: UUID,
     id_documento: UUID,
     descargar: bool = Query(default=False),
-    current_user=Depends(require_lectura),
+    current_user=Depends(require_lectura_con("AUD-057", "AUD-012")),
     db: AsyncSession = Depends(get_db),
 ):
     servicio = AuditoresRegistradosService(db)
@@ -183,7 +189,7 @@ async def ver_certificacion_auditor(
     id_usuario: UUID,
     id_certificacion: UUID,
     descargar: bool = Query(default=False),
-    current_user=Depends(require_lectura),
+    current_user=Depends(require_lectura_con("AUD-057", "AUD-018")),
     db: AsyncSession = Depends(get_db),
 ):
     servicio = AuditoresRegistradosService(db)
@@ -194,7 +200,7 @@ async def ver_certificacion_auditor(
 @router.get("/{id_usuario}/foto")
 async def ver_foto_auditor(
     id_usuario: UUID,
-    current_user=Depends(require_lectura),
+    current_user=Depends(require_lectura_con("AUD-056")),
     db: AsyncSession = Depends(get_db),
 ):
     servicio = AuditoresRegistradosService(db)

@@ -152,3 +152,10 @@ class InformacionGeneral(BaseModel):
     campos_pendientes: list[str] = Field(
         description="Campos obligatorios que faltan para poder radicar (SOL-005).",
     )
+    requisitos_pendientes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Documentos legales obligatorios de la empresa y sedes que faltan "
+            "para poder radicar (modules/empresas/requisitos_empresa.py)."
+        ),
+    )

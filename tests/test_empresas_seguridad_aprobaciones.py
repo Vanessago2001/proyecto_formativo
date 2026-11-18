@@ -96,8 +96,14 @@ class BaseFalsa:
 
 
 async def pedir(db, rol, metodo, ruta, **kwargs):
+    # "Auxiliar+EMP-003": Auxiliar con ese permiso delegado por el Coordinador.
+    rol, *delegados = rol.split("+")
     app.dependency_overrides[get_db] = lambda: db
-    app.dependency_overrides[get_current_user] = lambda: {"id_usuario": str(uuid.uuid4()), "role_name": rol}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "id_usuario": str(uuid.uuid4()),
+        "role_name": rol,
+        **({"permisos_delegados": tuple(delegados)} if delegados else {}),
+    }
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as cliente:
             return await getattr(cliente, metodo)(ruta, **kwargs)
@@ -164,7 +170,7 @@ async def test_un_id_invalido_no_llega_a_la_base():
 
 # El Auditor ya no: solo ve las empresas de sus auditorías asignadas
 # (tests/test_seguridad_retest_13_11.py).
-@pytest.mark.parametrize("rol", ["Administrador", "Auxiliar", "Comité"])
+@pytest.mark.parametrize("rol", ["Administrador", "Auxiliar+EMP-003", "Comité"])
 async def test_los_demas_roles_no_dependen_del_vinculo(rol):
     db = BaseFalsa(vinculada=False)
 

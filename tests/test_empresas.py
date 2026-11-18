@@ -7,6 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from core.database import get_db
 from core.security import get_current_user
 from main import app
+from tests.permisos_aux import MENSAJE_SIN_PERMISO
 
 
 @pytest.fixture
@@ -114,6 +115,13 @@ async def test_registrar_empresa_success(app_fixture, mock_db_session, mock_aux_
         "estado": "ACTIVO"
     }
 
+    # Regla del Auxiliar: sin EMP-001 delegado por el Coordinador, 403.
+    async with AsyncClient(transport=ASGITransport(app=app_fixture), base_url="http://test") as ac:
+        response = await ac.post("/api/empresas/", json=payload)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert MENSAJE_SIN_PERMISO in response.json()["detail"]
+
+    app_fixture.dependency_overrides[get_current_user] = lambda: {**mock_aux_user, "permisos_delegados": ("EMP-001",)}
     async with AsyncClient(transport=ASGITransport(app=app_fixture), base_url="http://test") as ac:
         response = await ac.post("/api/empresas/", json=payload)
 

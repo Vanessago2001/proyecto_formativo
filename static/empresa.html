@@ -67,6 +67,7 @@
         </div>
         <nav>
           <button class="comite-nav-link active" type="button" data-view="solicitudes">Mis solicitudes</button>
+          <button class="comite-nav-link" type="button" data-view="legales">Documentos legales</button>
           <button class="comite-nav-link" type="button" data-view="nueva">Nueva solicitud</button>
           <button class="comite-nav-link" type="button" data-view="informacion">Información técnica</button>
           <button class="comite-nav-link" type="button" data-view="sedes">Sedes</button>
@@ -102,6 +103,7 @@
         </div>
 
         <section id="vista-solicitudes"></section>
+        <section id="vista-legales" class="comite-view-hidden"></section>
 
         <section id="vista-nueva" class="comite-view-hidden">
           <div class="comite-panel">
@@ -173,6 +175,7 @@
 
       const VISTAS = {
         solicitudes: ["Mis solicitudes", "Solicitudes de certificación de su empresa. Seleccione una para completar su información, sus sedes y sus documentos."],
+        legales: ["Documentos legales", "Documentos legales de la empresa. Los obligatorios deben estar cargados (y no rechazados) para poder radicar una solicitud; el Coordinador los aprueba al revisarla."],
         nueva: ["Nueva solicitud", "Registre los datos básicos. La solicitud solo se vuelve formal cuando la radica."],
         informacion: ["Información técnica", "Norma ISO, tamaño de la empresa, alcance técnico y procesos clave."],
         sedes: ["Sedes", "Sedes de la empresa que forman parte de la solicitud."],
@@ -198,7 +201,12 @@
         paginaSolicitudes: 1,
         normas: [],
         actual: null,
-        edicion: { alcance: null, proceso: null, sede: null }
+        edicion: { alcance: null, proceso: null, sede: null },
+        // Flujo 18/11/2026: empresas del usuario y su lista de verificación
+        // (GET /api/empresas/{id}/requisitos).
+        empresas: [],
+        requisitos: {},
+        empresaLegal: null
       };
 
       const $ = (selector) => document.querySelector(selector);
@@ -329,6 +337,7 @@
       function cargarVista() {
         const vista = estado.vista;
         if (vista === "solicitudes") return cargarSolicitudes();
+        if (vista === "legales") return cargarLegales();
         if (vista === "nueva") return prepararNueva();
         if (vista === "auditores") return cargarAuditoresAsignados();
         if (vista === "apelaciones") return cargarApelaciones();
@@ -407,7 +416,7 @@
               accion("ir-informacion", "Información", s.id_solicitud) +
               accion("ir-sedes", "Sedes", s.id_solicitud) +
               accion("ir-documentos", "Documentos", s.id_solicitud) +
-              (borrador ? accion("radicar", "Radicar", s.id_solicitud) : "") +
+              (borrador ? botonRadicar(s) : "") +
               accionApelacion(s, rechazada) +
               accion("pdf", "PDF", s.id_solicitud) +
               "</div></td></tr>";
@@ -454,8 +463,8 @@
         const caja = $("#vista-solicitudes");
         caja.innerHTML = cargando("Cargando solicitudes...");
         try {
-          await Promise.all([refrescarSolicitudes(), refrescarApelaciones()]);
-          caja.innerHTML = panel(
+          await Promise.all([refrescarSolicitudes(), refrescarApelaciones(), refrescarRequisitos()]);
+          caja.innerHTML = htmlRequisitos() + panel(
             '<div class="empresa-solicitudes-toolbar"><div><h3>Solicitudes de la empresa</h3><p id="solicitudesConteo"></p></div>' +
             '<label class="empresa-solicitudes-filter" for="filtroSolicitudes"><span>Buscar por estado o radicado</span>' +
             '<input id="filtroSolicitudes" type="search" autocomplete="off" placeholder="Ej.: Aprobada o RAD-2026-001" value="' +
@@ -485,6 +494,163 @@
           renderizarSolicitudes();
         } catch (error) {
           caja.innerHTML = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      // ---------------- Flujo 18/11/2026: requisitos para radicar ----------------
+      // Antes de radicar, la empresa debe tener sus documentos legales
+      // obligatorios cargados (y no rechazados) y la solicitud al menos una
+      // sede incluida. El backend lo exige (POST /solicitudes/{id}/radicar ->
+      // 422); aquí se muestra la lista de verificación y se bloquea el botón.
+      async function refrescarRequisitos() {
+        try {
+          estado.empresas = (await api("/api/empresas/mias")) || [];
+        } catch (_) {
+          estado.empresas = [];
+        }
+        const pares = await Promise.all(estado.empresas.map((e) =>
+          api("/api/empresas/" + e.id_empresa + "/requisitos")
+            .then((r) => [String(e.id_empresa), r])
+            .catch(() => [String(e.id_empresa), null])));
+        estado.requisitos = Object.fromEntries(pares);
+      }
+
+      function faltaParaRadicar(s) {
+        const falta = [];
+        const r = estado.requisitos[String(s.id_empresa)];
+        if (r && r.documentos_faltantes.length) falta.push("documentos legales: " + r.documentos_faltantes.join(", "));
+        if (!(s.sedes_ciudades || []).length) falta.push("incluir al menos una sede en la solicitud");
+        return falta;
+      }
+
+      function botonRadicar(s) {
+        const falta = faltaParaRadicar(s);
+        if (!falta.length) return accion("radicar", "Radicar", s.id_solicitud);
+        const texto = "Para radicar falta: " + falta.join("; ") + ".";
+        return '<button class="btn btn-sm btn-primario" type="button" disabled title="' + esc(texto) + '" aria-label="' +
+          esc("Radicar (no disponible). " + texto) + '">Radicar</button>' +
+          '<span class="comite-muted" style="flex-basis:100%;font-size:12px;max-width:280px">' + esc(texto) + "</span>";
+      }
+
+      function htmlRequisitos() {
+        const bloques = estado.empresas.map((e) => {
+          const r = estado.requisitos[String(e.id_empresa)];
+          if (!r) return "";
+          const docsOk = r.documentos_al_dia === r.documentos_total;
+          const sedesOk = r.sedes_activas > 0;
+          const marca = (ok) => '<span aria-hidden="true">' + (ok ? "✓" : "✗") + "</span> ";
+          const docs = r.documentos.map((d) =>
+            esc(d.tipo_documento) + " " + chip(d.estado ? (d.estado === "Correccion" ? "Corrección pedida" : d.estado) : "Sin subir")).join(" · ");
+          return panel(
+            '<div class="comite-panel-heading"><div><h3>Antes de solicitar la certificación' +
+            (estado.empresas.length > 1 ? " · " + esc(e.nombre) : "") + "</h3>" +
+            "<p>" + (r.completo
+              ? "La empresa tiene lo necesario. Recuerde incluir al menos una sede en cada solicitud antes de radicarla."
+              : "Complete lo pendiente: sin esto no podrá radicar (enviar) una solicitud.") + "</p></div>" +
+            chip(r.completo ? "Completo" : "Pendiente") + "</div>" +
+            '<ul class="comite-item-list">' +
+            "<li><strong>" + marca(docsOk) + "Documentos legales obligatorios: " + r.documentos_al_dia + "/" + r.documentos_total + "</strong>" +
+            "<span>" + docs + "</span>" +
+            '<span class="documento-acciones"><button class="btn btn-sm ' + (docsOk ? "btn-secundario" : "btn-primario") +
+            '" type="button" data-ir="legales">' + (docsOk ? "Ver documentos legales" : "Subir documentos legales") + "</button></span></li>" +
+            "<li><strong>" + marca(sedesOk) + "Sedes registradas: " + r.sedes_activas + "</strong>" +
+            "<span>" + (sedesOk ? "Inclúyalas en la solicitud desde la pestaña Sedes." : "Registre al menos una sede de la empresa.") + "</span>" +
+            '<span class="documento-acciones"><a class="btn btn-sm ' + (sedesOk ? "btn-secundario" : "btn-primario") +
+            '" href="/empresas">' + (sedesOk ? "Ver sedes" : "Registrar sede") + "</a></span></li>" +
+            "</ul>"
+          );
+        }).join("");
+        return bloques ? '<div class="portal-stack" style="margin-bottom:16px">' + bloques + "</div>" : "";
+      }
+
+      async function cargarLegales() {
+        const caja = $("#vista-legales");
+        caja.innerHTML = cargando("Cargando documentos legales...");
+        try {
+          if (!estado.empresas.length) await refrescarRequisitos();
+          if (!estado.empresas.length) {
+            caja.innerHTML = panel('<div class="comite-empty-state"><h3>Su cuenta no tiene una empresa asociada</h3>' +
+              '<p>Regístrela en "Datos de mi empresa".</p><div class="comite-decision-actions" style="justify-content:center">' +
+              '<a class="comite-button primary btn btn-primario" href="/empresas">Datos de mi empresa</a></div></div>');
+            return;
+          }
+          if (!estado.empresas.some((e) => String(e.id_empresa) === estado.empresaLegal)) {
+            estado.empresaLegal = String(estado.empresas[0].id_empresa);
+          }
+          const baseEmpresa = "/api/empresas/" + estado.empresaLegal;
+          const [tipos, documentos, req] = await Promise.all([
+            api(baseEmpresa + "/documentos/tipos"),
+            api(baseEmpresa + "/documentos"),
+            api(baseEmpresa + "/requisitos")
+          ]);
+          estado.requisitos[estado.empresaLegal] = req;
+          const obligatorios = tipos.obligatorios || req.documentos_obligatorios || [];
+          const modificables = ["Pendiente", "Rechazado", "Correccion"];
+          const filas = tipos.tipos.map((tipo) => {
+            const obligatorio = obligatorios.includes(tipo);
+            const resumen = req.documentos.find((d) => d.tipo_documento === tipo);
+            const actual = resumen && resumen.id_documento
+              ? documentos.find((d) => String(d.id_documento) === String(resumen.id_documento))
+              : documentos.find((d) => d.tipo_documento === tipo);
+            const situacion = resumen ? resumen.estado : (actual ? actual.estado_validacion : null);
+            let control;
+            if (actual && situacion === "Aprobado") {
+              control = '<span class="comite-muted">Aprobado: ya no se puede cambiar.</span>';
+            } else {
+              const reemplazar = actual && modificables.includes(actual.estado_validacion) && situacion !== "Vencido";
+              control = '<input type="file" aria-label="' + esc("Archivo: " + tipo) + '" data-tipo-legal="' + esc(tipo) + '"' +
+                (reemplazar ? ' data-reemplazar="' + esc(actual.id_documento) + '"' : "") + ' accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">';
+            }
+            return "<tr><td><strong>" + esc(tipo) + "</strong></td><td>" + (obligatorio ? "Sí" : "No") + "</td>" +
+              "<td>" + (actual ? esc(actual.nombre_archivo || "") + " (v" + esc(actual.version) + ") " : "") +
+              chip(situacion ? (situacion === "Correccion" ? "Corrección pedida" : situacion) : "Sin subir") + "</td>" +
+              "<td>" + esc((actual && actual.observaciones) || "-") + "</td>" +
+              "<td>" + control + "</td>" +
+              '<td><div class="acciones-tabla">' + (actual ? accion("ver-legal", "Ver", actual.id_documento) : "-") + "</div></td></tr>";
+          }).join("");
+
+          const selector = estado.empresas.length > 1
+            ? '<div class="comite-toolbar"><label for="empresaLegal">Empresa</label><select id="empresaLegal">' +
+              estado.empresas.map((e) => '<option value="' + esc(e.id_empresa) + '"' + (String(e.id_empresa) === estado.empresaLegal ? " selected" : "") + ">" +
+                esc(e.nombre + (e.nit ? " · NIT " + e.nit : "")) + "</option>").join("") + "</select></div>"
+            : "";
+          caja.innerHTML = '<div class="portal-stack">' + selector + panel(
+            '<div class="comite-panel-heading"><div><h3>Documentos legales de la empresa</h3><p>Obligatorios cargados: ' +
+            req.documentos_al_dia + "/" + req.documentos_total + " · Aprobados por el Coordinador: " + req.documentos_aprobados + "/" + req.documentos_total +
+            ". Formatos: PDF, Word, JPG o PNG · Máximo 10 MB.</p></div>" + chip(req.documentos_faltantes.length ? "Pendiente" : "Completo") + "</div>" +
+            '<div class="comite-table-wrap"><table><thead><tr><th>Documento</th><th>Obligatorio</th><th>Situación</th><th>Observaciones</th><th>Archivo</th><th>Acciones</th></tr></thead><tbody>' +
+            filas + "</tbody></table></div>" +
+            '<p class="comite-readonly-note" style="margin-top:12px">Un documento rechazado o con corrección pedida debe reemplazarse. Una vez aprobado ya no se puede cambiar.</p>'
+          ) + "</div>";
+          caja.querySelectorAll("input[data-tipo-legal]").forEach((entrada) => entrada.addEventListener("change", () => subirLegal(entrada)));
+          const sel = $("#empresaLegal");
+          if (sel) sel.addEventListener("change", () => { estado.empresaLegal = sel.value; cargarLegales(); });
+        } catch (error) {
+          caja.innerHTML = "";
+          mostrar(error.message, "error");
+        }
+      }
+
+      async function subirLegal(entrada) {
+        const archivo = entrada.files[0];
+        if (!archivo) return;
+        entrada.disabled = true;
+        const datos = new FormData();
+        datos.append("archivo", archivo);
+        const baseEmpresa = "/api/empresas/" + estado.empresaLegal + "/documentos";
+        try {
+          if (entrada.dataset.reemplazar) {
+            await api(baseEmpresa + "/" + entrada.dataset.reemplazar, { method: "PUT", body: datos });
+          } else {
+            datos.append("tipo_documento", entrada.dataset.tipoLegal);
+            await api(baseEmpresa, { method: "POST", body: datos });
+          }
+          await cargarLegales();
+          mostrar("Documento \"" + entrada.dataset.tipoLegal + "\" guardado. Queda pendiente de revisión del Coordinador.", "success");
+        } catch (error) {
+          entrada.disabled = false;
+          entrada.value = "";
           mostrar(error.message, "error");
         }
       }
@@ -688,7 +854,7 @@
         try {
           const info = await api(base() + "/informacion-general");
           const editable = info.estado === "Borrador";
-          const pendientes = info.campos_pendientes.map((c) => CAMPOS_RADICAR[c] || c);
+          const pendientes = info.campos_pendientes.map((c) => CAMPOS_RADICAR[c] || c).concat(info.requisitos_pendientes || []);
 
           const resumen = panel(
             '<div class="comite-detail-heading"><div><span class="comite-kicker">Solicitud seleccionada</span><h3>' +
@@ -1094,6 +1260,7 @@
           return mostrarVista(nombre.slice(3));
         }
         if (nombre === "radicar") return radicar(id);
+        if (nombre === "ver-legal") return descargar("/api/empresas/" + estado.empresaLegal + "/documentos/" + id + "/archivo", "", true);
         if (nombre === "solicitar-cambio") return solicitarCambio(id);
         if (nombre === "pdf") return descargar("/solicitudes/" + id + "/pdf", "solicitud-" + id.slice(0, 8) + ".pdf");
         if (estado.vista === "informacion") return accionInformacion(nombre, id);
@@ -1123,7 +1290,7 @@
     })();
   </script>
   <script src="/static/session.js?v=20261118pub"></script>
-<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/nav.js?v=20261118menu"></script>
 </body>
 
 </html>

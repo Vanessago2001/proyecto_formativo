@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import require_role
+from modules.permisos_auxiliar.regla_auxiliar import PROPIO
 from modules.aprobaciones.aprobacion_service import AprobacionService
 
 router = APIRouter(prefix="/api/aprobaciones", tags=["Aprobaciones (permisos REQ)"])
@@ -30,7 +31,9 @@ class Rechazo(BaseModel):
 async def listar_aprobaciones(
     estado: Optional[str] = Query(default=None, pattern="^(Pendiente|Aprobada|Rechazada)$"),
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_CONSULTA)),
+    # El Auxiliar solo ve las que él mismo pidió: es el seguimiento de sus
+    # solicitudes REQ, no un permiso de la matriz (PROPIO).
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=PROPIO)),
 ):
     """Administración ve todas; el Auxiliar solo las que él pidió."""
     return await AprobacionService(db).listar(current_user, estado)

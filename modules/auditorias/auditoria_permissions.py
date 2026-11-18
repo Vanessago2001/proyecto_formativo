@@ -33,6 +33,7 @@ deja ver de un vistazo quién puede ejecutar la auditoría según la matriz.
 from fastapi import Depends, HTTPException, status
 
 from core.security import get_current_user
+from modules.permisos_auxiliar.regla_auxiliar import nivel_efectivo
 from modules.solicitudes.solicitud_permissions import (
     COLUMNAS_MATRIZ,
     NivelPermiso,
@@ -191,6 +192,8 @@ def exigir_permisos(usuario: dict, *codigos: str) -> None:
     for codigo in codigos:
         if not tiene_permiso(codigo, nombre_rol):
             raise _permiso_denegado(codigo, nombre_rol)
+        # Auxiliar: V solo con permiso delegado (regla_auxiliar).
+        nivel_efectivo(usuario, codigo, nivel_permiso(codigo, nombre_rol))
 
 
 def requiere_permiso(codigo: str):
@@ -201,6 +204,9 @@ def requiere_permiso(codigo: str):
 
         if not tiene_permiso(codigo, nombre_rol):
             raise _permiso_denegado(codigo, nombre_rol)
+
+        # Regla del Auxiliar: V solo con permiso delegado (regla_auxiliar).
+        nivel_efectivo(current_user, codigo, nivel_permiso(codigo, nombre_rol))
 
         return {
             **current_user,

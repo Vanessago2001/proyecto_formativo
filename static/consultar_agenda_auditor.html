@@ -1433,9 +1433,9 @@
                             <span class="note-icon" aria-hidden="true">ℹ</span>
                             <span>
                                 <strong>¿Qué hace esta sección?</strong> Selecciona la solicitud de la empresa una sola
-                                vez. Elige la sede donde se realizará la visita y define el equipo de auditores de
-                                esa sede: los ya asignados a la solicitud y, si hace falta, auditores adicionales
-                                disponibles. Antes de guardar, comprueba la disponibilidad de todo el equipo.
+                                vez. Elige la sede donde se realizará la visita: se programa con el auditor asignado a
+                                la solicitud (solo un auditor por solicitud). Antes de guardar, comprueba su
+                                disponibilidad.
                             </span>
                         </div>
 
@@ -1454,40 +1454,39 @@
                                     </div>
                                     <p id="assignmentCiudadEstado" class="fu-estado" role="status" aria-live="polite"></p>
                                     <div class="selector-tabla-contenedor" id="assignmentTabla"></div>
-                                    <p class="hint">Cada solicitud aparece una sola vez, aunque tenga varios auditores
-                                        asignados.</p>
+                                    <p class="hint">Cada solicitud aparece una sola vez, con su auditor asignado.</p>
                                 </div>
                                 <div class="field">
                                     <label for="scheduleCompany">Empresa</label>
                                     <input id="scheduleCompany" readonly placeholder="Se carga desde la solicitud">
                                 </div>
                                 <div class="field">
-                                    <label for="scheduleAuditor">Auditores asignados a la solicitud</label>
+                                    <label for="scheduleAuditor">Auditor asignado a la solicitud</label>
                                     <textarea id="scheduleAuditor" rows="3" readonly
-                                        placeholder="Se cargarán los auditores asignados a la solicitud"></textarea>
-                                    <p class="hint">El equipo que se programa se define por sede en el bloque
-                                        “Equipo de auditores de la sede”.</p>
+                                        placeholder="Se cargará el auditor asignado a la solicitud"></textarea>
+                                    <p class="hint">Solo un auditor por solicitud. Para cambiarlo, use Solicitudes
+                                        (etapa 3).</p>
                                 </div>
                                 <div class="field full">
-                                    <label for="scheduleSede">Sede de la empresa (opcional)</label>
+                                    <label for="scheduleSede">Sede de la visita (obligatoria)</label>
                                     <select id="scheduleSede" class="selector-origen">
-                                        <option value="">Dirección principal de la empresa</option>
+                                        <option value="">Seleccione la sede de la solicitud</option>
                                     </select>
                                     <div class="selector-tabla-contenedor" id="sedeTabla"></div>
-                                    <p class="hint">Si la empresa tiene varias sedes, elige en cuál se realizará la auditoría.</p>
+                                    <p class="hint">Solo se listan las sedes incluidas en la solicitud. Elige en cuál se realizará la auditoría.</p>
                                 </div>
                                 <div class="field full team-block">
-                                    <label>Equipo de auditores de la sede</label>
+                                    <label>Auditor de la visita</label>
                                     <div id="scheduleTeam" class="team-list">
-                                        <div class="team-empty">Selecciona una solicitud para ver el equipo de auditores.</div>
+                                        <div class="team-empty">Selecciona una solicitud para ver su auditor asignado.</div>
                                     </div>
                                     <div class="team-toolbar">
                                         <p class="hint" id="scheduleTeamHint" style="margin:0;">
-                                            Los auditores seleccionados se asignan únicamente a la sede que se está
-                                            programando. Las sedes ya programadas y sus asignaciones no se modifican.
+                                            Es el auditor asignado a la solicitud (solo lectura). Cada sede se programa
+                                            con este mismo auditor; al comprobar la fecha se muestra su disponibilidad.
                                         </p>
-                                        <div class="actions">
-                                            <button type="button" class="btn btn-secundario secondary" id="scheduleMoreAuditors">Mostrar más
+                                        <div class="actions hidden">
+                                            <button type="button" class="btn btn-secundario secondary hidden" id="scheduleMoreAuditors">Mostrar más
                                                 auditores disponibles</button>
                                         </div>
                                     </div>
@@ -1556,15 +1555,14 @@
                                     disponibilidad</button>
                                 <button type="button" class="btn btn-secundario secondary" id="scheduleSuggest"
                                     aria-controls="scheduleSuggestions">Ver fechas disponibles</button>
-                                <button type="submit" class="btn btn-primario primary" id="scheduleSave">Programar auditoría (equipo de la
-                                    sede)</button>
+                                <button type="submit" class="btn btn-primario primary" id="scheduleSave">Programar auditoría</button>
                                 <button type="button" class="btn btn-secundario secondary hidden" id="scheduleCancelEdit">Salir de
                                     edición</button>
                             </div>
                             <div id="scheduleActionNotice" class="notice junto-accion" role="alert" aria-live="assertive" tabindex="-1"></div>
-                            <!-- Fechas sugeridas: franjas en que TODO el equipo está disponible. -->
+                            <!-- Fechas sugeridas: franjas en que el auditor asignado está disponible. -->
                             <section id="scheduleSuggestions" class="sugerencias-fechas hidden" aria-labelledby="scheduleSuggestionsTitle">
-                                <h4 id="scheduleSuggestionsTitle">Fechas disponibles para todo el equipo</h4>
+                                <h4 id="scheduleSuggestionsTitle">Fechas disponibles del auditor</h4>
                                 <p id="scheduleSuggestionsInfo" class="hint" aria-live="polite"></p>
                                 <div id="scheduleSuggestionsList" class="grupo-botones" role="list"></div>
                                 <ul id="scheduleSuggestionsDetail" class="sugerencias-detalle"></ul>
@@ -1752,7 +1750,7 @@
 </div>
 
 <!-- Calendario mes/semana común (sección "Disponibilidad mensual y auditorías") -->
-<script src="/static/mi_disponibilidad.js?v=20261118a"></script>
+<script src="/static/mi_disponibilidad.js?v=20261118una"></script>
 <script>
     function showModal(message, type = 'success') {
         const overlay = document.getElementById('modalOverlay');
@@ -1889,29 +1887,21 @@
         async function cargarSedes(idEmpresa, idSolicitud) {
             const select = $("scheduleSede");
             if (!select) return;
-            select.innerHTML = '<option value="">Dirección principal de la empresa</option>';
+            // Flujo 18/11/2026: la visita se programa en una sede INCLUIDA en la
+            // solicitud (el backend lo exige); ya no en la dirección principal.
+            select.innerHTML = '<option value="">Seleccione la sede de la solicitud</option>';
             pintarSelectorTabla("sedeTabla");
-            if (!idEmpresa) return;
+            if (!idSolicitud) return;
             try {
                 const token = localStorage.getItem("access_token") || localStorage.getItem("accessToken") || localStorage.getItem("token");
-                const response = await fetch(`/api/empresas/${encodeURIComponent(idEmpresa)}/sedes`, { headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" } });
+                const response = await fetch(`/solicitudes/${encodeURIComponent(idSolicitud)}/sedes`, { headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" } });
                 const data = await response.json().catch(() => ({}));
-                const sedes = Array.isArray(data) ? data : (Array.isArray(data.sedes) ? data.sedes : (Array.isArray(data.items) ? data.items : []));
+                const todas = Array.isArray(data) ? data : (Array.isArray(data.sedes) ? data.sedes : (Array.isArray(data.items) ? data.items : []));
+                // Solo sedes activas incluidas en la solicitud.
+                const sedes = todas.filter(sd => sd.estado_sede !== "Inactiva");
                 const ocupadas = programacionesVigentesPorSede();
-                const principal = ocupadas.get('__principal__');
-                // Si la sede principal de la empresa esta ocupada, la opcion
-                // "Direccion principal de la empresa" tampoco puede usarse.
-                const principalOcupado = principal
-                    || (() => {
-                        const sedePrincipal = sedes.find(sd => sd.es_principal);
-                        if (!sedePrincipal) return null;
-                        return ocupadas.get(String(sedePrincipal.id_sede)) || null;
-                    })();
-                if (principalOcupado) {
-                    const opPrincipal = select.options[0];
-                    opPrincipal.disabled = true;
-                    opPrincipal.textContent = `Dirección principal de la empresa — ya programada (${formatDateTime(principalOcupado.fecha_inicio)})`;
-                    opPrincipal.dataset.ocupada = "1";
+                if (!sedes.length) {
+                    select.options[0].textContent = "La solicitud no tiene sedes incluidas: no se puede programar la visita";
                 }
                 let sedesOcupadas = 0;
                 sedes.forEach((sede) => {
@@ -1961,14 +1951,8 @@
                 candidatosSede = [];
                 if (!grupo) return;
                 await loadScheduleList(grupo);
-                // Al elegir una sede se muestran los auditores disponibles
-                // para ella: los que ya tienen auditoría o están asignados a
-                // otra sede quedan excluidos.
-                if (!$("scheduleMoreAuditors").disabled) {
-                    $("scheduleCandidatesWrap").classList.remove("hidden");
-                    $("scheduleMoreAuditors").textContent = "Ocultar auditores disponibles";
-                    await cargarCandidatosSede(1);
-                }
+                // Solo un auditor por solicitud: cada sede se programa con el
+                // auditor asignado; ya no se ofrecen otros auditores.
             });
         }
 
@@ -2095,7 +2079,7 @@
             contenedorId: "assignmentTabla",
             selectId: "assignmentSelect",
             nombreRadio: "selectorSolicitud",
-            titulos: ["Radicado", "Empresa", "Auditores asignados"],
+            titulos: ["Radicado", "Empresa", "Auditor asignado"],
             textoVacio: (select) => ($("assignmentCiudad").value.trim() && Array.from(select.options).some((o) => o.value !== "")
                 ? FiltrosUbicacion.mensajeVacio("solicitudes por programar", { ciudad: $("assignmentCiudad").value })
                 : select.options[0]?.textContent || "No hay solicitudes disponibles."),
@@ -2114,7 +2098,9 @@
                         celdas: [
                             `<span class="cell-strong">${esc(grupo.numero_radicado || grupo.id_solicitud || opcion.textContent)}</span>`,
                             `<span class="cell-line">${esc(grupo.empresa_nombre || "-")}</span><span class="cell-meta">${esc(grupo.empresa_ciudad || "")}</span>`,
-                            `<span class="cell-line">${esc(auditores.length || "-")} asignado(s)</span><span class="cell-meta">${esc(nombres)}</span>`
+                            auditores.length > 1
+                                ? `<span class="cell-line">${esc(nombres)}</span><span class="cell-meta">${esc(auditores.length)} asignados (dato anterior a la regla)</span>`
+                                : `<span class="cell-line">${esc(nombres || "-")}</span>`
                         ]
                     };
                 })
@@ -2125,9 +2111,9 @@
             selectId: "scheduleSede",
             nombreRadio: "selectorSede",
             titulos: ["Sede", "Ciudad", "Dirección", "Estado"],
-            textoVacio: (select) => select.options[0]?.textContent || "La empresa no tiene sedes registradas.",
-            filas: (select) => Array.from(select.options).map((opcion, indice) => {
-                const principal = indice === 0;
+            textoVacio: () => "La solicitud no tiene sedes incluidas: no se puede programar la visita.",
+            filas: (select) => Array.from(select.options).filter((opcion) => opcion.value).map((opcion) => {
+                const principal = false; // 18/11/2026: solo sedes de la solicitud
                 const grupo = currentAssignment() || {};
                 const ocupada = opcion.dataset.ocupada === "1";
                 return {
@@ -2183,7 +2169,7 @@
             $("scheduleCity").readOnly = true;
             $("scheduleAddress").readOnly = true;
             $("scheduleSave").disabled = Boolean(locked);
-            $("scheduleSave").textContent = editing ? "Guardar cambios" : "Programar auditoría (equipo de la sede)";
+            $("scheduleSave").textContent = editing ? "Guardar cambios" : "Programar auditoría";
             $("scheduleCancelEdit").classList.toggle("hidden", !editing);
             $("scheduleMoreAuditors").disabled = Boolean(locked);
             $("scheduleSuggest").disabled = Boolean(locked);
@@ -2302,9 +2288,9 @@
 
         function nombreSedeSeleccionada() {
             const select = $("scheduleSede");
-            if (!select) return "la dirección principal de la empresa";
+            if (!select) return "ninguna sede (seleccione una sede de la solicitud)";
             const option = select.options[select.selectedIndex];
-            if (!option || !option.value) return "la dirección principal de la empresa";
+            if (!option || !option.value) return "ninguna sede (seleccione una sede de la solicitud)";
             return option.textContent.replace(/\s*—\s*ya programada.*$/i, "").trim();
         }
 
@@ -2332,16 +2318,19 @@
                     });
                 });
             } else {
+                // Solo un auditor por solicitud. Si un dato anterior a la regla
+                // trae varios, se muestran todos pero se programa con el primero.
                 (group?.auditores || []).forEach((auditor) => {
-                    const normalizado = auditorEquipo(auditor);
-                    if (normalizado.id_usuario) equipoSede.set(normalizado.id_usuario, normalizado);
+                    const normalizado = auditorEquipo(auditor, { incluido: equipoSede.size === 0 });
+                    if (normalizado.id_usuario && !equipoSede.has(normalizado.id_usuario)) equipoSede.set(normalizado.id_usuario, normalizado);
                 });
             }
             renderEquipoSede();
         }
 
+        // Auditor con el que se programa: uno solo (solo un auditor por solicitud).
         function equipoActivo() {
-            return Array.from(equipoSede.values()).filter((item) => item.incluido !== false);
+            return Array.from(equipoSede.values()).filter((item) => item.incluido !== false).slice(0, 1);
         }
 
         function renderEquipoSede() {
@@ -2352,14 +2341,14 @@
             // un auditor desmarcado (o excluido al recargar) desaparecía.
             const integrantes = Array.from(equipoSede.values());
             if (!integrantes.length) {
-                contenedor.innerHTML = '<div class="team-empty">No hay auditores en el equipo de esta sede. Usa “Mostrar más auditores disponibles” para agregarlos.</div>';
+                contenedor.innerHTML = '<div class="team-empty">La solicitud no tiene auditor asignado. Asígnelo en Solicitudes (etapa 3) para programar la visita.</div>';
                 return;
             }
             integrantes.forEach((auditor) => {
                 const incluido = auditor.incluido !== false;
                 const disp = auditor.disponibilidad;
                 const etiquetaDisp = !incluido
-                    ? '<span class="team-tag info">No incluido en esta programación</span>'
+                    ? '<span class="team-tag info">No incluido: solo un auditor por solicitud</span>'
                     : disp
                         ? (disp.disponible
                             ? '<span class="team-tag ok">Disponible en el horario</span>'
@@ -2370,10 +2359,6 @@
                 card.dataset.auditorId = auditor.id_usuario;
                 card.innerHTML = `
                     <div class="team-head">
-                        <input type="checkbox" class="team-check" ${incluido ? "checked" : ""}
-                            ${equipoEditable ? "" : "disabled"}
-                            aria-label="Incluir ${esc(auditor.nombre)} en el equipo de esta sede"
-                            onchange="alternarEquipoSede('${esc(auditor.id_usuario)}', this.checked)" />
                         <div>
                             <div class="team-name">${esc(auditor.nombre)}</div>
                             <div class="team-mail">${esc(auditor.correo || "Sin correo")}</div>
@@ -2835,7 +2820,10 @@
                     const option = document.createElement("option");
                     option.value = String(index);
                     const radicado = group.numero_radicado || group.id_solicitud || "Solicitud";
-                    option.textContent = `${radicado} · ${group.empresa_nombre || "Empresa"} · ${group.auditores.length} auditor(es) asignado(s)`;
+                    // Solo un auditor por solicitud: se nombra; si un dato anterior trae varios, se indica cuántos.
+                    option.textContent = `${radicado} · ${group.empresa_nombre || "Empresa"} · ${group.auditores.length === 1
+                        ? "Auditor: " + (group.auditores[0].auditor_nombre || group.auditores[0].nombre || "asignado")
+                        : group.auditores.length + " auditores asignados (dato anterior a la regla)"}`;
                     select.appendChild(option);
                 });
                 if (!assignments.length) select.innerHTML = '<option value="">No hay solicitudes con auditores asignados</option>';
@@ -3051,7 +3039,7 @@
                 const equipo = (a.equipo || []).map(e => e.nombre).filter(Boolean).join(", ");
                 const descripcion = `${a.numero_radicado || "Auditoría"} · ${lugar} · ${cuando} · ${a.ciudad || ""} · ${a.modalidad || ""} · ${estado}`;
                 const texto = detallado
-                    ? `${cuando} · ${lugar}${a.ciudad ? " · " + a.ciudad : ""}${a.modalidad ? " · " + a.modalidad : ""} · ${estado}${equipo ? " · Equipo: " + equipo : ""}`
+                    ? `${cuando} · ${lugar}${a.ciudad ? " · " + a.ciudad : ""}${a.modalidad ? " · " + a.modalidad : ""} · ${estado}${equipo ? " · Auditor: " + equipo : ""}`
                     : `${corto} ${lugar}`;
                 partes.push(`<button type="button" class="md-chip ${claseEstadoCal(estado)}" data-cal-aud="${esc(a.id_programacion)}" aria-haspopup="dialog" title="${esc(descripcion)}" aria-label="${esc("Ver detalle: " + descripcion)}">${esc(texto)}</button>`);
             });
@@ -3182,10 +3170,10 @@
                     </div>
                 </div>
                 <div class="modal-section-group">
-                    <h4 class="modal-section-label">Equipo auditor (${equipo.length})</h4>
+                    <h4 class="modal-section-label">${equipo.length > 1 ? `Auditores (${equipo.length})` : "Auditor"}</h4>
                     ${equipo.length
                         ? `<ul class="cal-equipo">${equipo.map(e => `<li><span><strong>${esc(e.nombre || "Auditor")}</strong> <span class="cell-meta">${esc(e.correo || "")}</span></span><span>Auditor · ${e.confirmado ? "Confirmó" : "Sin confirmar"}</span></li>`).join("")}</ul>`
-                        : '<p class="cell-meta">Sin auditores registrados.</p>'}
+                        : '<p class="cell-meta">Sin auditor registrado.</p>'}
                 </div>
                 <div class="modal-section-group">
                     <h4 class="modal-section-label">Observaciones</h4>
@@ -3407,7 +3395,7 @@
                         </td>
                     </tr>`;
                 }).join("");
-                $("scheduleList").innerHTML = `<table><thead><tr><th>Solicitud</th><th>Empresa</th><th>Auditores asignados</th><th>Lugar</th><th>Inicio</th><th>Fin</th><th>Modalidad</th><th>Estado</th><th>Observación</th><th>Acciones</th></tr></thead><tbody>${tableRows}</tbody></table>`;
+                $("scheduleList").innerHTML = `<table><thead><tr><th>Solicitud</th><th>Empresa</th><th>Auditor asignado</th><th>Lugar</th><th>Inicio</th><th>Fin</th><th>Modalidad</th><th>Estado</th><th>Observación</th><th>Acciones</th></tr></thead><tbody>${tableRows}</tbody></table>`;
 
                 $("scheduleList").querySelectorAll('[data-program-action="view"]').forEach(button => {
                     button.addEventListener("click", () => verProgramacion(Number(button.dataset.programIndex)));
@@ -3437,7 +3425,7 @@
                     if (activeRows.length) {
                         showNotice(
                             "scheduleNotice",
-                            `La sede seleccionada (${nombreSedeSeleccionada()}) está libre. Puedes programarla con el equipo de auditores que elijas; las programaciones de las demás sedes no se modifican.`,
+                            `La sede seleccionada (${nombreSedeSeleccionada()}) está libre. Se programa con el auditor asignado a la solicitud; las programaciones de las demás sedes no se modifican.`,
                             "info"
                         );
                     }
@@ -3527,7 +3515,7 @@
             await checkCurrentScheduleAvailability();
         });
 
-        // ---- Fechas disponibles para el equipo (GET /programacion/fechas-disponibles).
+        // ---- Fechas disponibles del auditor asignado (GET /programacion/fechas-disponibles).
         // Cada opción ya pasó en el servidor las mismas validaciones que
         // "Programar auditoría", así que al elegirla la comprobación sale bien.
         function ocultarFechasSugeridas() {
@@ -3550,7 +3538,7 @@
             const detalle = $("scheduleSuggestionsDetail");
             const equipo = equipoActivo();
             if (!currentAssignment()) { avisoJuntoAccion("scheduleActionNotice", "Selecciona la solicitud que vas a programar.", "error", ["assignmentTabla"]); return; }
-            if (!equipo.length) { avisoJuntoAccion("scheduleActionNotice", "Selecciona al menos un auditor para el equipo de esta sede.", "error", ["scheduleTeam"]); return; }
+            if (!equipo.length) { avisoJuntoAccion("scheduleActionNotice", "La solicitud no tiene auditor asignado. Asígnelo en Solicitudes (etapa 3).", "error", ["scheduleTeam"]); return; }
             const inicio = $("scheduleStart").value, fin = $("scheduleEnd").value;
             if (inicio && fin && fin <= inicio) { avisoJuntoAccion("scheduleActionNotice", "La hora final debe ser posterior a la hora de inicio.", "error", ["scheduleEnd"]); return; }
             const query = new URLSearchParams();
@@ -3566,7 +3554,7 @@
             panel.classList.remove("hidden");
             lista.innerHTML = "";
             detalle.innerHTML = "";
-            info.textContent = `Buscando fechas disponibles para todo el equipo desde las ${desdeHora || "08:00"}, todos los días (próximos 90 días)...`;
+            info.textContent = `Buscando fechas disponibles del auditor desde las ${desdeHora || "08:00"}, todos los días (próximos 90 días)...`;
             boton.disabled = true;
             try {
                 const data = await api(`/programacion/fechas-disponibles?${query}`);
@@ -3640,7 +3628,7 @@
             const fecha = $("scheduleDate").value, inicio = $("scheduleStart").value, fin = $("scheduleEnd").value;
             const equipo = equipoActivo();
             if (!equipo.length) {
-                avisoJuntoAccion("scheduleActionNotice", "Selecciona al menos un auditor para el equipo de esta sede.", "error", ["scheduleTeam"]);
+                avisoJuntoAccion("scheduleActionNotice", "La solicitud no tiene auditor asignado. Asígnelo en Solicitudes (etapa 3).", "error", ["scheduleTeam"]);
                 return false;
             }
             const boton = $("checkScheduleAvailability");
@@ -3672,12 +3660,12 @@
                 ).join("\n");
                 const unavailable = results.filter(item => !item.result.disponible);
                 if (unavailable.length) {
-                    avisoJuntoAccion("scheduleActionNotice", `No se puede programar a todo el equipo el ${fecha} de ${inicio} a ${fin}:\n${lineas}\n\nCambie la fecha u horas (vea abajo las fechas disponibles), o desmarque a quien no esté disponible.`, "error");
-                    // Sin tantear: se ofrecen las próximas fechas en que todo el equipo puede.
+                    avisoJuntoAccion("scheduleActionNotice", `El auditor no está disponible el ${fecha} de ${inicio} a ${fin}:\n${lineas}\n\nCambie la fecha u horas (vea abajo las fechas disponibles).`, "error");
+                    // Sin tantear: se ofrecen las próximas fechas en que el auditor puede.
                     cargarFechasSugeridas();
                     return false;
                 }
-                const texto = `Todo el equipo está disponible el ${fecha} de ${inicio} a ${fin}:\n${lineas}`;
+                const texto = `El auditor está disponible el ${fecha} de ${inicio} a ${fin}:\n${lineas}`;
                 if (opciones.silencioso) showNotice("scheduleActionNotice", texto, "ok");
                 else avisoJuntoAccion("scheduleActionNotice", texto, "ok");
                 return true;
@@ -3699,7 +3687,15 @@
                 return;
             }
             const equipo = equipoActivo();
-            if (!equipo.length) { avisoJuntoAccion("scheduleActionNotice", "Selecciona al menos un auditor para el equipo de esta sede.", "error", ["scheduleTeam"]); return; }
+            if (!equipo.length) { avisoJuntoAccion("scheduleActionNotice", "La solicitud no tiene auditor asignado. Asígnelo en Solicitudes (etapa 3).", "error", ["scheduleTeam"]); return; }
+            // Flujo 18/11/2026: la visita se programa en una sede incluida en la solicitud.
+            if (!editing && !$("scheduleSede").value) {
+                const sinSedes = !Array.from($("scheduleSede").options).some(o => o.value);
+                avisoJuntoAccion("scheduleActionNotice", sinSedes
+                    ? "La solicitud no tiene sedes incluidas: no se puede programar la visita. La empresa debe incluir al menos una sede en la solicitud."
+                    : "Seleccione la sede de la solicitud donde se hará la visita.", "error", ["sedeTabla"]);
+                return;
+            }
             const errorFechas = validarFechasProgramacion();
             if (errorFechas) {
                 avisoJuntoAccion("scheduleActionNotice", errorFechas.mensaje, "error", errorFechas.campos);
@@ -3713,14 +3709,9 @@
                 const available = await checkCurrentScheduleAvailability({ silencioso: true });
                 if (!available) return;
             }
-            const incluyeAdicionales = equipo.some((auditor) => auditor.origen === "adicional");
             const confirmMessage = editing
-                ? "Advertencia: va a modificar una programación existente para el equipo completo de auditores. ¿Desea guardar los cambios?"
-                : `Advertencia: va a registrar la programación de ${nombreSedeSeleccionada()} para ${equipo.length} auditor(es) del equipo. ${
-                    incluyeAdicionales
-                        ? "Los auditores adicionales se incorporan al equipo de esta sede. "
-                        : ""
-                }¿Desea continuar?`;
+                ? "Advertencia: va a modificar una programación existente. ¿Desea guardar los cambios?"
+                : `Advertencia: va a registrar la programación de ${nombreSedeSeleccionada()} con el auditor ${equipo[0].nombre}. ¿Desea continuar?`;
             if (!confirm(confirmMessage)) return;
 
             const fechaInicio = `${$("scheduleDate").value}T${$("scheduleStart").value}:00`;
@@ -3737,8 +3728,8 @@
             } : {
                 id_solicitud: group.id_solicitud,
                 id_sede: $("scheduleSede").value || null,
+                // Solo un auditor por solicitud: el asignado.
                 auditores: equipo.map(auditor => ({ id_usuario: auditor.id_usuario })),
-                asignar_auditores_adicionales: incluyeAdicionales,
                 direccion_servicio: $("scheduleAddress").value.trim(),
                 ...commonPayload
             };
@@ -4012,7 +4003,7 @@
     </script>
 
     <script src="/static/session.js?v=20261118pub"></script>
-<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/nav.js?v=20261118menu"></script>
 </body>
 
 </html>

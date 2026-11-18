@@ -45,12 +45,12 @@
   const ETAPAS = {
     radicadas: {
       titulo: "Radicadas",
-      descripcion: "Solicitudes que la empresa presentó formalmente. Revíselas y páselas a revisión.",
+      descripcion: "Solicitudes que la empresa envió. Al abrir una, pasa automáticamente a \"En revisión\".",
       panel: "etapaRevision"
     },
     revision: {
       titulo: "En revisión",
-      descripcion: "Revise los documentos, pida correcciones y apruebe o rechace la solicitud. Al aprobarla pasa a \"Por asignar auditor\".",
+      descripcion: "Revise los documentos legales de la empresa, los de la solicitud y sus sedes; pida correcciones y apruebe o rechace. Al aprobarla pasa directamente a \"Por asignar auditor\".",
       panel: "etapaRevision"
     },
     "por-asignar": {

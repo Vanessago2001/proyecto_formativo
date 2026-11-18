@@ -9,6 +9,8 @@ permisos, antes de tocar la base de datos.
 import uuid
 
 import pytest
+
+from tests.permisos_aux import MENSAJE_SIN_PERMISO, es_aux
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -23,6 +25,7 @@ from modules.solicitudes.documento_service import (
 from modules.solicitudes.solicitud_permissions import (
     PERMISOS_M5,
     ROLES_DEL_SISTEMA,
+    nivel_permiso,
     tiene_permiso,
 )
 from tests.fake_db import SesionFalsa
@@ -44,7 +47,7 @@ def app() -> FastAPI:
     return aplicacion
 
 
-def autenticar(app: FastAPI, rol: str) -> None:
+def autenticar(app: FastAPI, rol: str, permisos: tuple = ()) -> None:
     async def _usuario():
         return {
             "id_usuario": ID_USUARIO,
@@ -53,6 +56,7 @@ def autenticar(app: FastAPI, rol: str) -> None:
             "estado": "Activo",
             "rol_id": 1,
             "role_name": rol,
+            **({"permisos_delegados": tuple(permisos)} if permisos else {}),
         }
 
     app.dependency_overrides[get_current_user] = _usuario
@@ -94,8 +98,16 @@ def test_el_endpoint_de_documentos_aplica_la_matriz(
     app, cliente, codigo, metodo, plantilla, extra, rol
 ):
     """Si la matriz dice F, la respuesta debe ser 403; si dice V, nunca 403."""
-    autenticar(app, rol)
     ruta = plantilla.format(s=ID_SOLICITUD, d=ID_DOCUMENTO)
+    # Regla del Auxiliar: sin permiso delegado, una celda V es 403 con el
+    # aviso de "Permisos de auxiliares"; con él (simulado), permitido.
+    if es_aux(rol) and nivel_permiso(codigo, rol).value == "V":
+        autenticar(app, rol)
+        sin_permiso = getattr(cliente, metodo)(ruta, **extra)
+        assert sin_permiso.status_code == 403
+        assert MENSAJE_SIN_PERMISO in sin_permiso.json()["detail"]
+        assert codigo in sin_permiso.json()["detail"]
+    autenticar(app, rol, permisos=(codigo,))
     respuesta = getattr(cliente, metodo)(ruta, **extra)
 
     if tiene_permiso(codigo, rol):

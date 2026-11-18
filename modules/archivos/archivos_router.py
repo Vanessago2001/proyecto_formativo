@@ -80,7 +80,10 @@ async def puede_firmar(db: AsyncSession, usuario: dict, relativo: str) -> bool:
         return True
     es_de_auditor = relativo.startswith("auditores/")
     if rol == "auxiliar" and es_de_auditor:
-        return True
+        # Hojas de vida y soportes de auditores: solo con permiso delegado.
+        from modules.permisos_auxiliar.regla_auxiliar import tiene_delegado
+
+        return tiene_delegado(usuario, "AUD-057", "AUD-012", "AUD-056")
     if es_de_auditor and usuario.get("id_usuario"):
         return await _es_dueno(db, usuario["id_usuario"], f"/uploads/{relativo}")
     return False

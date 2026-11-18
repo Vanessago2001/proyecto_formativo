@@ -38,24 +38,38 @@ ROL_AUXILIAR = "auxiliar"
 _CATALOGO: dict[str, dict[str, str]] = {}
 
 
-def registrar_permiso_delegable(codigo: str, descripcion: str, modulo: str) -> None:
-    """Agrega (o actualiza) un código que el Administrador puede otorgar."""
+def registrar_permiso_delegable(codigo: str, descripcion: str, modulo: str, nivel: str | None = None) -> None:
+    """Agrega (o actualiza) un código que el Coordinador puede otorgar."""
     codigo = (codigo or "").strip().upper()
     if not codigo:
         return
     # Cada prefijo cae siempre en el mismo grupo aunque el módulo que lo
     # registra lo nombre distinto ("Usuarios" -> "M2 — Gestión de usuarios").
     prefijo = codigo.split("-", 1)[0]
+    anterior = _CATALOGO.get(codigo, {})
     _CATALOGO[codigo] = {
         "codigo": codigo,
         "descripcion": (descripcion or codigo).strip(),
         "modulo": MODULOS_POR_PREFIJO.get(prefijo) or (modulo or "Otros").strip(),
+        # Nivel de la columna AUX en la hoja (V, REQ o Cond.): solo informativo.
+        "nivel": nivel or anterior.get("nivel") or "V",
     }
 
 
 def permisos_delegables() -> list[dict]:
-    """Catálogo ordenado por módulo y código."""
-    return [dict(v) for v in sorted(_CATALOGO.values(), key=lambda x: (_orden_modulo(x["modulo"]), x["modulo"], x["codigo"]))]
+    """Catálogo ordenado por módulo y código (SOL-2 antes que SOL-10)."""
+    return [
+        dict(v)
+        for v in sorted(
+            _CATALOGO.values(),
+            key=lambda x: (_orden_modulo(x["modulo"]), x["modulo"], _orden_codigo(x["codigo"])),
+        )
+    ]
+
+
+def _orden_codigo(codigo: str) -> tuple:
+    prefijo, _, numero = codigo.partition("-")
+    return (prefijo, int(numero)) if numero.isdigit() else (prefijo, 10**6, numero)
 
 
 def _orden_modulo(modulo: str) -> int:
@@ -70,8 +84,8 @@ def es_delegable(codigo: str) -> bool:
     return (codigo or "").strip().upper() in _CATALOGO
 
 
-for _codigo, _descripcion, _modulo in CATALOGO_BASE:
-    registrar_permiso_delegable(_codigo, _descripcion, _modulo)
+for _codigo, _descripcion, _nivel in CATALOGO_BASE:
+    registrar_permiso_delegable(_codigo, _descripcion, "", _nivel)
 
 
 def _es_rol_auxiliar(nombre_rol: str | None) -> bool:
@@ -147,6 +161,43 @@ async def _permiso_vigente(session, id_usuario, codigo_permiso: str) -> Any | No
         if permiso_es_vigente(fila, hoy):
             return fila.get("id_permiso")
     return None
+
+
+_SQL_CODIGOS_VIGENTES = """
+    SELECT p.codigo_permiso, p.activo, p.fecha_vencimiento, p.fecha_revocado,
+           u.estado AS estado_usuario, r.nombre AS role_name
+    FROM permiso_auxiliar p
+    JOIN usuario u ON u.id_usuario = p.id_usuario
+    LEFT JOIN rol r ON r.id_rol = u.rol_id
+    WHERE p.id_usuario = CAST(:id_usuario AS UUID)
+      AND p.activo = TRUE
+"""
+
+
+async def codigos_vigentes(session, id_usuario) -> tuple[str, ...]:
+    """
+    Todos los códigos delegados vigentes de un auxiliar, en una sola consulta.
+
+    Lo usa `core.security.get_current_user` para dejarlos en la sesión
+    (`usuario["permisos_delegados"]`) y que la regla del Auxiliar
+    (regla_auxiliar.py) decida sin volver a consultar. Nunca lanza: ante
+    cualquier error (o con un doble de prueba) devuelve () = sin permisos.
+    """
+    if not isinstance(session, AsyncSession) or not id_usuario:
+        return ()
+    try:
+        async with session.begin_nested():
+            resultado = await session.execute(text(_SQL_CODIGOS_VIGENTES), {"id_usuario": str(id_usuario)})
+            filas = [dict(f) for f in resultado.mappings().all()]
+    except Exception as error:  # noqa: BLE001 - la falta de permiso es el valor seguro
+        logger.debug("No se pudieron consultar los permisos delegados de %s: %s", id_usuario, error)
+        return ()
+    hoy = _hoy()
+    return tuple(sorted({
+        (f.get("codigo_permiso") or "").strip().upper()
+        for f in filas
+        if permiso_es_vigente(f, hoy) and f.get("codigo_permiso")
+    }))
 
 
 async def auxiliar_tiene_permiso(session, id_usuario, codigo_permiso: str) -> bool:

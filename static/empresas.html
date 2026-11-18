@@ -238,8 +238,19 @@
       // Clases del sistema de botones (tema.css): acciones de fila pequenas; eliminar/rechazar en rojo de contorno.
       const claseAccion = (nombre) => /^(eliminar|rechazar)/.test(nombre) ? "btn-peligro-contorno" : nombre === "aprobar" ? "btn-primario" : "btn-secundario";
       const claseBoton = (tipo) => ({ primary: "btn-primario", secondary: "btn-secundario", danger: "btn-peligro" })[tipo] || "btn-secundario";
-      const accion = (nombre, texto, id) => '<button class="btn btn-sm ' + claseAccion(nombre) + '" type="button" data-accion="' + nombre + '" data-id="' + esc(id) + '">' + texto + "</button>";
-      const boton = (nombre, texto, tipo) => '<button class="comite-button ' + tipo + ' btn ' + claseBoton(tipo) + '" type="button" data-accion="' + nombre + '">' + texto + "</button>";
+      // Auxiliar: cada acción V pide su código delegado por el Coordinador
+      // (nav.js oculta lo que tenga data-permiso-aux sin permiso). Las REQ
+      // (estado, eliminar) no lo llevan: se envían a aprobación.
+      const PERMISO_AUX = {
+        "editar-empresa": "EMP-002", "guardar-empresa": "EMP-002",
+        "contactos": "EMP-024",
+        "editar-sede": "EMP-022", "guardar-sede": "EMP-021 EMP-022",
+        "editar-contacto": "EMP-028", "guardar-contacto": "EMP-027 EMP-028",
+        listado: "EMP-003 EMP-004 EMP-005", registrar: "EMP-001"
+      };
+      const permisoAux = (nombre) => PERMISO_AUX[nombre] ? ' data-permiso-aux="' + PERMISO_AUX[nombre] + '"' : "";
+      const accion = (nombre, texto, id) => '<button class="btn btn-sm ' + claseAccion(nombre) + '" type="button" data-accion="' + nombre + '" data-id="' + esc(id) + '"' + permisoAux(nombre) + '>' + texto + "</button>";
+      const boton = (nombre, texto, tipo) => '<button class="comite-button ' + tipo + ' btn ' + claseBoton(tipo) + '" type="button" data-accion="' + nombre + '"' + permisoAux(nombre) + '>' + texto + "</button>";
 
       const paginador = (pagina, totalPaginas, etiqueta) => totalPaginas > 1 ?
         '<nav class="comite-pagination" aria-label="' + esc(etiqueta) + '">' +
@@ -290,7 +301,7 @@
       if (puede("gestionar")) opcionesMenu.push(["registrar", "Registrar empresa"]);
       // La vista "Aprobaciones" se quitó del menú (no se usaba).
       $("#menu").innerHTML = opcionesMenu.map(([vista, texto]) =>
-        '<button class="comite-nav-link" type="button" data-view="' + vista + '">' + texto + "</button>").join("") +
+        '<button class="comite-nav-link" type="button" data-view="' + vista + '"' + permisoAux(vista) + '>' + texto + "</button>").join("") +
         (esEmpresa ? '<a class="comite-nav-link" style="text-decoration:none" href="/empresa">Solicitudes de certificación</a>' : "");
 
       function mostrarVista(nombre) {
@@ -400,7 +411,7 @@
         $("#listadoResultados").innerHTML =
           panel(
             encabezado("Empresas", totalPaginas > 1 ? (desde + 1) + "-" + (desde + enPagina.length) + " de " + conteo : conteo,
-              puede("gestionar") ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="registrar">Registrar empresa</button>' : "") +
+              puede("gestionar") ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="registrar" data-permiso-aux="EMP-001">Registrar empresa</button>' : "") +
             '<div class="comite-table-wrap"><table><thead><tr><th>Empresa</th><th>NIT</th><th>Ciudad</th><th>Correo</th><th>Estado</th><th>Acción</th></tr></thead><tbody>' +
             (enPagina.map((e) => "<tr><td><strong>" + esc(e.nombre) + "</strong></td><td>" + esc(e.nit) + "</td><td>" + esc(e.ciudad) + "</td>" +
               "<td>" + esc(e.correo) + "</td><td>" + chip(e.estado || "Activa") + "</td><td>" + accion("ver", "Ver detalle", e.id_empresa) + "</td></tr>").join("") ||
@@ -425,8 +436,8 @@
             "<h3>" + (esEmpresa ? "Su cuenta todavía no tiene una empresa asociada" : "Seleccione una empresa") + "</h3>" +
             "<p>" + (esEmpresa ? "Regístrela para poder agregar sus sedes y contactos." : "Elíjala en el listado de empresas.") + "</p>" +
             '<div class="comite-decision-actions" style="justify-content:center">' +
-            (esEmpresa ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="registrar">Registrar empresa</button>' : "") +
-            (puede("listar") ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="listado">Ir al listado</button>' : "") +
+            (esEmpresa ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="registrar" data-permiso-aux="EMP-001">Registrar empresa</button>' : "") +
+            (puede("listar") ? '<button class="comite-button primary btn btn-primario" type="button" data-ir="listado" data-permiso-aux="EMP-003 EMP-004 EMP-005">Ir al listado</button>' : "") +
             "</div></div>"
           );
           return;
@@ -526,7 +537,7 @@
 
         let formulario = "";
         if (gestionar && editada) {
-          formulario = '<div class="comite-detail-section"><h4>Editar sede: ' + esc(editada.nombre_sede) + "</h4>" +
+          formulario = '<div class="comite-detail-section" data-permiso-aux="EMP-022"><h4>Editar sede: ' + esc(editada.nombre_sede) + "</h4>" +
             '<dl class="comite-facts">' + fact("Ciudad", editada.ciudad) + fact("Departamento", editada.departamento || "-") + fact("País", editada.pais || "-") + "</dl>" +
             '<p class="comite-readonly-note">Ciudad, departamento y país no se pueden cambiar. Si están mal, inactive la sede y registre otra.</p>' +
             '<div class="portal-form-grid" style="margin-top:14px">' +
@@ -536,7 +547,7 @@
             selector("sedeEstado", "Estado", [["Activa", "Activa"], ["Inactiva", "Inactiva"]], editada.estado || "Activa") +
             '</div><div class="comite-decision-actions">' + boton("guardar-sede", "Guardar cambios", "primary") + boton("cancelar-sede", "Cancelar", "secondary") + "</div></div>";
         } else if (gestionar) {
-          formulario = '<div class="comite-detail-section"><h4>Registrar sede</h4><div class="portal-form-grid">' +
+          formulario = '<div class="comite-detail-section" data-permiso-aux="EMP-021"><h4>Registrar sede</h4><div class="portal-form-grid">' +
             campo("sedeNombre", "Nombre de la sede", "") +
             selector("sedePrincipal", "Sede principal", [["false", "No"], ["true", "Sí"]], "false") +
             campo("sedeDireccion", "Dirección", "", "full") +
@@ -572,7 +583,7 @@
           "</div></td></tr>").join("");
 
         const formulario = puede("gestionar")
-          ? '<div class="comite-detail-section"><h4>' + (editado ? "Editar contacto" : "Registrar contacto") + '</h4><div class="portal-form-grid">' +
+          ? '<div class="comite-detail-section" data-permiso-aux="' + (editado ? "EMP-028" : "EMP-027") + '"><h4>' + (editado ? "Editar contacto" : "Registrar contacto") + '</h4><div class="portal-form-grid">' +
           campo("contNombre", "Nombre", editado ? editado.nombre : "") + campo("contCargo", "Cargo", editado ? editado.cargo : "") +
           campo("contTelefono", "Teléfono", editado ? editado.telefono : "", "", "tel") + campo("contCorreo", "Correo", editado ? editado.correo : "", "", "email") +
           '</div><div class="comite-decision-actions">' + boton("guardar-contacto", editado ? "Guardar cambios" : "Registrar contacto", "primary") +
@@ -599,7 +610,9 @@
 
         return panel(
           encabezado("Documentos de soporte", "Documentos cargados por la empresa.") + cuerpo +
-          '<p class="comite-readonly-note" style="margin-top:12px">La carga y revisión de documentos todavía no está disponible en esta pantalla.</p>'
+          '<p class="comite-readonly-note" style="margin-top:12px">' + (esEmpresa
+            ? 'Los documentos legales se cargan en <a href="/empresa">Solicitudes de certificación › Documentos legales</a>.'
+            : 'Los documentos legales se revisan desde Solicitudes, al revisar una solicitud radicada de la empresa.') + '</p>'
         );
       }
 
@@ -879,7 +892,7 @@
     })();
   </script>
   <script src="/static/session.js?v=20261118pub"></script>
-<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/nav.js?v=20261118menu"></script>
 </body>
 
 </html>

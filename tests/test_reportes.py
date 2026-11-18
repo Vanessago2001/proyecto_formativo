@@ -22,6 +22,7 @@ from core.database import get_db
 from core.security import get_current_user
 from main import app
 from modules.reportes import reportes_roles as roles_m12
+from tests.permisos_aux import MENSAJE_SIN_PERMISO
 
 BASE = "/api/reportes"
 
@@ -57,11 +58,13 @@ def cliente():
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
-def _sesion(rol: str):
+def _sesion(rol: str, delegados: tuple = ()):
+    # `delegados`: permisos que el Coordinador otorgó al Auxiliar (regla_auxiliar).
     app.dependency_overrides[get_current_user] = lambda: {
         "id_usuario": ID_USUARIO,
         "nombre": f"Usuario {rol}",
         "role_name": rol,
+        **({"permisos_delegados": tuple(delegados)} if delegados else {}),
     }
 
 
@@ -79,8 +82,15 @@ def _sql_y_params(db):
 @pytest.mark.parametrize("rol", ROLES)
 @pytest.mark.parametrize("codigo", CODIGOS)
 async def test_solo_los_roles_autorizados_ejecutan_cada_reporte(db, cliente, codigo, rol):
-    _sesion(rol)
     db.execute.return_value = _filas([])
+    if rol == "auxiliar" and rol in roles_m12.roles_del_reporte(codigo):
+        # Sin el REP-0xx delegado por el Coordinador, 403.
+        _sesion(rol)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            sin_permiso = await ac.get(f"{BASE}/{codigo}")
+        assert sin_permiso.status_code == status.HTTP_403_FORBIDDEN
+        assert MENSAJE_SIN_PERMISO in sin_permiso.json()["detail"]
+    _sesion(rol, (roles_m12.CATALOGO_REPORTES[codigo]["permiso"],))
 
     async with cliente as ac:
         respuesta = await ac.get(f"{BASE}/{codigo}")
@@ -112,7 +122,13 @@ async def test_sin_sesion_no_hay_reportes(cliente):
 
 @pytest.mark.parametrize("rol", ROLES)
 async def test_el_catalogo_solo_ofrece_lo_que_el_rol_puede(db, cliente, rol):
-    _sesion(rol)
+    if rol == "auxiliar":
+        # Sin permisos delegados el Auxiliar no ve ningún reporte.
+        _sesion(rol)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            assert (await ac.get(BASE)).json() == []
+    # Con todos los REP-0xx delegados ve los de su rol.
+    _sesion(rol, tuple(datos["permiso"] for datos in roles_m12.CATALOGO_REPORTES.values()))
 
     async with cliente as ac:
         respuesta = await ac.get(BASE)

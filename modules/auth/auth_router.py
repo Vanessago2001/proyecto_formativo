@@ -13,7 +13,7 @@ from modules.auth.auth_schema import (
     ForgotPasswordRequest,
 )
 from core.security import get_current_user, get_session_user
-from modules.auth.dependencies import require_admin_access
+from modules.auth.dependencies import require_admin_access_con
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -165,7 +165,7 @@ async def historial_accesos(
         ge=1,
         le=200,
     ),
-    current_user=Depends(require_admin_access),
+    current_user=Depends(require_admin_access_con("SEG-013")),
     db: AsyncSession = Depends(get_db),
 ):
 

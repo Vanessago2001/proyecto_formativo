@@ -144,7 +144,15 @@ async def get_current_user(
             detail="Esta cuenta tiene un rol retirado y no tiene acceso al sistema.",
         )
 
-    return dict(user_row)
+    usuario = dict(user_row)
+    # Regla del Auxiliar (modules/permisos_auxiliar/regla_auxiliar.py): no tiene
+    # permisos propios; los que el Coordinador le delegó se cargan aquí una
+    # sola vez por petición y las comprobaciones posteriores los leen de la sesión.
+    if _normalize_role_name(usuario.get("role_name")) == "auxiliar":
+        from modules.permisos_auxiliar.permisos_auxiliar_service import codigos_vigentes
+
+        usuario["permisos_delegados"] = await codigos_vigentes(db, usuario.get("id_usuario"))
+    return usuario
 
 async def get_session_user(
     token: str = Depends(oauth2_scheme),
@@ -257,10 +265,16 @@ def _normalize_role_name(role_name: str) -> str:
     return aliases.get(normalized, normalized)
 
 
-def require_role(allowed_roles: List[str]) -> Callable:
+def require_role(allowed_roles: List[str], auxiliar=None) -> Callable:
     """
     Fábrica de dependencias reutilizable.
     Acepta variaciones de nombre de rol tanto en español como en inglés.
+
+    `auxiliar` (regla_auxiliar.delegable / con_aprobacion / PROPIO) dice qué
+    permiso delegado necesita el Auxiliar cuando está entre los roles
+    admitidos. Si el Auxiliar está admitido y no se indica, NO pasa: no tiene
+    permisos propios ("los permisos del auxiliar deben ser puestos
+    exclusivamente por el Coordinador").
     """
     roles_lower = {_normalize_role_name(role) for role in allowed_roles}
 
@@ -272,6 +286,13 @@ def require_role(allowed_roles: List[str]) -> Callable:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No cuenta con los permisos necesarios para realizar esta acción.",
             )
+        if rol == "auxiliar":
+            from modules.permisos_auxiliar.regla_auxiliar import exigir_permiso_auxiliar
+
+            if auxiliar is None:
+                exigir_permiso_auxiliar(current_user)
+            else:
+                auxiliar.exigir(current_user)
         return current_user
 
     return role_dependency

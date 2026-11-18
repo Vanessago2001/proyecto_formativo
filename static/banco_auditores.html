@@ -1205,19 +1205,19 @@
             const botones = [];
 
             if (accionDisponible(estado, "revision")) {
-                botones.push(`<button type="button" class="btn btn-secundario btn-sm action-button revision" data-action="revision" data-id="${id}">Pasar a En Revisión</button>`);
+                botones.push(`<button type="button" class="btn btn-secundario btn-sm action-button revision" data-action="revision" data-permiso-aux="AUD-012" data-id="${id}">Pasar a En Revisión</button>`);
             }
 
             if (accionDisponible(estado, "correcciones")) {
-                botones.push(`<button type="button" class="btn btn-secundario btn-sm action-button correcciones" data-action="correcciones" data-id="${id}">Solicitar correcciones</button>`);
+                botones.push(`<button type="button" class="btn btn-secundario btn-sm action-button correcciones" data-action="correcciones" data-permiso-aux="AUD-015" data-id="${id}">Solicitar correcciones</button>`);
             }
 
             if (accionDisponible(estado, "aprobar")) {
-                botones.push(`<button type="button" class="btn btn-primario btn-sm action-button aprobar" data-action="aprobar" data-id="${id}">Aprobar</button>`);
+                botones.push(`<button type="button" class="btn btn-primario btn-sm action-button aprobar" data-action="aprobar" data-permiso-aux="AUD-013" data-id="${id}">Aprobar</button>`);
             }
 
             if (accionDisponible(estado, "rechazar")) {
-                botones.push(`<button type="button" class="btn btn-peligro-contorno btn-sm action-button rechazar" data-action="rechazar" data-id="${id}">Rechazar</button>`);
+                botones.push(`<button type="button" class="btn btn-peligro-contorno btn-sm action-button rechazar" data-action="rechazar" data-permiso-aux="AUD-014" data-id="${id}">Rechazar</button>`);
             }
 
             botones.push(`<button type="button" class="btn btn-secundario btn-sm action-button" data-action="ver" data-id="${id}">Ver solicitud</button>`);
@@ -2396,7 +2396,7 @@
 
     <script src="/static/session.js?v=20261118pub"></script>
 
-<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/nav.js?v=20261118menu"></script>
 </body>
 
 </html>

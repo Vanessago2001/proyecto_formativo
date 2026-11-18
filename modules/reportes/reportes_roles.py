@@ -26,6 +26,7 @@ ROLES_CONTROL = [ADMIN, COMITE]
 
 CATALOGO_REPORTES: dict[str, dict] = {
     "estadistico-empresas": {
+        "permiso": "REP-001",
         "titulo": "Reporte estadístico de empresas",
         "descripcion": (
             "Parque de empresas con sus trámites radicados y certificados "
@@ -36,6 +37,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
         "alcance_auditor": False,
     },
     "operativo-auditores": {
+        "permiso": "REP-002",
         "titulo": "Reporte operativo de auditores",
         "descripcion": (
             "Carga de trabajo por auditor: asignaciones, auditorías abiertas y "
@@ -46,6 +48,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
         "alcance_auditor": True,
     },
     "solicitudes-criticas": {
+        "permiso": "REP-003",
         "titulo": "Reporte de solicitudes críticas",
         "descripcion": (
             "Trámites abiertos con más de 30 días sin avanzar, ordenados por "
@@ -56,6 +59,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
         "alcance_auditor": False,
     },
     "auditorias-ejecutadas": {
+        "permiso": "REP-004",
         "titulo": "Reporte de auditorías ejecutadas",
         "descripcion": (
             "Auditorías ya cerradas con su solicitud, empresa y auditor "
@@ -66,6 +70,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
         "alcance_auditor": True,
     },
     "certificados-vigentes": {
+        "permiso": "REP-005",
         "titulo": "Reporte de certificados vigentes",
         "descripcion": (
             "Certificados con fecha de vencimiento en el futuro, con días "
@@ -76,6 +81,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
         "alcance_auditor": False,
     },
     "apelaciones-fallos": {
+        "permiso": "REP-006",
         "titulo": "Reporte de apelaciones y fallos",
         "descripcion": (
             "Apelaciones presentadas, quién las revisa y su sentido del fallo. "
@@ -86,6 +92,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
         "alcance_auditor": True,
     },
     "preventivo-conflictos": {
+        "permiso": "REP-007",
         "titulo": "Reporte preventivo de conflictos",
         "descripcion": (
             "Declaraciones de conflicto de interés pendientes o que bloquean "
@@ -96,6 +103,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
         "alcance_auditor": False,
     },
     "disponibilidad-horaria": {
+        "permiso": "REP-008",
         "titulo": "Reporte de disponibilidad horaria",
         "descripcion": (
             "Una fila por auditor, identificado por su documento, con los días "
@@ -107,6 +115,7 @@ CATALOGO_REPORTES: dict[str, dict] = {
         "alcance_auditor": True,
     },
     "critico-vencimiento": {
+        "permiso": "REP-009",
         "titulo": "Reporte crítico de vencimiento",
         "descripcion": (
             "Certificados que vencen en 90 días o menos, o ya vencidos, para "
@@ -132,6 +141,19 @@ def reporte_o_none(codigo: str) -> dict | None:
 
 def roles_del_reporte(codigo: str) -> list[str]:
     return CATALOGO_REPORTES[codigo]["roles"]
+
+
+def catalogo_para_usuario(rol: str, usuario: dict | None) -> list[dict]:
+    """
+    Catálogo del rol; al Auxiliar solo los reportes cuyo permiso (REP-0xx)
+    le delegó el Coordinador (no tiene permisos propios).
+    """
+    from modules.permisos_auxiliar.regla_auxiliar import es_auxiliar, tiene_delegado
+
+    catalogo = catalogo_para_rol(rol)
+    if not es_auxiliar(usuario):
+        return catalogo
+    return [r for r in catalogo if tiene_delegado(usuario, CATALOGO_REPORTES[r["codigo"]]["permiso"])]
 
 
 def catalogo_para_rol(rol: str) -> list[dict]:

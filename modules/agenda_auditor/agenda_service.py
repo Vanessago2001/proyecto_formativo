@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 
 from modules.solicitudes import estado_solicitud as estados
+from modules.empresas.requisitos_empresa import exigir_sede_de_la_solicitud
 from modules.auditores.auditor_service import AuditorService
 from modules.agenda_auditor.agenda_schema import (
     DisponibilidadEditar,
@@ -23,6 +24,7 @@ from modules.agenda_auditor.agenda_schema import (
 from modules.asignacion_auditores.asignacion_service import (
     CTE_AUDITORES,
     ESTADOS_ASIGNACION_ACTIVOS,
+    SQL_ASIGNACION_ACTIVA,
 )
 from modules.agenda_auditor.fechas_disponibles import (
     bloqueo_en_franja,
@@ -1097,9 +1099,9 @@ class AgendaAuditorService(AuditorService):
         rol_auditor: str | None,
     ) -> None:
         """
-        Registra la asignación de un auditor que se incorpora al equipo de
-        una sede concreta. Solo crea registros nuevos: nunca modifica las
-        asignaciones que ya existen para la solicitud.
+        Registra la asignación del auditor que REEMPLAZA al anterior en una
+        visita que quedó sin auditor (solo un auditor por solicitud). Solo
+        crea el registro nuevo: no modifica las asignaciones existentes.
         """
         await self.db.execute(
             text("""
@@ -1119,6 +1121,54 @@ class AgendaAuditorService(AuditorService):
                 "estado_asignacion": "Agendada",
             },
         )
+
+    async def _auditores_activos_de_solicitud(self, id_solicitud: UUID) -> list[dict]:
+        """Auditores con asignación activa en la solicitud (uno, salvo datos anteriores a la regla)."""
+        resultado = await self.db.execute(
+            text(f"""
+                SELECT DISTINCT a.id_auditor, u.nombre
+                FROM auditores_solicitud a
+                LEFT JOIN usuario u ON u.id_usuario = a.id_auditor
+                WHERE a.id_solicitud = :id_solicitud
+                  AND {SQL_ASIGNACION_ACTIVA}
+            """),
+            {"id_solicitud": str(id_solicitud)},
+        )
+        return [dict(fila) for fila in resultado.mappings().all()]
+
+    async def _validar_auditor_unico_de_solicitud(self, id_solicitud: UUID, auditores: list) -> None:
+        """
+        Regla "Solo un auditor por solicitud": la visita se programa con
+        exactamente un auditor y debe ser el que tiene la asignación activa
+        de la solicitud. 409 con un mensaje claro en cualquier otro caso.
+        """
+        if len(auditores) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Solo un auditor por solicitud: la visita se programa únicamente "
+                    "con el auditor asignado a la solicitud."
+                ),
+            )
+        activos = await self._auditores_activos_de_solicitud(id_solicitud)
+        if not activos:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "La solicitud no tiene un auditor asignado. Asígnelo primero en "
+                    "Solicitudes (etapa 3) y luego programe la visita."
+                ),
+            )
+        pedido = str(auditores[0].id_usuario)
+        if pedido not in {str(fila.get("id_auditor")) for fila in activos}:
+            nombres = ", ".join(str(fila.get("nombre") or "sin nombre") for fila in activos)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Solo un auditor por solicitud: esta solicitud tiene asignado a {nombres}. "
+                    "Programe la visita con ese auditor o cambie la asignación desde Solicitudes."
+                ),
+            )
 
     async def crear_programacion(self, data: ProgramacionAuditoriaCrear) -> dict:
         """Crea la programación, las relaciones con cada auditor y sus notificaciones en una transacción."""
@@ -1146,6 +1196,10 @@ class AgendaAuditorService(AuditorService):
             if not estados.es(solicitud["estado"], estados.APROBADA):
                 raise HTTPException(status_code=409, detail="Solo se puede programar una solicitud aprobada.")
 
+            # Flujo 18/11/2026: la visita se programa en una sede incluida en
+            # la solicitud (ya no en "la dirección principal de la empresa").
+            await exigir_sede_de_la_solicitud(self.db, data.id_solicitud, data.id_sede)
+
             # Una sede no puede recibir dos visitas vigentes: si ya tiene una
             # programacion activa se rechaza hasta que se cancele esa.
             await self._validar_sede_disponible(
@@ -1155,7 +1209,13 @@ class AgendaAuditorService(AuditorService):
                 data.fecha_fin,
             )
 
-            # Valida cada auditor y su asignación.
+            # Regla del equipo (18/11/2026): solo un auditor por solicitud. La
+            # visita se programa exactamente con el auditor que tiene la
+            # asignación activa; no se suman auditores desde la Agenda (tampoco
+            # al programar otra sede de la misma solicitud).
+            await self._validar_auditor_unico_de_solicitud(data.id_solicitud, auditores_list)
+
+            # Valida el auditor y su asignación.
             auditores_ok = []
             for aud in auditores_list:
                 id_usuario = aud.id_usuario
@@ -1180,32 +1240,24 @@ class AgendaAuditorService(AuditorService):
                     raise HTTPException(status_code=409, detail=f"El auditor {id_usuario} no se encuentra aprobado/activo.")
 
                 asignacion_result = await self.db.execute(
-                    text("""
-                        SELECT especialidad, estado_asignacion
-                        FROM auditores_solicitud
-                        WHERE id_solicitud = :id_solicitud
-                          AND id_auditor = :id_usuario
-                          AND UPPER(TRIM(COALESCE(estado_asignacion, ''))) IN ('AGENDADA', 'PROGRAMADA', 'CONFIRMADO')
+                    text(f"""
+                        SELECT a.especialidad, a.estado_asignacion
+                        FROM auditores_solicitud a
+                        WHERE a.id_solicitud = :id_solicitud
+                          AND a.id_auditor = :id_usuario
+                          AND {SQL_ASIGNACION_ACTIVA}
                         LIMIT 1
                     """),
                     {"id_solicitud": str(data.id_solicitud), "id_usuario": str(id_usuario)},
                 )
                 asignacion = asignacion_result.mappings().first()
                 if not asignacion:
-                    # Flujo "Mostrar más auditores disponibles": el auditor se
-                    # incorpora al equipo de esta sede y se registra su
-                    # asignación. No se modifican las asignaciones existentes.
-                    if not data.asignar_auditores_adicionales:
-                        raise HTTPException(
-                            status_code=409,
-                            detail=f"El auditor {id_usuario} debe estar asignado a esta solicitud antes de programar la visita.",
-                        )
-                    await self._registrar_asignacion_auditor(
-                        id_solicitud=data.id_solicitud,
-                        id_usuario=id_usuario,
-                        rol_auditor=rol_solicitado,
+                    # Ya no se incorporan auditores adicionales desde la Agenda
+                    # ("asignar_auditores_adicionales" se acepta y se ignora).
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"{nombre_auditor} debe estar asignado a esta solicitud antes de programar la visita.",
                     )
-                    asignacion = {"especialidad": rol_solicitado, "estado_asignacion": "Agendada"}
 
                 # Regla única: bloqueos y visitas que se crucen.
                 problema = await self.verificar_franja_auditor(
@@ -2534,10 +2586,11 @@ class AgendaAuditorService(AuditorService):
         rol_auditor: str | None = None,
         id_usuario_actor: UUID | None = None,
     ) -> dict:
-        """Agrega un auditor a una visita ya programada.
+        """Pone el auditor de una visita ya programada que quedó sin auditor.
 
-        Permite reasignar o completar una visita que quedo sin equipo, sin
-        cancelar la programacion ni crear una visita nueva.
+        Solo un auditor por solicitud (18/11/2026): reemplaza, nunca suma.
+        Responde 409 si la visita ya tiene auditor o si la solicitud tiene
+        asignado a otro auditor.
         """
         try:
             programacion_result = await self.db.execute(
@@ -2604,6 +2657,39 @@ class AgendaAuditorService(AuditorService):
                 raise HTTPException(status_code=409, detail="El auditor esta desactivado.")
             if str(auditor["estado_auditor"] or "").strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
                 raise HTTPException(status_code=409, detail="El auditor no se encuentra aprobado/activo.")
+
+            # Solo un auditor por solicitud: aquí solo se REEMPLAZA al auditor
+            # de una visita que quedó sin auditor (desactivado, retirado por
+            # conflicto...). Nunca se suma un segundo auditor.
+            ya_tiene = await self.db.execute(
+                text("""
+                    SELECT COUNT(*) AS total
+                    FROM detalle_programacion_auditor
+                    WHERE id_programacion = :id_programacion
+                """),
+                {"id_programacion": str(id_programacion)},
+            )
+            fila_total = ya_tiene.mappings().first() or {}
+            if int(fila_total.get("total") or 0) > 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Solo un auditor por solicitud: esta visita ya tiene auditor. "
+                        "Para cambiarlo, cancele primero la asignación actual."
+                    ),
+                )
+            otros = [
+                fila for fila in await self._auditores_activos_de_solicitud(UUID(str(id_solicitud)))
+                if str(fila.get("id_auditor")) != str(id_usuario)
+            ]
+            if otros:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Solo un auditor por solicitud: la solicitud ya tiene asignado a "
+                        f"{otros[0].get('nombre') or 'otro auditor'}."
+                    ),
+                )
 
             from modules.asignacion_auditores.asignacion_service import (
                 AsignacionAuditorService,
@@ -2829,18 +2915,31 @@ class AgendaAuditorService(AuditorService):
         id_usuario: UUID | None,
         observaciones: str | None = None,
         es_admin: bool = False,
+        confirmar: bool = True,
     ) -> dict:
-        """Finaliza la auditoria. Cualquier auditor asignado a la visita puede hacerlo."""
+        """Finaliza la auditoria. Cualquier auditor asignado a la visita puede hacerlo.
+
+        La finalización desde la pantalla del auditor pasa por
+        modules/calificacion_visitas/finalizacion_service.py, que exige la
+        evaluación y el Excel y llama aquí con `confirmar=False` para que todo
+        quede en UNA transacción (el commit lo hace ella).
+
+        En la base la visita queda 'Ejecutada': es el estado terminal que
+        admite chk_estado_visita ('Finalizada' no está en la restricción y el
+        UPDATE fallaba con un 500). La pantalla lo muestra como "Finalizada".
+        """
         programacion = await self.db.execute(
-            text("SELECT id_programacion, estado FROM programacion_visita WHERE id_programacion = :id"),
+            text("SELECT id_programacion, estado FROM programacion_visita WHERE id_programacion = :id FOR UPDATE"),
             {"id": str(id_programacion)},
         )
         actual = programacion.mappings().first()
         if not actual:
             raise HTTPException(status_code=404, detail="Programacion no encontrada.")
         estado = str(actual["estado"] or "").strip().upper()
-        if estado in {"CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO", "EJECUTADA", "EJECUTADO"}:
-            raise HTTPException(status_code=409, detail="La programacion ya esta cancelada, ejecutada o finalizada.")
+        if estado in {"CANCELADA", "CANCELADO"}:
+            raise HTTPException(status_code=409, detail="La visita está cancelada: no se puede finalizar.")
+        if estado in {"FINALIZADA", "FINALIZADO", "EJECUTADA", "EJECUTADO"}:
+            raise HTTPException(status_code=409, detail="La visita ya está finalizada.")
         auditores = await self._auditores_de_programacion(id_programacion)
         if not auditores:
             raise HTTPException(status_code=409, detail="La programacion no tiene auditores asignados.")
@@ -2854,16 +2953,18 @@ class AgendaAuditorService(AuditorService):
         await self.db.execute(
             text("""
                 UPDATE programacion_visita
-                SET estado = 'Finalizada',
+                SET estado = 'Ejecutada',
                     observaciones_finalizacion = :observaciones
                 WHERE id_programacion = :id
             """),
             {"id": str(id_programacion), "observaciones": (observaciones or "").strip() or None},
         )
-        await self.db.commit()
+        if confirmar:
+            await self.db.commit()
         return {
             "mensaje": "Auditoria finalizada correctamente para todos los auditores involucrados.",
             "estado": "Finalizada",
+            "estado_bd": "Ejecutada",
             "observaciones": (observaciones or "").strip() or None,
         }
 
@@ -3150,7 +3251,7 @@ class AgendaAuditorService(AuditorService):
                 UPDATE programacion_visita
                 SET estado = 'Cancelada', motivo_cancelacion = :motivo
                 WHERE id_programacion = :id
-                  AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('FINALIZADA', 'FINALIZADO')
+                  AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('FINALIZADA', 'FINALIZADO', 'EJECUTADA', 'EJECUTADO')
                 RETURNING id_programacion
             """), {"id": str(id_programacion), "motivo": motivo.strip()})
             if not result.first():

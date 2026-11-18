@@ -89,8 +89,8 @@
           <strong>Certificados</strong>
         </div>
         <nav aria-label="Vistas">
-          <button id="catalogNav" class="comite-nav-link active" type="button" data-view="catalogo">Certificados</button>
-          <button id="alertsNav" class="comite-nav-link" type="button" data-view="vencimientos">Vencimientos</button>
+          <button id="catalogNav" class="comite-nav-link active" type="button" data-view="catalogo" data-permiso-aux="CER-011">Certificados</button>
+          <button id="alertsNav" class="comite-nav-link" type="button" data-view="vencimientos" data-permiso-aux="CER-027">Vencimientos</button>
           <button class="comite-nav-link" type="button" data-view="consulta">Consulta pública</button>
           <a id="committeeNav" class="comite-nav-link certificados-nav-anchor" href="/comite">Comité</a>
         </nav>
@@ -137,7 +137,7 @@
             <div class="cert-metric cert-metric-alert"><span>Vencen en 30 días</span><strong id="metricVencen">—</strong></div>
           </div>
 
-          <section id="createPanel" class="comite-panel cert-create-panel" hidden>
+          <section id="createPanel" class="comite-panel cert-create-panel" data-permiso-aux="CER-001" hidden>
             <div class="comite-panel-heading">
               <div>
                 <h3>Generar certificado</h3>
@@ -584,7 +584,7 @@
         const actions = [];
         if (status === "PENDIENTE_FIRMA") {
           if (puedeFirmar(certificate)) {
-            actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="preview">Vista previa PDF</button>');
+            actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="preview" data-permiso-aux="CER-009">Vista previa PDF</button>');
             actions.push('<button class="comite-button primary btn btn-primario" type="button" data-action="sign">Firmar certificado</button>');
           } else {
             const leader = state.liderazgo && state.liderazgo.lider;
@@ -593,8 +593,8 @@
         }
         if (status === "VIGENTE") {
           if (certificate.id_firmante) {
-            actions.push('<button class="comite-button primary btn btn-primario" type="button" data-action="download">Descargar PDF firmado</button>');
-            if (canEmail) actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="email">Reenviar PDF firmado</button>');
+            actions.push('<button class="comite-button primary btn btn-primario" type="button" data-action="download" data-permiso-aux="CER-012">Descargar PDF firmado</button>');
+            if (canEmail) actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="email" data-permiso-aux="CER-013">Reenviar PDF firmado</button>');
           } else {
             actions.push('<p class="cert-signature-note">Este registro vigente no tiene una firma PAdES registrada; no puede descargarse como certificado oficial.</p>');
           }
@@ -611,13 +611,13 @@
           actions.push('<button class="comite-button danger btn btn-peligro" type="button" data-action="cancel">Cancelar certificado</button>');
         }
         if (canManage && status === "VIGENTE" && !certificate.publico_certificado) {
-          actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="publish">Publicar en portal</button>');
+          actions.push('<button class="comite-button secondary btn btn-secundario" type="button" data-action="publish" data-permiso-aux="CER-021">Publicar en portal</button>');
         }
         if (canWithdrawPublic && status === "VIGENTE" && certificate.publico_certificado) {
           actions.push('<button class="comite-button danger btn btn-peligro" type="button" data-action="unpublish">Retirar del portal</button>');
         }
         if (canSeeHistory) {
-          actions.push('<button class="comite-resource" type="button" data-action="history">Consultar historial de estados <span>CER-020</span></button>');
+          actions.push('<button class="comite-resource" type="button" data-action="history" data-permiso-aux="CER-020">Consultar historial de estados <span>CER-020</span></button>');
         }
         if (!["PENDIENTE_FIRMA", "VIGENTE", "SUSPENDIDO"].includes(status)) {
           actions.push('<p class="comite-muted">Este certificado no admite más cambios de estado.</p>');
@@ -1103,7 +1103,7 @@
       }
     })();
   </script>
-<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/nav.js?v=20261118menu"></script>
 <script src="/static/session.js?v=20261118pub"></script>
 <script src="/static/pqrs-enlace.js?v=20261106"></script>
 </body>

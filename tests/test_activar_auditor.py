@@ -19,6 +19,7 @@ from modules.auditores_registrados import auditores_registrados_service as servi
 from modules.auditores_registrados.auditores_registrados_router import router
 from modules.permisos_auxiliar import permisos_auxiliar_service
 from tests.fake_db import ResultadoFalso
+from tests.permisos_aux import con_permisos
 
 ID_AUDITOR = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
 ID_POSTULACION = uuid.UUID("bbbbbbbb-0000-0000-0000-000000000001")
@@ -73,7 +74,7 @@ class SesionActivacion:
         self.rollbacks += 1
 
 
-def _cliente(sesion, rol="Coordinador"):
+def _cliente(sesion, rol="Coordinador", delegados=()):
     app = FastAPI()
     app.include_router(router)
 
@@ -81,7 +82,9 @@ def _cliente(sesion, rol="Coordinador"):
         yield sesion
 
     async def _usuario():
-        return {"id_usuario": str(ID_COORDINADOR), "role_name": rol, "estado": "Activo"}
+        usuario = {"id_usuario": str(ID_COORDINADOR), "role_name": rol, "estado": "Activo"}
+        # Permisos que el Coordinador delegó al Auxiliar (regla_auxiliar).
+        return con_permisos(usuario, *delegados) if delegados else usuario
 
     app.dependency_overrides[get_db] = _db
     app.dependency_overrides[get_current_user] = _usuario
@@ -192,7 +195,7 @@ def test_auxiliar_con_permiso_delegado_puede_activar(monkeypatch):
 
     monkeypatch.setattr(permisos_auxiliar_service, "usar_permiso_delegado", _con_permiso)
     sesion = SesionActivacion()
-    respuesta = _activar(_cliente(sesion, rol="Auxiliar"))
+    respuesta = _activar(_cliente(sesion, rol="Auxiliar", delegados=("AUD-013",)))
     assert respuesta.status_code == 200
     assert sesion.usuario["estado_auditor"] == "Activo"
 

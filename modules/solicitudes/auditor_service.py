@@ -81,6 +81,37 @@ class AuditorSolicitudService:
             )
         return dict(fila)
 
+    async def _exigir_un_solo_auditor(
+        self, id_solicitud: UUID, *, excluir_auditor=None, excluir_asignacion=None
+    ) -> None:
+        """409 si la solicitud ya tiene OTRA asignación vigente: solo un auditor por solicitud."""
+        resultado = await self.db.execute(
+            text("""
+                SELECT id FROM auditores_solicitud
+                WHERE id_solicitud = :id_solicitud
+                  AND UPPER(TRIM(COALESCE(estado_asignacion, ''))) = ANY(CAST(:vigentes AS VARCHAR[]))
+                  AND (CAST(:excluir_auditor AS UUID) IS NULL OR id_auditor <> CAST(:excluir_auditor AS UUID))
+                  AND (CAST(:excluir_asignacion AS UUID) IS NULL OR id <> CAST(:excluir_asignacion AS UUID))
+                LIMIT 1;
+            """),
+            {
+                "id_solicitud": str(id_solicitud),
+                "vigentes": sorted({e.upper() for e in ESTADOS_VIGENTES} | {
+                    "CONFIRMADA", "ASIGNADA", "ACTIVO", "ACTIVA",
+                }),
+                "excluir_auditor": str(excluir_auditor) if excluir_auditor else None,
+                "excluir_asignacion": str(excluir_asignacion) if excluir_asignacion else None,
+            },
+        )
+        if resultado.scalar() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Solo un auditor por solicitud: la solicitud ya tiene otro auditor propuesto "
+                    "o asignado. Para cambiarlo use Reasignar o cancele primero esa asignación."
+                ),
+            )
+
     async def _registrar(
         self,
         id_solicitud: UUID,
@@ -344,6 +375,8 @@ class AuditorSolicitudService:
                 detail="Ese auditor ya está propuesto o asignado en esta solicitud.",
             )
 
+        await self._exigir_un_solo_auditor(id_solicitud, excluir_auditor=id_auditor)
+
         conflicto = await self.db.execute(
             text("""
                 SELECT descripcion FROM conflicto_interes
@@ -413,6 +446,7 @@ class AuditorSolicitudService:
                     "Solo se aprueba una propuesta."
                 ),
             )
+        await self._exigir_un_solo_auditor(id_solicitud, excluir_asignacion=id_asignacion)
 
         resultado = await self.db.execute(
             text(f"""

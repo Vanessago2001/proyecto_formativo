@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.security import _normalize_role_name, get_current_user
+from modules.permisos_auxiliar.regla_auxiliar import exigir_permiso_auxiliar
 from modules.solicitudes import estado_solicitud as estados
 from modules.comite.comite_service import (
     FILTRO_ESTADO_PENDIENTES,
@@ -129,7 +130,7 @@ async def consultar_expedientes_pendientes(
     departamento: str | None = Query(default=None, max_length=100, description="Departamento de alguna sede"),
     pais: str | None = Query(default=None, max_length=100, description="País de alguna sede"),
     decision: str | None = Query(default=None, description="aprobada o rechazada"),
-    firma: str | None = Query(default=None, description="pendiente, firmado o certificado-pendiente"),
+    firma: str | None = Query(default=None, description="pendiente, firmado, certificado-pendiente o lider-pendiente"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=500),
     current_user: dict = Depends(get_current_user),
@@ -144,6 +145,8 @@ async def consultar_expedientes_pendientes(
     Comité está impedido para evaluarla (regla de imparcialidad). Reúne lo
     que antes eran "Expedientes pendientes" e "Historial de decisiones".
     """
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-001", "COM-019")
     role_name = _normalize_role_name(current_user.get("role_name"))
 
     if role_name not in COMITE_CERTIFICACION_PERMISOS:
@@ -224,6 +227,7 @@ async def consultar_expedientes_pendientes(
         ORDER BY COALESCE(s.fecha_radicacion, s.fecha_creacion) DESC;
     """), params)
     expedientes = [_fila_expediente_unificada(dict(fila)) for fila in resultado.mappings().all()]
+    _marcar_mi_liderazgo(expedientes, current_user)
     expedientes = _filtrar_por_decision_y_firma(expedientes, decision, firma)
     total = len(expedientes)
     inicio = (page - 1) * page_size
@@ -288,6 +292,14 @@ def _fila_expediente_unificada(item: dict) -> dict:
         item["firma_dictamen"] = item["firma_certificado"] = None
         item["pendiente_firma"] = False
     item["certificado_pendiente_firma"] = str(item.get("estado_certificado") or "").strip().upper() == "PENDIENTE_FIRMA"
+    # El acta se puede generar si hay dictamen del Comité (aprobar/rechazar),
+    # la solicitud sigue Aprobada o Rechazada y aún no existe acta.
+    item["acta_generable"] = bool(
+        item["decision"]
+        and item.get("accion") in ("aprobar", "rechazar")
+        and canonico in (estados.APROBADA, estados.RECHAZADA)
+        and not str(item.get("estado_acta") or "").strip()
+    )
     # Mismos nombres que el historial (el modal "Ver dictamen" los usa).
     item["expediente_id"] = item.get("id")
     item["codigo_expediente"] = item.get("codigo")
@@ -306,6 +318,26 @@ def _fila_expediente_unificada(item: dict) -> dict:
     return item
 
 
+def _marcar_mi_liderazgo(filas: list[dict], usuario: dict) -> None:
+    """
+    Marca las filas donde quien consulta es el líder del comité del
+    expediente y lo que le toca: generar el acta, firmarla o firmar el
+    certificado. Solo el líder ve esas acciones.
+    """
+    mi_id = str((usuario or {}).get("id_usuario") or (usuario or {}).get("id") or "")
+    for item in filas:
+        lider = item.get("lider") or {}
+        mio = bool(mi_id and str(lider.get("id_usuario") or "") == mi_id)
+        estado_acta = str(item.get("estado_acta") or "").strip().upper()
+        item["es_mi_liderazgo"] = mio
+        item["lider_acta_por_generar"] = mio and item.get("acta_generable", False)
+        item["lider_acta_por_firmar"] = mio and estado_acta == "GENERADA"
+        item["lider_certificado_por_firmar"] = mio and item.get("certificado_pendiente_firma", False)
+        item["lider_pendiente"] = (
+            item["lider_acta_por_generar"] or item["lider_acta_por_firmar"] or item["lider_certificado_por_firmar"]
+        )
+
+
 def _filtrar_por_decision_y_firma(filas: list[dict], decision: str | None, firma: str | None) -> list[dict]:
     if decision and decision.strip():
         prefijo = decision.strip().lower()[:6]
@@ -317,6 +349,9 @@ def _filtrar_por_decision_y_firma(filas: list[dict], decision: str | None, firma
         filas = [f for f in filas if f.get("pendiente_firma")]
     elif valor == "certificado-pendiente":
         filas = [f for f in filas if f.get("certificado_pendiente_firma")]
+    elif valor == "lider-pendiente":
+        # Lo que espera al líder del comité: actas por generar o firmar y certificados.
+        filas = [f for f in filas if f.get("lider_pendiente")]
     return filas
 
 
@@ -327,6 +362,8 @@ async def consultar_expediente_completo(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-002: consultar expediente completo."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-002")
     role_name = _normalize_role_name(current_user.get("role_name"))
 
     if role_name not in COMITE_CERTIFICACION_PERMISOS:
@@ -381,6 +418,8 @@ async def descargar_expediente_digital(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-003: descargar expediente digital."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-003")
     role_name = _normalize_role_name(current_user.get("role_name"))
 
     if role_name not in COMITE_DESCARGA_PERMISOS:
@@ -439,6 +478,8 @@ async def consultar_informe_auditor(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-004: consultar informe del auditor."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-004")
     role_name = _normalize_role_name(current_user.get("role_name"))
 
     if role_name not in COMITE_INFORME_AUDITOR_PERMISOS:
@@ -510,6 +551,8 @@ async def consultar_evidencias_fisicas(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-005: consultar evidencias físicas."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-005")
     role_name = _normalize_role_name(current_user.get("role_name"))
 
     if role_name not in COMITE_EVIDENCIAS_FISICAS_PERMISOS:
@@ -559,6 +602,8 @@ async def consultar_no_conformidades(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-006: consultar no conformidades."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-006")
     role_name = _normalize_role_name(current_user.get("role_name"))
 
     if role_name not in COMITE_NO_CONFORMIDADES_PERMISOS:
@@ -610,6 +655,8 @@ async def consultar_historial_solicitudes_previas(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-007: consultar historial de solicitudes previas."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-007")
     role_name = _normalize_role_name(current_user.get("role_name"))
 
     if role_name not in COMITE_HISTORIAL_SOLICITUDES_PERMISOS:
@@ -648,6 +695,8 @@ async def consultar_observaciones_tecnicos(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-008: consultar observaciones de técnicos."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-008")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(
@@ -693,6 +742,8 @@ async def buscar_expediente_por_nit_o_codigo(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-009: buscar expediente por NIT o código."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-009")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(
@@ -739,6 +790,8 @@ async def filtrar_expedientes_por_norma_sector(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-010: filtrar expedientes por norma/sector."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-010")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(
@@ -915,6 +968,8 @@ async def consultar_decisiones_historicas(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-019: consultar decisiones históricas."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-019")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar decisiones históricas.")
@@ -985,6 +1040,8 @@ async def consultar_historial_dictamenes(
     decisión final, quién y cuándo, y si el dictamen (acta) y el certificado
     ya están firmados. Con filtro y paginación.
     """
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-019")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar decisiones históricas.")
@@ -1104,6 +1161,8 @@ async def exportar_decisiones_consolidadas(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-020: exportar decisiones consolidadas."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-020")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS and role_name not in {"req", "requerimiento"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para exportar decisiones consolidadas.")
@@ -1156,6 +1215,8 @@ async def consultar_historial_por_empresa(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-021: consultar historial por empresa."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-021")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar historial por empresa.")
@@ -1190,6 +1251,8 @@ async def consultar_auditor_responsable(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-022: consultar auditor responsable."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-022")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar auditor responsable.")
@@ -1233,6 +1296,8 @@ async def consultar_datos_empresa_evaluada(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-023: consultar datos empresa evaluada."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-023")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar datos de la empresa evaluada.")
@@ -1301,6 +1366,8 @@ async def consultar_estado_acta(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-026", "COM-002")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar el estado del acta.")
@@ -1316,6 +1383,8 @@ async def descargar_acta_firmada(
     db: AsyncSession = Depends(get_db),
 ):
     """Permiso COM-026: descargar acta firmada."""
+    # Auxiliar: solo con el permiso delegado por el Coordinador.
+    exigir_permiso_auxiliar(current_user, "COM-026")
     role_name = _normalize_role_name(current_user.get("role_name"))
     if role_name not in COMITE_CONSULTA_PERMISOS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para descargar el acta firmada.")

@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.security import _normalize_role_name, get_current_user
 from modules.auth.dependencies import require_auditor_aprobado
+from modules.permisos_auxiliar.regla_auxiliar import exigir_permiso_auxiliar
 from modules.reportes import reportes_roles as roles_m12
 from modules.reportes.reportes_service import ReportesService
 
@@ -33,7 +34,7 @@ router = APIRouter(
 async def catalogo_de_reportes(usuario: dict = Depends(get_current_user)):
     """El menú de reportes que le corresponde al rol: nada más."""
     rol = _normalize_role_name(usuario.get("role_name"))
-    return roles_m12.catalogo_para_rol(rol)
+    return roles_m12.catalogo_para_usuario(rol, usuario)
 
 
 @router.get(
@@ -58,6 +59,8 @@ async def ejecutar_reporte(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"El rol de la sesión no puede ejecutar '{datos['titulo']}'.",
         )
+    # Auxiliar: solo con el permiso del reporte delegado por el Coordinador.
+    exigir_permiso_auxiliar(usuario, datos["permiso"])
 
     filas = await ReportesService(db, usuario).ejecutar(codigo)
 

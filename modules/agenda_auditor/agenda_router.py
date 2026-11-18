@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,8 @@ from modules.agenda_auditor.agenda_schema import (
     ReprogramarProgramacion,
 )
 from modules.agenda_auditor.agenda_service import AgendaAuditorService
+from modules.calificacion_visitas.evaluacion_excel import TAMANO_MAXIMO_BYTES as TAMANO_MAXIMO_EXCEL
+from modules.calificacion_visitas.finalizacion_service import FinalizacionVisitaService
 from modules.solicitudes.solicitud_permissions import (
     normalizar_rol,
     requiere_permiso,
@@ -93,7 +95,7 @@ async def _validar_propio_auditor(
 # Las rutas literales van antes de /{id_usuario} para evitar conflictos.
 @router.get("/bloqueos/vigentes")
 async def listar_bloqueos_vigentes(
-    usuario: dict = Depends(requiere_permiso("SOL-006")),
+    usuario: dict = Depends(requiere_permiso("SOL-006", auxiliar=("AGE-010", "AGE-003", "AGE-046"))),
     db: AsyncSession = Depends(get_db),
 ):
     return {"bloqueos": await AgendaAuditorService(db).listar_bloqueos_activos()}
@@ -119,7 +121,7 @@ async def disponibilidad_mensual_general(
     incluir_canceladas: bool = Query(False),
     departamento: str | None = Query(None, max_length=100),
     pais: str | None = Query(None, max_length=100),
-    usuario: dict = Depends(requiere_permiso("SOL-006")),
+    usuario: dict = Depends(requiere_permiso("SOL-006", auxiliar=("AGE-010", "AGE-003", "AGE-046"))),
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).ver_disponibilidad_mensual_general(
@@ -531,20 +533,57 @@ async def confirmar_programacion(
 @router.post("/programacion/{id_programacion}/finalizar")
 async def finalizar_programacion(
     id_programacion: UUID,
-    data: dict,
+    request: Request,
     usuario: dict = Depends(requiere_permiso("SOL-006")),
     db: AsyncSession = Depends(get_db),
 ):
-    es_admin = _es_administrador(usuario)
-    id_usuario = usuario.get("id_usuario")
-    try:
-        id_usuario_uuid = UUID(str(id_usuario)) if id_usuario else None
-    except (ValueError, TypeError):
-        id_usuario_uuid = None
-    observaciones = (data or {}).get("observaciones")
-    return await AgendaAuditorService(db).finalizar_programacion(
-        id_programacion, id_usuario_uuid, observaciones, es_admin
+    """Finaliza la visita con su evaluación (1–100 %) y el Excel de la calificación.
+
+    multipart/form-data: observaciones, calificacion, comentario_visita,
+    situaciones_encontradas, oportunidades_mejora y archivo (.xlsx/.xls,
+    máx. 10 MB). Los dos últimos son obligatorios (422). Solo el auditor
+    asignado a la visita (403). Ver modules/calificacion_visitas/finalizacion_service.py.
+    """
+    datos, nombre, contenido = await _leer_finalizacion(request)
+    return await FinalizacionVisitaService(db).finalizar(
+        id_programacion,
+        usuario,
+        datos.get("observaciones"),
+        {clave: datos.get(clave) for clave in CAMPOS_EVALUACION},
+        nombre,
+        contenido,
     )
+
+
+CAMPOS_EVALUACION = ("calificacion", "comentario_visita", "situaciones_encontradas", "oportunidades_mejora")
+
+
+async def _leer_finalizacion(request: Request) -> tuple[dict, str | None, bytes | None]:
+    """Campos y archivo del formulario (JSON sin archivo también se acepta y da 422 por el Excel)."""
+    tipo = (request.headers.get("content-type") or "").lower()
+    if tipo.startswith("multipart/form-data"):
+        try:
+            formulario = await request.form()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="No se pudo leer el formulario de finalización. Vuelve a intentarlo.",
+            )
+        datos = {
+            clave: valor for clave, valor in formulario.items()
+            if isinstance(valor, str)
+        }
+        archivo = formulario.get("archivo")
+        if archivo is None or isinstance(archivo, str) or not getattr(archivo, "filename", ""):
+            return datos, None, None
+        # Se lee un byte más del máximo para detectar el exceso sin cargar todo.
+        contenido = await archivo.read(TAMANO_MAXIMO_EXCEL + 1)
+        return datos, archivo.filename, contenido
+    try:
+        datos = await request.json()
+    except Exception:
+        datos = {}
+    return (datos if isinstance(datos, dict) else {}), None, None
 
 
 @router.post("/programacion/{id_programacion}/solicitar-reprogramacion")

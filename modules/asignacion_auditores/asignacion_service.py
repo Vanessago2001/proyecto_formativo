@@ -36,11 +36,11 @@ SQL_ASIGNACION_ACTIVA = (
     "UPPER(TRIM(COALESCE(a.estado_asignacion, ''))) IN "
     "('AGENDADA', 'PROGRAMADA', 'CONFIRMADO', 'CONFIRMADA', 'ASIGNADO', 'ASIGNADA', 'ACTIVO', 'ACTIVA')"
 )
-# Regla de equipo (17/11/2026, rol único "Auditor"): ya no hay roles en la
-# asignación. La solicitud queda "completa" en cuanto tiene AL MENOS UN
-# auditor con asignación activa: deja de ofrecerse en Asignación y el backend
-# responde 409 si se intenta asignar otro desde esa pantalla. Más auditores
-# para la misma solicitud se suman desde Agenda al programar la visita.
+# Regla (17/11/2026 rol único "Auditor"; 18/11/2026 "Solo un auditor por
+# solicitud"): la solicitud queda "completa" en cuanto tiene UN auditor con
+# asignación activa: deja de ofrecerse en Asignación y el backend responde 409
+# si se intenta asignar otro. La Agenda tampoco suma auditores: programa la
+# visita con ese mismo auditor. Cambiar de auditor = cancelar y asignar otro.
 SQL_SOLICITUD_CON_EQUIPO_COMPLETO = f"""EXISTS (
     SELECT 1
     FROM auditores_solicitud a
@@ -728,9 +728,10 @@ class AsignacionAuditorService:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    f"La solicitud {radicado} ya tiene {total} auditor(es) asignado(s) "
-                    f"({quien}). Para sumar auditores hágalo desde Agenda al programar "
-                    "la visita, o cancele primero la asignación actual."
+                    f"Solo un auditor por solicitud: la solicitud {radicado} ya tiene "
+                    f"asignado a {quien}"
+                    + (f" (y {total - 1} más, registrados antes de la regla)" if total > 1 else "")
+                    + ". Para cambiarlo, cancele primero la asignación actual."
                 ),
             )
 

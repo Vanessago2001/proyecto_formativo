@@ -1564,11 +1564,11 @@
       <!-- Menú interno de etapas: static/nav.js lo oculta y las opciones del
            grupo "Solicitudes" del menú común pulsan estos botones (proxy). -->
       <nav class="side admin-nav" aria-label="Etapas de las solicitudes">
-        <button type="button" class="etapa-link" data-etapa="radicadas">Radicadas <span class="etapa-cuenta" data-contador="radicadas"></span></button>
-        <button type="button" class="etapa-link" data-etapa="revision">En revisión <span class="etapa-cuenta" data-contador="revision"></span></button>
-        <button type="button" class="etapa-link" data-etapa="por-asignar">Por asignar auditor <span class="etapa-cuenta" data-contador="por-asignar"></span></button>
-        <button type="button" class="etapa-link" data-etapa="con-auditores">Con auditores <span class="etapa-cuenta" data-contador="con-auditores"></span></button>
-        <button type="button" class="etapa-link" data-etapa="todas">Todas <span class="etapa-cuenta" data-contador="todas"></span></button>
+        <button type="button" class="etapa-link" data-etapa="radicadas" data-permiso-aux="SOL-006">Radicadas <span class="etapa-cuenta" data-contador="radicadas"></span></button>
+        <button type="button" class="etapa-link" data-etapa="revision" data-permiso-aux="SOL-006">En revisión <span class="etapa-cuenta" data-contador="revision"></span></button>
+        <button type="button" class="etapa-link" data-etapa="por-asignar" data-permiso-aux="SOL-041 SOL-042 SOL-043 SOL-044 SOL-045 SOL-046 SOL-047">Por asignar auditor <span class="etapa-cuenta" data-contador="por-asignar"></span></button>
+        <button type="button" class="etapa-link" data-etapa="con-auditores" data-permiso-aux="SOL-041 SOL-042 SOL-043 SOL-044 SOL-045 SOL-046 SOL-047">Con auditores <span class="etapa-cuenta" data-contador="con-auditores"></span></button>
+        <button type="button" class="etapa-link" data-etapa="todas" data-permiso-aux="SOL-006">Todas <span class="etapa-cuenta" data-contador="todas"></span></button>
       </nav>
 
       <div>
@@ -1583,12 +1583,12 @@
           <!-- Ciclo de la solicitud: un paso por etapa, con su contador. -->
           <nav class="etapas-pasos" aria-label="Ciclo de la solicitud">
             <ol>
-              <li><button type="button" class="etapa-paso" data-paso="radicadas"><span class="paso-num" aria-hidden="true">1</span><span class="paso-nombre">Radicadas</span><span class="paso-cuenta" data-contador="radicadas">…</span></button></li>
-              <li><button type="button" class="etapa-paso" data-paso="revision"><span class="paso-num" aria-hidden="true">2</span><span class="paso-nombre">En revisión</span><span class="paso-cuenta" data-contador="revision">…</span></button></li>
-              <li><button type="button" class="etapa-paso" data-paso="por-asignar"><span class="paso-num" aria-hidden="true">3</span><span class="paso-nombre">Por asignar auditor</span><span class="paso-cuenta" data-contador="por-asignar">…</span></button></li>
-              <li><button type="button" class="etapa-paso" data-paso="con-auditores"><span class="paso-num" aria-hidden="true">4</span><span class="paso-nombre">Con auditores</span><span class="paso-cuenta" data-contador="con-auditores">…</span></button></li>
+              <li><button type="button" class="etapa-paso" data-paso="radicadas" data-permiso-aux="SOL-006"><span class="paso-num" aria-hidden="true">1</span><span class="paso-nombre">Radicadas</span><span class="paso-cuenta" data-contador="radicadas">…</span></button></li>
+              <li><button type="button" class="etapa-paso" data-paso="revision" data-permiso-aux="SOL-006"><span class="paso-num" aria-hidden="true">2</span><span class="paso-nombre">En revisión</span><span class="paso-cuenta" data-contador="revision">…</span></button></li>
+              <li><button type="button" class="etapa-paso" data-paso="por-asignar" data-permiso-aux="SOL-041 SOL-042 SOL-043 SOL-044 SOL-045 SOL-046 SOL-047"><span class="paso-num" aria-hidden="true">3</span><span class="paso-nombre">Por asignar auditor</span><span class="paso-cuenta" data-contador="por-asignar">…</span></button></li>
+              <li><button type="button" class="etapa-paso" data-paso="con-auditores" data-permiso-aux="SOL-041 SOL-042 SOL-043 SOL-044 SOL-045 SOL-046 SOL-047"><span class="paso-num" aria-hidden="true">4</span><span class="paso-nombre">Con auditores</span><span class="paso-cuenta" data-contador="con-auditores">…</span></button></li>
             </ol>
-            <button type="button" class="etapa-paso etapa-todas" data-paso="todas"><span class="paso-nombre">Todas</span><span class="paso-cuenta" data-contador="todas">…</span></button>
+            <button type="button" class="etapa-paso etapa-todas" data-paso="todas" data-permiso-aux="SOL-006"><span class="paso-nombre">Todas</span><span class="paso-cuenta" data-contador="todas">…</span></button>
           </nav>
 
           <!-- Mensajes de las etapas 3 y 4 -->
@@ -1908,7 +1908,7 @@
               <!-- ACCIONES -->
               <div class="form-actions">
                 <button type="button" id="clearBtn" class="btn btn-secundario secondary-action">Limpiar</button>
-                <button type="submit" id="assignBtn" class="btn btn-primario primary-action" disabled>Asignar auditor</button>
+                <button type="submit" id="assignBtn" data-permiso-aux="SOL-047 SOL-048" class="btn btn-primario primary-action" disabled>Asignar auditor</button>
               </div>
             </form>
           </div>
@@ -2072,7 +2072,7 @@
         <ul id="advertenciaMotivos" style="margin:0 0 8px 18px;"><li>Consultando...</li></ul>
         <h4 style="color:#256d00;margin:18px 0 8px;">Competencia del auditor</h4>
         <div id="advertenciaCompetencias" class="audit-empty">Cargando competencias...</div>
-        <div id="advertenciaForzar" style="display:none;margin-top:16px;">
+        <div id="advertenciaForzar" data-permiso-aux="SOL-048" style="display:none;margin-top:16px;">
           <p style="margin:0 0 8px;"><strong>¿Está seguro de asignarlo de todas formas?</strong> Quedará registrado
             quién lo asignó, cuándo, las razones y su justificación.</p>
           <label for="advertenciaJustificacion" style="font-weight:600;font-size:13px;">Justificación (obligatoria)</label>
@@ -2083,7 +2083,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secundario secondary-action" onclick="cerrarModalAdvertencia()">Cancelar</button>
-          <button type="button" id="advertenciaConfirmar" class="btn btn-peligro" style="display:none;"
+          <button type="button" id="advertenciaConfirmar" data-permiso-aux="SOL-048" class="btn btn-peligro" style="display:none;"
             onclick="confirmarAsignacionNoElegible()">Sí, asignar de todas formas</button>
         </div>
       </div>
@@ -2159,11 +2159,11 @@
     </div>
   </div>
 
-  <script src="/static/solicitudes-revision.js?v=20261118a"></script>
-  <script src="/static/solicitudes-asignacion.js?v=20261118a"></script>
-  <script src="/static/solicitudes.js?v=20261118a"></script>
+  <script src="/static/solicitudes-revision.js?v=20261118flujo"></script>
+  <script src="/static/solicitudes-asignacion.js?v=20261118aux"></script>
+  <script src="/static/solicitudes.js?v=20261118flujo"></script>
   <script src="/static/session.js?v=20261118pub"></script>
-  <script src="/static/nav.js?v=20261118sol"></script>
+  <script src="/static/nav.js?v=20261118menu"></script>
 </body>
 
 </html>

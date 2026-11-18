@@ -3,6 +3,7 @@ from core.database import get_db
 
 from main import app
 from core.security import get_current_user
+from tests.permisos_aux import MENSAJE_SIN_PERMISO
 
 
 client = TestClient(app)
@@ -34,9 +35,11 @@ async def override_db():
     yield SesionComiteFalsa()
 
 
-def override_user(role_name: str):
+def override_user(role_name: str, delegados: tuple = ()):
+    # `delegados`: permisos que el Coordinador otorgó al Auxiliar (regla_auxiliar).
     async def _override():
         return {
+            **({"permisos_delegados": delegados} if delegados else {}),
             "id": "11111111-1111-1111-1111-111111111111",
             "nombre": "tester",
             "correo": "tester@example.com",
@@ -53,7 +56,13 @@ def test_comite_expedientes_pendientes_permite_admin_y_auxiliar():
     response = client.get("/comite/expedientes-pendientes")
     assert response.status_code == 200
 
+    # Auxiliar sin permiso delegado: 403 con el aviso de "Permisos de auxiliares".
     app.dependency_overrides[get_current_user] = override_user("Auxiliar")
+    response = client.get("/comite/expedientes-pendientes")
+    assert response.status_code == 403
+    assert MENSAJE_SIN_PERMISO in response.json()["detail"]
+
+    app.dependency_overrides[get_current_user] = override_user("Auxiliar", ("COM-001",))
     response = client.get("/comite/expedientes-pendientes")
     assert response.status_code == 200
 
@@ -115,7 +124,9 @@ def test_comite_consultas_relacionadas_devuelven_datos_de_sus_fuentes():
     async def override_db_consultas():
         yield db
 
-    app.dependency_overrides[get_current_user] = override_user("Auxiliar")
+    app.dependency_overrides[get_current_user] = override_user(
+        "Auxiliar", ("COM-004", "COM-005", "COM-006", "COM-008")
+    )
     app.dependency_overrides[get_db] = override_db_consultas
     try:
         informe = client.get("/comite/informe-auditor/11111111-1111-1111-1111-111111111111")

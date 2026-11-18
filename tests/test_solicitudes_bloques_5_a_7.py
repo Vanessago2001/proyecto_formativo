@@ -172,11 +172,15 @@ class BaseFalsa:
 
 
 async def pedir(db, rol, metodo, ruta, **kwargs):
+    # "Auxiliar+SOL-041": Auxiliar con ese permiso delegado por el Coordinador
+    # (regla_auxiliar); "Auxiliar" a secas no tiene ningún permiso.
+    rol, *delegados = rol.split("+")
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_current_user] = lambda: {
         "id_usuario": str(uuid.uuid4()),
         "role_name": rol,
         "nombre": rol,
+        **({"permisos_delegados": tuple(delegados)} if delegados else {}),
     }
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as cliente:
@@ -224,7 +228,9 @@ def test_reasignar_auditor_lo_hace_el_coordinador():
     [
         ("Super Administrador", 403),
         ("Administrador", 200),
-        ("Auxiliar", 200),
+        ("Auxiliar", 403),
+        # Buscar (SOL-041) y los filtros que aplica por defecto (SOL-042..046).
+        ("Auxiliar+SOL-041+SOL-042+SOL-043+SOL-044+SOL-046", 200),
         ("Empresa", 403),
         ("Auditor", 403),
         ("Comité", 403),
@@ -391,7 +397,7 @@ async def test_cada_movimiento_de_la_asignacion_deja_historial_y_bitacora():
 @pytest.mark.parametrize(
     "rol,esperado",
     [
-        ("Super Administrador", 403), ("Administrador", 200), ("Auxiliar", 200),
+        ("Super Administrador", 403), ("Administrador", 200), ("Auxiliar", 403), ("Auxiliar+SOL-051", 200),
         ("Empresa", 200), ("Auditor", 200), ("Comité", 200), ("Publico", 403),
     ],
 )
@@ -405,7 +411,7 @@ async def test_el_historial_lo_consulta_todo_el_mundo_menos_el_publico(rol, espe
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Administrador", 201), ("Auxiliar", 201), ("Auditor", 201), ("Empresa", 403), ("Comité", 403)],
+    [("Administrador", 201), ("Auxiliar", 403), ("Auxiliar+SOL-052", 201), ("Auditor", 201), ("Empresa", 403), ("Comité", 403)],
 )
 async def test_la_observacion_de_control_la_registra_quien_dice_la_hoja(rol, esperado):
     """SOL-052 incluye al Auditor y deja fuera a la empresa y al Comité."""
@@ -470,7 +476,7 @@ def test_no_se_confunde_el_cierre_con_otros_estados(estado):
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Administrador", 200), ("Auxiliar", 200), ("Empresa", 403), ("Auditor", 403), ("Comité", 403)],
+    [("Administrador", 200), ("Auxiliar", 403), ("Auxiliar+SOL-055", 200), ("Empresa", 403), ("Auditor", 403), ("Comité", 403)],
 )
 async def test_la_bitacora_es_para_la_administracion(rol, esperado):
     db = BaseFalsa(filas=[])
@@ -569,7 +575,7 @@ def test_no_se_calcula_con_datos_imposibles():
 
 @pytest.mark.parametrize(
     "rol,esperado",
-    [("Administrador", 201), ("Auxiliar", 201), ("Empresa", 403), ("Auditor", 403), ("Comité", 403)],
+    [("Administrador", 201), ("Auxiliar", 403), ("Auxiliar+SOL-062", 201), ("Empresa", 403), ("Auditor", 403), ("Comité", 403)],
 )
 async def test_calcular_el_tiempo_segun_la_hoja(rol, esperado):
     db = BaseFalsa(registro=None)

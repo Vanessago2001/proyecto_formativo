@@ -133,6 +133,10 @@ class ComiteActaService:
             raise HTTPException(status_code=404, detail="El expediente no existe o fue eliminado.")
         if estados.normalizar(expediente["estado"]) not in {estados.APROBADA, estados.RECHAZADA}:
             raise HTTPException(status_code=409, detail="El expediente debe tener un dictamen aprobado o rechazado.")
+        # El acta la genera (y la firma) solo el líder del comité de ESTE
+        # expediente (sin el SQL de líder por expediente, el líder global).
+        # Ni el Coordinador ni los demás miembros pueden generarla.
+        await self._exigir_lider(id_solicitud, usuario, "generar")
 
         acciones_resultado = await self.db.execute(text("""
             SELECT accion, datos, fecha
@@ -287,6 +291,25 @@ class ComiteActaService:
             ),
             "lider": {"id_usuario": str(lider["id_usuario"]), "nombre": lider.get("nombre")} if lider else None,
         }
+
+    async def _exigir_lider(self, id_solicitud: UUID, usuario: dict, accion: str) -> dict:
+        """409 si el expediente no tiene líder; 403 si quien pide no es ese líder."""
+        lider = await lider_de_expediente(self.db, id_solicitud)
+        if not lider:
+            raise HTTPException(
+                status_code=409,
+                detail=f"El expediente no tiene líder del comité: el Coordinador debe asignarlo antes de {accion} el acta.",
+            )
+        mi_id = str((usuario or {}).get("id_usuario") or (usuario or {}).get("id") or "")
+        if str(lider["id_usuario"]) != mi_id:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"Solo el líder del comité de este expediente ({lider.get('nombre') or 'líder asignado'}) "
+                    f"puede {accion} el acta."
+                ),
+            )
+        return lider
 
     async def firmar(self, id_solicitud: UUID, password_firma: str, usuario: dict) -> dict:
         # Solo firma el líder del comité de este expediente (elegido por el

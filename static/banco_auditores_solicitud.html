@@ -1849,8 +1849,8 @@
                         <td>
                             ${item.estado_validacion === "Pendiente" ? `
                                 <div class="action-group">
-                                    <button type="button" class="btn btn-primario btn-sm btn-review btn-approve" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
-                                    <button type="button" class="btn btn-peligro-contorno btn-sm btn-review btn-reject" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
+                                    <button type="button" data-permiso-aux="AUD-030" class="btn btn-primario btn-sm btn-review btn-approve" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
+                                    <button type="button" data-permiso-aux="AUD-030" class="btn btn-peligro-contorno btn-sm btn-review btn-reject" onclick="revisarCompetencia('${String(item.id_competencia).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
                                 </div>
                             ` : etiquetaAccionRevisada(item.estado_validacion)}
                         </td>
@@ -2200,8 +2200,8 @@
                         <td>
                             <div class="action-group">
                             ${item.estado_revision === "Pendiente" ? `
-                                <button type="button" class="btn btn-primario btn-sm btn-review btn-approve" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
-                                <button type="button" class="btn btn-peligro-contorno btn-sm btn-review btn-reject" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
+                                <button type="button" data-permiso-aux="AUD-012" class="btn btn-primario btn-sm btn-review btn-approve" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Aprobado')">Aprobar</button>
+                                <button type="button" data-permiso-aux="AUD-012" class="btn btn-peligro-contorno btn-sm btn-review btn-reject" onclick="revisarDocumentoSoporte('${String(item.id_documento).replace(/'/g,"")}', 'Rechazado')">Corregir</button>
                             ` : etiquetaAccionRevisada(item.estado_revision)}
                             </div>
                         </td>
@@ -2525,7 +2525,7 @@
                         Aprobado, pendiente de activar
                     </span>
                     <div class="activar-auditor-bloque">
-                        <button type="button" class="btn btn-primario btn-sm" id="btnActivarAuditor"
+                        <button type="button" data-permiso-aux="AUD-013" class="btn btn-primario btn-sm" id="btnActivarAuditor"
                             aria-haspopup="dialog">
                             Activar auditor
                         </button>
@@ -3144,7 +3144,7 @@
 
 <script src="/static/session.js?v=20261118pub"></script>
 
-<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/nav.js?v=20261118menu"></script>
 </body>
 
 </html>

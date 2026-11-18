@@ -43,6 +43,15 @@ from modules.auditores.auditor_schema import (
 )
 
 from modules.auditores.auditor_service import AuditorService
+from modules.permisos_auxiliar.regla_auxiliar import exigir_permiso_auxiliar
+
+
+# Hoja M4: consultar la postulación/hoja de vida (V) y registrar el
+# formulario del auditor (AUD-001, V) o sus observaciones técnicas (AUD-016).
+CODIGOS_AUXILIAR_CONSULTA = (
+    "AUD-011", "AUD-012", "AUD-017", "AUD-018", "AUD-019", "AUD-020", "AUD-029", "AUD-056",
+)
+CODIGOS_AUXILIAR_EDICION = ("AUD-001", "AUD-016")
 
 
 async def require_auditor_access(
@@ -50,11 +59,17 @@ async def require_auditor_access(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    if es_rol_administrativo(current_user):
+    # El Auxiliar actúa sobre el registro de otro auditor solo con permiso
+    # delegado: consultar (GET) o diligenciar el formulario (lo demás).
+    codigos_auxiliar = (
+        CODIGOS_AUXILIAR_CONSULTA if request.method in ("GET", "HEAD") else CODIGOS_AUXILIAR_EDICION
+    )
+    if es_rol_administrativo(current_user, *codigos_auxiliar):
         return current_user
 
     id_usuario = request.path_params.get("id_usuario")
     if id_usuario is not None and str(id_usuario) != str(current_user["id_usuario"]):
+        exigir_permiso_auxiliar(current_user, *codigos_auxiliar)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos para acceder a los datos de otro usuario.",
@@ -126,7 +141,7 @@ async def consultar_estado_auditor(
     # la respuesta incluye nombre y documento de identidad. Solo los roles
     # administrativos pueden consultar el estado de otra persona.
     propio = (current_user.get("correo") or "").strip().lower()
-    if not es_rol_administrativo(current_user) and correo.strip().lower() != propio:
+    if not es_rol_administrativo(current_user, "AUD-004") and correo.strip().lower() != propio:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo puede consultar el estado de su propio registro.",
@@ -744,7 +759,7 @@ async def eliminar_conflicto(
     db: AsyncSession = Depends(get_db),
 ):
     if (
-        not es_rol_administrativo(usuario)
+        not es_rol_administrativo(usuario, "AUD-035")
         and str(id_usuario) != str(usuario["id_usuario"])
     ):
         raise HTTPException(
@@ -766,7 +781,7 @@ async def consultar_empresas_restringidas(
     db: AsyncSession = Depends(get_db),
 ):
     # El auditor solo ve sus propios conflictos; los roles administrativos ven todos.
-    propio = None if es_rol_administrativo(current_user) else current_user["id_usuario"]
+    propio = None if es_rol_administrativo(current_user, "AUD-036") else current_user["id_usuario"]
     return {
         "empresas":
             await AuditorService(db).consultar_empresas_restringidas(propio)
@@ -847,7 +862,7 @@ async def crear_conflicto(
     db: AsyncSession = Depends(get_db),
 ):
     if (
-        not es_rol_administrativo(usuario)
+        not es_rol_administrativo(usuario, "AUD-035")
         and str(id_usuario) != str(usuario["id_usuario"])
     ):
         raise HTTPException(
@@ -872,7 +887,7 @@ async def actualizar_conflicto(
     db: AsyncSession = Depends(get_db),
 ):
     if (
-        not es_rol_administrativo(usuario)
+        not es_rol_administrativo(usuario, "AUD-035")
         and str(id_usuario) != str(usuario["id_usuario"])
     ):
         raise HTTPException(
@@ -1081,7 +1096,7 @@ async def enviar_formulario_inscripcion(
     db: AsyncSession = Depends(get_db),
 ):
     if (
-        not es_rol_administrativo(usuario)
+        not es_rol_administrativo(usuario, "AUD-001")
         and str(data.id_usuario) != str(usuario["id_usuario"])
     ):
         raise HTTPException(
@@ -1127,7 +1142,7 @@ async def crear_nueva_postulacion(
     db: AsyncSession = Depends(get_db),
 ):
     if (
-        not es_rol_administrativo(usuario)
+        not es_rol_administrativo(usuario, "AUD-001")
         and str(data.id_usuario) != str(usuario["id_usuario"])
     ):
         raise HTTPException(

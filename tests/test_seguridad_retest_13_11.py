@@ -176,16 +176,18 @@ async def test_firmar_sin_sesion_responde_401():
 
 @pytest.mark.parametrize("rol", ["Coordinador", "Auxiliar"])
 async def test_coordinador_y_auxiliar_obtienen_enlace(rol):
+    # El Auxiliar, con AUD-057 (descargar hoja de vida) delegado por el Coordinador.
     respuesta = await pedir(
-        "get", "/archivos/firmar", usuario={"id_usuario": "1", "role_name": rol},
+        "get", "/archivos/firmar", usuario={"id_usuario": "1", "role_name": rol, "permisos_delegados": ("AUD-057",)},
         db=BaseFalsa([]), params={"ruta": "/uploads/auditores/hoja.pdf"},
     )
     assert respuesta.status_code == 200
     assert respuesta.json()["url"].startswith("/archivos/")
 
 
-@pytest.mark.parametrize("rol", ["Empresa", "Comité", "Publico"])
+@pytest.mark.parametrize("rol", ["Empresa", "Comité", "Publico", "Auxiliar"])
 async def test_otros_roles_no_obtienen_enlace(rol):
+    """Incluye al Auxiliar sin permisos delegados."""
     respuesta = await pedir(
         "get", "/archivos/firmar", usuario={"id_usuario": "1", "role_name": rol},
         db=BaseFalsa([]), params={"ruta": "/uploads/auditores/hoja.pdf"},

@@ -6,10 +6,18 @@
    pantalla unificada static/solicitudes.html (18/11/2026) y ampliado
    con el ciclo de la solicitud sobre endpoints que ya existían:
 
-     · Radicada    -> "Pasar a revisión"      PATCH /solicitudes/{id}/estado (SOL-054)
-     · En revisión -> revisar documentos        POST .../documentos/{id}/aprobar|rechazar|solicitar-correccion
-                      (SOL-038/037/039), "Aprobar solicitud" y "Rechazar solicitud" (SOL-054)
-     · Aprobada    -> "Ir a asignar auditor"    (etapa "Por asignar auditor")
+     · Radicada    -> al abrirla el Coordinador pasa sola a "En revisión"
+                      (PATCH /solicitudes/{id}/estado, SOL-054); el Auxiliar
+                      conserva el botón "Pasar a revisión".
+     · En revisión -> en la MISMA vista: documentos legales de la empresa
+                      (POST /api/empresas/{id}/documentos/{doc}/aprobar|correccion|rechazar,
+                      EMP-018/019/017), documentos de la solicitud
+                      (POST .../documentos/{id}/aprobar|rechazar|solicitar-correccion,
+                      SOL-038/037/039) y sedes. "Aprobar solicitud" exige los
+                      documentos legales obligatorios aprobados y al menos una
+                      sede (el backend responde 409 si falta algo).
+     · Aprobada    -> se pasa DIRECTAMENTE a "Por asignar auditor" con la
+                      solicitud seleccionada (flujo 18/11/2026).
 
    El Auxiliar tiene SOL-054 "con aprobación": el backend responde 202 y
    el cambio queda pendiente del Coordinador (o 200 si tiene el permiso
@@ -23,6 +31,19 @@
 
   const token = localStorage.getItem("access_token");
   if (!token) return;
+
+  // Flujo 18/11/2026: solo el Coordinador pasa una radicada a revisión al
+  // abrirla (para el Auxiliar SOL-054 puede quedar pendiente de aprobación).
+  const ES_COORDINADOR = (() => {
+    try {
+      const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      const rol = String(JSON.parse(atob(parte)).role_name || "").normalize("NFD")
+        .replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+      return ["coordinador", "administrador", "admin", "adm"].includes(rol);
+    } catch (_) {
+      return false;
+    }
+  })();
 
   const ESTADOS = ["Borrador", "Radicada", "En revision", "Aprobada", "Rechazada", "Cancelada", "Cerrada"];
   const normalizarEstado = (valor) => String(valor || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -40,7 +61,7 @@
       coincide: (e) => esEstado(e, "Radicada")
     },
     revision: {
-      vacio: "No hay solicitudes en revisión. Pase a revisión una solicitud radicada para empezar.",
+      vacio: "No hay solicitudes en revisión. Abra una solicitud radicada para empezar a revisarla.",
       coincide: (e) => esEstado(e, "En revision")
     },
     todas: {
@@ -64,7 +85,9 @@
     seleccionada: null,
     cargada: false,
     documentos: [],
-    sedes: []
+    sedes: [],
+    legales: null,
+    requisitos: null
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -357,13 +380,33 @@
     renderizarCola();
     $("#detailPanel").innerHTML = '<div class="comite-loading">Cargando solicitud...</div>';
     try {
-      const [info, sedes, documentos] = await Promise.all([
+      let [info, sedes, documentos] = await Promise.all([
         api("/solicitudes/" + id + "/informacion-general"),
         api("/solicitudes/" + id + "/sedes"),
         api("/solicitudes/" + id + "/documentos").catch(() => null)
       ]);
+      // Flujo 18/11/2026: abrir una radicada la toma para revisión. Solo el
+      // Coordinador la pasa en el acto; el Auxiliar conserva el botón
+      // "Pasar a revisión" (su SOL-054 puede quedar pendiente de aprobación).
+      if (esEstado(info.estado, "Radicada") && ES_COORDINADOR) {
+        try {
+          await enviarJson("/solicitudes/" + id + "/estado", "PATCH", {
+            estado: "En revision",
+            motivo: "Revisión iniciada por el Coordinador al abrir la solicitud."
+          });
+          info = await api("/solicitudes/" + id + "/informacion-general");
+          await cargar();
+          recargarContadores();
+          if (estado.filtro === "radicadas" && window.SolicitudesEtapas) await window.SolicitudesEtapas.ir("revision");
+          mostrar("La solicitud " + (info.numero_radicado || "") + " pasó a \"En revisión\". Revise los documentos y las sedes.", "success");
+        } catch (error) {
+          mostrar(error.message, "error");
+        }
+      }
       estado.sedes = sedes || [];
       estado.documentos = documentos;
+      await cargarLegales(info);
+      if (String(estado.seleccionada) !== String(id)) return;
       renderizarDetalle(info, estado.sedes, null);
       if (window.matchMedia("(max-width: 1100px)").matches) $("#detailPanel").scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
@@ -387,9 +430,9 @@
       const acciones = [];
       acciones.push('<button type="button" class="btn btn-secundario btn-sm" data-doc-ver="' + esc(d.id_documento) + '">Ver</button>');
       if (enRevision) {
-        if (d.estado !== "Aprobado") acciones.push('<button type="button" class="btn btn-primario btn-sm" data-doc-accion="aprobar" data-doc="' + esc(d.id_documento) + '">Aprobar</button>');
-        if (d.estado !== "Correccion") acciones.push('<button type="button" class="btn btn-secundario btn-sm" data-doc-accion="solicitar-correccion" data-doc="' + esc(d.id_documento) + '">Pedir corrección</button>');
-        if (d.estado !== "Rechazado") acciones.push('<button type="button" class="btn btn-peligro-contorno btn-sm" data-doc-accion="rechazar" data-doc="' + esc(d.id_documento) + '">Rechazar</button>');
+        if (d.estado !== "Aprobado") acciones.push('<button type="button" class="btn btn-primario btn-sm" data-doc-accion="aprobar" data-permiso-aux="SOL-038" data-doc="' + esc(d.id_documento) + '">Aprobar</button>');
+        if (d.estado !== "Correccion") acciones.push('<button type="button" class="btn btn-secundario btn-sm" data-doc-accion="solicitar-correccion" data-permiso-aux="SOL-039" data-doc="' + esc(d.id_documento) + '">Pedir corrección</button>');
+        if (d.estado !== "Rechazado") acciones.push('<button type="button" class="btn btn-peligro-contorno btn-sm" data-doc-accion="rechazar" data-permiso-aux="SOL-037" data-doc="' + esc(d.id_documento) + '">Rechazar</button>');
       }
       return "<li><strong>" + esc(d.tipo_documento) + "</strong>" +
         "<span>" + esc(d.nombre_archivo) + " · versión " + esc(d.version) + " " +
@@ -398,6 +441,104 @@
         (d.observaciones ? '<span class="comite-muted">Observación: ' + esc(d.observaciones) + "</span>" : "") +
         '<span class="documento-acciones">' + acciones.join("") + "</span></li>";
     }).join("") + "</ul>";
+  }
+
+  // ---------------- documentos legales de la empresa (EMP-015..019) ----------------
+  async function cargarLegales(info) {
+    estado.legales = null;
+    estado.requisitos = null;
+    if (!info || !info.id_empresa) return;
+    const base = "/api/empresas/" + info.id_empresa;
+    const [legales, requisitos] = await Promise.all([
+      api(base + "/documentos").catch(() => null),
+      api(base + "/requisitos").catch(() => null)
+    ]);
+    estado.legales = legales;
+    estado.requisitos = requisitos;
+  }
+
+  function chipDocumento(valor) {
+    const texto = valor ? (ESTADO_DOC[valor] || valor) : "Sin subir";
+    const clase = valor === "Aprobado" ? "approved" : (valor === "Rechazado" || valor === "Vencido" || !valor) ? "rejected" : "pending";
+    return '<span class="comite-status ' + clase + '">' + esc(texto) + "</span>";
+  }
+
+  function htmlLegales(enRevision) {
+    const req = estado.requisitos;
+    const docs = estado.legales;
+    if (!req || docs === null) return '<p class="comite-muted">No se pudieron consultar los documentos legales de la empresa.</p>';
+    const usados = new Set();
+    const item = (d, titulo, situacion) => {
+      const acciones = [];
+      if (d) {
+        usados.add(String(d.id_documento));
+        acciones.push('<button type="button" class="btn btn-secundario btn-sm" data-legal-ver="' + esc(d.id_documento) + '">Ver</button>');
+        if (enRevision) {
+          if (situacion !== "Aprobado") acciones.push('<button type="button" class="btn btn-primario btn-sm" data-legal-accion="aprobar" data-permiso-aux="EMP-018" data-doc="' + esc(d.id_documento) + '">Aprobar</button>');
+          if (situacion !== "Correccion") acciones.push('<button type="button" class="btn btn-secundario btn-sm" data-legal-accion="correccion" data-permiso-aux="EMP-019" data-doc="' + esc(d.id_documento) + '">Pedir corrección</button>');
+          if (situacion !== "Rechazado") acciones.push('<button type="button" class="btn btn-peligro-contorno btn-sm" data-legal-accion="rechazar" data-permiso-aux="EMP-017" data-doc="' + esc(d.id_documento) + '">Rechazar</button>');
+        }
+      }
+      return "<li><strong>" + titulo + "</strong>" +
+        "<span>" + (d ? esc(d.nombre_archivo || "") + " · versión " + esc(d.version) + " " : "La empresa no lo ha subido. ") + chipDocumento(situacion) + "</span>" +
+        (d && d.observaciones ? '<span class="comite-muted">Observación: ' + esc(d.observaciones) + "</span>" : "") +
+        (acciones.length ? '<span class="documento-acciones">' + acciones.join("") + "</span>" : "") + "</li>";
+    };
+    const obligatorios = req.documentos.map((o) => {
+      const d = o.id_documento ? (docs || []).find((x) => String(x.id_documento) === String(o.id_documento)) : null;
+      return item(d, esc(o.tipo_documento) + " (obligatorio)", o.estado);
+    });
+    const otros = (docs || []).filter((d) => !usados.has(String(d.id_documento)))
+      .map((d) => item(d, esc(d.tipo_documento), d.estado_validacion));
+    return '<ul class="comite-item-list documentos-revision">' + obligatorios.concat(otros).join("") + "</ul>";
+  }
+
+  // Lo que impide aprobar: documentos legales obligatorios sin aprobar y
+  // solicitud sin sedes (el backend lo exige con 409).
+  function bloqueosAprobacion(info) {
+    const falta = [];
+    const req = estado.requisitos;
+    if (req) {
+      const sinAprobar = req.documentos.filter((d) => !d.aprobado).map((d) => d.tipo_documento);
+      if (sinAprobar.length) falta.push("aprobar los documentos legales " + sinAprobar.join(", "));
+    }
+    if (!Number(info.sedes_incluidas)) falta.push("la solicitud no tiene sedes incluidas");
+    return falta;
+  }
+
+  function accionLegal(accion, idDocumento) {
+    const info = estado.info || {};
+    const doc = (estado.legales || []).find((d) => String(d.id_documento) === String(idDocumento));
+    if (!doc || !info.id_empresa) return;
+    const ruta = "/api/empresas/" + info.id_empresa + "/documentos/" + idDocumento + "/" + accion;
+    const ejecutar = async (texto) => {
+      await enviarJson(ruta, "POST", { observaciones: texto || null });
+      await cargarLegales(info);
+      renderizarDetalle(estado.info, estado.sedes, null);
+      const textos = { aprobar: "aprobado", rechazar: "rechazado", correccion: "devuelto para corrección" };
+      mostrar("Documento legal \"" + doc.tipo_documento + "\" " + textos[accion] + ".", "success");
+    };
+    if (accion === "aprobar") {
+      abrirDecision({
+        titulo: "Aprobar documento legal",
+        texto: "\"" + doc.tipo_documento + "\" de la empresa quedará aprobado.",
+        etiqueta: "Observación (opcional)",
+        boton: "Aprobar documento",
+        alConfirmar: ejecutar
+      });
+    } else {
+      const rechazar = accion === "rechazar";
+      abrirDecision({
+        titulo: rechazar ? "Rechazar documento legal" : "Pedir corrección",
+        texto: "\"" + doc.tipo_documento + "\": la empresa verá este texto y deberá subir una versión nueva.",
+        etiqueta: rechazar ? "Motivo del rechazo (obligatorio)" : "Corrección que debe hacer la empresa (obligatorio)",
+        placeholder: "Mínimo 5 caracteres",
+        minimo: 5,
+        peligro: rechazar,
+        boton: rechazar ? "Rechazar documento" : "Pedir corrección",
+        alConfirmar: ejecutar
+      });
+    }
   }
 
   function resumenDocumentos() {
@@ -436,15 +577,22 @@
         '<div class="comite-decision-actions"><button type="button" class="comite-button primary btn btn-primario" data-ciclo="revision">Pasar a revisión</button></div>';
     } else if (enRevision) {
       const r = resumenDocumentos();
-      ciclo = '<p class="comite-muted">' + (r.total
-        ? (r.sinAprobar ? r.sinAprobar + " de " + r.total + " documento(s) sin aprobar." : "Todos los documentos están aprobados.")
-        : "Sin documentos adjuntos.") + " Pida correcciones desde cada documento.</p>" +
+      const req = estado.requisitos;
+      const bloqueos = bloqueosAprobacion(info);
+      const explicacion = bloqueos.length ? "Para aprobar falta: " + bloqueos.join("; ") + "." : "";
+      ciclo = '<p class="comite-muted">' +
+        (req ? "Documentos legales obligatorios aprobados: " + req.documentos_aprobados + "/" + req.documentos_total + ". " : "") +
+        (r.total
+          ? (r.sinAprobar ? r.sinAprobar + " de " + r.total + " documento(s) de la solicitud sin aprobar." : "Documentos de la solicitud aprobados.")
+          : "La solicitud no tiene documentos adjuntos.") + " Pida correcciones desde cada documento.</p>" +
+        (explicacion ? '<p class="comite-readonly-note" id="aprobarBloqueo">' + esc(explicacion) + "</p>" : "") +
         '<div class="comite-decision-actions">' +
-        '<button type="button" class="comite-button primary btn btn-primario" data-ciclo="aprobar">Aprobar solicitud</button>' +
+        '<button type="button" class="comite-button primary btn btn-primario" data-ciclo="aprobar"' +
+        (explicacion ? ' disabled aria-describedby="aprobarBloqueo" title="' + esc(explicacion) + '"' : "") + ">Aprobar solicitud</button>" +
         '<button type="button" class="comite-button btn btn-peligro-contorno" data-ciclo="rechazar">Rechazar solicitud</button></div>';
     } else if (aprobada) {
       ciclo = '<p class="comite-muted">Solicitud aprobada: el paso siguiente es asignarle un auditor.</p>' +
-        '<div class="comite-decision-actions"><button type="button" class="comite-button primary btn btn-primario" data-ir-asignar="1">Ir a asignar auditor</button></div>';
+        '<div class="comite-decision-actions"><button type="button" class="comite-button primary btn btn-primario" data-ir-asignar="1" data-permiso-aux="SOL-041 SOL-042 SOL-043 SOL-044 SOL-045 SOL-046 SOL-047">Ir a asignar auditor</button></div>';
     }
 
     $("#detailPanel").innerHTML =
@@ -459,15 +607,18 @@
       fact("Sedes declaradas / incluidas", valorONo(info.numero_sedes) + " / " + info.sedes_incluidas) +
       "</dl>" +
       (ciclo ? '<div class="comite-detail-section"><h4>Ciclo de la solicitud</h4>' + ciclo + "</div>" : "") +
-      '<div class="comite-detail-section"><h4>Documentos (' + ((estado.documentos || []).length) + ")</h4>" + htmlDocumentos(enRevision) + "</div>" +
+      '<div class="comite-detail-section"><h4>Documentos legales de la empresa' +
+      (estado.requisitos ? " (" + estado.requisitos.documentos_aprobados + "/" + estado.requisitos.documentos_total + " obligatorios aprobados)" : "") +
+      "</h4>" + htmlLegales(enRevision) + "</div>" +
+      '<div class="comite-detail-section"><h4>Documentos de la solicitud (' + ((estado.documentos || []).length) + ")</h4>" + htmlDocumentos(enRevision) + "</div>" +
       '<div class="comite-detail-section"><h4>Sedes incluidas (' + sedes.length + ")</h4>" + listaSedes + "</div>" +
       resultado +
       '<div class="comite-detail-section"><h4>Acciones</h4>' +
       (validable ? "" : '<p class="comite-readonly-note">Solo se validan las sedes de solicitudes radicadas.</p>') +
       '<div class="comite-decision-actions">' +
-      '<button id="validarButton" class="comite-button primary btn btn-primario" type="button"' + (validable ? "" : " disabled") + ">Validar sedes</button>" +
-      '<button class="comite-button secondary btn btn-secundario" type="button" data-descargar="excel">Exportar sedes a Excel</button>' +
-      '<button class="comite-button secondary btn btn-secundario" type="button" data-descargar="pdf">Descargar PDF</button>' +
+      '<button id="validarButton" data-permiso-aux="SOL-029" class="comite-button primary btn btn-primario" type="button"' + (validable ? "" : " disabled") + ">Validar sedes</button>" +
+      '<button class="comite-button secondary btn btn-secundario" type="button" data-descargar="excel" data-permiso-aux="SOL-030">Exportar sedes a Excel</button>' +
+      '<button class="comite-button secondary btn btn-secundario" type="button" data-descargar="pdf" data-permiso-aux="SOL-007">Descargar PDF</button>' +
       "</div></div>";
   }
 
@@ -567,8 +718,12 @@
     await cargar();
     recargarContadores();
     if (nuevo === "Aprobada") {
+      // Flujo 18/11/2026: al aprobar se pasa directamente a "Por asignar
+      // auditor" con la solicitud ya seleccionada (sin clic intermedio).
       mostrar("Solicitud " + (info.numero_radicado || "") + " aprobada. Ya puede asignarle un auditor.", "success",
-        '<button type="button" class="btn btn-primario btn-sm" data-ir-asignar="1">Ir a asignar auditor</button>');
+        '<button type="button" class="btn btn-primario btn-sm" data-ir-asignar="1" data-permiso-aux="SOL-041 SOL-042 SOL-043 SOL-044 SOL-045 SOL-046 SOL-047">Ir a asignar auditor</button>');
+      irAAsignar();
+      return;
     } else if (nuevo === "En revision") {
       mostrar("La solicitud " + (info.numero_radicado || "") + " pasó a revisión.", "success",
         '<button type="button" class="btn btn-secundario btn-sm" data-ir-etapa="revision">Ver en "En revisión"</button>');
@@ -742,6 +897,12 @@
     if (evento.target.closest("[data-ir-asignar]")) return irAAsignar();
     const doc = evento.target.closest("[data-doc-accion]");
     if (doc) return accionDocumento(doc.dataset.docAccion, doc.dataset.doc);
+    const legal = evento.target.closest("[data-legal-accion]");
+    if (legal) return accionLegal(legal.dataset.legalAccion, legal.dataset.doc);
+    const verLegal = evento.target.closest("[data-legal-ver]");
+    if (verLegal && estado.info && estado.info.id_empresa) {
+      return verEnPestana("/api/empresas/" + estado.info.id_empresa + "/documentos/" + verLegal.dataset.legalVer + "/archivo");
+    }
     const ver = evento.target.closest("[data-doc-ver]");
     if (ver) return verEnPestana("/solicitudes/" + estado.seleccionada + "/documentos/" + ver.dataset.docVer + "/ver");
     const boton = evento.target.closest("[data-descargar]");

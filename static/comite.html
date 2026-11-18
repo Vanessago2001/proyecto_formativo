@@ -63,6 +63,9 @@
     .cal-evaluacion { border-top: 1px dashed #e2e8f0; margin-top: 8px; padding-top: 8px; }
     .cal-falta { border: 1px solid #f3c58b; background: #fff8ee; color: #7c3d00; border-radius: 8px; padding: 10px 12px; margin: 6px 0 12px; font-size: 13px; }
     .cal-falta ul { margin: 6px 0 0; padding-left: 18px; }
+    .cal-excel { margin: 8px 0 0; font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+    .cal-excel a { font-weight: 700; color: #256d00; }
+    .cal-excel-error { color: #8a2020; font-size: 12px; }
     .cal-aviso { border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; border-radius: 8px; padding: 10px 12px; font-size: 13px; }
     .decision-bloqueo { margin: 8px 0 0; font-size: 13px; color: #7c3d00; }
     /* Vista unificada de expedientes */
@@ -218,8 +221,8 @@
                   <p id="resultCount" role="status" aria-live="polite">Cargando expedientes...</p>
                 </div>
                 <div class="comite-search-row">
-                  <button id="exportButton" class="comite-button secondary btn btn-secundario btn-sm" type="button" data-formato="xlsx">Exportar decisiones (Excel)</button>
-                  <button id="exportPdfButton" class="comite-button secondary btn btn-secundario btn-sm" type="button" data-formato="pdf">Exportar decisiones (PDF)</button>
+                  <button id="exportButton" data-permiso-aux="COM-020" class="comite-button secondary btn btn-secundario btn-sm" type="button" data-formato="xlsx">Exportar decisiones (Excel)</button>
+                  <button id="exportPdfButton" data-permiso-aux="COM-020" class="comite-button secondary btn btn-secundario btn-sm" type="button" data-formato="pdf">Exportar decisiones (PDF)</button>
                 </div>
               </div>
               <div class="comite-table-wrap">
@@ -256,8 +259,8 @@
         <section id="firmasView" class="comite-panel comite-view-hidden" hidden>
           <div class="comite-panel-heading">
             <div>
-              <h3>Certificados pendientes de firma</h3>
-              <p>Cuando el Comité aprueba una solicitud se crea el borrador del certificado y llega aquí. Al firmarlo queda vigente y publicado.</p>
+              <h3>Actas y certificados pendientes</h3>
+              <p>Como líder del comité de cada expediente decidido, genera y firma su acta. Cuando el Comité aprueba una solicitud se crea el borrador del certificado y llega aquí; al firmarlo queda vigente y publicado.</p>
             </div>
             <button id="firmasActualizar" class="comite-button secondary btn btn-secundario" type="button">Actualizar</button>
           </div>
@@ -271,6 +274,9 @@
             </div>
             <button class="comite-button primary btn btn-primario" type="submit">Guardar contraseña de firma</button>
           </form>
+          <h4>Actas del comité</h4>
+          <div id="firmasActas" class="comite-history-content">Cargando...</div>
+          <h4>Certificados</h4>
           <div id="firmasContent" class="comite-history-content">Cargando...</div>
         </section>
       </section>
@@ -552,16 +558,61 @@
         if (item.decision) {
           botones.push('<button class="btn btn-secundario btn-sm" type="button" data-dictamen="' + i + '">Ver dictamen</button>');
         }
-        // La firma no es evaluar: firma el líder del comité de ESE expediente
-        // (elegido por el Coordinador), aunque esté impedido para evaluar.
-        const esMiLiderazgo = state.esLider && item.lider && String(item.lider.id_usuario) === miId;
-        if (esMiLiderazgo && item.certificado_pendiente_firma && item.id_certificado) {
+        // El acta la genera y la firma solo el líder del comité de ESE
+        // expediente (o el líder global sin el SQL), aunque esté impedido
+        // para evaluar. A los demás miembros no les aparecen estos botones.
+        botones.push(...botonesDelLider(item, i, "data-firmar-acta"));
+        return '<div class="acciones-fila">' + botones.join("") + '</div>';
+      }
+
+      // Botones del líder según el estado del acta y del certificado.
+      function esMiLiderazgo(item) {
+        return Boolean(item && (item.es_mi_liderazgo || (item.lider && miId && String(item.lider.id_usuario) === miId)));
+      }
+      function botonesDelLider(item, i, atributoFirmar) {
+        if (!esMiLiderazgo(item) || !item.decision) return [];
+        const id = item.id || item.expediente_id;
+        const acta = String(item.estado_acta || "").trim().toUpperCase();
+        const botones = [];
+        if (acta === "FIRMADA") {
+          botones.push('<button class="btn btn-secundario btn-sm" type="button" data-ver-acta="' + i + '">Ver acta firmada</button>');
+        } else if (acta === "GENERADA") {
+          botones.push('<button class="btn btn-primario btn-sm" type="button" ' + atributoFirmar + '="' + escapeHtml(id) + '">Firmar acta</button>');
+        } else if (item.acta_generable) {
+          botones.push('<button class="btn btn-primario btn-sm" type="button" data-generar-acta="' + i + '">Generar acta</button>');
+        }
+        if (item.certificado_pendiente_firma && item.id_certificado) {
           botones.push('<button class="btn btn-primario btn-sm" type="button" data-firmar-cert="' + i + '">Firmar certificado</button>');
         }
-        if (esMiLiderazgo && item.estado_acta === "GENERADA") {
-          botones.push('<button class="btn btn-secundario btn-sm" type="button" data-firmar-acta="' + escapeHtml(id) + '">Firmar acta</button>');
+        return botones;
+      }
+
+      // Genera el acta desde la fila (solo el líder). El fundamento es el de la
+      // decisión del Comité; el comentario solo se usa si la decisión no lo tiene.
+      async function generarActaDesdeFila(item) {
+        if (!item) return;
+        const id = item.id || item.expediente_id;
+        if (!confirm("Va a generar el acta definitiva del expediente " + (item.codigo || "") + ". Después deberá firmarla. ¿Desea continuar?")) return;
+        try {
+          const result = await api("/comite/acta-definitiva", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expediente_id: id, comentario: item.comentario || "Acta definitiva generada por el líder del comité." })
+          });
+          await refrescarTrasActa();
+          showFeedback(result && result.mensaje || "Acta generada: queda pendiente de su firma.", "success");
+          mostrarAvisoArriba();
+        } catch (error) {
+          showFeedback(error.message, "error");
+          mostrarAvisoArriba();
         }
-        return '<div class="acciones-fila">' + botones.join("") + '</div>';
+      }
+
+      async function refrescarTrasActa() {
+        const tareas = [loadExpedientes()];
+        if (state.esLider) tareas.push(cargarPendientesDeFirma().catch(() => null));
+        if (!$("#firmasView").hidden) tareas.push(loadFirmas());
+        await Promise.all(tareas);
       }
 
       // Líder del comité del expediente. El Coordinador lo elige entre quienes
@@ -692,6 +743,13 @@
         if (lider) return abrirLider(state.expedientes[Number(lider.dataset.lider)]);
         const firmarCert = evento.target.closest("[data-firmar-cert]");
         if (firmarCert) return abrirFirmaCertificado(state.expedientes[Number(firmarCert.dataset.firmarCert)]);
+        const generarActa = evento.target.closest("[data-generar-acta]");
+        if (generarActa) return generarActaDesdeFila(state.expedientes[Number(generarActa.dataset.generarActa)]);
+        const verActa = evento.target.closest("[data-ver-acta]");
+        if (verActa) {
+          const fila = state.expedientes[Number(verActa.dataset.verActa)];
+          return descargarActa(fila.id || fila.expediente_id, fila.codigo);
+        }
         const firmarActa = evento.target.closest("[data-firmar-acta]");
         if (firmarActa) {
           state.selectedId = firmarActa.dataset.firmarActa;
@@ -742,6 +800,8 @@
         const acta = actaStatus && actaStatus.acta;
         const actaGenerada = Boolean(acta && acta.estado === "GENERADA");
         const actaFirmada = Boolean(acta && acta.estado === "FIRMADA");
+        const liderActa = actaStatus && actaStatus.lider;
+        const esLiderActa = Boolean(liderActa && miId && String(liderActa.id_usuario) === miId);
         const evidenceItems = evidence && evidence.evidencias || [];
         const nonconformityItems = nonconformities && nonconformities.no_conformidades || [];
         const observationItems = observations && observations.observaciones || [];
@@ -768,9 +828,9 @@
           fact("Resultado del auditor", reportData.resultado || "Sin informe disponible") +
           fact("Fecha del informe", reportData.fecha || "No disponible") +
           '</dl>' +
-          '<div class="comite-detail-section" id="calificacionesAuditores" aria-live="polite"><h4>Evaluación de los auditores de cada visita</h4><p class="comite-muted">Cargando calificaciones...</p></div>' +
+          '<div class="comite-detail-section" id="calificacionesAuditores" aria-live="polite"><h4>Evaluación del auditor de cada visita</h4><p class="comite-muted">Cargando calificaciones...</p></div>' +
           '<div class="comite-detail-section"><h4>Documentos</h4><div class="detalle-botones">' +
-          '<button class="comite-button secondary btn btn-secundario btn-sm" data-resource="/comite/expediente-descargar/' + escapeHtml(id) + '">Descargar expediente digital</button>' +
+          '<button class="comite-button secondary btn btn-secundario btn-sm" data-permiso-aux="COM-003" data-resource="/comite/expediente-descargar/' + escapeHtml(id) + '">Descargar expediente digital</button>' +
           (actaFirmada ? '<button class="comite-button secondary btn btn-secundario btn-sm" data-resource="/comite/acta-firmada/' + escapeHtml(id) + '">Descargar acta firmada</button>' : '') +
           '</div></div>' +
           '<div class="comite-detail-section"><h4>Evidencias físicas</h4>' +
@@ -799,8 +859,10 @@
             '</div></details>' : '') +
           '</div>' +
           (canDecide ? '<div class="comite-detail-section"><h4>Acta</h4><p class="comite-muted">' + escapeHtml(estadoActa) + '</p><div class="detalle-botones">' +
-            '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/acta-definitiva" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Generar acta definitiva</button>' +
-            '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/firmar-acta" ' + (actaGenerada && actaStatus.puede_firmar ? "" : "disabled") + '>Firmar acta</button>' +
+            (esLiderActa
+              ? '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/acta-definitiva" data-requires-final ' + (hasFinalDecision ? "" : "disabled") + '>Generar acta definitiva</button>' +
+                '<button class="comite-button secondary btn btn-secundario btn-sm" data-decision="/comite/firmar-acta" ' + (actaGenerada && actaStatus.puede_firmar ? "" : "disabled") + '>Firmar acta</button>'
+              : '<p class="comite-muted">El acta la genera y la firma el líder del comité de este expediente' + (liderActa && liderActa.nombre ? " (" + escapeHtml(liderActa.nombre) + ")" : "") + '.</p>') +
             '<button class="comite-button danger btn btn-peligro btn-sm" data-decision="/comite/cerrar-expediente" data-requires-acta-signed ' + (actaFirmada ? "" : "disabled") + '>Cerrar expediente</button>' +
             (isSuperAdmin ? '<button class="comite-button danger btn btn-peligro btn-sm" data-decision="/comite/reabrir-dictamen">Reabrir dictamen</button>' : '') +
             '</div></div>' : '') +
@@ -856,7 +918,7 @@
         const caja = document.getElementById("calificacionesAuditores");
         if (!caja) return;
         if (!canDecide) { caja.remove(); return; }
-        const titulo = "<h4>Evaluación de los auditores de cada visita</h4>";
+        const titulo = "<h4>Evaluación del auditor de cada visita</h4>";
         try {
           const datos = await api("/calificacion-visitas/expediente/" + encodeURIComponent(id));
           if (state.selectedId !== id || !datos) return;
@@ -922,12 +984,53 @@
             return '<div class="cal-evaluacion"><div class="cal-item-cab"><span><span class="cal-item-nombre">' + escapeHtml(e.nombre || "Auditor") + '</span>' +
               '<span class="cal-item-rol">Auditor</span></span><span class="cal-item-nota">' + escapeHtml(String(e.calificacion)) + ' %</span></div>' +
               '<div class="cal-item-fecha">' + escapeHtml("Evaluada el " + fechaLegible(fecha) + (e.fecha_actualizacion ? " (editada)" : "")) + '</div>' +
-              (textos ? '<dl class="cal-comentarios">' + textos + '</dl>' : '') + '</div>';
+              (textos ? '<dl class="cal-comentarios">' + textos + '</dl>' : '') + enlaceExcelEvaluacion(datos.expediente_id, v.id_programacion, e) + '</div>';
           }).join("");
           return '<li class="cal-item">' + cabeceraVisita + detalle + '</li>';
         }).join("");
         return cabecera + '<ul class="cal-lista">' + items + '</ul>';
       }
+
+      // Excel en el que el auditor hizo la calificación (obligatorio al finalizar la visita).
+      // Se descarga con el token: mismos permisos del expediente e imparcialidad.
+      function enlaceExcelEvaluacion(idExpediente, idProgramacion, evaluacion) {
+        if (!evaluacion || !evaluacion.excel) {
+          return '<p class="cal-excel"><span class="cal-pendiente">Sin Excel de la evaluación adjunto.</span></p>';
+        }
+        const url = "/calificacion-visitas/expediente/" + encodeURIComponent(idExpediente) + "/visita/" +
+          encodeURIComponent(idProgramacion) + "/excel/" + encodeURIComponent(evaluacion.id_auditor);
+        const nombre = evaluacion.excel.nombre || "evaluacion_visita.xlsx";
+        return '<p class="cal-excel"><a href="' + escapeHtml(url) + '" data-excel-evaluacion data-nombre="' + escapeHtml(nombre) + '">' +
+          'Descargar evaluación (Excel)</a> <span class="cal-item-fecha">' + escapeHtml(nombre) + '</span>' +
+          '<span class="cal-excel-error" role="alert"></span></p>';
+      }
+
+      document.addEventListener("click", async (event) => {
+        const enlace = event.target.closest && event.target.closest("a[data-excel-evaluacion]");
+        if (!enlace) return;
+        event.preventDefault();
+        const aviso = enlace.parentElement.querySelector(".cal-excel-error");
+        if (aviso) aviso.textContent = "";
+        try {
+          const response = await fetch(enlace.getAttribute("href"), { headers: { Authorization: "Bearer " + token } });
+          if (response.status === 401) { localStorage.clear(); window.location.href = "/login"; return; }
+          if (!response.ok) {
+            const cuerpo = await response.json().catch(() => null);
+            throw new Error((cuerpo && typeof cuerpo.detail === "string") ? cuerpo.detail : "No se pudo descargar el Excel.");
+          }
+          const blob = await response.blob();
+          const temporal = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = temporal;
+          a.download = enlace.dataset.nombre || "evaluacion_visita.xlsx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(temporal), 1000);
+        } catch (error) {
+          if (aviso) aviso.textContent = " " + error.message;
+        }
+      });
 
       function fact(label, value) {
         return '<div><dt>' + label + '</dt><dd>' + escapeHtml(value) + '</dd></div>';
@@ -1094,7 +1197,7 @@
       // lista muestra pendientes y decididos según el filtro de estado.
       const VISTAS_COMITE = {
         expedientes: ["Expedientes", "Pendientes y decididos en una sola lista: el filtro de estado decide qué ves. Evalúa, consulta el dictamen o firma desde cada fila."],
-        firmas: ["Pendientes de firma", "Certificados de solicitudes aprobadas que esperan la firma del líder del Comité."]
+        firmas: ["Pendientes de firma", "Actas por generar o firmar y certificados que esperan la firma del líder del Comité."]
       };
 
       function showView(viewName) {
@@ -1131,6 +1234,10 @@
           if (!liderazgo || !liderazgo.es_lider) return;
           state.esLider = true;
           $("#firmasNav").hidden = false;
+          // Filtro propio del líder: actas por generar/firmar y certificados.
+          if (!$("#firmaFilter").querySelector('option[value="lider-pendiente"]')) {
+            $("#firmaFilter").insertAdjacentHTML("beforeend", '<option value="lider-pendiente">Mis actas y certificados por firmar (líder)</option>');
+          }
           if (location.hash === "#firmas") showView("firmas");
           // Con el líder confirmado, la lista ya puede mostrar "Firmar certificado".
           renderExpedientes(state.expedientes, state.ultimaRespuesta || {});
@@ -1149,10 +1256,26 @@
         ]);
         firmaConfigurada = Boolean(estadoFirma && estadoFirma.configurada);
         state.pendientesFirma = (certificados || []).filter((c) => String(c.estado_certificado || "").trim().toUpperCase() === "PENDIENTE_FIRMA");
+        // Actas del líder: expedientes decididos de los que es líder y cuya
+        // acta falta generar o firmar (con cualquier filtro de la lista).
+        let actas = [];
+        try {
+          const datos = await api("/comite/expedientes-pendientes?estado=todos&firma=lider-pendiente&page_size=500");
+          actas = (datos && datos.expedientes || []).filter((x) => x.lider_acta_por_generar || x.lider_acta_por_firmar);
+        } catch (_) { actas = []; }
+        state.actasLider = actas;
+        const porGenerar = actas.filter((x) => x.lider_acta_por_generar).length;
+        const porFirmar = actas.filter((x) => x.lider_acta_por_firmar).length;
         const n = state.pendientesFirma.length;
-        $("#firmasNav").textContent = "Pendientes de firma" + (n ? " (" + n + ")" : "");
-        $("#avisoFirmas").hidden = !n;
-        $("#avisoFirmasTexto").textContent = n === 1 ? "Tienes 1 certificado pendiente de firma." : "Tienes " + n + " certificados pendientes de firma.";
+        const total = n + porGenerar + porFirmar;
+        $("#firmasNav").textContent = "Pendientes de firma" + (total ? " (" + total + ")" : "");
+        $("#avisoFirmas").hidden = !total;
+        const partes = [];
+        if (porGenerar || porFirmar) {
+          partes.push("Tienes " + (porGenerar + porFirmar) + ((porGenerar + porFirmar) === 1 ? " acta" : " actas") + " por generar/firmar (" + porGenerar + " por generar, " + porFirmar + " por firmar)");
+        }
+        if (n) partes.push((partes.length ? "y " : "Tienes ") + n + (n === 1 ? " certificado pendiente" : " certificados pendientes") + " de firma");
+        $("#avisoFirmasTexto").textContent = partes.join(" ") + (partes.length ? "." : "");
         return state.pendientesFirma;
       }
 
@@ -1161,6 +1284,7 @@
         try {
           const pendientes = await cargarPendientesDeFirma();
           $("#firmaConfigForm").hidden = firmaConfigurada;
+          renderActasLider(state.actasLider || []);
           if (!pendientes.length) {
             $("#firmasContent").innerHTML = '<div class="comite-table-empty">No tiene certificados pendientes de firma.</div>';
             return;
@@ -1182,6 +1306,39 @@
           $("#firmasContent").textContent = error.message;
         }
       }
+
+      function renderActasLider(actas) {
+        if (!actas.length) {
+          $("#firmasActas").innerHTML = '<div class="comite-table-empty">No tiene actas por generar ni por firmar.</div>';
+          return;
+        }
+        $("#firmasActas").innerHTML = '<div class="comite-table-wrap"><table><thead><tr>' +
+          "<th>Expediente</th><th>Empresa</th><th>Decisión</th><th>Acta</th><th>Certificado</th><th>Acción</th>" +
+          "</tr></thead><tbody>" +
+          actas.map((x, i) => "<tr>" +
+            "<td><strong>" + escapeHtml(x.codigo || "--") + "</strong></td>" +
+            "<td>" + escapeHtml(x.empresa || "--") + "</td>" +
+            "<td>" + escapeHtml(x.decision || "--") + "</td>" +
+            "<td>" + chipFirma(x.firma_dictamen) + "</td>" +
+            "<td>" + chipFirma(x.firma_certificado) + "</td>" +
+            '<td><div class="acciones-fila">' + botonesDelLider(x, i, "data-firmar-acta-lider").join("") + "</div></td>" +
+            "</tr>").join("") +
+          "</tbody></table></div>";
+      }
+      $("#firmasActas").addEventListener("click", (evento) => {
+        const actas = state.actasLider || [];
+        const generar = evento.target.closest("[data-generar-acta]");
+        if (generar) return generarActaDesdeFila(actas[Number(generar.dataset.generarActa)]);
+        const certificado = evento.target.closest("[data-firmar-cert]");
+        if (certificado) return abrirFirmaCertificado(actas[Number(certificado.dataset.firmarCert)]);
+        const firmar = evento.target.closest("[data-firmar-acta-lider]");
+        if (firmar) {
+          state.selectedId = firmar.dataset.firmarActaLider;
+          $("#actaSignPassword").value = "";
+          $("#actaSignDialog").showModal();
+          $("#actaSignPassword").focus();
+        }
+      });
 
       // Un solo punto de firma de certificados: lo usan la vista "Pendientes
       // de firma" y el botón "Firmar certificado" de la lista de expedientes.
@@ -1252,7 +1409,7 @@
       // El aviso lleva a la lista de certificados que esperan firma.
       $("#avisoFirmasVer").addEventListener("click", () => {
         $("#estadoFilter").value = "todos";
-        $("#firmaFilter").value = "certificado-pendiente";
+        $("#firmaFilter").value = "lider-pendiente";
         filtrarDesdeInicio();
       });
 
@@ -1342,7 +1499,7 @@
           if (document.querySelector(".comite-workspace").classList.contains("detalle-abierto")) {
             await loadDetail(state.selectedId);
           }
-          await loadExpedientes();
+          await refrescarTrasActa();
         } catch (error) {
           showFeedback(error.message, "error");
         } finally {
@@ -1362,7 +1519,7 @@
       prepararPanelLider();
     })();
   </script>
-<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/nav.js?v=20261118menu"></script>
 <script src="/static/session.js?v=20261118pub"></script>
 </body>
 

@@ -151,7 +151,9 @@ async def test_auxiliar_con_permiso_delegado_puede_forzar(monkeypatch):
     monkeypatch.setattr(asignacion_router, "auxiliar_tiene_permiso", con_permiso)
     monkeypatch.setattr(asignacion_router, "registrar_uso", anotar)
     db = SesionAsignacion(competencia=False)
-    r = await _post(db, {"id_usuario": str(uuid.uuid4()), "role_name": "Auxiliar"},
+    # El Coordinador le delegó SOL-048 (regla_auxiliar).
+    r = await _post(db, {"id_usuario": str(uuid.uuid4()), "role_name": "Auxiliar",
+                         "permisos_delegados": ("SOL-048",)},
                     _cuerpo(forzar=True, justificacion="Justificación suficientemente larga"))
     assert r.status_code == 200, r.text
     assert db.historial()[0]["origen"].startswith("Auxiliar")

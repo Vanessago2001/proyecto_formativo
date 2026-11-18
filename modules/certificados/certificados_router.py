@@ -33,6 +33,8 @@ from modules.certificados.firma_service import FirmaService
 from modules.consultas_p.rate_limit import limitar_consultas
 from modules.reportes.exportacion_tabular import Columna, estado_legible, respuesta_exportacion
 
+from modules.permisos_auxiliar.regla_auxiliar import nivel_efectivo
+
 router = APIRouter(prefix="/certificados", tags=["M9 - Certificados"])
 
 
@@ -48,6 +50,7 @@ def requiere_firma_lider_o_permiso():
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permiso CER-010 ({PERMISOS_M9['CER-010'][0]}) denegado para el rol.",
             )
+        nivel_efectivo(usuario, "CER-010", nivel)  # regla del Auxiliar
         usuario["requiere_aprobacion"] = nivel is REQ
         return usuario
 
@@ -64,6 +67,7 @@ def requiere_permiso_o_lider(codigo: str):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permiso {codigo} ({PERMISOS_M9[codigo][0]}) denegado para el rol.",
             )
+        nivel_efectivo(usuario, codigo, nivel)  # regla del Auxiliar: V solo con permiso delegado
         usuario["requiere_aprobacion"] = nivel is NivelPermiso.REQUIERE_APROBACION
         return usuario
 

@@ -303,6 +303,190 @@
 
 
   /* ----------------------------------------------------------
+     Permisos del Auxiliar (18/11/2026).
+
+     "Los permisos del auxiliar deben ser puestos exclusivamente por
+     el Coordinador." El Auxiliar no tiene permisos propios: solo ve
+     los módulos, opciones y botones cuyos códigos el Coordinador le
+     otorgó en "Permisos de auxiliares".
+
+     GET /api/permisos-auxiliar/mios da sus códigos vigentes; se
+     guardan un momento en sessionStorage (dentro de try/catch) para
+     no consultarlos en cada pantalla. Mientras no se saben, lo que
+     depende de un permiso queda oculto.
+
+       · Menú: cada opción declara `permisos` (basta uno).
+       · Pantallas: todo elemento con data-permiso-aux="SOL-047 SOL-048"
+         se oculta al Auxiliar que no tiene ninguno de esos códigos
+         (también los que la pantalla dibuja después).
+       · window.CertiPermisos: para las pantallas que lo necesiten.
+
+     El backend responde 403 sin el permiso: esto solo ordena la
+     interfaz.
+     ---------------------------------------------------------- */
+  var CLAVE_PERMISOS_AUXILIAR = "certisena.permisosAuxiliar";
+  var VIGENCIA_PERMISOS_MS = 30000;
+  var AVISO_SIN_PERMISOS = "Aún no tienes permisos asignados. El Coordinador puede otorgártelos.";
+  var permisosAuxiliar = { conocido: false, codigos: [] };
+  var oyentesPermisos = [];
+
+  function esSesionAuxiliar() {
+    return tipoDeRol(rolDelUsuario()) === "auxiliar";
+  }
+
+  function leerPermisosGuardados() {
+    try {
+      var guardado = JSON.parse(sessionStorage.getItem(CLAVE_PERMISOS_AUXILIAR) || "null");
+      if (guardado && guardado.usuario && guardado.usuario === usuarioDeLaSesion() && Array.isArray(guardado.codigos)) {
+        return guardado;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function guardarPermisos(codigos) {
+    try {
+      sessionStorage.setItem(CLAVE_PERMISOS_AUXILIAR, JSON.stringify({
+        usuario: usuarioDeLaSesion(),
+        codigos: codigos,
+        t: Date.now()
+      }));
+    } catch (_) {}
+  }
+
+  function tienePermisoAuxiliar(lista) {
+    if (!lista || !lista.length) return true;
+    if (!permisosAuxiliar.conocido) return false;
+    return lista.some(function (codigo) { return permisosAuxiliar.codigos.indexOf(codigo) !== -1; });
+  }
+
+  function listaDePermisos(texto) {
+    return String(texto || "").toUpperCase().split(/[\s,]+/).filter(Boolean);
+  }
+
+  // Oculta (o vuelve a mostrar) los elementos con data-permiso-aux.
+  function aplicarPermisosEnPagina() {
+    if (!esSesionAuxiliar() || !document.body) return;
+    document.querySelectorAll("[data-permiso-aux]").forEach(function (elemento) {
+      var ocultar = !tienePermisoAuxiliar(listaDePermisos(elemento.getAttribute("data-permiso-aux")));
+      if (elemento.classList.contains("ma-sin-permiso") !== ocultar) elemento.classList.toggle("ma-sin-permiso", ocultar);
+    });
+  }
+
+  function fijarPermisos(codigos) {
+    permisosAuxiliar.conocido = true;
+    permisosAuxiliar.codigos = (codigos || []).map(function (c) { return String(c).toUpperCase(); });
+    aplicarPermisosEnPagina();
+    oyentesPermisos.forEach(function (oyente) {
+      try { oyente(permisosAuxiliar.codigos.slice()); } catch (_) {}
+    });
+  }
+
+  function iniciarPermisosAuxiliar() {
+    if (!document.getElementById("permisos-auxiliar-estilos")) {
+      var estilo = document.createElement("style");
+      estilo.id = "permisos-auxiliar-estilos";
+      estilo.textContent = ".ma-sin-permiso{display:none !important}";
+      (document.head || document.documentElement).appendChild(estilo);
+    }
+    var guardado = leerPermisosGuardados();
+    if (guardado) fijarPermisos(guardado.codigos);
+    if (guardado && Date.now() - (guardado.t || 0) < VIGENCIA_PERMISOS_MS) return;
+
+    var token = null;
+    try { token = localStorage.getItem("access_token"); } catch (_) {}
+    if (!token || !window.fetch) { if (!guardado) fijarPermisos([]); return; }
+    fetch("/api/permisos-auxiliar/mios", { headers: { Authorization: "Bearer " + token }, cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (datos) {
+        if (!datos || !Array.isArray(datos.codigos)) { if (!guardado) fijarPermisos([]); return; }
+        guardarPermisos(datos.codigos);
+        fijarPermisos(datos.codigos);
+      })
+      .catch(function () { if (!guardado) fijarPermisos([]); });
+  }
+
+  // Los elementos que la pantalla dibuja después también se revisan.
+  function vigilarPermisosEnPagina() {
+    if (!window.MutationObserver || !document.body) return;
+    var pendiente = null;
+    new MutationObserver(function () {
+      if (pendiente) return;
+      pendiente = window.setTimeout(function () { pendiente = null; aplicarPermisosEnPagina(); }, 30);
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
+  window.CertiPermisos = {
+    esAuxiliar: esSesionAuxiliar,
+    conocido: function () { return !esSesionAuxiliar() || permisosAuxiliar.conocido; },
+    // Para los demás roles siempre true: su acceso lo decide su rol.
+    tiene: function (codigo) { return !esSesionAuxiliar() || tienePermisoAuxiliar([String(codigo || "").toUpperCase()]); },
+    tieneAlguno: function (lista) { return !esSesionAuxiliar() || tienePermisoAuxiliar(listaDePermisos([].concat(lista || []).join(" "))); },
+    alCambiar: function (oyente) {
+      oyentesPermisos.push(oyente);
+      if (permisosAuxiliar.conocido) { try { oyente(permisosAuxiliar.codigos.slice()); } catch (_) {} }
+    }
+  };
+
+  // Panel del Auxiliar (/dashboard): sin permisos, el aviso; con permisos,
+  // los módulos que el Coordinador le habilitó.
+  function ajustarPanelAuxiliar() {
+    if (!esSesionAuxiliar() || !enLaMismaPagina("/dashboard") || !permisosAuxiliar.conocido) return;
+    var caja = document.getElementById("regularView");
+    if (!caja) return;
+    var titulo = caja.querySelector("h3");
+    var texto = caja.querySelector("p");
+    var lista = document.getElementById("ma-modulos-auxiliar");
+    if (!lista && texto) {
+      lista = document.createElement("ul");
+      lista.id = "ma-modulos-auxiliar";
+      lista.style.cssText = "margin:14px 0 0;padding-left:18px;line-height:1.9";
+      texto.parentNode.insertBefore(lista, texto.nextSibling);
+    }
+    if (titulo) titulo.textContent = "Panel del auxiliar";
+    var modulos = modulosDelAuxiliar();
+    if (lista) lista.innerHTML = "";
+    if (!modulos.length) {
+      if (texto) {
+        texto.textContent = AVISO_SIN_PERMISOS;
+        texto.setAttribute("role", "status");
+      }
+      if (lista) lista.hidden = true;
+      return;
+    }
+    if (texto) texto.textContent = "El Coordinador te habilitó estos módulos:";
+    if (!lista) return;
+    lista.hidden = false;
+    modulos.forEach(function (m) {
+      var li = document.createElement("li");
+      var a = document.createElement("a");
+      a.href = m.href;
+      a.textContent = m.texto;
+      li.appendChild(a);
+      lista.appendChild(li);
+    });
+  }
+
+  // Primer destino permitido de cada grupo del menú de administración.
+  function modulosDelAuxiliar() {
+    var modulos = [];
+    MENU_ADMINISTRACION.items.forEach(function (item) {
+      if (item.grupo) {
+        if (item.permisos && !tienePermisoAuxiliar(item.permisos)) return;
+        var primera = null;
+        item.opciones.forEach(function (o) {
+          if (!primera && (!o.solo || o.solo.indexOf("auxiliar") !== -1) && o.permisos && tienePermisoAuxiliar(o.permisos)) primera = o;
+        });
+        if (primera) modulos.push({ texto: item.grupo, href: primera.href });
+      } else if (item.dinamico && item.permisos && tienePermisoAuxiliar(item.permisos)) {
+        modulos.push({ texto: item.texto, href: item.href });
+      }
+    });
+    return modulos;
+  }
+
+
+  /* ----------------------------------------------------------
      4. Menú lateral en acordeón, el mismo en todas las pantallas.
 
      Cada rol tiene un único menú con grupos. Pulsar un grupo solo
@@ -334,6 +518,9 @@
        soloAprobado  (opción, grupo o dinámico del auditor) solo se ve
                cuando su registro como auditor está aprobado (ver
                "Acceso del auditor" más abajo).
+       permisos  (opción, grupo o dinámico) códigos de la matriz; el
+               Auxiliar la ve solo si el Coordinador le otorgó alguno
+               (ver "Permisos del Auxiliar"). No afecta a otros roles.
      Grupo:    { grupo, opciones: [...] }
      Dinámico: { texto, href, dinamico: selector } — fuera de esa
                pantalla es un enlace; en ella, un grupo con los
@@ -341,6 +528,8 @@
      ---------------------------------------------------------- */
 
   var REPORTES = { texto: "Reportes", href: "/reportes", dinamico: "#listaReportes button[data-codigo]" };
+  // Reportes de la hoja M12 que el Auxiliar puede recibir del Coordinador.
+  var PERMISOS_REPORTES = ["REP-001", "REP-002", "REP-003", "REP-004", "REP-005", "REP-006", "REP-007", "REP-008", "REP-009", "REP-010"];
   var SALIR = { salir: true, texto: "Cerrar sesión" };
 
   // Módulo PQRS (static/pqrs_gestion.html): sus vistas son botones
@@ -348,11 +537,11 @@
   var GRUPO_PQRS = {
     grupo: "PQRS",
     opciones: [
-      ["bandeja", "Bandeja de PQRS"],
-      ["tiempos", "Tiempos de atención"],
-      ["reportes", "Reportes"]
+      ["bandeja", "Bandeja de PQRS", ["PQR-003", "PQR-004", "PQR-010"]],
+      ["tiempos", "Tiempos de atención", ["PQR-014"]],
+      ["reportes", "Reportes", ["PQR-015"]]
     ].map(function (v) {
-      return { texto: v[1], href: "/pqrs-gestion#" + v[0], proxy: 'button[data-view="' + v[0] + '"]' };
+      return { texto: v[1], href: "/pqrs-gestion#" + v[0], proxy: 'button[data-view="' + v[0] + '"]', permisos: v[2] };
     })
   };
 
@@ -363,7 +552,7 @@
         // "Expedientes pendientes" e "Historial de decisiones" se unificaron:
         // una sola lista donde el filtro de estado decide qué se ve (el
         // Coordinador y el Auxiliar entran con "Todos los estados").
-        { texto: "Expedientes", href: "/comite#expedientes", proxy: 'aside.comite-sidebar button[data-view="expedientes"]' },
+        { texto: "Expedientes", href: "/comite#expedientes", proxy: 'aside.comite-sidebar button[data-view="expedientes"]', permisos: ["COM-001", "COM-019"] },
         // Solo el líder asignado: la pantalla muestra el botón si lo es.
         { texto: "Pendientes de firma", href: "/comite#firmas", proxy: 'aside.comite-sidebar button[data-view="firmas"]', solo: ["comite"] }
       ]
@@ -373,15 +562,15 @@
   var GRUPO_CERTIFICADOS = {
     grupo: "Gestión de certificados",
     opciones: [
-      { texto: "Certificados", href: "/gestion-certificados#catalogo", proxy: "#catalogNav" },
-      { texto: "Vencimientos", href: "/gestion-certificados#vencimientos", proxy: "#alertsNav", solo: ["admin", "auxiliar"] },
-      { texto: "Consulta pública", href: "/gestion-certificados#consulta", proxy: 'aside.comite-sidebar button[data-view="consulta"]' }
+      { texto: "Certificados", href: "/gestion-certificados#catalogo", proxy: "#catalogNav", permisos: ["CER-011"] },
+      { texto: "Vencimientos", href: "/gestion-certificados#vencimientos", proxy: "#alertsNav", solo: ["admin", "auxiliar"], permisos: ["CER-027"] },
+      { texto: "Consulta pública", href: "/gestion-certificados#consulta", proxy: 'aside.comite-sidebar button[data-view="consulta"]', permisos: ["CER-011", "CER-024"] }
     ]
   };
 
   var GRUPO_APELACIONES = function (titulo) {
     function vista(clave, texto, solo) {
-      return { texto: texto, href: "/apelacion#" + clave, proxy: '#vistaNav button[data-vista="' + clave + '"]', solo: solo };
+      return { texto: texto, href: "/apelacion#" + clave, proxy: '#vistaNav button[data-vista="' + clave + '"]', solo: solo, permisos: ["APE-004"] };
     }
     return {
       grupo: titulo,
@@ -394,6 +583,9 @@
     };
   };
 
+  var PERMISOS_SOLICITUDES = ["SOL-006"];
+  var PERMISOS_ASIGNACION = ["SOL-041", "SOL-042", "SOL-043", "SOL-044", "SOL-045", "SOL-046", "SOL-047"];
+
   var MENU_ADMINISTRACION = {
     titulo: "Administración",
     items: [
@@ -405,8 +597,8 @@
       {
         grupo: "Empresas",
         opciones: [
-          { texto: "Registradas", href: "/empresas#listado", proxy: '#menu button[data-view="listado"]' },
-          { texto: "Registrar empresa", href: "/empresas#registrar", proxy: '#menu button[data-view="registrar"]' }
+          { texto: "Registradas", href: "/empresas#listado", proxy: '#menu button[data-view="listado"]', permisos: ["EMP-003", "EMP-004", "EMP-005"] },
+          { texto: "Registrar empresa", href: "/empresas#registrar", proxy: '#menu button[data-view="registrar"]', permisos: ["EMP-001"] }
           // "Aprobaciones" se quitó: no se usaba y se confundía con el
           // Historial de decisiones del Comité.
         ]
@@ -416,14 +608,16 @@
       // (static/solicitudes.html): cada opción pulsa su button[data-etapa].
       {
         grupo: "Solicitudes",
+        // Etapas 1, 2 y "Todas": SOL-006 (consultar solicitudes); etapas 3 y 4
+        // (asignación): SOL-041..SOL-047, igual que el backend.
         opciones: [
-          ["radicadas", "Radicadas"],
-          ["revision", "En revisión"],
-          ["por-asignar", "Por asignar auditor"],
-          ["con-auditores", "Con auditores"],
-          ["todas", "Todas"]
+          ["radicadas", "Radicadas", PERMISOS_SOLICITUDES],
+          ["revision", "En revisión", PERMISOS_SOLICITUDES],
+          ["por-asignar", "Por asignar auditor", PERMISOS_ASIGNACION],
+          ["con-auditores", "Con auditores", PERMISOS_ASIGNACION],
+          ["todas", "Todas", PERMISOS_SOLICITUDES]
         ].map(function (e) {
-          return { texto: e[1], href: "/solicitudes#" + e[0], proxy: 'button[data-etapa="' + e[0] + '"]' };
+          return { texto: e[1], href: "/solicitudes#" + e[0], proxy: 'button[data-etapa="' + e[0] + '"]', permisos: e[2] };
         })
       },
       {
@@ -432,33 +626,33 @@
           // La pantalla cambia de vista con la dirección (#listado o
           // #reprogramaciones). "Programaciones futuras" se quitó: repetía
           // la consulta general.
-          { texto: "Consultar auditorías programadas", href: "/consultar-auditorias-programadas-admin#listado" },
-          { texto: "Solicitudes de reprogramación", href: "/consultar-auditorias-programadas-admin#reprogramaciones" }
+          { texto: "Consultar auditorías programadas", href: "/consultar-auditorias-programadas-admin#listado", permisos: ["AGE-026", "AGE-041"] },
+          { texto: "Solicitudes de reprogramación", href: "/consultar-auditorias-programadas-admin#reprogramaciones", permisos: ["AGE-023", "AGE-030"] }
         ]
       },
       {
         grupo: "Consultar agenda de auditor",
         opciones: [
-          ["schedule", "Programar una auditoría"],
+          ["schedule", "Programar una auditoría", ["AGE-021"]],
           // "Solicitudes con auditores asignados" se quitó: solo informaba y
           // eso ya está en Asignación de auditores (con "Programar visita").
-          ["weekly", "Disponibilidad semanal"],
+          ["weekly", "Disponibilidad semanal", ["AGE-003", "AGE-010"]],
           // "Registrar fecha no disponible" se quitó (13/11/2026): las fechas
           // con auditorías programadas quedan bloqueadas por el backend y el
           // auditor declara su disponibilidad en su perfil.
-          ["month", "Disponibilidad mensual y auditorías"]
+          ["month", "Disponibilidad mensual y auditorías", ["AGE-010", "AGE-046"]]
           // "Historial de disponibilidad" y "Bitácora de validación" se
           // quitaron por pedido de la usuaria (13/11/2026).
         ].map(function (s) {
-          return { texto: s[1], href: "/consultar-agenda-auditor#" + s[0], proxy: '.agenda-menu a[data-seccion="' + s[0] + '"]' };
+          return { texto: s[1], href: "/consultar-agenda-auditor#" + s[0], proxy: '.agenda-menu a[data-seccion="' + s[0] + '"]', permisos: s[2] };
         })
       },
       {
         grupo: "Banco de auditores",
         opciones: [
-          { texto: "Banco de auditores", href: "/banco-auditores", activoEn: /^\/banco-auditores\/solicitud\// },
-          { texto: "Auditores registrados", href: "/auditores-registrados" },
-          { texto: "Conflictos de interés", href: "/conflictos-administrador" }
+          { texto: "Banco de auditores", href: "/banco-auditores", activoEn: /^\/banco-auditores\/solicitud\//, permisos: ["AUD-011", "AUD-012"] },
+          { texto: "Auditores registrados", href: "/auditores-registrados", permisos: ["AUD-056", "AUD-057", "AUD-058"] },
+          { texto: "Conflictos de interés", href: "/conflictos-administrador", permisos: ["AUD-033", "AUD-035"] }
           // "Consultar empresas restringidas" es solo del auditor (sus propias
           // restricciones); el Coordinador las ve en Conflictos de interés.
         ]
@@ -467,7 +661,7 @@
       GRUPO_APELACIONES("Apelaciones"),
       GRUPO_COMITE("Comité de certificación"),
       GRUPO_PQRS,
-      REPORTES,
+      { texto: REPORTES.texto, href: REPORTES.href, dinamico: REPORTES.dinamico, permisos: PERMISOS_REPORTES },
       { texto: "Mi perfil", href: "/profile" },
       { mfa: true },                       // en el panel abre la ventana; en las demás pantallas lleva al panel
       SALIR
@@ -477,31 +671,11 @@
   var MENU_AUDITOR = {
     titulo: "Portal del auditor",
     items: [
-      {
-        grupo: "Mi registro",
-        opciones: [
-          ["inicioRegistro", "Formulario de registro"],
-          ["datos-personales", "Datos personales"],
-          ["perfil", "Perfil Auditor"],
-          ["competencias", "Competencias"],
-          ["formacion", "Formación académica"],
-          ["experiencia-laboral", "Experiencia laboral"],
-          ["experiencia-auditoria", "Experiencia en auditoría"],
-          ["documentos-soporte", "Documentos de soporte"],
-          ["conflictos", "Conflictos de interés"],
-          ["historial-academico", "Historial académico"]
-        ].map(function (s) {
-          return { texto: s[1], href: "/auditor#" + s[0], proxy: '.side a[data-seccion="' + s[0] + '"]' };
-        }).concat([{ texto: "Consultar estado del registro", href: "/consultar-estado" }])
-      },
-      {
-        grupo: "Conflictos y restricciones",
-        soloAprobado: true,
-        opciones: [
-          { texto: "Consultar conflictos registrados", href: "/conflictos-auditor" },
-          { texto: "Consultar empresas restringidas", href: "/empresas-restringidas" }
-        ]
-      },
+      // Orden pedido por la usuaria (18/11/2026) para el auditor aprobado:
+      // Notificaciones, Auditorías, Disponibilidad, Conflictos y restricciones,
+      // Reportes, Mi registro y Catálogo de competencias. Al no aprobado solo
+      // se le muestran Notificaciones, Mi registro, Catálogo y Mi perfil.
+      { texto: "Notificaciones", href: "/notificaciones-auditor", insignia: "notifBadge" },
       {
         grupo: "Auditorías",
         soloAprobado: true,
@@ -528,15 +702,39 @@
         })
       },
       {
+        grupo: "Conflictos y restricciones",
+        soloAprobado: true,
+        opciones: [
+          { texto: "Consultar conflictos registrados", href: "/conflictos-auditor" },
+          { texto: "Consultar empresas restringidas", href: "/empresas-restringidas" }
+        ]
+      },
+      { texto: REPORTES.texto, href: REPORTES.href, dinamico: REPORTES.dinamico, soloAprobado: true },
+      {
+        grupo: "Mi registro",
+        opciones: [
+          ["inicioRegistro", "Formulario de registro"],
+          ["datos-personales", "Datos personales"],
+          ["perfil", "Perfil Auditor"],
+          ["competencias", "Competencias"],
+          ["formacion", "Formación académica"],
+          ["experiencia-laboral", "Experiencia laboral"],
+          ["experiencia-auditoria", "Experiencia en auditoría"],
+          ["documentos-soporte", "Documentos de soporte"],
+          ["conflictos", "Conflictos de interés"],
+          ["historial-academico", "Historial académico"]
+        ].map(function (s) {
+          return { texto: s[1], href: "/auditor#" + s[0], proxy: '.side a[data-seccion="' + s[0] + '"]' };
+        }).concat([{ texto: "Consultar estado del registro", href: "/consultar-estado" }])
+      },
+      {
         grupo: "Catálogo de competencias",
         opciones: [
           { texto: "Competencias registradas", href: "/catalogo-competencias-auditor#vistaCompetencias", proxy: '.side a[data-vista="competencias"]' },
           { texto: "Registrar certificaciones vigentes", href: "/catalogo-competencias-auditor#vistaCertificaciones", proxy: '.side a[data-vista="certificaciones"]' }
         ]
       },
-      { texto: "Notificaciones", href: "/notificaciones-auditor", insignia: "notifBadge" },
       { texto: "Mi perfil", href: "/perfil-auditor" },
-      { texto: REPORTES.texto, href: REPORTES.href, dinamico: REPORTES.dinamico, soloAprobado: true },
       SALIR
     ]
   };
@@ -621,7 +819,7 @@
   }
 
   function estaOculto(elemento) {
-    return elemento.hidden || elemento.style.display === "none";
+    return elemento.hidden || elemento.style.display === "none" || elemento.classList.contains("ma-sin-permiso");
   }
 
   function estaActivo(elemento) {
@@ -715,7 +913,24 @@
       notaRegistro.hidden = accesoCompleto() || !accesoAuditor.conocido;
       raiz.appendChild(notaRegistro);
     }
+    // Auxiliar sin ningún permiso delegado: aviso en el menú.
+    var notaPermisos = null;
+    if (tipo === "auxiliar") {
+      notaPermisos = document.createElement("div");
+      notaPermisos.className = "ma-nota-registro";
+      notaPermisos.setAttribute("role", "status");
+      notaPermisos.textContent = AVISO_SIN_PERMISOS;
+      notaPermisos.hidden = !permisosAuxiliar.conocido || permisosAuxiliar.codigos.length > 0;
+      raiz.appendChild(notaPermisos);
+    }
+    function conPermiso(opcion, grupo) {
+      if (tipo !== "auxiliar") return true;
+      var item = grupo ? grupo.item : null;
+      if (item && item.permisos && !tienePermisoAuxiliar(item.permisos)) return false;
+      return tienePermisoAuxiliar(opcion.permisos);
+    }
     var cargasPendientes = [];          // catálogo de reportes, al aprobarse
+    var cargasPermiso = [];             // catálogo de reportes del Auxiliar, con permiso
 
     var opciones = [];        // { a, opcion, grupo }
     var grupos = [];          // { caja, boton, lista, item, dinamico, firma }
@@ -900,7 +1115,10 @@
           // antes el submenú solo aparecía al entrar a Reportes.
           var externo = crearGrupo(item.texto, item);
           raiz.appendChild(externo.caja);
-          if (item.soloAprobado && !accesoCompleto()) {
+          if (tipo === "auxiliar" && item.permisos) {
+            // El catálogo se pide cuando se sabe que tiene algún reporte.
+            cargasPermiso.push({ grupo: externo, item: item });
+          } else if (item.soloAprobado && !accesoCompleto()) {
             cargasPendientes.push(function () { cargarCatalogoReportes(externo, item); });
           } else {
             cargarCatalogoReportes(externo, item);
@@ -956,6 +1174,7 @@
           else puntos = 1;
         }
         if (!accesoCompleto() && (o.opcion.soloAprobado || (o.grupo && o.grupo.item.soloAprobado))) visible = false;
+        if (!conPermiso(o.opcion, o.grupo)) visible = false;
         if (o.a.hidden === visible) o.a.hidden = !visible;
         if (visible && aqui && o.grupo && !grupoDeLaPantalla) grupoDeLaPantalla = o.grupo;
         if (puntos > mejorPuntos) { mejor = o; mejorPuntos = puntos; }
@@ -975,7 +1194,8 @@
       grupos.forEach(function (grupo) {
         var actual = grupo === grupoActual;
         if (grupo.caja.classList.contains("ma-grupo-actual") !== actual) grupo.caja.classList.toggle("ma-grupo-actual", actual);
-        if (grupo.item.soloAprobado && !accesoCompleto()) {
+        if ((grupo.item.soloAprobado && !accesoCompleto()) ||
+            (tipo === "auxiliar" && grupo.item.permisos && !tienePermisoAuxiliar(grupo.item.permisos))) {
           if (!grupo.caja.hidden) grupo.caja.hidden = true;
         } else if (!grupo.dinamico) {
           var algunaVisible = Array.prototype.some.call(grupo.lista.children, function (hijo) { return !hijo.hidden; });
@@ -1025,6 +1245,20 @@
     }
 
     actualizar();
+
+    if (tipo === "auxiliar") {
+      var alCambiarPermisos = function (codigos) {
+        if (notaPermisos) notaPermisos.hidden = codigos.length > 0;
+        cargasPermiso.forEach(function (carga) {
+          if (carga.cargado || !tienePermisoAuxiliar(carga.item.permisos)) return;
+          carga.cargado = true;
+          cargarCatalogoReportes(carga.grupo, carga.item);
+        });
+        programar();
+      };
+      oyentesPermisos.push(alCambiarPermisos);
+      if (permisosAuxiliar.conocido) alCambiarPermisos(permisosAuxiliar.codigos.slice());
+    }
 
     if (tipo === "auditor") {
       oyentesAcceso.push(function () {
@@ -1132,6 +1366,11 @@
   }
 
   function aplicar() {
+    if (esSesionAuxiliar()) {
+      aplicarPermisosEnPagina();
+      vigilarPermisosEnPagina();
+      ajustarPanelAuxiliar();
+    }
     ajustarConsultaPublica();
     var rol = rolDelUsuario();
     if (rol) {
@@ -1149,6 +1388,11 @@
   // El acceso del auditor se pide en cuanto carga el script, antes de que
   // la pantalla dibuje nada.
   if (tipoDeRol(rolDelUsuario()) === "auditor") iniciarAccesoAuditor();
+  // Igual los permisos del Auxiliar (menú, botones y panel).
+  if (esSesionAuxiliar()) {
+    oyentesPermisos.push(ajustarPanelAuxiliar);
+    iniciarPermisosAuxiliar();
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", aplicar);

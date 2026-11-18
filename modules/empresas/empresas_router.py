@@ -12,6 +12,7 @@ from core.database import get_db
 from core.security import _normalize_role_name, get_current_user, require_role
 from modules.aprobaciones.aprobacion_service import AprobacionService, respuesta_permiso_delegado
 from modules.empresas import empresas_aprobaciones  # noqa: F401  (registra las acciones REQ)
+from modules.permisos_auxiliar.regla_auxiliar import con_aprobacion, delegable
 from modules.empresas.documento_empresa_service import (
     ESTADO_APROBADO,
     ESTADO_CORRECCION,
@@ -20,6 +21,7 @@ from modules.empresas.documento_empresa_service import (
     DocumentoEmpresaService,
 )
 from modules.empresas.empresas_service import EmpresasService
+from modules.empresas.requisitos_empresa import DOCUMENTOS_LEGALES_OBLIGATORIOS, requisitos_empresa
 
 router = APIRouter(prefix="/api/empresas", tags=["Empresas"])
 
@@ -28,7 +30,9 @@ router = APIRouter(prefix="/api/empresas", tags=["Empresas"])
 # ROLES POR PERMISO (hoja "M3 — EMPRESAS" de permisos.xlsx)
 # ============================================================
 # APR es el administrador. Una cuenta Empresa, además, solo accede a sus
-# propias empresas (EmpresasService.exigir_acceso).
+# propias empresas (EmpresasService.exigir_acceso). El Auxiliar no tiene
+# permisos propios: cada ruta dice qué código delegado necesita
+# (`auxiliar=delegable(...)`; las REQ, `con_aprobacion(...)`).
 
 # EMP-003 consultar, EMP-009 historial, EMP-014/015 documentos, EMP-024/030 sedes
 ROLES_CONSULTA = ["admin", "auxiliar", "empresa", "auditor", "comite"]
@@ -154,7 +158,7 @@ class DireccionSede(BaseModel):
 @router.get("/")
 async def get_empresas(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_BUSQUEDA))
+    current_user: dict = Depends(require_role(ROLES_BUSQUEDA, auxiliar=delegable("EMP-003", "EMP-004", "EMP-005")))
 ):
     if _normalize_role_name(current_user.get("role_name")) == "auditor":
         return await EmpresasService(db).get_empresas_de_auditor(str(current_user.get("id_usuario")))
@@ -165,7 +169,7 @@ async def get_empresas(
 async def create_empresa(
     data: EmpresaCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-001")))
 ):
     # Si la registra una cuenta de empresa, queda vinculada a ella (user_empresa).
     es_empresa = _normalize_role_name(current_user.get("role_name")) == "empresa"
@@ -191,7 +195,7 @@ async def get_mis_empresas(
 async def get_empresa(
     id_empresa: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=delegable("EMP-003")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -208,7 +212,7 @@ async def update_empresa(
     id_empresa: str,
     data: EmpresaUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-002")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -227,7 +231,7 @@ async def cambiar_estado_empresa(
     id_empresa: str,
     data: EstadoEmpresaUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_ESTADO + ROLES_CON_APROBACION))
+    current_user: dict = Depends(require_role(ROLES_ESTADO + ROLES_CON_APROBACION, auxiliar=con_aprobacion("EMP-006")))
 ):
     """Pasa la empresa entre 'Activa' y 'Suspendida'. El Auxiliar solo lo solicita."""
     if _requiere_aprobacion(current_user):
@@ -239,7 +243,7 @@ async def cambiar_estado_empresa(
 async def inactivar_empresa(
     id_empresa: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_ESTADO + ROLES_CON_APROBACION))
+    current_user: dict = Depends(require_role(ROLES_ESTADO + ROLES_CON_APROBACION, auxiliar=con_aprobacion("EMP-007")))
 ):
     if _requiere_aprobacion(current_user):
         return await _solicitar_aprobacion(db, current_user, "EMP-007", id_empresa, {})
@@ -250,7 +254,7 @@ async def inactivar_empresa(
 async def reactivar_empresa(
     id_empresa: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_REACTIVACION + ROLES_CON_APROBACION))
+    current_user: dict = Depends(require_role(ROLES_REACTIVACION + ROLES_CON_APROBACION, auxiliar=con_aprobacion("EMP-008")))
 ):
     if _requiere_aprobacion(current_user):
         return await _solicitar_aprobacion(db, current_user, "EMP-008", id_empresa, {})
@@ -261,7 +265,7 @@ async def reactivar_empresa(
 async def get_historial_empresa(
     id_empresa: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=delegable("EMP-009")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -272,7 +276,7 @@ async def get_historial_empresa(
 async def get_sedes_empresa(
     id_empresa: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=delegable("EMP-030", "EMP-024")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -284,7 +288,7 @@ async def create_sede_empresa(
     id_empresa: str,
     data: SedeCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-021")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -299,7 +303,7 @@ async def get_sede_empresa(
     id_empresa: str,
     id_sede: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=delegable("EMP-024")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -315,7 +319,7 @@ async def update_sede_empresa(
     id_sede: str,
     data: SedeUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-022")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -334,7 +338,7 @@ async def set_direccion_sede(
     id_sede: str,
     data: DireccionSede,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-025", "EMP-026")))
 ):
     """
     Deja la dirección de la sede. La hoja separa registrarla (EMP-025) de
@@ -362,7 +366,7 @@ async def delete_sede_empresa(
     id_empresa: str,
     id_sede: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_ELIMINACION + ROLES_CON_APROBACION))
+    current_user: dict = Depends(require_role(ROLES_ELIMINACION + ROLES_CON_APROBACION, auxiliar=con_aprobacion("EMP-023")))
 ):
     if _requiere_aprobacion(current_user):
         return await _solicitar_aprobacion(db, current_user, "EMP-023", id_empresa, {"id_sede": id_sede})
@@ -384,7 +388,7 @@ async def get_contactos_sede(
     id_empresa: str,
     id_sede: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=delegable("EMP-024")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -401,7 +405,7 @@ async def create_contacto_sede(
     id_sede: str,
     data: ContactoCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-027")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -415,7 +419,7 @@ async def update_contacto_sede(
     id_contacto: str,
     data: ContactoUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-028")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -430,7 +434,7 @@ async def delete_contacto_sede(
     id_sede: str,
     id_contacto: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_ELIMINACION + ROLES_CON_APROBACION))
+    current_user: dict = Depends(require_role(ROLES_ELIMINACION + ROLES_CON_APROBACION, auxiliar=con_aprobacion("EMP-029")))
 ):
     if _requiere_aprobacion(current_user):
         return await _solicitar_aprobacion(
@@ -452,7 +456,7 @@ async def delete_contacto_sede(
 async def get_documentos_empresa(
     id_empresa: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=delegable("EMP-015")))
 ):
     servicio = EmpresasService(db)
     await servicio.exigir_acceso(current_user, id_empresa)
@@ -463,17 +467,38 @@ async def get_documentos_empresa(
 async def get_tipos_documento(
     id_empresa: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=delegable("EMP-011", "EMP-012", "EMP-015")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
-    return {"tipos": list(TIPOS_DOCUMENTO)}
+    return {"tipos": list(TIPOS_DOCUMENTO), "obligatorios": list(DOCUMENTOS_LEGALES_OBLIGATORIOS)}
+
+
+@router.get(
+    "/{id_empresa}/requisitos",
+    summary="Lista de verificación: documentos legales obligatorios y sedes",
+)
+async def get_requisitos_empresa(
+    id_empresa: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=delegable("EMP-015")))
+):
+    """
+    Lo que la empresa necesita antes de radicar una solicitud (y lo que el
+    Coordinador revisa antes de aprobarla). Ver modules/empresas/requisitos_empresa.py.
+    """
+    await EmpresasService(db).exigir_acceso(current_user, id_empresa)
+    try:
+        UUID(str(id_empresa))
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+    return await requisitos_empresa(db, id_empresa)
 
 
 @router.get("/{id_empresa}/documentos/historial", summary="EMP-020 · Historial documental")
 async def get_historial_documental(
     id_empresa: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-020")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     return await DocumentoEmpresaService(db).historial(UUID(id_empresa))
@@ -492,7 +517,7 @@ async def subir_documento_empresa(
     fecha_expedicion: Optional[date] = Form(default=None),
     fecha_vencimiento: Optional[date] = Form(default=None),
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-011")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     return await DocumentoEmpresaService(db).subir(
@@ -512,7 +537,7 @@ async def reemplazar_documento_empresa(
     id_documento: UUID,
     archivo: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-012")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     return await DocumentoEmpresaService(db).reemplazar(
@@ -529,7 +554,7 @@ async def descargar_documento_empresa(
     id_empresa: str,
     id_documento: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_CONSULTA))
+    current_user: dict = Depends(require_role(ROLES_CONSULTA, auxiliar=delegable("EMP-014")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     servicio = DocumentoEmpresaService(db)
@@ -548,7 +573,7 @@ async def validar_documento_empresa(
     id_empresa: str,
     id_documento: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_REVISION_DOC))
+    current_user: dict = Depends(require_role(ROLES_REVISION_DOC, auxiliar=delegable("EMP-016")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     return await DocumentoEmpresaService(db).validar(UUID(id_empresa), id_documento)
@@ -560,7 +585,7 @@ async def aprobar_documento_empresa(
     id_documento: UUID,
     data: AprobacionDocumento,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_REVISION_DOC))
+    current_user: dict = Depends(require_role(ROLES_REVISION_DOC, auxiliar=delegable("EMP-018")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     return await DocumentoEmpresaService(db).revisar(
@@ -577,7 +602,7 @@ async def rechazar_documento_empresa(
     id_documento: UUID,
     data: RevisionDocumento,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_REVISION_DOC))
+    current_user: dict = Depends(require_role(ROLES_REVISION_DOC, auxiliar=delegable("EMP-017")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     return await DocumentoEmpresaService(db).revisar(
@@ -594,7 +619,7 @@ async def solicitar_correccion_documento(
     id_documento: UUID,
     data: RevisionDocumento,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_REVISION_DOC))
+    current_user: dict = Depends(require_role(ROLES_REVISION_DOC, auxiliar=delegable("EMP-019")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     return await DocumentoEmpresaService(db).revisar(
@@ -610,7 +635,7 @@ async def get_historial_de_documento(
     id_empresa: str,
     id_documento: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role(ROLES_GESTION))
+    current_user: dict = Depends(require_role(ROLES_GESTION, auxiliar=delegable("EMP-020")))
 ):
     await EmpresasService(db).exigir_acceso(current_user, id_empresa)
     return await DocumentoEmpresaService(db).historial(UUID(id_empresa), id_documento)

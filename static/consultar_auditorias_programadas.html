@@ -978,6 +978,27 @@
         .cal-error { display: none; margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: #fef2f2; color: #8a2020; border: 1px solid #e7bfbb; font-size: 13px; }
         .cal-error.visible { display: block; }
         .cal-contexto { margin: 0 0 14px; font-size: 13px; color: #475569; }
+
+        /* ---- Avisos de una acción hecha dentro de una ventana: junto al botón pulsado ---- */
+        .modal-aviso { display: none; margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; white-space: pre-line; }
+        .modal-aviso.visible { display: block; }
+        .modal-aviso.error { background: #fef2f2; color: #8a2020; border: 1px solid #e7bfbb; }
+        .modal-aviso.info { background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; }
+        .modal-aviso.ok { background: #f3fbee; color: #1f4d00; border: 1px solid #b7dfa0; }
+        .modal-aviso:focus { outline: 2px solid #39a900; outline-offset: 2px; }
+        .modal-actions-aviso { padding: 0 24px; }
+        .campo-invalido, .campo-invalido:focus { border-color: #b42318 !important; box-shadow: 0 0 0 3px rgba(180, 35, 24, .15) !important; }
+
+        /* ---- Ventana de finalizar: evaluación + Excel + observaciones ---- */
+        #finalizarModal .modal-card { max-width: 660px; }
+        .fin-seccion { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
+        .fin-seccion h4 { margin: 0 0 4px; font-size: 14px; color: #256d00; }
+        .fin-obligatorio { font-size: 11px; font-weight: 700; color: #8a2020; background: #fef2f2; border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
+        .fin-archivo { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+        .fin-archivo input[type="file"] { width: 100%; }
+        .fin-archivo-nombre { font-size: 13px; color: #1f2937; font-weight: 600; overflow-wrap: anywhere; }
+        .fin-precargada { font-size: 12px; color: #256d00; margin: 4px 0 0; }
+        @media (max-width: 720px) { .modal-actions-aviso { padding: 0 16px; } }
     </style>
 </head>
 <body>
@@ -1040,7 +1061,7 @@
                     registradas en el sistema.</p>
             </div>
 
-            <div id="mensaje"></div>
+            <div id="mensaje" role="status" aria-live="polite"></div>
 
             <!-- ================================================
                  FILTROS
@@ -1064,7 +1085,8 @@
                                 <option value="Confirmada">Confirmada</option>
                                 <option value="Reprogramada">Reprogramada</option>
                                 <option value="Cancelada">Cancelada</option>
-                                <option value="Finalizada">Finalizada</option>
+                                <!-- En la base la visita finalizada queda 'Ejecutada' (chk_estado_visita). -->
+                                <option value="Ejecutada">Finalizada</option>
                             </select>
                         </div>
                         <div class="filter-item">
@@ -1161,6 +1183,7 @@
                     style="width:100%;"
                     placeholder="Ej. Tengo un compromiso institucional previo en esa fecha."></textarea>
                 <p class="help-text" style="margin-top:8px;">M&iacute;nimo 10 caracteres. La solicitud quedar&aacute; registrada y notificada al equipo.</p>
+                <div class="modal-aviso" id="reproAviso" role="alert" aria-live="assertive" tabindex="-1"></div>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-primario btn-small btn-ver" onclick="enviarSolicitudReprogramacion()">Enviar solicitud</button>
@@ -1183,19 +1206,64 @@
         </div>
     </div>
 
-    <div class="modal" id="finalizarModal">
-        <div class="modal-card" style="max-width:460px;">
+    <!-- Finalizar = evaluar la visita + adjuntar el Excel de la calificación (los dos obligatorios).
+         Los errores se muestran aquí mismo, junto al botón, no en la ventana principal. -->
+    <div class="modal" id="finalizarModal" role="dialog" aria-modal="true" aria-labelledby="finalizarTitulo">
+        <div class="modal-card">
             <div class="modal-head">
-                <h3>Finalizar auditoría</h3>
-                <button type="button" class="modal-close" onclick="cerrarModalFinalizar()" aria-label="Cerrar">×</button>
+                <h3 id="finalizarTitulo">Finalizar auditoría</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalFinalizar()" aria-label="Cerrar finalizar auditoría">×</button>
             </div>
-            <div class="modal-body">
-                <p><label for="finalizarObservaciones">Observaciones del proceso (opcional):</label></p>
-                <textarea id="finalizarObservaciones" class="campo" rows="4" style="width:100%;" placeholder="Escriba las observaciones del proceso..."></textarea>
+            <form class="modal-body" id="finalizarForm" novalidate>
+                <p class="cal-contexto" id="finalizarContexto"></p>
+                <p class="help-text" style="margin-top:0;">Para finalizar la auditoría y pasarla al Comité, registra la evaluación de la visita y adjunta el Excel en el que hiciste la calificación.</p>
+
+                <section class="fin-seccion" aria-labelledby="finEvalTitulo">
+                    <h4 id="finEvalTitulo">Evaluación de la visita <span class="fin-obligatorio">Obligatoria</span></h4>
+                    <p class="fin-precargada" id="finPrecargada" hidden>Se cargó tu calificación anterior: puedes editarla.</p>
+                    <div class="cal-campo">
+                        <label for="finCalNumero">Calificación de la visita (1 a 100 %)</label>
+                        <div class="cal-rango">
+                            <input type="range" id="finCalRango" min="1" max="100" step="1" value="80" aria-label="Calificación con deslizador" aria-controls="finCalNumero">
+                            <span class="cal-numero"><input type="number" id="finCalNumero" class="campo" min="1" max="100" step="1" value="80" inputmode="numeric" required aria-describedby="finCalAyuda"> %</span>
+                        </div>
+                        <p class="cal-ayuda" id="finCalAyuda">Número entero de 1 a 100. Escribe además al menos uno de los tres comentarios (mínimo 10 caracteres el que llenes).</p>
+                    </div>
+                    <div class="cal-campo">
+                        <label for="finComentario">Comentarios sobre la visita <span class="cal-ayuda cal-contador" id="finComentarioCont">0/2000</span></label>
+                        <textarea id="finComentario" class="campo" maxlength="2000" rows="3" placeholder="¿Cómo se desarrolló la visita?"></textarea>
+                    </div>
+                    <div class="cal-campo">
+                        <label for="finSituaciones">Situaciones encontradas <span class="cal-ayuda cal-contador" id="finSituacionesCont">0/2000</span></label>
+                        <textarea id="finSituaciones" class="campo" maxlength="2000" rows="3" placeholder="Hechos relevantes, hallazgos o novedades durante la visita"></textarea>
+                    </div>
+                    <div class="cal-campo">
+                        <label for="finMejora">Oportunidades de mejora <span class="cal-ayuda cal-contador" id="finMejoraCont">0/2000</span></label>
+                        <textarea id="finMejora" class="campo" maxlength="2000" rows="3" placeholder="Qué podría mejorar la empresa o el proceso"></textarea>
+                    </div>
+                </section>
+
+                <section class="fin-seccion" aria-labelledby="finExcelTitulo">
+                    <h4 id="finExcelTitulo">Excel de la calificación <span class="fin-obligatorio">Obligatorio</span></h4>
+                    <div class="fin-archivo">
+                        <label for="finExcel" class="cal-ayuda" style="margin:0;">Archivo .xlsx o .xls, máximo 10 MB. El Comité lo descargará desde el expediente.</label>
+                        <input type="file" id="finExcel" class="campo" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" required aria-describedby="finExcelNombre">
+                        <span class="fin-archivo-nombre" id="finExcelNombre" aria-live="polite"></span>
+                    </div>
+                </section>
+
+                <section class="fin-seccion" aria-labelledby="finObsTitulo">
+                    <h4 id="finObsTitulo">Observaciones de finalización <span class="cal-ayuda">(opcional)</span></h4>
+                    <label for="finalizarObservaciones" class="cal-ayuda" style="display:block;margin:0 0 6px;">Observaciones del proceso</label>
+                    <textarea id="finalizarObservaciones" class="campo" rows="3" maxlength="4000" style="width:100%;" placeholder="Escriba las observaciones del proceso..."></textarea>
+                </section>
+            </form>
+            <div class="modal-actions-aviso">
+                <div class="modal-aviso" id="finalizarAviso" role="alert" aria-live="assertive" tabindex="-1"></div>
             </div>
-            <div class="modal-actions" style="justify-content:center;">
-                <button type="button" class="btn btn-primario btn-small btn-ver" onclick="enviarFinalizacion()">Finalizar auditoría</button>
+            <div class="modal-actions" style="justify-content:flex-end;">
                 <button type="button" class="btn btn-secundario btn-small btn-cancelar" onclick="cerrarModalFinalizar()">Cancelar</button>
+                <button type="button" class="btn btn-primario btn-small btn-ver" id="finalizarEnviar" onclick="enviarFinalizacion()">Finalizar auditoría</button>
             </div>
         </div>
     </div>
@@ -1230,8 +1298,10 @@
                     <label for="calMejora">Oportunidades de mejora <span class="cal-ayuda cal-contador" id="calMejoraCont">0/2000</span></label>
                     <textarea id="calMejora" class="campo" maxlength="2000" rows="3" placeholder="Qué podría mejorar la empresa o el proceso"></textarea>
                 </div>
-                <div class="cal-error" id="calificarError" role="alert"></div>
             </form>
+            <div class="modal-actions-aviso">
+                <div class="modal-aviso" id="calificarError" role="alert" aria-live="assertive" tabindex="-1"></div>
+            </div>
             <div class="modal-actions" style="justify-content:flex-end;">
                 <button type="button" class="btn btn-secundario" onclick="cerrarModalCalificar()">Cancelar</button>
                 <button type="button" class="btn btn-primario" id="calificarGuardar" onclick="guardarCalificacion()">Guardar calificación</button>
@@ -1279,6 +1349,66 @@
             el.style.border = tipo === 'ok' ? '1px solid #cfe3c5' : '1px solid #e7bfbb';
             setTimeout(() => { el.style.display = 'none'; }, 5000);
         }
+
+        // Estado de la visita para mostrar: en la base la finalizada queda 'Ejecutada'.
+        function etiquetaEstado(estado) {
+            const texto = String(estado || '').trim();
+            if (!texto) return '-';
+            return /^ejecutad/i.test(texto) ? 'Finalizada' : texto;
+        }
+
+        /* ---------------------------------------------------------
+           AVISOS DENTRO DE LAS VENTANAS
+           El error o aviso de una acción hecha dentro de una ventana
+           (finalizar, calificar, reprogramar, confirmar) se muestra en
+           ESA ventana, junto al botón pulsado: región role="alert",
+           desplazamiento hasta el mensaje y foco en el campo inválido
+           (marcado con aria-invalid). La ventana principal (#mensaje)
+           queda para la carga de la lista y los avisos de éxito.
+        --------------------------------------------------------- */
+        function limpiarCamposInvalidos(contenedor) {
+            (contenedor || document).querySelectorAll('.campo-invalido').forEach(el => {
+                el.classList.remove('campo-invalido');
+                el.removeAttribute('aria-invalid');
+            });
+        }
+
+        function avisoEnModal(idAviso, texto, tipo = 'error', campos = []) {
+            const caja = document.getElementById(idAviso);
+            if (!caja) return;
+            limpiarCamposInvalidos(caja.closest('.modal'));
+            caja.textContent = texto || '';
+            caja.className = 'modal-aviso' + (texto ? ' visible ' + tipo : '');
+            caja.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
+            if (!texto) return;
+            const marcados = (campos || []).map(id => document.getElementById(id)).filter(Boolean);
+            marcados.forEach(el => { el.classList.add('campo-invalido'); el.setAttribute('aria-invalid', 'true'); });
+            try { caja.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) { caja.scrollIntoView(); }
+            if (tipo !== 'error') return;
+            const destino = marcados.find(el => !el.disabled) || caja;
+            setTimeout(() => {
+                try { destino.focus({ preventScroll: true }); } catch (_) { destino.focus(); }
+                try { destino.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { }
+                // El mensaje queda visible aunque el foco vaya al campo.
+                try { caja.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) { }
+            }, 30);
+        }
+
+        function detalleDeError(data, porDefecto) {
+            if (data && typeof data.detail === 'string') return data.detail;
+            if (data && Array.isArray(data.detail) && data.detail[0] && data.detail[0].msg) return data.detail[0].msg;
+            if (data && data.detail && data.detail.mensaje) return data.detail.mensaje;
+            return porDefecto;
+        }
+
+        // El borde rojo se quita en cuanto la persona corrige el campo.
+        ['input', 'change'].forEach(tipo => document.addEventListener(tipo, (event) => {
+            const campo = event.target;
+            if (campo && campo.classList && campo.classList.contains('campo-invalido')) {
+                campo.classList.remove('campo-invalido');
+                campo.removeAttribute('aria-invalid');
+            }
+        }, true));
 
         async function resolverUsuario() {
             if (usuarioId) return usuarioId;
@@ -1435,7 +1565,7 @@
                 set.add(dias[d.getDay()]);
             }
             const estado = String(r.estado || '').toLowerCase();
-            const esActivo = !estado.includes('cancelad') && !estado.includes('finalizad');
+            const esActivo = !estado.includes('cancelad') && !estado.includes('finalizad') && !estado.includes('ejecutad');
             const badge = esActivo ? '<span class="badge programada">Activo</span>' : '<span class="badge cancelada">Cancelado</span>';
             return Array.from(set).join(', ') + ' ' + badge;
         }
@@ -1472,7 +1602,7 @@
                         <td>${escapeHtml(formatDateTime(r.fecha_inicio))}</td>
                         <td>${escapeHtml(formatDateTime(r.fecha_fin))}</td>
                         <td>${escapeHtml(r.modalidad || '-')}</td>
-                        <td><span class="badge ${String(r.estado||'').toLowerCase()}">${escapeHtml(r.estado || '-')}</span></td>
+                        <td><span class="badge ${String(r.estado||'').toLowerCase()}">${escapeHtml(etiquetaEstado(r.estado))}</span></td>
                         <td>${r.dia_no_disponible
                             ? '<span class="badge no-disponible">No disponible</span>' + (r.bloqueo_motivo ? '<span class="motivo-bloqueo">Motivo: ' + escapeHtml(r.bloqueo_motivo) + '</span>' : '')
                             : '<span class="badge disponible">Disponible</span>'}</td>
@@ -1531,6 +1661,7 @@
                 resumen.textContent = `Solicitud de reprogramación de ${r.numero_radicado || r.id_solicitud || 'la visita'}. Indique el motivo.`;
             }
             if (motivo) motivo.value = '';
+            avisoEnModal('reproAviso', '');
             const modal = document.getElementById('reproModal');
             if (modal) modal.classList.add('show');
         }
@@ -1561,7 +1692,7 @@
             if (!r) { cerrarModalReprogramacion(); return; }
             const motivo = (document.getElementById('reproMotivo') || {}).value || '';
             if (motivo.trim().length < 10) {
-                mostrarAvisoModal('El motivo debe tener al menos 10 caracteres.', 'Motivo incompleto');
+                avisoEnModal('reproAviso', 'El motivo debe tener al menos 10 caracteres.', 'error', ['reproMotivo']);
                 return;
             }
             // Si ya existe una solicitud pendiente se reemplazará por esta.
@@ -1582,7 +1713,8 @@
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
-                    mostrarAvisoModal(typeof data.detail === 'string' ? data.detail : ((data.detail && data.detail.mensaje) || 'No se pudo registrar la solicitud.'), 'No se pudo registrar');
+                    const detalle = detalleDeError(data, 'No se pudo registrar la solicitud.');
+                    avisoEnModal('reproAviso', detalle, 'error', /motivo/i.test(detalle) ? ['reproMotivo'] : []);
                     return;
                 }
                 const idProgramacion = r.id_programacion;
@@ -1601,7 +1733,7 @@
                     if (nuevoIdx >= 0) await verDetalle(nuevoIdx); else cerrarModal();
                 }
             } catch (e) {
-                mostrarAvisoModal('No se pudo registrar la solicitud: ' + e.message, 'No se pudo registrar');
+                avisoEnModal('reproAviso', 'No se pudo registrar la solicitud: ' + e.message);
             }
         }
 
@@ -1616,7 +1748,7 @@
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
-                    mostrarMensaje(typeof data.detail === 'string' ? data.detail : 'No se pudo confirmar la programación.', 'error');
+                    avisoEnModal('detalleAviso', detalleDeError(data, 'No se pudo confirmar la programación.'));
                     return;
                 }
                 mostrarMensaje(data.mensaje || 'Programación confirmada.', 'ok');
@@ -1624,7 +1756,7 @@
                 if (modal) modal.classList.remove('show');
                 await cargarDatos();
             } catch (e) {
-                mostrarMensaje('No se pudo confirmar la programación: ' + e.message, 'error');
+                avisoEnModal('detalleAviso', 'No se pudo confirmar la programación: ' + e.message);
             }
         }
 
@@ -1719,7 +1851,7 @@
                         <div class="modal-field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
                         <div class="modal-field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
                         <div class="modal-field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
-                        <div class="modal-field"><label>Estado</label><span><span class="badge ${estadoClass}">${escapeHtml(r.estado || '-')}</span></span></div>
+                        <div class="modal-field"><label>Estado</label><span><span class="badge ${estadoClass}">${escapeHtml(etiquetaEstado(r.estado))}</span></span></div>
                         <div class="modal-field" style="grid-column:1/-1;"><label>Disponibilidad del día</label><span>${r.dia_no_disponible
                             ? '<span class="badge no-disponible">No disponible</span>' + (r.bloqueo_motivo ? '<span class="motivo-bloqueo">Motivo: ' + escapeHtml(r.bloqueo_motivo) + '</span>' : '')
                             : '<span class="badge disponible">Disponible</span>'}</span></div>
@@ -1746,6 +1878,7 @@
                     </select>
                 </div>
 
+                <div class="modal-aviso" id="detalleAviso" role="alert" aria-live="assertive" tabindex="-1"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secundario btn-small btn-ver" onclick="imprimirProgramacion(${idx})">Imprimir programación de visitas</button>
                     <button type="button" class="btn btn-secundario btn-small btn-editar" onclick="exportarAgendaIndividual(${idx})">Exportar agenda individual</button>
@@ -1913,20 +2046,53 @@
         }
 
         function esProgramacionFinalizada(r) {
-            return String(r.estado || '').trim().toLowerCase() === 'finalizada';
+            // En la base la visita finalizada queda 'Ejecutada' (chk_estado_visita).
+            return /^(finalizad|ejecutad)/.test(String(r.estado || '').trim().toLowerCase());
         }
 
         let indiceFinalizacion = null;
+        const FIN_CAMPOS = [
+            ['finComentario', 'comentario_visita', 'Comentarios sobre la visita'],
+            ['finSituaciones', 'situaciones_encontradas', 'Situaciones encontradas'],
+            ['finMejora', 'oportunidades_mejora', 'Oportunidades de mejora']
+        ];
+        const EXCEL_MAX_BYTES = 10 * 1024 * 1024;
+
+        function visitaYaEmpezo(r) {
+            const inicio = r && r.fecha_inicio ? new Date(r.fecha_inicio) : null;
+            return Boolean(inicio && !Number.isNaN(inicio.getTime()) && inicio <= new Date());
+        }
 
         function abrirModalFinalizar(idx) {
             const r = todosLosDatos[idx];
             if (!r) return;
             indiceFinalizacion = idx;
-            const textarea = document.getElementById('finalizarObservaciones');
-            if (textarea) textarea.value = '';
+            // Evaluación: si ya calificó antes, se precarga y se puede editar.
+            const actual = misCalificaciones[String(r.id_programacion)] || null;
+            const valor = actual ? actual.calificacion : 80;
+            document.getElementById('finCalNumero').value = valor;
+            document.getElementById('finCalRango').value = valor;
+            FIN_CAMPOS.forEach(([id, clave]) => { document.getElementById(id).value = actual && actual[clave] ? actual[clave] : ''; });
+            document.getElementById('finPrecargada').hidden = !actual;
+            actualizarContadores();
+            document.getElementById('finExcel').value = '';
+            document.getElementById('finExcelNombre').textContent = '';
+            document.getElementById('finalizarObservaciones').value = '';
+            document.getElementById('finalizarContexto').textContent =
+                [r.numero_radicado, r.empresa_nombre, formatDateTime(r.fecha_inicio), etiquetaEstado(r.estado)].filter(Boolean).join(' · ');
+            const boton = document.getElementById('finalizarEnviar');
+            boton.disabled = false;
+            boton.textContent = 'Finalizar auditoría';
+            avisoEnModal('finalizarAviso', '');
             cerrarModal();
             const modal = document.getElementById('finalizarModal');
             if (modal) modal.classList.add('show');
+            if (!visitaYaEmpezo(r)) {
+                boton.disabled = true;
+                avisoEnModal('finalizarAviso', 'La visita todavía no ha empezado: podrás finalizarla y evaluarla desde ' + (formatDateTime(r.fecha_inicio) + '.').replace(/\.\.$/, '.'), 'info');
+            } else {
+                setTimeout(() => document.getElementById('finCalNumero').focus(), 30);
+            }
         }
 
         function cerrarModalFinalizar() {
@@ -1935,26 +2101,83 @@
             indiceFinalizacion = null;
         }
 
+        // Extensión, tamaño y firma real del archivo (el servidor lo vuelve a validar).
+        async function validarExcelLocal(archivo) {
+            if (!archivo) return 'Adjunta el archivo Excel (.xlsx o .xls) con la calificación de la visita: es obligatorio para finalizar la auditoría.';
+            const extension = ((archivo.name || '').match(/\.[^.]+$/) || [''])[0].toLowerCase();
+            if (extension !== '.xlsx' && extension !== '.xls') return 'El archivo «' + archivo.name + '» no es un Excel: solo se aceptan archivos .xlsx o .xls.';
+            if (!archivo.size) return 'El archivo Excel está vacío.';
+            if (archivo.size > EXCEL_MAX_BYTES) return 'El archivo Excel supera el máximo de 10 MB.';
+            try {
+                const cabecera = new Uint8Array(await archivo.slice(0, 8).arrayBuffer());
+                const esZip = cabecera[0] === 0x50 && cabecera[1] === 0x4B && cabecera[2] === 0x03 && cabecera[3] === 0x04;
+                const esOle = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1].every((b, i) => cabecera[i] === b);
+                if ((extension === '.xlsx' && !esZip) || (extension === '.xls' && !esOle)) {
+                    return 'El contenido de «' + archivo.name + '» no corresponde a un libro de Excel ' + extension + ' válido. Guárdalo de nuevo desde Excel y vuelve a adjuntarlo.';
+                }
+            } catch (_) { /* si el navegador no deja leerlo, valida el servidor */ }
+            return '';
+        }
+
+        // Campo al que apunta un mensaje del servidor (para marcarlo y darle el foco).
+        function camposDelError(mensaje) {
+            const m = String(mensaje || '').toLowerCase();
+            if (m.includes('excel') || m.includes('.xls')) return ['finExcel'];
+            if (m.includes('calificación debe')) return ['finCalNumero'];
+            if (m.includes('al menos un comentario') || m.includes('comentarios sobre')) return ['finComentario'];
+            if (m.includes('situaciones encontradas')) return ['finSituaciones'];
+            if (m.includes('oportunidades de mejora')) return ['finMejora'];
+            if (m.includes('observaciones')) return ['finalizarObservaciones'];
+            return [];
+        }
+
         async function enviarFinalizacion() {
             if (indiceFinalizacion === null) return;
             const r = todosLosDatos[indiceFinalizacion];
             if (!r) { cerrarModalFinalizar(); return; }
-            const textarea = document.getElementById('finalizarObservaciones');
-            const observaciones = textarea ? textarea.value : '';
+            const evaluacion = validarEvaluacion('finCalNumero', FIN_CAMPOS);
+            if (evaluacion.error) {
+                avisoEnModal('finalizarAviso', evaluacion.error, 'error', [evaluacion.foco]);
+                return;
+            }
+            const archivo = (document.getElementById('finExcel').files || [])[0] || null;
+            const errorExcel = await validarExcelLocal(archivo);
+            if (errorExcel) {
+                avisoEnModal('finalizarAviso', errorExcel, 'error', ['finExcel']);
+                return;
+            }
+            const formulario = new FormData();
+            Object.entries(evaluacion.cuerpo).forEach(([clave, valor]) => formulario.append(clave, valor === null ? '' : String(valor)));
+            formulario.append('observaciones', document.getElementById('finalizarObservaciones').value || '');
+            formulario.append('archivo', archivo, archivo.name);
+            const boton = document.getElementById('finalizarEnviar');
+            boton.disabled = true;
+            boton.textContent = 'Finalizando...';
+            avisoEnModal('finalizarAviso', 'Guardando la evaluación y el Excel...', 'info');
             try {
                 const res = await fetch(`/agenda-auditor/programacion/${encodeURIComponent(r.id_programacion)}/finalizar`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
-                    body: JSON.stringify({ observaciones: observaciones })
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                    body: formulario
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.detail || 'No se pudo finalizar la auditoría.');
-                mostrarMensaje(data.mensaje || 'Auditoría finalizada correctamente.', 'ok');
+                if (!res.ok) {
+                    const detalle = detalleDeError(data, 'No se pudo finalizar la auditoría.');
+                    avisoEnModal('finalizarAviso', detalle, 'error', camposDelError(detalle));
+                    return;
+                }
+                if (data.calificacion) misCalificaciones[String(r.id_programacion)] = { ...data.calificacion, bloqueada: false };
                 cerrarModalFinalizar();
                 cerrarModal();
+                mostrarMensaje(data.mensaje || 'Auditoría finalizada correctamente.', 'ok');
                 await cargarDatos();
             } catch (e) {
-                mostrarMensaje('No se pudo finalizar la auditoría: ' + e.message, 'error');
+                avisoEnModal('finalizarAviso', 'No se pudo finalizar la auditoría: ' + e.message);
+            } finally {
+                if (document.getElementById('finalizarModal').classList.contains('show')) {
+                    boton.disabled = false;
+                    boton.textContent = 'Finalizar auditoría';
+                }
             }
         }
 
@@ -1979,7 +2202,7 @@
                     <div class="field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
                     <div class="field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
                     <div class="field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
-                    <div class="field"><label>Estado</label><span>${escapeHtml(r.estado || '-')}</span></div>
+                    <div class="field"><label>Estado</label><span>${escapeHtml(etiquetaEstado(r.estado))}</span></div>
                 </div>
                 <div class="section"><h3>Auditores asignados</h3>${auditores}</div>
             `;
@@ -2023,7 +2246,7 @@
                     <div class="field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
                     <div class="field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
                     <div class="field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
-                    <div class="field"><label>Estado</label><span>${escapeHtml(r.estado || '-')}</span></div>
+                    <div class="field"><label>Estado</label><span>${escapeHtml(etiquetaEstado(r.estado))}</span></div>
                 </div>
                 <div class="section"><h3>Auditores asignados</h3>
                     <pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(auditores)}</pre>
@@ -2042,7 +2265,7 @@
             const contenido = `
                 <div class="section"><h3>Programación de Agenda</h3>
                     <div class="field"><label>ID Programación</label><span>${escapeHtml(r.id_programacion || '-')}</span></div>
-                    <div class="field"><label>Estado</label><span>${escapeHtml(r.estado || '-')}</span></div>
+                    <div class="field"><label>Estado</label><span>${escapeHtml(etiquetaEstado(r.estado))}</span></div>
                     <div class="field"><label>Inicio</label><span>${escapeHtml(formatDateTime(r.fecha_inicio))}</span></div>
                     <div class="field"><label>Fin</label><span>${escapeHtml(formatDateTime(r.fecha_fin))}</span></div>
                     <div class="field"><label>Modalidad</label><span>${escapeHtml(r.modalidad || '-')}</span></div>
@@ -2136,17 +2359,15 @@
         }
 
         function actualizarContadores() {
-            CAL_CAMPOS.forEach(([id]) => {
+            CAL_CAMPOS.concat(FIN_CAMPOS).forEach(([id]) => {
                 const campo = document.getElementById(id);
                 const cont = document.getElementById(id + 'Cont');
                 if (campo && cont) cont.textContent = campo.value.length + '/2000';
             });
         }
 
-        function errorCalificacion(texto) {
-            const caja = document.getElementById('calificarError');
-            caja.textContent = texto || '';
-            caja.classList.toggle('visible', Boolean(texto));
+        function errorCalificacion(texto, campos = []) {
+            avisoEnModal('calificarError', texto, 'error', campos);
         }
 
         function abrirModalCalificar(idx) {
@@ -2173,22 +2394,25 @@
             indiceCalificacion = null;
         }
 
-        function validarCalificacionFormulario() {
-            const texto = String(document.getElementById('calNumero').value).trim();
+        // Misma regla para "Calificar visita" y para la ventana de finalizar.
+        function validarCalificacionFormulario() { return validarEvaluacion('calNumero', CAL_CAMPOS); }
+
+        function validarEvaluacion(idNumero, campos) {
+            const texto = String(document.getElementById(idNumero).value).trim();
             const n = Number(texto);
             if (!/^\d+$/.test(texto) || !Number.isInteger(n) || n < 1 || n > 100) {
-                return { error: 'La calificación debe ser un número entero entre 1 y 100 %.', foco: 'calNumero' };
+                return { error: 'La calificación debe ser un número entero entre 1 y 100 %.', foco: idNumero };
             }
             const cuerpo = { calificacion: n };
             let alguno = false;
-            for (const [id, clave, etiqueta] of CAL_CAMPOS) {
+            for (const [id, clave, etiqueta] of campos) {
                 const valor = document.getElementById(id).value.trim();
                 if (valor && valor.length < 10) return { error: '«' + etiqueta + '» debe tener al menos 10 caracteres.', foco: id };
                 if (valor.length > 2000) return { error: '«' + etiqueta + '» admite máximo 2000 caracteres.', foco: id };
                 cuerpo[clave] = valor || null;
                 if (valor) alguno = true;
             }
-            if (!alguno) return { error: 'Escribe al menos un comentario: sobre la visita, situaciones encontradas u oportunidades de mejora.', foco: 'calComentario' };
+            if (!alguno) return { error: 'Escribe al menos un comentario: sobre la visita, situaciones encontradas u oportunidades de mejora.', foco: campos[0][0] };
             return { cuerpo };
         }
 
@@ -2198,8 +2422,7 @@
             if (!r) { cerrarModalCalificar(); return; }
             const v = validarCalificacionFormulario();
             if (v.error) {
-                errorCalificacion(v.error);
-                document.getElementById(v.foco)?.focus();
+                avisoEnModal('calificarError', v.error, 'error', [v.foco]);
                 return;
             }
             const boton = document.getElementById('calificarGuardar');
@@ -2213,16 +2436,17 @@
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
-                    const detalle = typeof data.detail === 'string' ? data.detail
-                        : (Array.isArray(data.detail) && data.detail[0] && data.detail[0].msg) || 'No se pudo guardar la calificación.';
-                    throw new Error(detalle);
+                    const detalle = detalleDeError(data, 'No se pudo guardar la calificación.');
+                    const campo = camposDelError(detalle).map(id => ({ finCalNumero: 'calNumero', finComentario: 'calComentario', finSituaciones: 'calSituaciones', finMejora: 'calMejora' })[id]).filter(Boolean);
+                    avisoEnModal('calificarError', detalle, 'error', campo);
+                    return;
                 }
                 if (data.calificacion) misCalificaciones[String(r.id_programacion)] = { ...data.calificacion, bloqueada: false };
                 cerrarModalCalificar();
                 renderizarPagina();
                 mostrarMensaje(data.mensaje || 'Calificación guardada.', 'ok');
             } catch (e) {
-                errorCalificacion(e.message);
+                avisoEnModal('calificarError', 'No se pudo guardar la calificación: ' + e.message);
             } finally {
                 boton.disabled = false;
             }
@@ -2233,6 +2457,21 @@
             document.getElementById('calNumero')?.addEventListener('input', () => sincronizarCalificacion('numero'));
             CAL_CAMPOS.forEach(([id]) => document.getElementById(id)?.addEventListener('input', actualizarContadores));
             document.getElementById('calificarForm')?.addEventListener('submit', (e) => { e.preventDefault(); guardarCalificacion(); });
+            // Ventana de finalizar: mismo control de calificación y el Excel.
+            const finRango = document.getElementById('finCalRango');
+            const finNumero = document.getElementById('finCalNumero');
+            finRango?.addEventListener('input', () => { finNumero.value = finRango.value; });
+            finNumero?.addEventListener('input', () => {
+                const n = Number(finNumero.value);
+                if (Number.isInteger(n) && n >= 1 && n <= 100) finRango.value = String(n);
+            });
+            FIN_CAMPOS.forEach(([id]) => document.getElementById(id)?.addEventListener('input', actualizarContadores));
+            document.getElementById('finExcel')?.addEventListener('change', (e) => {
+                const archivo = (e.target.files || [])[0];
+                document.getElementById('finExcelNombre').textContent = archivo
+                    ? 'Seleccionado: ' + archivo.name + ' (' + (archivo.size / 1024 / 1024).toFixed(2) + ' MB)' : '';
+            });
+            document.getElementById('finalizarForm')?.addEventListener('submit', (e) => { e.preventDefault(); enviarFinalizacion(); });
             document.getElementById('calificarModal')?.addEventListener('click', (e) => {
                 if (e.target.id === 'calificarModal') cerrarModalCalificar();
             });
@@ -2344,6 +2583,6 @@
         })();
     </script>
      <script src="/static/session.js?v=20261118pub"></script>
-<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/nav.js?v=20261118menu"></script>
 </body>
 </html>

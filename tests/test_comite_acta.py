@@ -63,6 +63,8 @@ def test_generar_guarda_acta_pdf_y_hash_en_la_base(tmp_path, monkeypatch):
     }
     db = BaseFalsa(
         Resultado([expediente]),
+        # Solo el líder del comité del expediente genera el acta.
+        Resultado([{"id_usuario": id_usuario, "nombre": "Líder", "correo": "l@x.co"}]),
         Resultado([{"accion": "aprobar", "datos": {"comentario": "Cumple los requisitos"}}]),
         Resultado(scalar=0),
         Resultado(),
@@ -82,7 +84,7 @@ def test_generar_guarda_acta_pdf_y_hash_en_la_base(tmp_path, monkeypatch):
     assert hashlib.sha256(contenido).hexdigest() == respuesta["huella_pdf"]
     assert respuesta["estado"] == "GENERADA"
     assert db.commits == 1
-    registro = db.ejecuciones[3][1]
+    registro = db.ejecuciones[4][1]
     assert registro["version"] == 1
     assert json.loads(registro["datos"])["dictamen"] == "Aprobado"
 

@@ -49,7 +49,8 @@ async def test_cualquier_auditor_asignado_finaliza(rol_guardado):
     except HTTPException as error:  # pasos posteriores no son el objeto de la prueba
         assert error.status_code != 403, error.detail
     sentencias = [str(c.args[0]) for c in db.execute.call_args_list]
-    assert any("SET estado = 'Finalizada'" in sql for sql in sentencias)
+    # En la base queda 'Ejecutada' (chk_estado_visita no admite 'Finalizada').
+    assert any("SET estado = 'Ejecutada'" in sql for sql in sentencias)
 
 
 async def test_quien_no_esta_asignado_no_finaliza():

@@ -125,7 +125,9 @@ class SesionProgramar:
         if "FROM usuario WHERE id_usuario" in sql:
             return ResultadoFalso([{"id_usuario": ID_AUDITOR, "nombre": "Ana Auditora", "estado": "Activo", "estado_auditor": "Activo"}])
         if "FROM auditores_solicitud" in sql:
-            return ResultadoFalso([{"especialidad": "Auditor líder", "estado_asignacion": "Agendada"}])
+            # Sirve para el auditor único de la solicitud y para su asignación.
+            return ResultadoFalso([{"id_auditor": ID_AUDITOR, "nombre": "Ana Auditora",
+                                    "especialidad": "Auditor líder", "estado_asignacion": "Agendada"}])
         raise AssertionError("Consulta inesperada: " + sql[:160])
 
     async def commit(self):

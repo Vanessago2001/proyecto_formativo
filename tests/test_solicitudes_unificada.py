@@ -117,8 +117,10 @@ def test_aprobar_ofrece_ir_a_asignar_y_auxiliar_ve_pendiente():
 @pytest.mark.parametrize("rol", ["Coordinador", "Administrador", "Auxiliar"])
 async def test_conteo_de_etapas(rol):
     db = SesionConteo()
+    # El Auxiliar, con SOL-006 delegado por el Coordinador (regla_auxiliar).
     respuesta = await _get("/asignacion-auditores/conteo-etapas",
-                           usuario={"id_usuario": str(uuid.uuid4()), "role_name": rol}, db=db)
+                           usuario={"id_usuario": str(uuid.uuid4()), "role_name": rol,
+                                    "permisos_delegados": ("SOL-006",)}, db=db)
     assert respuesta.status_code == 200
     assert respuesta.json() == {"radicadas": 3, "revision": 2, "por_asignar": 1, "con_auditores": 4, "todas": 9}
     assert all(sql.startswith("SELECT") for sql in db.sentencias)
@@ -126,8 +128,9 @@ async def test_conteo_de_etapas(rol):
     assert "NOT EXISTS ( SELECT 1 FROM auditores_solicitud a" in db.sentencias[0]
 
 
-@pytest.mark.parametrize("rol", ["Empresa", "Auditor", "Comite"])
+@pytest.mark.parametrize("rol", ["Empresa", "Auditor", "Comite", "Auxiliar"])
 async def test_conteo_de_etapas_solo_gestion(rol):
+    """El Auxiliar sin permisos delegados tampoco (no tiene permisos propios)."""
     respuesta = await _get("/asignacion-auditores/conteo-etapas",
                            usuario={"id_usuario": str(uuid.uuid4()), "role_name": rol}, db=SesionConteo())
     assert respuesta.status_code == 403

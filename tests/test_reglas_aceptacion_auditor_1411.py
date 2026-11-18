@@ -34,6 +34,7 @@ from modules.auditores_registrados.auditores_registrados_service import (
     clasificar_estado_registro,
 )
 from tests.fake_db import ResultadoFalso
+from tests.permisos_aux import con_permisos
 from tests.test_aceptacion_auditor_y_filtros import (
     ID_ACTOR,
     ID_POSTULACION,
@@ -152,7 +153,9 @@ def cliente_banco(monkeypatch):
 
     def con_rol(rol, permiso=False):
         async def _usuario():
-            return {"id_usuario": str(ID_ACTOR), "role_name": rol}
+            usuario = {"id_usuario": str(ID_ACTOR), "role_name": rol}
+            # Permiso delegado simulado (regla_auxiliar): todo el catálogo.
+            return con_permisos(usuario) if permiso else usuario
 
         async def _permiso(db, usuario, codigo, detalle=None):
             return permiso

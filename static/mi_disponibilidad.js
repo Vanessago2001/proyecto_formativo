@@ -251,7 +251,7 @@ dialog.md-dialogo::backdrop { background: rgba(15,23,42,.55); }
     ${dato("Dirección", direccion, true)}
     ${dato("Modalidad", v.modalidad)}
     ${dato("Horario", horarioEnDia(v, op.fecha))}
-    <div class="md-completo"><dt>Equipo auditor (${equipo.length})</dt><dd>${equipoHtml}</dd></div>
+    <div class="md-completo"><dt>${equipo.length > 1 ? `Auditores (${equipo.length})` : "Auditor"}</dt><dd>${equipoHtml}</dd></div>
     ${obs.length ? obs.map(([e, t]) => dato(e, t, true)).join("") : dato("Observaciones", "Sin observaciones registradas.", true)}
   </dl>
   ${acciones ? `<div class="md-dlg-acciones">${acciones}</div>` : ""}

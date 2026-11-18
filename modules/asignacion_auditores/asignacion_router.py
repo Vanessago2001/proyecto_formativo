@@ -3,7 +3,7 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +20,7 @@ from modules.permisos_auxiliar.permisos_auxiliar_service import (
     auxiliar_tiene_permiso,
     registrar_uso,
 )
+from modules.permisos_auxiliar.regla_auxiliar import exigir_permiso_auxiliar
 from modules.solicitudes.solicitud_permissions import (
     ROL_ADM,
     ROL_AUX,
@@ -35,9 +36,21 @@ ROLES_GESTION = {ROL_ADM, ROL_AUX}
 ROLES_ADMINISTRADOR = {ROL_ADM}
 
 
-async def requiere_gestion_asignaciones(usuario: dict = Depends(get_current_user)) -> dict:
+# El Auxiliar no tiene permisos propios (regla_auxiliar): consultar las
+# etapas y los candidatos pide SOL-006 o SOL-041..SOL-047 delegado; asignar
+# (POST), SOL-047 (proponer) o SOL-048 (aprobar asignación). "Asignar de todas
+# formas" sigue pidiendo SOL-048.
+PERMISOS_AUXILIAR_CONSULTA = ("SOL-006", "SOL-041", "SOL-042", "SOL-043", "SOL-044", "SOL-045", "SOL-046", "SOL-047")
+PERMISOS_AUXILIAR_ASIGNAR = ("SOL-047", "SOL-048")
+
+
+async def requiere_gestion_asignaciones(request: Request, usuario: dict = Depends(get_current_user)) -> dict:
     if normalizar_rol(usuario.get("role_name")) not in ROLES_GESTION:
         raise HTTPException(status_code=403, detail="No tiene permisos para gestionar asignaciones de auditores.")
+    exigir_permiso_auxiliar(
+        usuario,
+        *(PERMISOS_AUXILIAR_CONSULTA if request.method in ("GET", "HEAD") else PERMISOS_AUXILIAR_ASIGNAR),
+    )
     return usuario
 
 
@@ -191,6 +204,7 @@ async def listar_asignaciones(
     servicio = AsignacionAuditorService(db)
     rol = normalizar_rol(usuario.get("role_name"))
     if rol in ROLES_GESTION:
+        exigir_permiso_auxiliar(usuario, *PERMISOS_AUXILIAR_CONSULTA, "SOL-051")
         return await servicio.listar_asignaciones(id_solicitud=id_solicitud)
     if rol == ROL_EMP:
         # La empresa solo ve los auditores asignados a sus propias solicitudes.
@@ -263,6 +277,7 @@ async def listar_solicitudes_cambio(
     servicio = AsignacionAuditorService(db)
     rol = normalizar_rol(usuario.get("role_name"))
     if rol in ROLES_GESTION:
+        exigir_permiso_auxiliar(usuario, "SOL-006", "SOL-049", "SOL-050")
         return await servicio.listar_solicitudes_cambio(estado=estado)
     if rol == ROL_EMP:
         return await servicio.listar_solicitudes_cambio(

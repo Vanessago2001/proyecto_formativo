@@ -560,8 +560,7 @@
       }
 
       if (checked) {
-        // Desde Asignación se registra UN auditor por solicitud (con uno la
-        // solicitud queda completa); los demás se suman en Agenda.
+        // Solo un auditor por solicitud: marcar uno desmarca el anterior.
         desmarcarOtrosAuditores(id);
         auditoresSeleccionados.set(id, auditor);
         if (picker) picker.style.display = 'block';
@@ -625,7 +624,9 @@
         if (!res.ok) throw new Error(typeof info.detail === 'string' ? info.detail : 'No se pudo consultar la elegibilidad.');
         const motivos = Array.isArray(info.motivos) && info.motivos.length ? info.motivos : [auditor.motivo || 'No cumple las condiciones de asignación.'];
         motivosLista.innerHTML = motivos.map(m => `<li>${escapeHTML(m)}</li>`).join('');
-        if (info.forzable) {
+        // "Asignar de todas formas": Coordinador, o Auxiliar con SOL-048 delegado.
+        const puedeForzar = esCoordinador || Boolean(window.CertiPermisos && window.CertiPermisos.tiene('SOL-048'));
+        if (info.forzable && puedeForzar) {
           bloqueForzar.style.display = '';
           botonForzar.style.display = '';
           setTimeout(() => justificacion.focus(), 50);
@@ -700,7 +701,7 @@
       });
       const valido = Boolean(isAdmin && solicitud && elegibles);
       assignBtn.disabled = !valido;
-      assignBtn.title = !elegibles ? "Selecciona un auditor elegible (los demás se suman en Agenda al programar)." : "";
+      assignBtn.title = !elegibles ? "Selecciona un auditor elegible (solo un auditor por solicitud)." : "";
       if (auditorsSection.classList.contains("show")) {
         auditorsCounter.textContent = `${totalAuditoresFiltrados} resultado(s) · ${auditoresSeleccionados.size} seleccionado(s)`;
       }
@@ -800,7 +801,7 @@
         return;
       }
       if (seleccionados.length > 1) {
-        showMessage("Desde Asignación se registra un auditor por solicitud; los demás se suman en Agenda al programar la visita.", "error");
+        showMessage("Solo un auditor por solicitud: seleccione un único auditor.", "error");
         return;
       }
 

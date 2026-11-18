@@ -1525,7 +1525,7 @@
                     </div>
                 </div>
                 <div class="modal-section">
-                    <div class="modal-section-head"><h4>Auditores del equipo</h4></div>
+                    <div class="modal-section-head"><h4>${(r.auditores || []).length > 1 ? 'Auditores' : 'Auditor'}</h4></div>
                     ${auditores || '<div class="empty">Sin auditores registrados.</div>'}
                 </div>`;
             if (modal) modal.classList.add('show');
@@ -2139,7 +2139,7 @@
             actualizarMenuVista(vista);
         });
     </script>
-<script src="/static/nav.js?v=20261118sol"></script>
+<script src="/static/nav.js?v=20261118menu"></script>
 <script src="/static/session.js?v=20261118pub"></script>
 </body>
 </html>

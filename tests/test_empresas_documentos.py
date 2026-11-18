@@ -73,10 +73,14 @@ def sesion(registro: dict | None = None, filas: list[dict] | None = None) -> Asy
 
 
 async def pedir(db, rol, metodo, ruta, **kwargs):
+    # "Auxiliar+EMP-011": Auxiliar al que el Coordinador delegó EMP-011
+    # (regla_auxiliar); "Auxiliar" a secas no tiene ningún permiso.
+    rol, *delegados = rol.split("+")
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_current_user] = lambda: {
         "id_usuario": str(uuid.uuid4()),
         "role_name": rol,
+        **({"permisos_delegados": tuple(delegados)} if delegados else {}),
     }
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as cliente:
@@ -101,7 +105,8 @@ def sentencias(db) -> list[tuple[str, dict]]:
     [
         ("Super Administrador", 403),
         ("Administrador", 201),
-        ("Auxiliar", 201),
+        ("Auxiliar", 403),
+        ("Auxiliar+EMP-011", 201),
         ("Empresa", 201),
         ("Auditor", 403),
         ("Comité", 403),
@@ -177,7 +182,8 @@ async def test_no_se_admite_un_archivo_vacio():
 async def test_la_validacion_manual_la_hace_la_administracion():
     db = sesion(documento())
 
-    assert (await pedir(db, "Auxiliar", "get", f"{DOCS}/{ID_DOCUMENTO}/validar")).status_code == 200
+    assert (await pedir(db, "Auxiliar", "get", f"{DOCS}/{ID_DOCUMENTO}/validar")).status_code == 403
+    assert (await pedir(db, "Auxiliar+EMP-016", "get", f"{DOCS}/{ID_DOCUMENTO}/validar")).status_code == 200
     assert (await pedir(db, "Empresa", "get", f"{DOCS}/{ID_DOCUMENTO}/validar")).status_code == 403
 
 
@@ -232,7 +238,8 @@ async def test_no_se_reemplaza_un_documento_ya_resuelto(estado):
     [
         ("Super Administrador", 403),
         ("Administrador", 200),
-        ("Auxiliar", 200),
+        ("Auxiliar", 403),
+        ("Auxiliar+EMP-018", 200),
         ("Empresa", 403),
         ("Auditor", 403),
         ("Comité", 403),

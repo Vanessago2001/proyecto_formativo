@@ -2,7 +2,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
-from modules.auth.dependencies import require_admin_access
+from modules.auth.dependencies import require_admin_access_con
+from modules.permisos_auxiliar.regla_auxiliar import exigir_permiso_auxiliar
 from modules.administrar_auditores.administrar_auditores_service import AdministrarAuditoresService
 
 router = APIRouter(prefix="/administradores/auditores", tags=["Administración de Auditores"])
@@ -14,6 +15,11 @@ PERMISO_POR_ESTADO = {
     "Rechazado": "AUD-014",
 }
 PERMISO_VALIDAR_COMPETENCIA = "AUD-030"
+# Estados que el Auxiliar pone con un permiso V delegado (sin aprobación).
+PERMISO_V_POR_ESTADO = {
+    "En Revisión": "AUD-012",
+    "Correcciones": "AUD-015",
+}
 
 
 async def _exigir_permiso_delegado(usuario: dict, db: AsyncSession, codigo: str, detalle: str) -> None:
@@ -35,7 +41,7 @@ async def _exigir_permiso_delegado(usuario: dict, db: AsyncSession, codigo: str,
 
 @router.get("/conflictos")
 async def listar_conflictos_general(
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-033")),
     db: AsyncSession = Depends(get_db),
 ):
     return {
@@ -45,7 +51,7 @@ async def listar_conflictos_general(
 @router.get("/solicitudes")
 async def listar_solicitudes(
     estado: str | None = Query(None),
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-011")),
     db: AsyncSession = Depends(get_db),
 ):
     return await AdministrarAuditoresService(db).listar_solicitudes(estado)
@@ -53,7 +59,7 @@ async def listar_solicitudes(
 @router.get("/solicitudes/{id_postulacion}")
 async def obtener_solicitud(
     id_postulacion: UUID,
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-011", "AUD-012")),
     db: AsyncSession = Depends(get_db),
 ):
     return await AdministrarAuditoresService(db).obtener_solicitud(id_postulacion)
@@ -62,7 +68,7 @@ async def obtener_solicitud(
 async def revisar_documento(
     id_documento: UUID,
     data: dict,
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-012")),
     db: AsyncSession = Depends(get_db),
 ):
     estado = str(data.get("estado_revision", "")).strip()
@@ -82,7 +88,7 @@ async def revisar_documento(
 async def revisar_competencia(
     id_competencia: UUID,
     data: dict,
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-012", "AUD-030")),
     db: AsyncSession = Depends(get_db),
 ):
     actor = usuario.get("id_usuario") or usuario.get("sub")
@@ -107,7 +113,7 @@ async def revisar_competencia(
 async def pasar_revision_alias(
     id_postulacion: UUID,
     data: dict,
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-012")),
     db: AsyncSession = Depends(get_db),
 ):
     return await _ejecutar_alias_estado(
@@ -122,7 +128,7 @@ async def pasar_revision_alias(
 async def solicitar_correcciones_alias(
     id_postulacion: UUID,
     data: dict,
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-015")),
     db: AsyncSession = Depends(get_db),
 ):
     return await _ejecutar_alias_estado(
@@ -137,7 +143,7 @@ async def solicitar_correcciones_alias(
 async def aprobar_alias(
     id_postulacion: UUID,
     data: dict,
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-013")),
     db: AsyncSession = Depends(get_db),
 ):
     return await _ejecutar_alias_estado(
@@ -152,7 +158,7 @@ async def aprobar_alias(
 async def rechazar_alias(
     id_postulacion: UUID,
     data: dict,
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-014")),
     db: AsyncSession = Depends(get_db),
 ):
     return await _ejecutar_alias_estado(
@@ -175,6 +181,8 @@ async def _ejecutar_alias_estado(
         from fastapi import HTTPException
         raise HTTPException(401, "No fue posible identificar al coordinador.")
     observaciones = str(data.get("observaciones") or "")
+    if nuevo_estado in PERMISO_V_POR_ESTADO:
+        exigir_permiso_auxiliar(usuario, PERMISO_V_POR_ESTADO[nuevo_estado])
     if nuevo_estado in PERMISO_POR_ESTADO:
         codigo = PERMISO_POR_ESTADO[nuevo_estado]
         await _exigir_permiso_delegado(usuario, db, codigo, f"{codigo} postulación {id_postulacion}")
@@ -210,7 +218,7 @@ def _confirmacion_sin_competencias(data: dict, usuario: dict) -> dict:
 async def cambiar_estado(
     id_postulacion: UUID,
     data: dict,
-    usuario: dict = Depends(require_admin_access),
+    usuario: dict = Depends(require_admin_access_con("AUD-012", "AUD-013", "AUD-014", "AUD-015")),
     db: AsyncSession = Depends(get_db),
 ):
     actor = usuario.get("id_usuario") or usuario.get("sub")
@@ -218,6 +226,8 @@ async def cambiar_estado(
         from fastapi import HTTPException
         raise HTTPException(401, "No fue posible identificar al coordinador.")
     nuevo_estado = str(data.get("nuevo_estado", "")).strip()
+    if nuevo_estado in PERMISO_V_POR_ESTADO:
+        exigir_permiso_auxiliar(usuario, PERMISO_V_POR_ESTADO[nuevo_estado])
     if nuevo_estado in PERMISO_POR_ESTADO:
         codigo = PERMISO_POR_ESTADO[nuevo_estado]
         await _exigir_permiso_delegado(usuario, db, codigo, f"{codigo} postulación {id_postulacion}")

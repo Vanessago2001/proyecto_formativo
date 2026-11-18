@@ -59,6 +59,8 @@ class SesionFalsa:
         self.solicitud_sedes: dict[str, dict] = {}
         self.commits = 0
         self._consecutivo = 0
+        # documento_empresa (requisitos para radicar/aprobar, flujo 18/11/2026).
+        self.documentos_empresa: list[dict] = []
         # auditores_solicitud vigentes como pares (id_auditor, id_solicitud).
         # None = sin restricción (las pruebas de la matriz dan al auditor por
         # asignado); con asignar_auditor() se usa la lista.
@@ -155,6 +157,57 @@ class SesionFalsa:
         self.solicitud_sedes[str(fila["id_solicitud_sede"])] = fila
         return fila
 
+    def sembrar_documento_empresa(self, id_empresa, tipo_documento, estado="Pendiente", **campos) -> dict:
+        """Inserta un documento legal de la empresa (tabla documento_empresa)."""
+        fila = {
+            "id_documento": uuid.uuid4(),
+            "id_empresa": uuid.UUID(str(id_empresa)),
+            "tipo_documento": tipo_documento,
+            "nombre_archivo": tipo_documento + ".pdf",
+            "version": 1,
+            "estado_validacion": estado,
+            "observaciones": None,
+            "fecha_vencimiento": None,
+            "fecha_subida": _ahora(),
+        }
+        fila.update(campos)
+        self.documentos_empresa.append(fila)
+        return fila
+
+    def cumplir_requisitos(self, solicitud: dict, estado_documentos="Pendiente") -> None:
+        """Documentos legales obligatorios + una sede incluida: lo que exige radicar."""
+        from modules.empresas.requisitos_empresa import DOCUMENTOS_LEGALES_OBLIGATORIOS
+
+        for tipo in DOCUMENTOS_LEGALES_OBLIGATORIOS:
+            self.sembrar_documento_empresa(solicitud["id_empresa"], tipo, estado_documentos)
+        sede = self.sembrar_sede(id_empresa=solicitud["id_empresa"])
+        self.incluir_sede(solicitud["id_solicitud"], sede["id_sede"])
+
+    def _requisitos(self, sql: str, parametros: dict) -> ResultadoFalso:
+        """Consultas de modules/empresas/requisitos_empresa.py."""
+        if "FROM documento_empresa" in sql:
+            return ResultadoFalso([
+                d for d in self.documentos_empresa
+                if str(d["id_empresa"]) == str(parametros["id_empresa"])
+            ])
+        if "FROM solicitud_sede ss" in sql:
+            filas = [
+                v for v in self.solicitud_sedes.values()
+                if str(v["id_solicitud"]) == str(parametros["id_solicitud"])
+                and v["estado"] != "Excluida"
+                and self.sedes_empresa.get(str(v["id_sede"]), {}).get("estado") == "Activa"
+                and ("id_sede" not in parametros or str(v["id_sede"]) == str(parametros["id_sede"]))
+            ]
+            if "COUNT(*)" in sql:
+                return ResultadoFalso(escalar=len(filas))
+            return ResultadoFalso([{"?column?": 1}] if filas else [])
+        # Sedes activas de la empresa.
+        cuenta = sum(
+            1 for s in self.sedes_empresa.values()
+            if str(s["id_empresa"]) == str(parametros["id_empresa"]) and s["estado"] == "Activa"
+        )
+        return ResultadoFalso(escalar=cuenta)
+
     # -- interfaz que consume el servicio ------------------------------------
 
     async def commit(self):
@@ -172,6 +225,13 @@ class SesionFalsa:
 
         # Las tablas de los bloques 2 y 3 se atienden primero: sus nombres
         # contienen "solicitud" y el despacho del Bloque 1 las capturaría.
+        if (
+            "FROM documento_empresa" in sql
+            or "AND se.estado = 'Activa'" in sql
+            or "WHERE id_empresa = :id_empresa AND estado = 'Activa'" in sql
+        ):
+            return self._requisitos(sql, parametros)
+
         if "AS auditor_asignado" in sql:
             asignado = self._auditor_asignado(parametros["aud_usuario"], parametros["aud_solicitud"])
             return ResultadoFalso([{"auditor_asignado": asignado}])

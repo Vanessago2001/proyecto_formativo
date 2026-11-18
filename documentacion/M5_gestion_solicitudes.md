@@ -128,6 +128,18 @@ Por eso el código separa dos conceptos:
 |---|---|
 | Solo se edita o elimina en `Borrador` | `409` |
 | Radicar exige norma, alcance, empleados y sedes | `422` con la lista de lo que falta |
+| Radicar exige los documentos legales obligatorios de la empresa (RUT, Cámara de Comercio, Representación Legal) subidos y no rechazados/vencidos/con corrección pedida, y al menos una sede activa incluida en la solicitud (`modules/empresas/requisitos_empresa.py`) | `422` con lo que falta |
+| Aprobar (SOL-054 → `Aprobada`) exige esos documentos **aprobados** y al menos una sede incluida | `409` con lo que falta |
+| Programar la visita (M6) exige una sede incluida en la solicitud | `422` |
+
+Flujo de pantalla (18/11/2026): la empresa ve en *Mis solicitudes* la lista
+"Antes de solicitar la certificación" (documentos legales X/Y, sedes N) y sube
+los documentos en *Documentos legales*; el botón *Radicar* queda deshabilitado
+con la explicación mientras falte algo. El Coordinador, al abrir una solicitud
+`Radicada`, la pasa automáticamente a `En revision` (el Auxiliar conserva el
+botón "Pasar a revisión"); en la misma vista revisa los documentos legales de
+la empresa, los de la solicitud y las sedes, y al aprobar la pantalla pasa
+directamente a "Por asignar auditor" con la solicitud seleccionada.
 | Se cancela solo antes de la revisión | `409` |
 | La cancelación exige un motivo | `422` |
 | **Una empresa no ve ni toca solicitudes de otra** | `404` |

@@ -41,6 +41,7 @@ from enum import Enum
 from fastapi import Depends, HTTPException, status
 
 from core.security import get_current_user
+from modules.permisos_auxiliar.regla_auxiliar import exigir_permiso_auxiliar, nivel_efectivo
 
 
 class NivelPermiso(str, Enum):
@@ -330,15 +331,20 @@ def exigir_permisos(usuario: dict, *codigos: str) -> None:
     for codigo in codigos:
         if not tiene_permiso(codigo, nombre_rol):
             raise _permiso_denegado(codigo, nombre_rol)
+        # Auxiliar: V solo con permiso delegado (regla_auxiliar).
+        nivel_efectivo(usuario, codigo, nivel_permiso(codigo, nombre_rol))
 
 
-def requiere_permiso(codigo: str):
+def requiere_permiso(codigo: str, auxiliar: tuple[str, ...] | None = None):
     """
     Fábrica de dependencias de FastAPI que protege un endpoint con un código
     de la matriz.
 
         @router.post("/")
         async def crear(usuario: dict = Depends(requiere_permiso("SOL-001"))):
+
+    `auxiliar` (opcional): códigos delegados que pide al Auxiliar en lugar
+    de `codigo`.
 
     Se usa como dependencia con `Depends(...)` para que el usuario autenticado
     quede disponible en el endpoint.
@@ -350,6 +356,15 @@ def requiere_permiso(codigo: str):
 
         if not tiene_permiso(codigo, nombre_rol):
             raise _permiso_denegado(codigo, nombre_rol)
+
+        # Regla del Auxiliar: sin permisos propios; V solo con permiso
+        # delegado por el Coordinador (REQ sigue yendo a aprobación).
+        # `auxiliar`: rutas que usan SOL-006 solo como "sesión interna" y cuyo
+        # permiso real para el Auxiliar es otro (p. ej. AUD-035 en conflictos).
+        if auxiliar:
+            exigir_permiso_auxiliar(current_user, *auxiliar)
+        else:
+            nivel_efectivo(current_user, codigo, nivel_permiso(codigo, nombre_rol))
 
         # Se adjunta el nivel para que el servicio sepa si la acción queda
         # pendiente de aprobación (REQ) o se aplica de inmediato (V / SA).

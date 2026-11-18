@@ -32,6 +32,11 @@ from modules.solicitudes.informacion_schema import (
     ProcesoCrear,
     ProcesoEditar,
 )
+from modules.empresas.requisitos_empresa import (
+    faltantes_para_radicar,
+    requisitos_empresa,
+    sedes_incluidas,
+)
 from modules.solicitudes.sede_schema import EstadoSedeSolicitud
 from modules.solicitudes.solicitud_service import (
     CAMPOS_OBLIGATORIOS_AL_RADICAR,
@@ -541,11 +546,20 @@ class InformacionService:
             },
         )
 
+        total_sedes = sedes.scalar() or 0
+        requisitos_pendientes: list[str] = []
+        if solicitud.get("id_empresa"):
+            requisitos_pendientes = faltantes_para_radicar(
+                await requisitos_empresa(self.db, solicitud["id_empresa"]),
+                await sedes_incluidas(self.db, id_solicitud),
+            )
+
         return {
             **solicitud,
             "alcances": alcances,
             "procesos": procesos,
-            "sedes_incluidas": sedes.scalar() or 0,
+            "sedes_incluidas": total_sedes,
+            "requisitos_pendientes": requisitos_pendientes,
             "campos_pendientes": [
                 campo
                 for campo in CAMPOS_OBLIGATORIOS_AL_RADICAR
