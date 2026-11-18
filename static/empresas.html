@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
   <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
+  <script src="/static/sede-form.js?v=20261118a"></script>
+  <script src="/static/documentos-legales.js?v=20261118a"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261118a">
 </head>
 
@@ -168,7 +170,7 @@
         ubicacionSedes: {},
         paginaListado: 1,
         editandoEmpresa: false,
-        sedeEditada: null,
+        sedes: [],
         sedeContactos: null,
         contactoEditado: null,
         aprobaciones: [],
@@ -244,7 +246,7 @@
       const PERMISO_AUX = {
         "editar-empresa": "EMP-002", "guardar-empresa": "EMP-002",
         "contactos": "EMP-024",
-        "editar-sede": "EMP-022", "guardar-sede": "EMP-021 EMP-022",
+        "editar-sede": "EMP-022", "registrar-sede": "EMP-021",
         "editar-contacto": "EMP-028", "guardar-contacto": "EMP-027 EMP-028",
         listado: "EMP-003 EMP-004 EMP-005", registrar: "EMP-001"
       };
@@ -289,7 +291,6 @@
 
       function limpiarEdicion() {
         estado.editandoEmpresa = false;
-        estado.sedeEditada = null;
         estado.sedeContactos = null;
         estado.contactoEditado = null;
       }
@@ -298,7 +299,10 @@
       const opcionesMenu = [];
       if (puede("listar")) opcionesMenu.push(["listado", "Empresas registradas"]);
       if (esEmpresa) opcionesMenu.push(["detalle", VISTAS.detalle[0]]);
-      if (puede("gestionar")) opcionesMenu.push(["registrar", "Registrar empresa"]);
+      // La cuenta Empresa no ve "Registrar empresa": su empresa se crea al
+      // registrarse (users/register). Solo si su cuenta quedó sin empresa
+      // asociada (cuentas antiguas) se le ofrece en el aviso de "Mi empresa".
+      if (puede("gestionar") && !esEmpresa) opcionesMenu.push(["registrar", "Registrar empresa"]);
       // La vista "Aprobaciones" se quitó del menú (no se usaba).
       $("#menu").innerHTML = opcionesMenu.map(([vista, texto]) =>
         '<button class="comite-nav-link" type="button" data-view="' + vista + '"' + permisoAux(vista) + '>' + texto + "</button>").join("") +
@@ -452,6 +456,7 @@
             api(base + "/documentos").catch((e) => ({ error: e.message })),
             api(base + "/solicitudes").catch((e) => ({ error: e.message }))
           ]);
+          estado.sedes = sedes || [];
           const sedeContactos = sedes.find((s) => String(s.id_sede) === estado.sedeContactos) || null;
           const contactos = sedeContactos
             ? await api(base + "/sedes/" + estado.sedeContactos + "/contactos").catch((e) => ({ error: e.message }))
@@ -462,9 +467,18 @@
             panelEmpresa(empresa) +
             panelSedes(sedes) +
             (sedeContactos ? panelContactos(sedeContactos, contactos) : "") +
-            panelDocumentos(documentos) +
+            // Rol Empresa: documentos legales de existencia con Ver/Descargar y
+            // Subir/Reemplazar (static/documentos-legales.js, igual que el portal).
+            (esEmpresa ? '<div id="miEmpresaLegales">' + cargando("Cargando documentos legales...") + "</div>" : panelDocumentos(documentos)) +
             panelHistorial(historial) +
             "</div>";
+          if (esEmpresa) {
+            DocumentosLegales.pintar($("#miEmpresaLegales"), { api, token, idEmpresa: estado.actual, mostrar })
+              .catch((error) => {
+                const caja = $("#miEmpresaLegales");
+                if (caja) caja.innerHTML = panel(encabezado("Documentos legales de la empresa", "") + '<p class="comite-muted">' + esc(error.message) + "</p>");
+              });
+          }
           if ($("#sedeFiltroCiudad")) {
             FiltrosUbicacion.ligarFilas(caja, {
               prefijo: "sedeFiltro", filas: "#tablaSedes tr[data-sede-fila]", vacio: "sedesSinResultados",
@@ -523,45 +537,33 @@
       }
 
       // EMP-021 a EMP-026 y EMP-030
+      // El formulario de sede es la ventana modal de static/sede-form.js. La
+      // cuenta Empresa ve aquí el listado de solo lectura (con sus contactos)
+      // y registra/edita sus sedes en el portal: /empresa#sedes.
       function panelSedes(sedes) {
-        const gestionar = puede("gestionar");
-        const editada = sedes.find((s) => String(s.id_sede) === estado.sedeEditada);
+        const gestionar = puede("gestionar") && !esEmpresa;
 
         const filas = sedes.map((s) => "<tr data-sede-fila" + FiltrosUbicacion.atributos({ ciudad: s.ciudad, departamento: s.departamento, pais: s.pais }) + "><td><strong>" + esc(s.nombre_sede) + "</strong></td><td>" + esc(s.direccion) + "</td>" +
           "<td>" + esc(s.ciudad) + "</td><td>" + esc(s.departamento || "-") + "</td><td>" + (s.es_principal ? "Sí" : "No") + "</td><td>" + chip(s.estado) + "</td>" +
           '<td><div class="acciones-tabla">' + accion("contactos", "Contactos", s.id_sede) +
           (gestionar ? accion("editar-sede", "Editar", s.id_sede) : "") +
-          (puede("eliminar") ? accion("eliminar-sede", "Eliminar", s.id_sede) : "") +
+          (puede("eliminar") && !esEmpresa ? accion("eliminar-sede", "Eliminar", s.id_sede) : "") +
           (puede("solicitar") ? accion("eliminar-sede", "Solicitar eliminación", s.id_sede) : "") +
           "</div></td></tr>").join("");
 
-        let formulario = "";
-        if (gestionar && editada) {
-          formulario = '<div class="comite-detail-section" data-permiso-aux="EMP-022"><h4>Editar sede: ' + esc(editada.nombre_sede) + "</h4>" +
-            '<dl class="comite-facts">' + fact("Ciudad", editada.ciudad) + fact("Departamento", editada.departamento || "-") + fact("País", editada.pais || "-") + "</dl>" +
-            '<p class="comite-readonly-note">Ciudad, departamento y país no se pueden cambiar. Si están mal, inactive la sede y registre otra.</p>' +
-            '<div class="portal-form-grid" style="margin-top:14px">' +
-            campo("sedeNombre", "Nombre de la sede", editada.nombre_sede) +
-            selector("sedePrincipal", "Sede principal", [["false", "No"], ["true", "Sí"]], String(Boolean(editada.es_principal))) +
-            campo("sedeDireccion", "Dirección", editada.direccion) +
-            selector("sedeEstado", "Estado", [["Activa", "Activa"], ["Inactiva", "Inactiva"]], editada.estado || "Activa") +
-            '</div><div class="comite-decision-actions">' + boton("guardar-sede", "Guardar cambios", "primary") + boton("cancelar-sede", "Cancelar", "secondary") + "</div></div>";
-        } else if (gestionar) {
-          formulario = '<div class="comite-detail-section" data-permiso-aux="EMP-021"><h4>Registrar sede</h4><div class="portal-form-grid">' +
-            campo("sedeNombre", "Nombre de la sede", "") +
-            selector("sedePrincipal", "Sede principal", [["false", "No"], ["true", "Sí"]], "false") +
-            campo("sedeDireccion", "Dirección", "", "full") +
-            campo("sedeCiudad", "Ciudad", "") + campo("sedeDepartamento", "Departamento", "") + campo("sedePais", "País", "Colombia") +
-            '<p class="full comite-readonly-note" style="margin-top:0">Ciudad, departamento y país solo se indican ahora: después no se pueden cambiar.</p>' +
-            '</div><div class="comite-decision-actions">' + boton("guardar-sede", "Registrar sede", "primary") + "</div></div>";
-        }
+        const extra = esEmpresa
+          ? '<a class="comite-button secondary btn btn-secundario" href="/empresa#sedes">Gestionar sedes</a>'
+          : gestionar ? boton("registrar-sede", "Registrar sede", "primary") : "";
+        const nota = esEmpresa
+          ? '<p class="comite-readonly-note" style="margin-top:12px">Las sedes se registran, editan y eliminan en <a href="/empresa#sedes">Solicitudes de certificación › Sedes</a>. Aquí puede consultar las sedes y gestionar sus contactos.</p>'
+          : "";
 
         return panel(
-          encabezado("Sedes", sedes.length + (sedes.length === 1 ? " sede registrada" : " sedes registradas")) +
+          encabezado("Sedes", sedes.length + (sedes.length === 1 ? " sede registrada" : " sedes registradas"), extra) +
           (sedes.length > 1 ? FiltrosUbicacion.html({ prefijo: "sedeFiltro", valores: estado.ubicacionSedes, titulo: "Filtrar sedes por ubicación" }) : "") +
           '<div class="comite-table-wrap"><table id="tablaSedes"><thead><tr><th>Sede</th><th>Dirección</th><th>Ciudad</th><th>Departamento</th><th>Principal</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' +
           (filas || vacioTabla(7, "La empresa todavía no tiene sedes.")) +
-          '</tbody></table><p id="sedesSinResultados" class="comite-table-empty" hidden></p></div>' + formulario
+          '</tbody></table><p id="sedesSinResultados" class="comite-table-empty" hidden></p></div>' + nota
         );
       }
 
@@ -720,33 +722,14 @@
         mostrar(respuesta && respuesta.aprobacion ? respuesta.mensaje : mensajeHecho, "success");
       }
 
-      async function guardarSede(base) {
-        if (estado.sedeEditada) {
-          await enviar(base + "/sedes/" + estado.sedeEditada, "PUT", {
-            nombre_sede: val("sedeNombre"),
-            direccion: val("sedeDireccion"),
-            es_principal: val("sedePrincipal") === "true",
-            estado: val("sedeEstado")
-          });
-          estado.sedeEditada = null;
-          return terminar("Sede actualizada.");
-        }
-
-        const cuerpo = {
-          nombre_sede: val("sedeNombre"),
-          direccion: val("sedeDireccion"),
-          ciudad: val("sedeCiudad"),
-          departamento: val("sedeDepartamento") || null,
-          pais: val("sedePais") || null,
-          es_principal: val("sedePrincipal") === "true",
-          estado: "Activa"
-        };
-        if (!cuerpo.nombre_sede || !cuerpo.direccion || !cuerpo.ciudad) throw new Error("Nombre, dirección y ciudad son obligatorios.");
-        const aviso = "Ciudad: " + cuerpo.ciudad + "\nDepartamento: " + (cuerpo.departamento || "-") + "\nPaís: " + (cuerpo.pais || "Colombia") +
-          "\n\nEstos datos no se podrán cambiar después. ¿Son correctos?";
-        if (!confirm(aviso)) return;
-        await enviar(base + "/sedes", "POST", cuerpo);
-        return terminar("Sede registrada.");
+      // EMP-021 / EMP-022: formulario de sede en ventana modal (static/sede-form.js).
+      function abrirModalSede(sede) {
+        SedeForm.abrir({
+          enviar,
+          idEmpresa: estado.actual,
+          sede: sede || null,
+          alGuardar: (resultado) => terminar(resultado.mensaje)
+        });
       }
 
       async function guardarContacto(base) {
@@ -792,9 +775,8 @@
             return resolver(enviar(base + "/reactivar", "POST"), "Empresa reactivada.");
           case "contactos": estado.sedeContactos = id; estado.contactoEditado = null; return cargarDetalle();
           case "cerrar-contactos": estado.sedeContactos = null; estado.contactoEditado = null; return cargarDetalle();
-          case "editar-sede": estado.sedeEditada = id; return cargarDetalle();
-          case "cancelar-sede": estado.sedeEditada = null; return cargarDetalle();
-          case "guardar-sede": return guardarSede(base);
+          case "registrar-sede": return abrirModalSede(null);
+          case "editar-sede": return abrirModalSede(estado.sedes.find((s) => String(s.id_sede) === String(id)));
           case "eliminar-sede": {
             if (!confirm("¿Eliminar la sede? Si ya forma parte de solicitudes de certificación, inactívela en su lugar.")) return;
             const respuesta = await enviar(base + "/sedes/" + id, "DELETE");
@@ -859,7 +841,9 @@
           estado.actual = String(creada.id_empresa);
           limpiarEdicion();
           mostrarVista("detalle");
-          mostrar("Empresa registrada. Ahora agregue sus sedes.", "success");
+          mostrar(esEmpresa
+            ? "Empresa registrada. Ahora agregue sus sedes en Solicitudes de certificación › Sedes."
+            : "Empresa registrada. Ahora agregue sus sedes.", "success");
         } catch (error) {
           mostrar(error.message, "error");
         }

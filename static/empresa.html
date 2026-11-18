@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
   <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
+  <script src="/static/sede-form.js?v=20261118a"></script>
+  <script src="/static/documentos-legales.js?v=20261118a"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261118a">
   <style>
     body { background: #f1f5f9; }
@@ -33,6 +35,34 @@
       box-shadow: 0 2px 8px rgba(15, 23, 42, .05);
     }
     .empresa-solicitudes-toolbar .comite-button { flex: 0 0 auto; }
+    /* Tabla "Mis solicitudes": columnas de ancho fijo, celdas alineadas
+       arriba, textos largos recortados (el completo va en title) y las
+       acciones agrupadas a la derecha. En pantallas angostas el
+       contenedor (.comite-table-wrap) se desplaza en horizontal. */
+    .sol-barra-tabla { margin: 0 0 10px; }
+    .tabla-solicitudes { table-layout: fixed; width: 100%; min-width: 940px; }
+    .tabla-solicitudes th, .tabla-solicitudes td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
+    .tabla-solicitudes td small { display: block; margin-top: 3px; font-size: 12px; }
+    .tabla-solicitudes .sol-recorte { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .tabla-solicitudes .sol-col-radicado { width: 140px; white-space: nowrap; }
+    .tabla-solicitudes .sol-col-norma { width: 190px; }
+    .tabla-solicitudes .sol-col-sedes { width: 115px; }
+    .tabla-solicitudes .sol-col-fecha { width: 95px; white-space: nowrap; }
+    .tabla-solicitudes .sol-col-estado { width: 110px; }
+    .tabla-solicitudes .sol-col-apelacion { width: 125px; }
+    .tabla-solicitudes .sol-col-acciones { width: 205px; text-align: right; }
+    /* Acciones en una cuadrícula de 2 columnas iguales, pegada a la derecha. */
+    .tabla-solicitudes .sol-acciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; justify-items: stretch; }
+    .tabla-solicitudes .sol-acciones .btn { width: 100%; justify-content: center; }
+    .tabla-solicitudes .sol-acciones .sol-fila-completa { grid-column: 1 / -1; }
+    .tabla-solicitudes .sol-falta { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-align: right; font-size: 12px; }
+    .tabla-solicitudes .sol-apelacion { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+    .tabla-solicitudes .sol-apelacion .comite-status { white-space: normal; max-width: 100%; }
+    /* Panel "Antes de solicitar la certificación": en pantallas angostas los
+       textos y el botón bajan de línea en vez de salirse de la página. */
+    #vista-solicitudes .comite-item-list li { flex-wrap: wrap; }
+    #vista-solicitudes .comite-item-list li > span:not(.documento-acciones) { min-width: 0; overflow-wrap: anywhere; }
+    #vista-solicitudes .comite-panel-heading { flex-wrap: wrap; }
     @media (max-width: 640px) {
       .empresa-solicitudes-filter { flex-basis: 100%; max-width: none; }
       .empresa-solicitudes-toolbar .comite-button { width: 100%; }
@@ -178,7 +208,7 @@
         legales: ["Documentos legales", "Documentos legales de la empresa. Los obligatorios deben estar cargados (y no rechazados) para poder radicar una solicitud; el Coordinador los aprueba al revisarla."],
         nueva: ["Nueva solicitud", "Registre los datos básicos. La solicitud solo se vuelve formal cuando la radica."],
         informacion: ["Información técnica", "Norma ISO, tamaño de la empresa, alcance técnico y procesos clave."],
-        sedes: ["Sedes", "Sedes de la empresa que forman parte de la solicitud."],
+        sedes: ["Sedes", "Todas las sedes de la empresa. Elija una solicitud en el selector para ver solo las sedes incluidas en ella."],
         documentos: ["Documentos", "Documentos que respaldan la solicitud. Cada archivo conserva sus versiones anteriores."],
         auditores: ["Auditores asignados", "Auditores asignados a sus solicitudes. Si necesita un cambio, solicítelo explicando la razón; el coordinador decide."],
         apelaciones: ["Mis apelaciones", "Apelaciones presentadas contra solicitudes rechazadas: en qué estado van, si el Comité le pidió documentos y qué decidió."]
@@ -288,6 +318,13 @@
       const esc = (valor) => String(valor == null ? "" : valor)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       const fecha = (valor) => valor ? new Date(valor).toLocaleDateString("es-CO") : "-";
+      // dd/mm/aaaa (tabla de Mis solicitudes).
+      const fechaCorta = (valor) => {
+        if (!valor) return "-";
+        const d = new Date(valor);
+        if (isNaN(d)) return "-";
+        return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+      };
       const valorONo = (valor) => valor === null || valor === undefined || valor === "" ? "No registrado" : valor;
 
       function claseEstado(valor) {
@@ -302,7 +339,7 @@
       const cargando = (texto) => panel('<div class="comite-loading">' + esc(texto) + "</div>");
       const vacioTabla = (columnas, texto) => '<tr><td colspan="' + columnas + '"><div class="comite-table-empty">' + esc(texto) + "</div></td></tr>";
       // Clases del sistema de botones (tema.css): acciones de fila pequenas; quitar/inactivar/eliminar en rojo de contorno.
-      const claseAccion = (nombre) => /^(quitar|inactivar|borrar)/.test(nombre) ? "btn-peligro-contorno" : nombre === "radicar" ? "btn-primario" : "btn-secundario";
+      const claseAccion = (nombre) => /^(quitar|inactivar|borrar|eliminar)/.test(nombre) ? "btn-peligro-contorno" : nombre === "radicar" ? "btn-primario" : "btn-secundario";
       const accion = (nombre, texto, id) => '<button class="btn btn-sm ' + claseAccion(nombre) + '" type="button" data-accion="' + nombre + '" data-id="' + esc(id) + '">' + texto + "</button>";
       const fact = (etiqueta, valor) => "<div><dt>" + esc(etiqueta) + "</dt><dd>" + esc(valor) + "</dd></div>";
 
@@ -330,6 +367,7 @@
         $("#viewTitle").textContent = VISTAS[nombre][0];
         $("#viewDescription").textContent = VISTAS[nombre][1];
         $("#selectorBar").classList.toggle("comite-view-hidden", !NECESITAN_SOLICITUD.includes(nombre));
+        textoOpcionVacia();
         mostrar("");
         cargarVista();
       }
@@ -341,6 +379,8 @@
         if (vista === "nueva") return prepararNueva();
         if (vista === "auditores") return cargarAuditoresAsignados();
         if (vista === "apelaciones") return cargarApelaciones();
+        // Sedes sin solicitud elegida: todas las sedes de la empresa.
+        if (vista === "sedes" && !estado.actual) return cargarSedesEmpresa();
         if (!estado.actual) return sinSolicitud(vista);
         if (vista === "informacion") return cargarInformacion();
         if (vista === "sedes") return cargarSedes();
@@ -370,7 +410,14 @@
           '<option value="' + esc(s.id_solicitud) + '">' +
           esc((s.numero_radicado || "Borrador del " + fecha(s.fecha_creacion)) + " · " + nombreNorma(s.id_norma) + " · " + s.estado) +
           "</option>").join("");
+        textoOpcionVacia();
         seleccionar(solicitudActual() ? estado.actual : null);
+      }
+
+      // En Sedes, "sin solicitud" significa ver todas las sedes de la empresa.
+      function textoOpcionVacia() {
+        const opcion = $("#solicitudSelect").options[0];
+        if (opcion && !opcion.value) opcion.textContent = estado.vista === "sedes" ? "Todas las sedes de la empresa" : "Seleccione una solicitud";
       }
 
       // ---------------- SOL-006: mis solicitudes ----------------
@@ -394,7 +441,7 @@
 
         if (!filtradas.length) {
           cuerpo.innerHTML = vacioTabla(
-            6,
+            7,
             porUbicacion && !consulta
               ? FiltrosUbicacion.mensajeVacio("solicitudes con sedes", ubicacion)
               : consulta || porUbicacion
@@ -406,19 +453,28 @@
             const borrador = s.estado === "Borrador";
             const rechazada = /^rechaz/.test(String(s.estado || "").normalize("NFD")
               .replace(/[\u0300-\u036f]/g, "").trim().toLowerCase());
+            const norma = nombreNorma(s.id_norma);
+            const alcance = s.alcance_certificacion || "";
+            const ciudades = s.sedes_ciudades || [];
+            const radicada = Boolean(s.fecha_radicacion);
+            const apelacion = accionApelacion(s, rechazada);
             return "<tr>" +
-              "<td><strong>" + esc(s.numero_radicado || "Borrador") + "</strong></td>" +
-              "<td>" + esc(nombreNorma(s.id_norma)) + "</td>" +
-              "<td>" + chip(s.estado) + "</td>" +
-              "<td>" + esc((s.alcance_certificacion || "-").slice(0, 60)) + "</td>" +
-              "<td>" + fecha(s.fecha_creacion) + "</td>" +
-              '<td><div class="acciones-tabla">' +
+              '<td class="sol-col-radicado"><strong>' + esc(s.numero_radicado || "Borrador") + "</strong></td>" +
+              '<td class="sol-col-norma"><span class="sol-recorte" title="' + esc(norma) + '">' + esc(norma) + "</span>" +
+              (alcance ? '<small class="sol-recorte comite-muted" title="' + esc(alcance) + '">' + esc(alcance) + "</small>" : "") + "</td>" +
+              '<td class="sol-col-sedes"><span>' + (ciudades.length ? ciudades.length + (ciudades.length === 1 ? " ciudad" : " ciudades") : "Ninguna incluida") + "</span>" +
+              (ciudades.length ? '<small class="sol-recorte comite-muted" title="' + esc(ciudades.join(", ")) + '">' + esc(ciudades.join(", ")) + "</small>" : "") +
+              (s.numero_sedes != null ? '<small class="comite-muted">' + esc(s.numero_sedes) + " declaradas</small>" : "") + "</td>" +
+              '<td class="sol-col-fecha"><span>' + fechaCorta(radicada ? s.fecha_radicacion : s.fecha_creacion) + "</span>" +
+              '<small class="comite-muted">' + (radicada ? "Radicada" : "Creada") + "</small></td>" +
+              '<td class="sol-col-estado">' + chip(s.estado) + "</td>" +
+              '<td class="sol-col-apelacion">' + (apelacion ? '<div class="sol-apelacion">' + apelacion + "</div>" : '<span class="comite-muted">-</span>') + "</td>" +
+              '<td class="sol-col-acciones"><div class="acciones-tabla sol-acciones">' +
               accion("ir-informacion", "Información", s.id_solicitud) +
               accion("ir-sedes", "Sedes", s.id_solicitud) +
               accion("ir-documentos", "Documentos", s.id_solicitud) +
-              (borrador ? botonRadicar(s) : "") +
-              accionApelacion(s, rechazada) +
               accion("pdf", "PDF", s.id_solicitud) +
+              (borrador ? botonRadicar(s) : "") +
               "</div></td></tr>";
           }).join("");
         }
@@ -474,11 +530,15 @@
               prefijo: "solFiltro", valores: estado.ubicacionSolicitudes, titulo: "Filtrar solicitudes por ubicación de sus sedes",
               etiquetas: { ciudad: "Ciudad de la sede", departamento: "Departamento de la sede", pais: "País de la sede" }
             }) +
-            '<div class="comite-table-wrap"><table><thead><tr><th>Radicado</th><th>Norma</th><th>Estado</th><th>Alcance</th><th>Creada</th><th>Acciones</th></tr></thead><tbody id="solicitudesBody">' +
-            '<tr><td colspan="6"><div class="comite-table-empty">Cargando solicitudes...</div></td></tr>' +
-            '</tbody></table></div><div class="comite-pagination">' +
+            // Barra superior de la tabla: cuántas se muestran y el paginador.
+            '<div class="comite-pagination sol-barra-tabla">' +
             '<span class="comite-pagination-info" id="solicitudesPaginacionInfo"></span>' +
-            '<nav class="comite-pagination-numeros" id="solicitudesPaginas" aria-label="Paginación de solicitudes"></nav></div>'
+            '<nav class="comite-pagination-numeros" id="solicitudesPaginas" aria-label="Paginación de solicitudes"></nav></div>' +
+            '<div class="comite-table-wrap"><table class="tabla-solicitudes"><thead><tr><th class="sol-col-radicado">Radicado</th><th class="sol-col-norma">Norma y alcance</th>' +
+            '<th class="sol-col-sedes">Sedes</th><th class="sol-col-fecha">Fecha</th><th class="sol-col-estado">Estado</th><th class="sol-col-apelacion">Apelación</th>' +
+            '<th class="sol-col-acciones">Acciones</th></tr></thead><tbody id="solicitudesBody">' +
+            '<tr><td colspan="7"><div class="comite-table-empty">Cargando solicitudes...</div></td></tr>' +
+            "</tbody></table></div>"
           );
           estado.filtrosSolicitudes = FiltrosUbicacion.ligar(caja, {
             prefijo: "solFiltro",
@@ -526,11 +586,12 @@
 
       function botonRadicar(s) {
         const falta = faltaParaRadicar(s);
-        if (!falta.length) return accion("radicar", "Radicar", s.id_solicitud);
+        // En la tabla ocupa el ancho de las dos columnas de acciones.
+        if (!falta.length) return '<span class="sol-fila-completa">' + accion("radicar", "Radicar", s.id_solicitud) + "</span>";
         const texto = "Para radicar falta: " + falta.join("; ") + ".";
-        return '<button class="btn btn-sm btn-primario" type="button" disabled title="' + esc(texto) + '" aria-label="' +
-          esc("Radicar (no disponible). " + texto) + '">Radicar</button>' +
-          '<span class="comite-muted" style="flex-basis:100%;font-size:12px;max-width:280px">' + esc(texto) + "</span>";
+        return '<span class="sol-fila-completa"><button class="btn btn-sm btn-primario" type="button" disabled title="' + esc(texto) + '" aria-label="' +
+          esc("Radicar (no disponible). " + texto) + '" style="width:100%">Radicar</button></span>' +
+          '<span class="comite-muted sol-falta sol-fila-completa" title="' + esc(texto) + '">' + esc(texto) + "</span>";
       }
 
       function htmlRequisitos() {
@@ -556,8 +617,10 @@
             '" type="button" data-ir="legales">' + (docsOk ? "Ver documentos legales" : "Subir documentos legales") + "</button></span></li>" +
             "<li><strong>" + marca(sedesOk) + "Sedes registradas: " + r.sedes_activas + "</strong>" +
             "<span>" + (sedesOk ? "Inclúyalas en la solicitud desde la pestaña Sedes." : "Registre al menos una sede de la empresa.") + "</span>" +
-            '<span class="documento-acciones"><a class="btn btn-sm ' + (sedesOk ? "btn-secundario" : "btn-primario") +
-            '" href="/empresas">' + (sedesOk ? "Ver sedes" : "Registrar sede") + "</a></span></li>" +
+            '<span class="documento-acciones">' + (sedesOk
+              ? '<button class="btn btn-sm btn-secundario" type="button" data-accion="ver-sedes-empresa">Ver sedes</button>'
+              : '<button class="btn btn-sm btn-primario" type="button" data-accion="registrar-sede" data-id="' + esc(e.id_empresa) + '">Registrar sede</button>') +
+            "</span></li>" +
             "</ul>"
           );
         }).join("");
@@ -578,79 +641,23 @@
           if (!estado.empresas.some((e) => String(e.id_empresa) === estado.empresaLegal)) {
             estado.empresaLegal = String(estado.empresas[0].id_empresa);
           }
-          const baseEmpresa = "/api/empresas/" + estado.empresaLegal;
-          const [tipos, documentos, req] = await Promise.all([
-            api(baseEmpresa + "/documentos/tipos"),
-            api(baseEmpresa + "/documentos"),
-            api(baseEmpresa + "/requisitos")
-          ]);
-          estado.requisitos[estado.empresaLegal] = req;
-          const obligatorios = tipos.obligatorios || req.documentos_obligatorios || [];
-          const modificables = ["Pendiente", "Rechazado", "Correccion"];
-          const filas = tipos.tipos.map((tipo) => {
-            const obligatorio = obligatorios.includes(tipo);
-            const resumen = req.documentos.find((d) => d.tipo_documento === tipo);
-            const actual = resumen && resumen.id_documento
-              ? documentos.find((d) => String(d.id_documento) === String(resumen.id_documento))
-              : documentos.find((d) => d.tipo_documento === tipo);
-            const situacion = resumen ? resumen.estado : (actual ? actual.estado_validacion : null);
-            let control;
-            if (actual && situacion === "Aprobado") {
-              control = '<span class="comite-muted">Aprobado: ya no se puede cambiar.</span>';
-            } else {
-              const reemplazar = actual && modificables.includes(actual.estado_validacion) && situacion !== "Vencido";
-              control = '<input type="file" aria-label="' + esc("Archivo: " + tipo) + '" data-tipo-legal="' + esc(tipo) + '"' +
-                (reemplazar ? ' data-reemplazar="' + esc(actual.id_documento) + '"' : "") + ' accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">';
-            }
-            return "<tr><td><strong>" + esc(tipo) + "</strong></td><td>" + (obligatorio ? "Sí" : "No") + "</td>" +
-              "<td>" + (actual ? esc(actual.nombre_archivo || "") + " (v" + esc(actual.version) + ") " : "") +
-              chip(situacion ? (situacion === "Correccion" ? "Corrección pedida" : situacion) : "Sin subir") + "</td>" +
-              "<td>" + esc((actual && actual.observaciones) || "-") + "</td>" +
-              "<td>" + control + "</td>" +
-              '<td><div class="acciones-tabla">' + (actual ? accion("ver-legal", "Ver", actual.id_documento) : "-") + "</div></td></tr>";
-          }).join("");
-
           const selector = estado.empresas.length > 1
             ? '<div class="comite-toolbar"><label for="empresaLegal">Empresa</label><select id="empresaLegal">' +
               estado.empresas.map((e) => '<option value="' + esc(e.id_empresa) + '"' + (String(e.id_empresa) === estado.empresaLegal ? " selected" : "") + ">" +
                 esc(e.nombre + (e.nit ? " · NIT " + e.nit : "")) + "</option>").join("") + "</select></div>"
             : "";
-          caja.innerHTML = '<div class="portal-stack">' + selector + panel(
-            '<div class="comite-panel-heading"><div><h3>Documentos legales de la empresa</h3><p>Obligatorios cargados: ' +
-            req.documentos_al_dia + "/" + req.documentos_total + " · Aprobados por el Coordinador: " + req.documentos_aprobados + "/" + req.documentos_total +
-            ". Formatos: PDF, Word, JPG o PNG · Máximo 10 MB.</p></div>" + chip(req.documentos_faltantes.length ? "Pendiente" : "Completo") + "</div>" +
-            '<div class="comite-table-wrap"><table><thead><tr><th>Documento</th><th>Obligatorio</th><th>Situación</th><th>Observaciones</th><th>Archivo</th><th>Acciones</th></tr></thead><tbody>' +
-            filas + "</tbody></table></div>" +
-            '<p class="comite-readonly-note" style="margin-top:12px">Un documento rechazado o con corrección pedida debe reemplazarse. Una vez aprobado ya no se puede cambiar.</p>'
-          ) + "</div>";
-          caja.querySelectorAll("input[data-tipo-legal]").forEach((entrada) => entrada.addEventListener("change", () => subirLegal(entrada)));
+          caja.innerHTML = '<div class="portal-stack">' + selector + '<div id="legalesTabla">' + cargando("Cargando documentos legales...") + "</div></div>";
+          // Tabla, Ver/Descargar y Subir/Reemplazar: static/documentos-legales.js
+          // (la misma que muestra "Mi empresa").
+          const idEmpresa = estado.empresaLegal;
+          estado.requisitos[idEmpresa] = await DocumentosLegales.pintar($("#legalesTabla"), {
+            api, token, idEmpresa, mostrar,
+            alCambiar: (req) => { estado.requisitos[idEmpresa] = req; }
+          });
           const sel = $("#empresaLegal");
           if (sel) sel.addEventListener("change", () => { estado.empresaLegal = sel.value; cargarLegales(); });
         } catch (error) {
           caja.innerHTML = "";
-          mostrar(error.message, "error");
-        }
-      }
-
-      async function subirLegal(entrada) {
-        const archivo = entrada.files[0];
-        if (!archivo) return;
-        entrada.disabled = true;
-        const datos = new FormData();
-        datos.append("archivo", archivo);
-        const baseEmpresa = "/api/empresas/" + estado.empresaLegal + "/documentos";
-        try {
-          if (entrada.dataset.reemplazar) {
-            await api(baseEmpresa + "/" + entrada.dataset.reemplazar, { method: "PUT", body: datos });
-          } else {
-            datos.append("tipo_documento", entrada.dataset.tipoLegal);
-            await api(baseEmpresa, { method: "POST", body: datos });
-          }
-          await cargarLegales();
-          mostrar("Documento \"" + entrada.dataset.tipoLegal + "\" guardado. Queda pendiente de revisión del Coordinador.", "success");
-        } catch (error) {
-          entrada.disabled = false;
-          entrada.value = "";
           mostrar(error.message, "error");
         }
       }
@@ -1006,7 +1013,10 @@
 
           const incluidas = panel(
             '<div class="comite-panel-heading"><div><h3>Sedes incluidas</h3><p>' + sedes.length + (sedes.length === 1 ? " sede" : " sedes") + " en la solicitud.</p></div>" +
-            '<button class="comite-button secondary btn btn-secundario" type="button" data-accion="excel">Exportar a Excel</button></div>' +
+            '<div class="comite-decision-actions" style="margin-top:0">' +
+            '<button class="comite-button secondary btn btn-secundario" type="button" data-accion="todas-sedes">Todas las sedes</button>' +
+            '<button class="comite-button secondary btn btn-secundario" type="button" data-accion="excel">Exportar a Excel</button>' +
+            '<button class="comite-button primary btn btn-primario" type="button" data-accion="registrar-sede">Registrar nueva sede</button></div></div>' +
             (sedes.length > 1 ? FiltrosUbicacion.html({ prefijo: "sedeFiltro", valores: estado.ubicacionSedes, titulo: "Filtrar sedes por ubicación" }) : "") +
             '<div class="comite-table-wrap"><table id="tablaSedes"><thead><tr><th>Sede</th><th>Dirección</th><th>Ciudad</th><th>Departamento</th><th>País</th><th>Principal</th><th>Estado</th>' +
             (editable ? "<th>Acciones</th>" : "") + "</tr></thead><tbody>" +
@@ -1032,28 +1042,17 @@
             '<button class="comite-button secondary btn btn-secundario" type="button" data-accion="cancelar-sede">Cancelar</button></div>'
           ) : "";
 
-          const agregar = editable ? '<div class="comite-workspace">' +
-            panel(
-              '<div class="comite-panel-heading"><div><h3>Registrar sede nueva</h3><p>La sede queda registrada en la empresa y se incluye en esta solicitud.</p></div></div>' +
-              '<form id="formSedeNueva" class="portal-form-grid">' +
-              '<div class="full"><label for="sedeNombre">Nombre de la sede</label><input id="sedeNombre" type="text" maxlength="100" required></div>' +
-              '<div class="full"><label for="sedeDireccion">Dirección</label><input id="sedeDireccion" type="text" maxlength="255" required></div>' +
-              '<div><label for="sedeCiudad">Ciudad</label><input id="sedeCiudad" type="text" maxlength="100" required></div>' +
-              '<div><label for="sedeDepartamento">Departamento</label><input id="sedeDepartamento" type="text" maxlength="100" required></div>' +
-              '<div><label for="sedePais">País</label><input id="sedePais" type="text" maxlength="100" value="Colombia"></div>' +
-              '<div><label for="sedePrincipal">Sede principal</label><select id="sedePrincipal"><option value="false">No</option><option value="true">Sí</option></select></div>' +
-              '<p class="full comite-readonly-note" style="margin-top:0">Ciudad, departamento y país solo se indican ahora: después no se pueden cambiar.</p>' +
-              '<div class="full comite-decision-actions" style="margin-top:0"><button class="comite-button primary btn btn-primario" type="submit">Registrar sede</button></div>' +
-              "</form>"
-            ) +
-            panel(
-              '<div class="comite-panel-heading"><div><h3>Incluir sede registrada</h3><p>Sedes activas de la empresa que aún no están en la solicitud.</p></div></div>' +
-              (disponibles.length
-                ? '<label for="sedeDisponible">Sede</label><select id="sedeDisponible">' + disponibles.map((s) =>
-                  '<option value="' + esc(s.id_sede) + '">' + esc(s.nombre_sede + " · " + s.ciudad + (s.departamento ? ", " + s.departamento : "")) + "</option>").join("") + "</select>" +
-                  '<div class="comite-decision-actions"><button class="comite-button primary btn btn-primario" type="button" data-accion="incluir-sede">Agregar a la solicitud</button></div>'
-                : '<p class="comite-muted">No hay otras sedes activas registradas.</p>')
-            ) + "</div>" : "";
+          // La sede nueva se registra con el botón "Registrar nueva sede"
+          // (modal de static/sede-form.js); en un borrador queda incluida.
+          const agregar = editable ? panel(
+            '<div class="comite-panel-heading"><div><h3>Incluir sede registrada</h3><p>Sedes activas de la empresa que aún no están en la solicitud. ' +
+            'Si la sede no existe, use "Registrar nueva sede".</p></div></div>' +
+            (disponibles.length
+              ? '<label for="sedeDisponible">Sede</label><select id="sedeDisponible">' + disponibles.map((s) =>
+                '<option value="' + esc(s.id_sede) + '">' + esc(s.nombre_sede + " · " + s.ciudad + (s.departamento ? ", " + s.departamento : "")) + "</option>").join("") + "</select>" +
+                '<div class="comite-decision-actions"><button class="comite-button primary btn btn-primario" type="button" data-accion="incluir-sede">Agregar a la solicitud</button></div>'
+              : '<p class="comite-muted">No hay otras sedes activas registradas.</p>')
+          ) : "";
 
           caja.innerHTML = '<div class="portal-stack">' + incluidas + edicion + agregar + "</div>";
           if ($("#sedeFiltroCiudad")) {
@@ -1062,34 +1061,127 @@
               singular: "sede", plural: "sedes", alCambiar: (valores) => { estado.ubicacionSedes = valores; }
             });
           }
-
-          const formulario = $("#formSedeNueva");
-          if (formulario) formulario.addEventListener("submit", registrarSede);
         } catch (error) {
           caja.innerHTML = "";
           mostrar(error.message, "error");
         }
       }
 
-      async function registrarSede(evento) {
-        evento.preventDefault();
-        const cuerpo = {
-          nombre_sede: $("#sedeNombre").value.trim(),
-          direccion: $("#sedeDireccion").value.trim(),
-          ciudad: $("#sedeCiudad").value.trim(),
-          departamento: $("#sedeDepartamento").value.trim(),
-          pais: $("#sedePais").value.trim() || null,
-          es_principal: $("#sedePrincipal").value === "true"
-        };
-        const texto = "Ciudad: " + cuerpo.ciudad + "\nDepartamento: " + cuerpo.departamento + "\nPaís: " + (cuerpo.pais || "Colombia") +
-          "\n\nEstos datos no se podrán cambiar después. ¿Son correctos?";
-        if (!confirm(texto)) return;
+      // ---------------- Sedes de la empresa (sin solicitud elegida) ----------------
+      // Todas las sedes de todas las empresas del usuario (GET /api/empresas/{id}/sedes).
+      async function asegurarEmpresas() {
+        if (estado.empresas.length) return estado.empresas;
         try {
-          await enviar(base() + "/sedes/nueva", "POST", cuerpo);
-          await cargarSedes();
-          mostrar("Sede registrada e incluida en la solicitud.", "success");
+          estado.empresas = (await api("/api/empresas/mias")) || [];
+        } catch (_) {
+          estado.empresas = [];
+        }
+        return estado.empresas;
+      }
+
+      async function cargarSedesEmpresa() {
+        const caja = $("#vista-sedes");
+        caja.innerHTML = cargando("Cargando sedes...");
+        try {
+          const empresas = await asegurarEmpresas();
+          if (!empresas.length) {
+            caja.innerHTML = panel('<div class="comite-empty-state"><h3>Su cuenta no tiene una empresa asociada</h3>' +
+              '<p>Regístrela en "Datos de mi empresa" para poder agregar sus sedes.</p><div class="comite-decision-actions" style="justify-content:center">' +
+              '<a class="comite-button primary btn btn-primario" href="/empresas">Datos de mi empresa</a></div></div>');
+            return;
+          }
+          const listas = await Promise.all(empresas.map((e) =>
+            api("/api/empresas/" + e.id_empresa + "/sedes").then((lista) =>
+              (lista || []).map((s) => Object.assign({ empresa_nombre: e.nombre }, s, { id_empresa: s.id_empresa || e.id_empresa })))));
+          const sedes = [].concat(...listas);
+          estado.sedesEmpresa = sedes;
+          const varias = empresas.length > 1;
+          const columnas = varias ? 9 : 8;
+
+          caja.innerHTML = '<div class="portal-stack">' + panel(
+            '<div class="comite-panel-heading"><div><h3>Sedes de la empresa</h3><p>' + sedes.length +
+            (sedes.length === 1 ? " sede registrada" : " sedes registradas") +
+            '. Para ver solo las sedes de una solicitud, elíjala en el selector de arriba.</p></div>' +
+            '<button class="comite-button primary btn btn-primario" type="button" data-accion="registrar-sede">Registrar nueva sede</button></div>' +
+            (sedes.length > 1 ? FiltrosUbicacion.html({ prefijo: "sedeFiltro", valores: estado.ubicacionSedes, titulo: "Filtrar sedes por ubicación" }) : "") +
+            '<div class="comite-table-wrap"><table id="tablaSedes"><thead><tr>' + (varias ? "<th>Empresa</th>" : "") +
+            "<th>Sede</th><th>Dirección</th><th>Ciudad</th><th>Departamento</th><th>País</th><th>Principal</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>" +
+            (sedes.map((s) => "<tr data-sede-fila" + FiltrosUbicacion.atributos({ ciudad: s.ciudad, departamento: s.departamento, pais: s.pais }) + ">" +
+              (varias ? "<td>" + esc(s.empresa_nombre) + "</td>" : "") +
+              "<td><strong>" + esc(s.nombre_sede) + "</strong></td><td>" + esc(s.direccion) + "</td><td>" + esc(s.ciudad) + "</td>" +
+              "<td>" + esc(s.departamento || "-") + "</td><td>" + esc(s.pais || "-") + "</td><td>" + (s.es_principal ? "Sí" : "No") + "</td>" +
+              "<td>" + chip(s.estado || "Activa") + "</td>" +
+              '<td><div class="acciones-tabla">' + accion("editar-sede-empresa", "Editar", s.id_sede) +
+              accion("eliminar-sede-empresa", "Eliminar", s.id_sede) + "</div></td></tr>").join("") ||
+              vacioTabla(columnas, 'La empresa todavía no tiene sedes. Use "Registrar nueva sede".')) +
+            '</tbody></table><p id="sedesSinResultados" class="comite-table-empty" hidden></p></div>' +
+            '<p class="comite-readonly-note" style="margin-top:12px">Ciudad, departamento y país no se pueden cambiar. Si están mal, inactive la sede y registre otra. ' +
+            "Para incluir una sede en una solicitud, elija la solicitud (en borrador) en el selector de arriba.</p>"
+          ) + "</div>";
+          if ($("#sedeFiltroCiudad")) {
+            FiltrosUbicacion.ligarFilas(caja, {
+              prefijo: "sedeFiltro", filas: "#tablaSedes tr[data-sede-fila]", vacio: "sedesSinResultados",
+              singular: "sede", plural: "sedes", alCambiar: (valores) => { estado.ubicacionSedes = valores; }
+            });
+          }
         } catch (error) {
+          caja.innerHTML = "";
           mostrar(error.message, "error");
+        }
+      }
+
+      // Modal "Registrar nueva sede" / "Editar" (static/sede-form.js): el mismo
+      // formulario que tenía "Mi empresa". Con una solicitud en borrador elegida
+      // en la vista Sedes, la sede nueva además se incluye en ella (SOL-021).
+      async function abrirModalSede(idEmpresa, sede) {
+        const empresas = await asegurarEmpresas();
+        if (!empresas.length) return mostrar('Su cuenta no tiene una empresa asociada. Regístrela en "Datos de mi empresa".', "error");
+        const solicitud = estado.vista === "sedes" ? solicitudActual() : null;
+        const incluir = !sede && solicitud && solicitud.estado === "Borrador";
+        const fija = sede ? sede.id_empresa : solicitud ? solicitud.id_empresa : idEmpresa;
+        SedeForm.abrir({
+          enviar,
+          sede,
+          idEmpresa: fija || empresas[0].id_empresa,
+          empresas: fija ? empresas.filter((e) => String(e.id_empresa) === String(fija)) : empresas,
+          nota: sede ? "" : incluir
+            ? "La sede queda registrada en la empresa y se incluye en la solicitud seleccionada."
+            : "La sede queda registrada en la empresa. Después podrá incluirla en sus solicitudes.",
+          alGuardar: async (resultado) => {
+            let mensaje = resultado.mensaje;
+            let tipo = "success";
+            if (incluir && resultado.sede && resultado.sede.id_sede) {
+              try {
+                await enviar("/solicitudes/" + solicitud.id_solicitud + "/sedes", "POST", { id_sede: resultado.sede.id_sede });
+                mensaje = "Sede registrada e incluida en la solicitud.";
+              } catch (error) {
+                mensaje = "Sede registrada, pero no se pudo incluir en la solicitud: " + error.message;
+                tipo = "error";
+              }
+              await refrescarSolicitudes().catch(() => {});
+            }
+            // Recarga la lista de sedes y el panel de requisitos.
+            if (estado.vista !== "solicitudes") await refrescarRequisitos().catch(() => {});
+            await cargarVista();
+            mostrar(mensaje, tipo);
+          }
+        });
+      }
+
+      async function accionSedesEmpresa(nombre, id) {
+        const sede = (estado.sedesEmpresa || []).find((s) => String(s.id_sede) === String(id));
+        if (!sede) return;
+        if (nombre === "editar-sede-empresa") return abrirModalSede(sede.id_empresa, sede);
+        if (nombre === "eliminar-sede-empresa") {
+          if (!confirm("¿Eliminar la sede? Si ya forma parte de solicitudes de certificación, inactívela en su lugar.")) return;
+          try {
+            await enviar("/api/empresas/" + sede.id_empresa + "/sedes/" + sede.id_sede, "DELETE");
+            await refrescarRequisitos().catch(() => {});
+            await cargarSedesEmpresa();
+            mostrar("Sede eliminada.", "success");
+          } catch (error) {
+            mostrar(error.message, "error");
+          }
         }
       }
 
@@ -1259,8 +1351,13 @@
           seleccionar(id);
           return mostrarVista(nombre.slice(3));
         }
+        if (nombre === "registrar-sede") return abrirModalSede(id || null, null);
+        if (nombre === "ver-sedes-empresa" || nombre === "todas-sedes") {
+          seleccionar(null);
+          return mostrarVista("sedes");
+        }
+        if (nombre === "editar-sede-empresa" || nombre === "eliminar-sede-empresa") return accionSedesEmpresa(nombre, id);
         if (nombre === "radicar") return radicar(id);
-        if (nombre === "ver-legal") return descargar("/api/empresas/" + estado.empresaLegal + "/documentos/" + id + "/archivo", "", true);
         if (nombre === "solicitar-cambio") return solicitarCambio(id);
         if (nombre === "pdf") return descargar("/solicitudes/" + id + "/pdf", "solicitud-" + id.slice(0, 8) + ".pdf");
         if (estado.vista === "informacion") return accionInformacion(nombre, id);
@@ -1285,7 +1382,10 @@
         } catch (_) {
           estado.normas = [];
         }
-        mostrarVista("solicitudes");
+        // /empresa#sedes (enlace "Gestionar sedes" de Mi empresa) abre esa vista.
+        const inicial = decodeURIComponent((window.location.hash || "").slice(1));
+        if (VISTAS[inicial] && inicial !== "solicitudes") await refrescarSolicitudes().catch(() => {});
+        mostrarVista(VISTAS[inicial] ? inicial : "solicitudes");
       })();
     })();
   </script>
