@@ -1012,6 +1012,111 @@
             bottom: 0;
         }
 
+        .program-action-card {
+            width: min(580px, 100%);
+        }
+
+        .program-action-intro {
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            border: 1px solid #bbf7d0;
+            border-radius: 10px;
+            background: #f0fdf4;
+            color: #245c35;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .program-action-intro.cancel {
+            border-color: #fecaca;
+            background: #fff7f7;
+            color: #8f2525;
+        }
+
+        .program-action-details {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin: 0 0 18px;
+        }
+
+        .program-action-detail {
+            min-width: 0;
+            padding: 12px 13px;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            background: #f8fafc;
+        }
+
+        .program-action-detail dt {
+            margin-bottom: 5px;
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+        }
+
+        .program-action-detail dd {
+            margin: 0;
+            color: #24352e;
+            font-size: 12.5px;
+            font-weight: 700;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .program-action-reason label {
+            display: block;
+            margin-bottom: 7px;
+            color: #25372f;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .program-action-reason textarea {
+            width: 100%;
+            min-height: 96px;
+            resize: vertical;
+            padding: 11px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 9px;
+            color: #1f2937;
+            font: inherit;
+            font-size: 13px;
+        }
+
+        .program-action-reason textarea:focus {
+            outline: 3px solid rgba(57, 169, 0, .16);
+            border-color: var(--sena-green-bright);
+        }
+
+        .program-action-error {
+            display: none;
+            margin-top: 10px;
+            color: #b42318;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .program-action-error.show {
+            display: block;
+        }
+
+        @media (max-width: 560px) {
+            .program-action-details {
+                grid-template-columns: 1fr;
+            }
+
+            .program-action-foot {
+                flex-direction: column-reverse;
+            }
+
+            .program-action-foot button {
+                width: 100%;
+            }
+        }
+
         .modal-section-group {
             margin-bottom: 20px;
         }
@@ -1721,6 +1826,53 @@
         </div>
     </div>
 
+    <div id="programActionModal" class="programacion-modal" role="dialog" aria-modal="true"
+        aria-labelledby="programActionModalTitle" aria-describedby="programActionModalIntro">
+        <div class="programacion-modal-card program-action-card">
+            <div class="programacion-modal-head">
+                <div>
+                    <span id="programActionModalEyebrow" class="modal-eyebrow">Acción sobre programación</span>
+                    <h3 id="programActionModalTitle">Confirmar acción</h3>
+                </div>
+                <button type="button" class="modal-close" id="programActionModalClose"
+                    aria-label="Cerrar modal">×</button>
+            </div>
+            <div class="programacion-modal-body">
+                <div id="programActionModalIntro" class="program-action-intro"></div>
+                <dl class="program-action-details">
+                    <div class="program-action-detail">
+                        <dt>Solicitud</dt>
+                        <dd id="programActionRequest">—</dd>
+                    </div>
+                    <div class="program-action-detail">
+                        <dt>Empresa</dt>
+                        <dd id="programActionCompany">—</dd>
+                    </div>
+                    <div class="program-action-detail">
+                        <dt>Lugar</dt>
+                        <dd id="programActionPlace">—</dd>
+                    </div>
+                    <div class="program-action-detail">
+                        <dt>Periodo</dt>
+                        <dd id="programActionPeriod">—</dd>
+                    </div>
+                </dl>
+                <div id="programCancelReasonWrap" class="program-action-reason hidden">
+                    <label for="programCancelReason">Motivo de cancelación</label>
+                    <textarea id="programCancelReason" minlength="3" maxlength="1000"
+                        aria-describedby="programCancelReasonHelp programActionModalError"
+                        placeholder="Indica por qué se cancela esta programación"></textarea>
+                    <p id="programCancelReasonHelp" class="hint">Este motivo quedará registrado. Escribe entre 3 y 1000 caracteres.</p>
+                </div>
+                <p id="programActionModalError" class="program-action-error" role="alert" aria-live="assertive"></p>
+            </div>
+            <div class="programacion-modal-foot program-action-foot">
+                <button type="button" class="btn btn-secundario secondary" id="programActionModalBack">Volver</button>
+                <button type="button" class="btn btn-primario primary" id="programActionModalConfirm">Continuar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- =========================================================
          MODAL FICHA DEL AUDITOR (asignación de auditores por sede)
     ========================================================= -->
@@ -1898,18 +2050,9 @@
                 const data = await response.json().catch(() => ({}));
                 const sedes = Array.isArray(data) ? data : (Array.isArray(data.sedes) ? data.sedes : (Array.isArray(data.items) ? data.items : []));
                 const ocupadas = programacionesVigentesPorSede();
-                const principal = ocupadas.get('__principal__');
-                // Si la sede principal de la empresa esta ocupada, la opcion
-                // "Direccion principal de la empresa" tampoco puede usarse.
-                const principalOcupado = principal
-                    || (() => {
-                        const sedePrincipal = sedes.find(sd => sd.es_principal);
-                        if (!sedePrincipal) return null;
-                        return ocupadas.get(String(sedePrincipal.id_sede)) || null;
-                    })();
+                const principalOcupado = programacionActivaDeSede(idSolicitud, "");
                 if (principalOcupado) {
                     const opPrincipal = select.options[0];
-                    opPrincipal.disabled = true;
                     opPrincipal.textContent = `Dirección principal de la empresa — ya programada (${formatDateTime(principalOcupado.fecha_inicio)})`;
                     opPrincipal.dataset.ocupada = "1";
                 }
@@ -1923,7 +2066,6 @@
                     option.dataset.nombre = sede.nombre_sede || "Sede";
                     const ocupada = ocupadas.get(String(sede.id_sede));
                     if (ocupada) {
-                        option.disabled = true;
                         option.textContent += ` — ya programada (${formatDateTime(ocupada.fecha_inicio)})`;
                         option.dataset.ocupada = "1";
                         sedesOcupadas += 1;
@@ -1931,10 +2073,10 @@
                     select.appendChild(option);
                 });
                 window.__avisoSedesOcupadas = sedesOcupadas > 0
-                    ? `Hay ${sedesOcupadas} sede(s) que ya cuentan con una programación vigente. Se muestran deshabilitadas; cancela esa programación para poder usarlas.`
+                    ? `Hay ${sedesOcupadas} sede(s) con programación vigente. Puedes seleccionarlas para consultarlas, pero no programarlas de nuevo.`
                     : "";
                 if (sedesOcupadas > 0) {
-                    showNotice("scheduleNotice", window.__avisoSedesOcupadas, "error");
+                    showNotice("scheduleNotice", window.__avisoSedesOcupadas, "info");
                 }
                 // Se preselecciona la sede que ya tiene una programación vigente
                 // para que el formulario muestre esa visita bloqueada.
@@ -1960,6 +2102,9 @@
                 $("scheduleCandidatesWrap").classList.add("hidden");
                 candidatosSede = [];
                 if (!grupo) return;
+                if (programacionActivaDeSede(grupo.id_solicitud, scheduleSedeSelect.value || "")) {
+                    $("scheduleSave").disabled = true;
+                }
                 await loadScheduleList(grupo);
                 // Al elegir una sede se muestran los auditores disponibles
                 // para ella: los que ya tienen auditoría o están asignados a
@@ -2182,7 +2327,9 @@
             ["scheduleModality", "scheduleDate", "scheduleStart", "scheduleEnd"].forEach(id => { $(id).disabled = Boolean(locked); });
             $("scheduleCity").readOnly = true;
             $("scheduleAddress").readOnly = true;
-            $("scheduleSave").disabled = Boolean(locked);
+            const group = currentAssignment();
+            const sedeProgramada = !editing && Boolean(programacionActivaDeSede(group?.id_solicitud, $("scheduleSede")?.value || ""));
+            $("scheduleSave").disabled = Boolean(locked || sedeProgramada);
             $("scheduleSave").textContent = editing ? "Guardar cambios" : "Programar auditoría (equipo de la sede)";
             $("scheduleCancelEdit").classList.toggle("hidden", !editing);
             $("scheduleMoreAuditors").disabled = Boolean(locked);
@@ -2292,6 +2439,14 @@
                 if (!mapa.has(String(row.id_programacion))) mapa.set(String(row.id_programacion), row);
             });
             return Array.from(mapa.values());
+        }
+
+        function programacionActivaDeSede(idSolicitud, idSede) {
+            if (idSede) {
+                return programacionesVigentesPorSede().get(String(idSede)) || null;
+            }
+            return programacionesActivasDeSolicitud(idSolicitud)
+                .find((row) => String(row.id_sede || "") === String(idSede || "")) || null;
         }
 
         function etiquetaOrigen(origen) {
@@ -3434,7 +3589,14 @@
                     applyExistingSchedule(rowsDeLaSede[0], false);
                 } else {
                     prepareNewScheduleForm(group);
-                    if (activeRows.length) {
+                    const programacionSede = programacionActivaDeSede(group.id_solicitud, sedeSeleccionada);
+                    if (programacionSede) {
+                        showNotice(
+                            "scheduleNotice",
+                            `La sede seleccionada ya tiene una programación vigente (${formatDateTime(programacionSede.fecha_inicio)}). No se puede programar de nuevo.`,
+                            "info"
+                        );
+                    } else if (activeRows.length) {
                         showNotice(
                             "scheduleNotice",
                             `La sede seleccionada (${nombreSedeSeleccionada()}) está libre. Puedes programarla con el equipo de auditores que elijas; las programaciones de las demás sedes no se modifican.`,
@@ -3448,47 +3610,137 @@
             }
         }
 
-        async function editarProgramacion(idProgramacion) {
+        let accionProgramacionPendiente = null;
+        let focoAntesDelModalAccion = null;
+        let accionProgramacionEnviando = false;
+
+        function abrirModalAccionProgramacion(accion, row) {
+            const cancelar = accion === "cancelar";
+            accionProgramacionPendiente = { accion, row };
+            focoAntesDelModalAccion = document.activeElement;
+
+            $("programActionModalEyebrow").textContent = cancelar ? "Cancelación administrativa" : "Edición de programación";
+            $("programActionModalTitle").textContent = cancelar ? "Cancelar programación" : "Editar programación";
+            $("programActionModalIntro").textContent = cancelar
+                ? "Esta acción cancelará la programación para todos los auditores vinculados. Registra el motivo para continuar."
+                : "Vas a habilitar la edición de esta programación. Al continuar, podrás revisar las fechas, horas y modalidad en el formulario.";
+            $("programActionModalIntro").classList.toggle("cancel", cancelar);
+            $("programActionRequest").textContent = row.numero_radicado || row.id_solicitud || "—";
+            $("programActionCompany").textContent = row.empresa_nombre || "—";
+            $("programActionPlace").textContent = [
+                row.direccion_servicio || row.empresa_direccion,
+                row.ciudad_servicio || row.empresa_ciudad
+            ].filter(Boolean).join(" · ") || "—";
+            $("programActionPeriod").textContent = `${formatDateTime(row.fecha_inicio)} – ${formatDateTime(row.fecha_fin)}`;
+            $("programCancelReasonWrap").classList.toggle("hidden", !cancelar);
+            $("programCancelReason").value = "";
+            $("programCancelReason").removeAttribute("aria-invalid");
+            $("programActionModalError").textContent = "";
+            $("programActionModalError").classList.remove("show");
+
+            const confirmar = $("programActionModalConfirm");
+            confirmar.textContent = cancelar ? "Confirmar cancelación" : "Continuar edición";
+            confirmar.className = cancelar ? "btn btn-peligro-contorno danger" : "btn btn-primario primary";
+            $("programActionModal").classList.add("show");
+            if (cancelar) $("programCancelReason").focus();
+            else confirmar.focus();
+        }
+
+        function cerrarModalAccionProgramacion() {
+            if (accionProgramacionEnviando) return;
+            const modal = $("programActionModal");
+            if (!modal.classList.contains("show")) return;
+            modal.classList.remove("show");
+            accionProgramacionPendiente = null;
+            const destino = focoAntesDelModalAccion;
+            focoAntesDelModalAccion = null;
+            if (destino && document.contains(destino)) {
+                try { destino.focus({ preventScroll: true }); } catch (_) { }
+            } else {
+                $("scheduleList").setAttribute("tabindex", "-1");
+                $("scheduleList").focus({ preventScroll: true });
+            }
+        }
+
+        async function confirmarAccionProgramacion() {
+            const pendiente = accionProgramacionPendiente;
+            if (!pendiente || accionProgramacionEnviando) return;
+            if (pendiente.accion === "editar") {
+                cerrarModalAccionProgramacion();
+                applyExistingSchedule(pendiente.row, true);
+                $("scheduleForm").scrollIntoView({ behavior: "smooth", block: "start" });
+                $("scheduleDate").focus({ preventScroll: true });
+                return;
+            }
+
+            const motivo = $("programCancelReason").value.trim();
+            if (motivo.length < 3 || motivo.length > 1000) {
+                $("programActionModalError").textContent = "Escribe un motivo de entre 3 y 1000 caracteres.";
+                $("programActionModalError").classList.add("show");
+                $("programCancelReason").setAttribute("aria-invalid", "true");
+                $("programCancelReason").focus();
+                return;
+            }
+
+            accionProgramacionEnviando = true;
+            const confirmar = $("programActionModalConfirm");
+            confirmar.disabled = true;
+            confirmar.textContent = "Cancelando...";
+            $("programActionModalBack").disabled = true;
+            $("programActionModalClose").disabled = true;
+            try {
+                const result = await api(`/programacion/${encodeURIComponent(pendiente.row.id_programacion)}/cancelar`, {
+                    method: "POST",
+                    body: JSON.stringify({ motivo })
+                });
+                const group = currentAssignment();
+                await cargarProgramacionesAgenda();
+                if (group) {
+                    await cargarSedes(group.id_empresa, group.id_solicitud);
+                    await loadScheduleList(group);
+                }
+                accionProgramacionEnviando = false;
+                cerrarModalAccionProgramacion();
+                showNotice("scheduleNotice", result.mensaje || "Programación cancelada correctamente.", "ok");
+            } catch (error) {
+                $("programActionModalError").textContent = `No fue posible cancelar la programación: ${error.message}`;
+                $("programActionModalError").classList.add("show");
+            } finally {
+                accionProgramacionEnviando = false;
+                if ($("programActionModal").classList.contains("show")) {
+                    confirmar.disabled = false;
+                    confirmar.textContent = "Confirmar cancelación";
+                    $("programActionModalBack").disabled = false;
+                    $("programActionModalClose").disabled = false;
+                }
+            }
+        }
+
+        $("programActionModalBack").addEventListener("click", cerrarModalAccionProgramacion);
+        $("programActionModalClose").addEventListener("click", cerrarModalAccionProgramacion);
+        $("programActionModalConfirm").addEventListener("click", confirmarAccionProgramacion);
+        $("programCancelReason").addEventListener("input", () => {
+            $("programCancelReason").removeAttribute("aria-invalid");
+            $("programActionModalError").textContent = "";
+            $("programActionModalError").classList.remove("show");
+        });
+
+        function editarProgramacion(idProgramacion) {
             const row = (window.__programacionesActuales || []).find(item => String(item.id_programacion) === String(idProgramacion));
             if (!row || isTerminalSchedule(row)) {
                 showNotice("scheduleNotice", "Esta programación no se puede editar porque ya fue cancelada o finalizada.", "error");
                 return;
             }
-            if (!confirm("Advertencia: va a habilitar la edición de una programación existente. Revise los cambios antes de guardarlos. ¿Desea continuar?")) return;
-            applyExistingSchedule(row, true);
-            $("scheduleForm").scrollIntoView({ behavior: "smooth", block: "start" });
+            abrirModalAccionProgramacion("editar", row);
         }
 
-        async function cancelarProgramacion(idProgramacion) {
+        function cancelarProgramacion(idProgramacion) {
             const row = (window.__programacionesActuales || []).find(item => String(item.id_programacion) === String(idProgramacion));
             if (!row || isTerminalSchedule(row)) {
                 showNotice("scheduleNotice", "Esta programación ya está cancelada o finalizada.", "error");
                 return;
             }
-            const motivo = prompt("Advertencia: cancelar la programación la marcará como cancelada para los auditores asignados. Indique el motivo de la cancelación:", "Cancelación administrativa");
-            if (motivo === null) return;
-            if (!motivo.trim()) {
-                showNotice("scheduleNotice", "Debe indicar el motivo de la cancelación.", "error");
-                return;
-            }
-            const confirmar = confirm(`Va a cancelar la programación del ${formatDateTime(row.fecha_inicio)} al ${formatDateTime(row.fecha_fin)}. Esta acción afectará a todos los auditores vinculados. ¿Confirma la cancelación?`);
-            if (!confirmar) return;
-            try {
-                const result = await api(`/programacion/${encodeURIComponent(idProgramacion)}/cancelar`, {
-                    method: "POST",
-                    body: JSON.stringify({ motivo: motivo.trim() })
-                });
-                showNotice("scheduleNotice", result.mensaje || "Programación cancelada correctamente.", "ok");
-                const group = currentAssignment();
-                // Al cancelar, la sede vuelve a quedar disponible.
-                await cargarProgramacionesAgenda();
-                if (group) {
-                    await cargarSedes(group?.id_empresa, group?.id_solicitud);
-                    await loadScheduleList(group);
-                }
-            } catch (error) {
-                showNotice("scheduleNotice", `No fue posible cancelar la programación: ${error.message}`, "error");
-            }
+            abrirModalAccionProgramacion("cancelar", row);
         }
 
         $("assignmentSelect").addEventListener("change", async () => {
@@ -3696,6 +3948,11 @@
             const editing = Boolean(programacionActual && programacionEnEdicion);
             if (programacionActual && !editing) {
                 avisoJuntoAccion("scheduleActionNotice", "La sede seleccionada ya tiene una programación. Los datos están bloqueados; use el botón Editar de la tabla para modificarlos.", "error");
+                return;
+            }
+            if (!editing && programacionActivaDeSede(group.id_solicitud, $("scheduleSede").value || "")) {
+                $("scheduleSave").disabled = true;
+                avisoJuntoAccion("scheduleActionNotice", "La sede seleccionada ya tiene una programación. Use el botón Editar de la tabla para modificarla.", "error");
                 return;
             }
             const equipo = equipoActivo();
@@ -3990,22 +4247,34 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById('programacionModal');
+            const actionModal = document.getElementById('programActionModal');
             if (modal) {
                 modal.addEventListener('click', (e) => {
                     if (e.target.id === 'programacionModal') cerrarProgramacionModal();
                 });
             }
+            if (actionModal) {
+                actionModal.addEventListener('click', (e) => {
+                    if (e.target.id === 'programActionModal') cerrarModalAccionProgramacion();
+                });
+            }
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') cerrarProgramacionModal();
+                const modalAbierto = actionModal?.classList.contains('show') ? actionModal
+                    : modal?.classList.contains('show') ? modal : null;
+                if (e.key === 'Escape' && modalAbierto) {
+                    if (modalAbierto === actionModal) cerrarModalAccionProgramacion();
+                    else cerrarProgramacionModal();
+                    return;
+                }
                 // El foco no sale del modal abierto (Tab / Mayús+Tab).
-                if (e.key === 'Tab' && modal && modal.classList.contains('show')) {
-                    const foco = [...modal.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+                if (e.key === 'Tab' && modalAbierto) {
+                    const foco = [...modalAbierto.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
                         .filter(el => !el.disabled && el.offsetParent !== null);
                     if (!foco.length) return;
                     const primero = foco[0], ultimo = foco[foco.length - 1];
                     if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
                     else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
-                    else if (!modal.contains(document.activeElement)) { e.preventDefault(); primero.focus(); }
+                    else if (!modalAbierto.contains(document.activeElement)) { e.preventDefault(); primero.focus(); }
                 }
             });
         });
