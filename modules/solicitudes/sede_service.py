@@ -36,6 +36,8 @@ from modules.solicitudes.sede_schema import (
     SedeEditar,
     SedeNueva,
 )
+from core.security import es_coordinador
+from modules.solicitudes import estado_solicitud as estados
 from modules.solicitudes.solicitud_permissions import exigir_permisos
 from modules.solicitudes.solicitud_schema import EstadoSolicitud
 from modules.solicitudes.solicitud_service import SolicitudService
@@ -286,8 +288,11 @@ class SedeService:
 
         Alimenta el selector de SOL-021, así que exige ese mismo permiso.
         """
-        solicitud = await self.solicitudes._obtener_accesible_o_404(id_solicitud, usuario)
-        await self.solicitudes._exigir_propiedad(solicitud, usuario)
+        if es_coordinador(usuario):
+            solicitud = await self._obtener_aprobada_para_coordinador(id_solicitud, usuario)
+        else:
+            solicitud = await self.solicitudes._obtener_accesible_o_404(id_solicitud, usuario)
+            await self.solicitudes._exigir_propiedad(solicitud, usuario)
 
         resultado = await self.db.execute(
             text(f"""
@@ -314,8 +319,15 @@ class SedeService:
         return [dict(fila) for fila in resultado.mappings().all()]
 
     async def incluir_existente(self, id_solicitud: UUID, id_sede: UUID, usuario: dict) -> dict:
-        """SOL-021: incluye en la solicitud una sede activa de la empresa."""
-        solicitud = await self.solicitudes._obtener_borrador_propio(id_solicitud, usuario)
+        """SOL-021: incluye en la solicitud una sede activa de la empresa.
+
+        La empresa lo hace en su borrador; el Coordinador, en una solicitud
+        Aprobada (20/11/2026), para poder programar la visita de esa sede.
+        """
+        if es_coordinador(usuario):
+            solicitud = await self._obtener_aprobada_para_coordinador(id_solicitud, usuario)
+        else:
+            solicitud = await self.solicitudes._obtener_borrador_propio(id_solicitud, usuario)
         sede = await self._sede_de_empresa_o_404(id_sede, solicitud["id_empresa"])
 
         if sede["estado"] != ESTADO_SEDE_ACTIVA:
@@ -330,6 +342,19 @@ class SedeService:
         return await self._incluir(
             solicitud, sede, usuario, f"Sede incluida: {sede['nombre_sede']}"
         )
+
+    async def _obtener_aprobada_para_coordinador(self, id_solicitud: UUID, usuario: dict) -> dict:
+        """El Coordinador solo agrega sedes a una solicitud Aprobada."""
+        solicitud = await self.solicitudes._obtener_accesible_o_404(id_solicitud, usuario)
+        if not estados.es(solicitud.get("estado"), estados.APROBADA):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "El Coordinador solo puede agregar sedes a una solicitud Aprobada. "
+                    f"Estado actual: {solicitud['estado']}."
+                ),
+            )
+        return solicitud
 
     # ========================================================
     # SOL-024 — REGISTRAR SEDE NUEVA CON SU DIRECCIÓN

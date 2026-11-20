@@ -2316,12 +2316,15 @@ class AgendaAuditorService(AuditorService):
                    sede.nombre_sede AS sede_nombre, sede.direccion AS sede_direccion,
                    sede.ciudad AS sede_ciudad,
                    sede.departamento AS sede_departamento, sede.pais AS sede_pais,
+                   n.codigo AS norma_codigo, n.nombre AS norma_nombre,
+                   n.version AS norma_version,
                    d.id_usuario, COALESCE(d.confirmado, FALSE) AS confirmado,
                    u.nombre AS auditor_nombre, u.correo AS auditor_correo
             FROM programacion_visita p
             LEFT JOIN detalle_programacion_auditor d ON d.id_programacion = p.id_programacion
             LEFT JOIN usuario u ON u.id_usuario = d.id_usuario
             LEFT JOIN solicitud s ON s.id_solicitud = p.id_solicitud
+            LEFT JOIN norma n ON n.id_norma = s.id_norma
             LEFT JOIN empresa e ON e.id_empresa = COALESCE(s.id_empresa, p.id_empresa)
             LEFT JOIN sede_empresa sede ON sede.id_sede = p.id_sede
             WHERE {' AND '.join(filtros_aud)}
@@ -2827,6 +2830,249 @@ class AgendaAuditorService(AuditorService):
             raise HTTPException(
                 status_code=500,
                 detail=f"No fue posible agregar el auditor: {type(exc).__name__}: {exc}",
+            ) from exc
+
+    async def reemplazar_auditor_de_programacion(
+        self,
+        id_programacion: UUID,
+        id_usuario: UUID,
+        id_usuario_actor: UUID | None = None,
+        motivo: str | None = None,
+    ) -> dict:
+        """Cambia el auditor de una visita que ya tiene auditor (20/11/2026).
+
+        Solo un auditor por solicitud: el auditor nuevo reemplaza al actual en
+        TODAS las visitas vigentes de la solicitud, la asignación anterior se
+        cancela y se registra la nueva. Si la visita no tiene auditor, se usa
+        agregar_auditor_a_programacion.
+        """
+        terminales = ("CANCELADA", "CANCELADO", "EJECUTADA", "EJECUTADO", "FINALIZADA", "FINALIZADO")
+        try:
+            programacion = (await self.db.execute(
+                text("""
+                    SELECT id_programacion, id_solicitud, estado
+                    FROM programacion_visita
+                    WHERE id_programacion = :id_programacion
+                    FOR UPDATE
+                """),
+                {"id_programacion": str(id_programacion)},
+            )).mappings().first()
+            if not programacion:
+                raise HTTPException(status_code=404, detail="La programacion no existe.")
+            if str(programacion["estado"] or "").strip().upper() in terminales:
+                raise HTTPException(
+                    status_code=409,
+                    detail="No se puede modificar una programacion cancelada o ejecutada.",
+                )
+            id_solicitud = programacion["id_solicitud"]
+            if not id_solicitud:
+                raise HTTPException(status_code=409, detail="La programacion no tiene una solicitud asociada.")
+
+            solicitud = (await self.db.execute(
+                text("SELECT estado, numero_radicado FROM solicitud WHERE id_solicitud = :id"),
+                {"id": str(id_solicitud)},
+            )).mappings().first()
+            if not solicitud or not estados.es(solicitud.get("estado"), estados.APROBADA):
+                raise HTTPException(status_code=409, detail="Solo se puede reasignar una solicitud aprobada.")
+
+            actuales = (await self.db.execute(
+                text("""
+                    SELECT d.id_usuario, u.nombre
+                    FROM detalle_programacion_auditor d
+                    LEFT JOIN usuario u ON u.id_usuario = d.id_usuario
+                    WHERE d.id_programacion = :id_programacion
+                """),
+                {"id_programacion": str(id_programacion)},
+            )).mappings().all()
+            if not actuales:
+                raise HTTPException(
+                    status_code=409,
+                    detail="La visita no tiene auditor: use 'Agregar auditor'.",
+                )
+            anteriores = {str(fila["id_usuario"]) for fila in actuales}
+            if str(id_usuario) in anteriores:
+                raise HTTPException(status_code=409, detail="Ese auditor ya es el auditor de esta visita.")
+
+            auditor = (await self.db.execute(
+                text("""
+                    SELECT id_usuario, nombre, estado, estado_auditor
+                    FROM usuario
+                    WHERE id_usuario = :id_usuario
+                """),
+                {"id_usuario": str(id_usuario)},
+            )).mappings().first()
+            if not auditor:
+                raise HTTPException(status_code=404, detail="El auditor no existe.")
+            if str(auditor["estado"] or "").strip().upper() != "ACTIVO":
+                raise HTTPException(status_code=409, detail="El auditor esta desactivado.")
+            if str(auditor["estado_auditor"] or "").strip().upper() not in {"ACTIVO", "APROBADO", "APROBADA"}:
+                raise HTTPException(status_code=409, detail="El auditor no se encuentra aprobado/activo.")
+
+            from modules.asignacion_auditores.asignacion_service import AsignacionAuditorService
+
+            elegibilidad = await AsignacionAuditorService(self.db).validar_auditor(
+                id_solicitud=UUID(str(id_solicitud)),
+                id_auditor=id_usuario,
+                ignorar_ya_asignado=True,
+            )
+            if not elegibilidad.get("competencia_norma", False):
+                raise HTTPException(status_code=409, detail="El auditor no tiene competencia vigente para la norma.")
+            if elegibilidad.get("conflicto_interes", False):
+                raise HTTPException(status_code=409, detail="El auditor tiene un conflicto de interes con la empresa.")
+
+            # Visitas vigentes de la solicitud donde está el auditor anterior.
+            visitas = (await self.db.execute(
+                text("""
+                    SELECT DISTINCT pv.id_programacion, pv.fecha_inicio, pv.fecha_fin
+                    FROM programacion_visita pv
+                    INNER JOIN detalle_programacion_auditor d ON d.id_programacion = pv.id_programacion
+                    WHERE pv.id_solicitud = :id_solicitud
+                      AND d.id_usuario = ANY(CAST(:anteriores AS uuid[]))
+                      AND UPPER(TRIM(COALESCE(pv.estado, ''))) NOT IN
+                          ('CANCELADA', 'CANCELADO', 'EJECUTADA', 'EJECUTADO',
+                           'FINALIZADA', 'FINALIZADO')
+                """),
+                {"id_solicitud": str(id_solicitud), "anteriores": sorted(anteriores)},
+            )).mappings().all()
+
+            nombre_nuevo = auditor.get("nombre") or "El auditor"
+            for visita in visitas:
+                problema = await self.verificar_franja_auditor(
+                    id_usuario, visita["fecha_inicio"], visita["fecha_fin"],
+                    visita["id_programacion"], nombre_nuevo,
+                )
+                if problema:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"No se puede reemplazar: {problema['motivo']} "
+                            f"(visita del {visita['fecha_inicio']:%d/%m/%Y %H:%M})."
+                        ),
+                    )
+
+            radicado = solicitud.get("numero_radicado") or "la solicitud"
+            motivo_final = (motivo or "").strip() or "Reemplazo de auditor desde Agenda."
+            for visita in visitas:
+                id_visita = str(visita["id_programacion"])
+                await self.db.execute(
+                    text("""
+                        DELETE FROM detalle_programacion_auditor
+                        WHERE id_programacion = :id_programacion
+                          AND id_usuario = ANY(CAST(:anteriores AS uuid[]))
+                    """),
+                    {"id_programacion": id_visita, "anteriores": sorted(anteriores)},
+                )
+                # Igual que al retirar por conflicto: se liberan los bloqueos de
+                # fecha que la visita había creado al auditor anterior.
+                await self.db.execute(
+                    text("""
+                        UPDATE disponibilidad_auditor
+                        SET estado = 'Cancelado'
+                        WHERE id_programacion = :id_programacion
+                          AND id_usuario = ANY(CAST(:anteriores AS uuid[]))
+                          AND UPPER(TRIM(COALESCE(estado, ''))) IN ('ACTIVO', 'ACTIVA')
+                    """),
+                    {"id_programacion": id_visita, "anteriores": sorted(anteriores)},
+                )
+                inicio, fin = visita["fecha_inicio"], visita["fecha_fin"]
+                await self.db.execute(
+                    text("""
+                        INSERT INTO detalle_programacion_auditor (
+                            id_detalle, id_programacion, id_usuario, rol_auditor, horas_asignadas
+                        ) VALUES (
+                            :id_detalle, :id_programacion, :id_usuario, :rol, :horas
+                        )
+                    """),
+                    {
+                        "id_detalle": str(uuid4()),
+                        "id_programacion": id_visita,
+                        "id_usuario": str(id_usuario),
+                        "rol": self._normalizar_rol_agenda(elegibilidad.get("rol_auditor") or "Auditor"),
+                        "horas": (fin - inicio).total_seconds() / 3600,
+                    },
+                )
+                for anterior in anteriores:
+                    await self._crear_notificacion(
+                        id_programacion=UUID(id_visita),
+                        id_usuario=UUID(anterior),
+                        titulo="Retirado de la auditoría",
+                        mensaje=f"Fue reemplazado como auditor de la visita de {radicado} del {inicio:%d/%m/%Y %H:%M}.",
+                    )
+                await self._crear_notificacion(
+                    id_programacion=UUID(id_visita),
+                    id_usuario=id_usuario,
+                    titulo="Nueva auditoria asignada",
+                    mensaje=f"Se te asigno a una auditoria programada para {inicio:%d/%m/%Y %H:%M} a {fin:%H:%M}.",
+                )
+
+            # La asignación anterior se cancela y queda la del auditor nuevo.
+            await self.db.execute(
+                text(f"""
+                    UPDATE auditores_solicitud a
+                    SET estado_asignacion = 'Cancelada',
+                        fecha_cancelacion = CURRENT_TIMESTAMP,
+                        usuario_cancela = COALESCE(:actor, usuario_cancela),
+                        motivo_cancelacion = :motivo
+                    WHERE a.id_solicitud = :id_solicitud
+                      AND a.id_auditor <> :id_usuario
+                      AND {SQL_ASIGNACION_ACTIVA}
+                """),
+                {
+                    "id_solicitud": str(id_solicitud),
+                    "id_usuario": str(id_usuario),
+                    "actor": str(id_usuario_actor) if id_usuario_actor else None,
+                    "motivo": motivo_final,
+                },
+            )
+            ya_asignado = (await self.db.execute(
+                text(f"""
+                    SELECT 1 FROM auditores_solicitud a
+                    WHERE a.id_solicitud = :id_solicitud
+                      AND a.id_auditor = :id_usuario
+                      AND {SQL_ASIGNACION_ACTIVA}
+                    LIMIT 1
+                """),
+                {"id_solicitud": str(id_solicitud), "id_usuario": str(id_usuario)},
+            )).first()
+            if not ya_asignado:
+                await self._registrar_asignacion_auditor(
+                    id_solicitud=UUID(str(id_solicitud)),
+                    id_usuario=id_usuario,
+                    rol_auditor=elegibilidad.get("rol_auditor"),
+                )
+
+            for visita in visitas:
+                nuevo_estado = await self._estado_final_programacion(visita["id_programacion"])
+                await self.db.execute(
+                    text("""
+                        UPDATE programacion_visita
+                        SET estado = :estado
+                        WHERE id_programacion = :id_programacion
+                          AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN
+                              ('CANCELADA', 'CANCELADO', 'EJECUTADA', 'EJECUTADO',
+                               'FINALIZADA', 'FINALIZADO')
+                    """),
+                    {"estado": nuevo_estado, "id_programacion": str(visita["id_programacion"])},
+                )
+
+            await self.db.commit()
+            nombres = ", ".join(fila.get("nombre") or "el auditor anterior" for fila in actuales)
+            return {
+                "id_programacion": id_programacion,
+                "id_usuario": id_usuario,
+                "visitas_actualizadas": len(visitas),
+                "mensaje": (
+                    f"{nombre_nuevo} reemplazó a {nombres} en {len(visitas)} visita(s) de {radicado}."
+                ),
+            }
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except Exception as exc:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"No fue posible reemplazar el auditor: {type(exc).__name__}: {exc}",
             ) from exc
 
     async def confirmar_programacion(

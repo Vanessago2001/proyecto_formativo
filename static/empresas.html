@@ -869,6 +869,14 @@
             estado.mias = [];
           }
           estado.actual = estado.mias.length ? String(estado.mias[0].id_empresa) : null;
+          // 20/11/2026: lo primero de una cuenta nueva es registrar su
+          // empresa; sin ella no puede seguir con las solicitudes. Al
+          // registrarla pasa a "Mi empresa" y el botón ya no aparece.
+          if (!estado.actual) {
+            mostrarVista("registrar");
+            $("#viewDescription").textContent = "Primero registre su empresa: sin ella no puede crear solicitudes, sedes ni documentos.";
+            return;
+          }
           return mostrarVista("detalle");
         }
         mostrarVista(puede("listar") ? "listado" : "detalle");

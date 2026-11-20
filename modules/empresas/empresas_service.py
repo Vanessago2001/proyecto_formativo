@@ -220,6 +220,11 @@ class EmpresasService:
             "es_principal": data.get("es_principal", False),
             "estado": _normalizar_estado_sede(data.get("estado")),
         }
+        # 20/11/2026: toda solicitud debe incluir la sede principal, así que
+        # la primera sede activa de la empresa queda como principal.
+        if payload["estado"] == "Activa" and not payload["es_principal"]:
+            if not await self._tiene_sede_principal_activa(id_empresa):
+                payload["es_principal"] = True
 
         insert_sede = text("""
             INSERT INTO sede_empresa (
@@ -239,8 +244,36 @@ class EmpresasService:
             await self.db.rollback()
             return None
 
+        if payload["es_principal"]:
+            await self._quitar_otras_principales(id_empresa, sede_row["id_sede"])
         await self.db.commit()
         return dict(sede_row)
+
+    async def _tiene_sede_principal_activa(self, id_empresa: str) -> bool:
+        resultado = await self.db.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM sede_empresa
+                WHERE id_empresa = :id_empresa
+                  AND estado = 'Activa'
+                  AND es_principal IS TRUE;
+            """),
+            {"id_empresa": id_empresa},
+        )
+        return int(resultado.scalar() or 0) > 0
+
+    async def _quitar_otras_principales(self, id_empresa: str, id_sede) -> None:
+        """Una sola sede principal por empresa: la nueva reemplaza a la anterior."""
+        await self.db.execute(
+            text("""
+                UPDATE sede_empresa
+                SET es_principal = FALSE
+                WHERE id_empresa = :id_empresa
+                  AND id_sede <> :id_sede
+                  AND es_principal IS TRUE;
+            """),
+            {"id_empresa": id_empresa, "id_sede": str(id_sede)},
+        )
 
     async def update_sede(self, id_empresa: str, id_sede: str, data: dict) -> dict | None:
         current = await self.get_sede_by_id(id_empresa, id_sede)
@@ -288,8 +321,10 @@ class EmpresasService:
                       es_principal, estado, fecha_registro;
         """)
         result = await self.db.execute(query, payload)
-        await self.db.commit()
         row = result.mappings().first()
+        if row and payload["es_principal"] and not current.get("es_principal"):
+            await self._quitar_otras_principales(id_empresa, id_sede)
+        await self.db.commit()
         return dict(row) if row else None
 
     async def delete_sede(self, id_empresa: str, id_sede: str) -> dict | None:

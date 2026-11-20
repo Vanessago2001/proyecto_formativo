@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.filtros_ubicacion import condiciones_ubicacion_solicitud, patron_contiene, sql_comparable
 from modules.solicitudes import estado_solicitud as estados
+from modules.empresas.requisitos_empresa import exigir_sede_principal_para_asignar
 from modules.asignacion_auditores.asignacion_schema import AsignacionAuditorCrear
 from modules.asignacion_auditores.rol_auditor import ROL_AUDITOR, normalizar_rol_auditor
 
@@ -764,6 +765,8 @@ class AsignacionAuditorService:
             )
 
         await self.validar_equipo_incompleto(data.id_solicitud)
+        # 20/11/2026: la asignación va a una solicitud con su sede principal.
+        await exigir_sede_principal_para_asignar(self.db, data.id_solicitud)
         validado = await self.validar_auditor(data.id_solicitud, data.id_auditor, forzar=data.forzar)
 
         id_asignacion = uuid4()

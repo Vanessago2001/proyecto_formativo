@@ -180,7 +180,7 @@ class SesionFalsa:
 
         for tipo in DOCUMENTOS_LEGALES_OBLIGATORIOS:
             self.sembrar_documento_empresa(solicitud["id_empresa"], tipo, estado_documentos)
-        sede = self.sembrar_sede(id_empresa=solicitud["id_empresa"])
+        sede = self.sembrar_sede(id_empresa=solicitud["id_empresa"], es_principal=True)
         self.incluir_sede(solicitud["id_solicitud"], sede["id_sede"])
 
     def _requisitos(self, sql: str, parametros: dict) -> ResultadoFalso:
@@ -197,6 +197,8 @@ class SesionFalsa:
                 and v["estado"] != "Excluida"
                 and self.sedes_empresa.get(str(v["id_sede"]), {}).get("estado") == "Activa"
                 and ("id_sede" not in parametros or str(v["id_sede"]) == str(parametros["id_sede"]))
+                and ("es_principal" not in sql
+                     or self.sedes_empresa.get(str(v["id_sede"]), {}).get("es_principal"))
             ]
             if "COUNT(*)" in sql:
                 return ResultadoFalso(escalar=len(filas))

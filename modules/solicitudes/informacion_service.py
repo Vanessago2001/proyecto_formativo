@@ -36,6 +36,7 @@ from modules.empresas.requisitos_empresa import (
     faltantes_para_radicar,
     requisitos_empresa,
     sedes_incluidas,
+    sedes_principales_incluidas,
 )
 from modules.solicitudes.sede_schema import EstadoSedeSolicitud
 from modules.solicitudes.solicitud_service import (
@@ -552,6 +553,7 @@ class InformacionService:
             requisitos_pendientes = faltantes_para_radicar(
                 await requisitos_empresa(self.db, solicitud["id_empresa"]),
                 await sedes_incluidas(self.db, id_solicitud),
+                await sedes_principales_incluidas(self.db, id_solicitud),
             )
 
         return {

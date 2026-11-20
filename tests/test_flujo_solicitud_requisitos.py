@@ -107,6 +107,40 @@ def test_radicar_sin_sede_incluida_responde_422(cliente, sesion):
     assert "documentos legales" not in respuesta.json()["detail"]
 
 
+def test_radicar_sin_la_sede_principal_responde_422(cliente, sesion):
+    """20/11/2026: toda solicitud debe incluir la sede principal."""
+    solicitud = _borrador(sesion)
+    for tipo in req.DOCUMENTOS_LEGALES_OBLIGATORIOS:
+        sesion.sembrar_documento_empresa(ID_EMPRESA, tipo)
+    sesion.sembrar_sede(id_empresa=ID_EMPRESA, es_principal=True)  # no incluida
+    secundaria = sesion.sembrar_sede(id_empresa=ID_EMPRESA)
+    sesion.incluir_sede(solicitud["id_solicitud"], secundaria["id_sede"])
+
+    respuesta = cliente.post(f"/solicitudes/{solicitud['id_solicitud']}/radicar")
+
+    assert respuesta.status_code == 422
+    assert "sede principal" in respuesta.json()["detail"]
+    assert sesion.solicitudes[str(solicitud["id_solicitud"])]["estado"] == "Borrador"
+
+
+@pytest.mark.sede_real
+def test_asignar_auditor_exige_la_sede_principal(sesion):
+    import asyncio
+
+    solicitud = _borrador(sesion)
+    secundaria = sesion.sembrar_sede(id_empresa=ID_EMPRESA)
+    sesion.incluir_sede(solicitud["id_solicitud"], secundaria["id_sede"])
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(req.exigir_sede_principal_para_asignar(sesion, solicitud["id_solicitud"]))
+    assert error.value.status_code == 409
+    assert "sede principal" in error.value.detail
+
+    principal = sesion.sembrar_sede(id_empresa=ID_EMPRESA, es_principal=True)
+    sesion.incluir_sede(solicitud["id_solicitud"], principal["id_sede"])
+    assert asyncio.run(req.exigir_sede_principal_para_asignar(sesion, solicitud["id_solicitud"])) is None
+
+
 def test_radicar_con_todo_completo_radica(cliente, sesion):
     solicitud = _borrador(sesion)
     sesion.cumplir_requisitos(solicitud)

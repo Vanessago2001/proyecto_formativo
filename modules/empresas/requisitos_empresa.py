@@ -20,6 +20,12 @@ con RUT, RUNT, Cámara de Comercio, Representación Legal, Certificación y
 Otro). Se toman como obligatorios los tres tipos existentes que son
 documentos legales de cualquier empresa colombiana; RUNT, Certificación y
 Otro quedan opcionales. Cambiar la lista es cambiar esta constante.
+Confirmado por el equipo el 20/11/2026: RUT, Cámara de Comercio y
+Representación Legal.
+
+Sede principal (20/11/2026): toda solicitud debe incluir la sede principal
+de la empresa. Se exige al radicar, al aprobar y al asignar auditor
+(exigir_sede_principal_para_asignar).
 """
 
 from datetime import date
@@ -139,8 +145,31 @@ async def sedes_incluidas(db: AsyncSession, id_solicitud) -> int:
     return int(resultado.scalar() or 0)
 
 
-def faltantes_para_radicar(requisitos: dict, sedes_en_solicitud: int) -> list[str]:
-    """Lo que le falta a la empresa/solicitud para poder radicar."""
+async def sedes_principales_incluidas(db: AsyncSession, id_solicitud) -> int:
+    """Sedes principales (activas) de la empresa incluidas en la solicitud."""
+    resultado = await db.execute(
+        text("""
+            SELECT COUNT(*)
+            FROM solicitud_sede ss
+            JOIN sede_empresa se ON se.id_sede = ss.id_sede
+            WHERE ss.id_solicitud = :id_solicitud
+              AND ss.estado <> 'Excluida'
+              AND se.estado = 'Activa'
+              AND se.es_principal IS TRUE;
+        """),
+        {"id_solicitud": str(id_solicitud)},
+    )
+    return int(resultado.scalar() or 0)
+
+
+def faltantes_para_radicar(
+    requisitos: dict, sedes_en_solicitud: int, principales: int | None = None
+) -> list[str]:
+    """Lo que le falta a la empresa/solicitud para poder radicar.
+
+    `principales` es el número de sedes principales incluidas; None = no se
+    revisa (llamadas antiguas).
+    """
     faltan = []
     if requisitos["documentos_faltantes"]:
         faltan.append(
@@ -148,10 +177,14 @@ def faltantes_para_radicar(requisitos: dict, sedes_en_solicitud: int) -> list[st
         )
     if sedes_en_solicitud < 1:
         faltan.append("incluir al menos una sede activa de la empresa en la solicitud")
+    elif principales is not None and principales < 1:
+        faltan.append("incluir la sede principal de la empresa en la solicitud")
     return faltan
 
 
-def faltantes_para_aprobar(requisitos: dict, sedes_en_solicitud: int) -> list[str]:
+def faltantes_para_aprobar(
+    requisitos: dict, sedes_en_solicitud: int, principales: int | None = None
+) -> list[str]:
     """Lo que falta para que el Coordinador pueda aprobar la solicitud."""
     faltan = []
     sin_aprobar = [
@@ -163,12 +196,18 @@ def faltantes_para_aprobar(requisitos: dict, sedes_en_solicitud: int) -> list[st
         faltan.append("aprobar los documentos legales obligatorios: " + "; ".join(sin_aprobar))
     if sedes_en_solicitud < 1:
         faltan.append("la solicitud no tiene ninguna sede incluida")
+    elif principales is not None and principales < 1:
+        faltan.append("la solicitud no incluye la sede principal de la empresa")
     return faltan
 
 
 async def exigir_requisitos_para_radicar(db: AsyncSession, id_empresa, id_solicitud) -> None:
     requisitos = await requisitos_empresa(db, id_empresa)
-    faltan = faltantes_para_radicar(requisitos, await sedes_incluidas(db, id_solicitud))
+    faltan = faltantes_para_radicar(
+        requisitos,
+        await sedes_incluidas(db, id_solicitud),
+        await sedes_principales_incluidas(db, id_solicitud),
+    )
     if faltan:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -178,11 +217,32 @@ async def exigir_requisitos_para_radicar(db: AsyncSession, id_empresa, id_solici
 
 async def exigir_requisitos_para_aprobar(db: AsyncSession, id_empresa, id_solicitud) -> None:
     requisitos = await requisitos_empresa(db, id_empresa)
-    faltan = faltantes_para_aprobar(requisitos, await sedes_incluidas(db, id_solicitud))
+    faltan = faltantes_para_aprobar(
+        requisitos,
+        await sedes_incluidas(db, id_solicitud),
+        await sedes_principales_incluidas(db, id_solicitud),
+    )
     if faltan:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="No se puede aprobar la solicitud. Falta: " + " | ".join(faltan) + ".",
+        )
+
+
+async def exigir_sede_principal_para_asignar(db: AsyncSession, id_solicitud) -> None:
+    """El auditor se asigna a una solicitud que incluye su sede principal.
+
+    La visita de cada sede se programa luego en la Agenda con ese auditor
+    (exigir_sede_de_la_solicitud), así que la asignación siempre llega a una
+    sede de la solicitud.
+    """
+    if await sedes_principales_incluidas(db, id_solicitud) < 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No se puede asignar auditor: la solicitud no incluye la sede "
+                "principal de la empresa. Agregue la sede principal a la solicitud."
+            ),
         )
 
 

@@ -269,6 +269,51 @@
       document.getElementById("infoEstado").textContent = solicitud.estado || "No disponible";
       document.getElementById("infoFechaSolicitud").textContent = formatDate(solicitud.fecha);
       requestInfo.classList.add("show");
+      mostrarSedesSolicitud(solicitud);
+    }
+
+    /* Sedes de la solicitud (20/11/2026): el auditor se asigna a una
+       solicitud que incluye la sede principal; el Coordinador puede agregar
+       sedes a la solicitud aprobada. */
+    let sedesSolicitudDe = "";
+    async function mostrarSedesSolicitud(solicitud) {
+      const destino = document.getElementById("infoSedes");
+      const boton = document.getElementById("infoAgregarSede");
+      if (!destino) return;
+      const id = String(solicitud?.id_solicitud || "");
+      sedesSolicitudDe = id;
+      destino.textContent = "Cargando sedes…";
+      if (boton) {
+        boton.style.display = window.AgregarSedeSolicitud?.esCoordinador() ? "" : "none";
+        boton.onclick = () => window.AgregarSedeSolicitud.abrir({
+          idSolicitud: id,
+          radicado: solicitud.numero_radicado,
+          alAgregar: async (sede) => {
+            await mostrarSedesSolicitud(solicitud);
+            showMessage(`Sede "${sede?.nombre_sede || ""}" agregada a la solicitud.`, "success");
+          }
+        });
+      }
+      try {
+        const res = await fetch(`/solicitudes/${encodeURIComponent(id)}/sedes`, { headers: headers() });
+        const data = await res.json().catch(() => []);
+        if (sedesSolicitudDe !== id) return;
+        if (!res.ok) throw new Error(typeof data?.detail === "string" ? data.detail : "No se pudieron consultar las sedes.");
+        const sedes = (Array.isArray(data) ? data : []).filter(s => s.estado_sede !== "Inactiva");
+        if (!sedes.length) {
+          destino.innerHTML = '<span style="color:#b42318;">La solicitud no tiene sedes incluidas: no se puede asignar auditor.</span>';
+          return;
+        }
+        const filas = sedes.map(s =>
+          `<div>${s.es_principal ? "<strong>Principal:</strong> " : ""}${escapeHTML(s.nombre_sede || "Sede")} — ${escapeHTML([s.direccion, s.ciudad, s.departamento].filter(Boolean).join(", "))}</div>`
+        ).join("");
+        const aviso = sedes.some(s => s.es_principal)
+          ? ""
+          : '<div style="color:#b42318;margin-top:4px;">Falta la sede principal de la empresa: agréguela para poder asignar auditor.</div>';
+        destino.innerHTML = filas + aviso;
+      } catch (error) {
+        if (sedesSolicitudDe === id) destino.textContent = error.message;
+      }
     }
 
 
@@ -1340,6 +1385,7 @@
       document.getElementById('infoEstado').textContent = solicitud.estado || '-';
       document.getElementById('infoFechaSolicitud').textContent = solicitud.fecha ? new Date(solicitud.fecha).toLocaleDateString('es-CO') : '-';
       requestInfo.classList.add('show');
+      mostrarSedesSolicitud(solicitud);
       auditoresSeleccionados.clear();
       auditorRolesAsignados.clear();
       auditoresForzados.clear();

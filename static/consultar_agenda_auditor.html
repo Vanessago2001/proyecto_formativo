@@ -1596,6 +1596,9 @@
                                     </select>
                                     <div class="selector-tabla-contenedor" id="sedeTabla"></div>
                                     <p class="hint">Solo se listan las sedes incluidas en la solicitud. Elige en cuál se realizará la auditoría.</p>
+                                    <div class="actions hidden" id="scheduleAgregarSedeWrap" style="margin-top:8px;">
+                                        <button type="button" class="btn btn-secundario btn-sm secondary" id="scheduleAgregarSede">Agregar sede a la solicitud</button>
+                                    </div>
                                 </div>
                                 <div class="field full team-block">
                                     <label>Auditor de la visita</label>
@@ -1930,6 +1933,21 @@
 
 <!-- Calendario mes/semana común (sección "Disponibilidad mensual y auditorías") -->
 <script src="/static/mi_disponibilidad.js?v=20261118una"></script>
+<script src="/static/agregar-sede-solicitud.js?v=20261120"></script>
+<dialog id="cambioAuditorDialogo" aria-labelledby="cambioAuditorTitulo" style="max-width:640px;width:calc(100% - 32px);border:1px solid #d0d5dd;border-radius:12px;padding:20px;">
+    <h3 id="cambioAuditorTitulo" style="margin:0 0 6px;">Agregar auditor</h3>
+    <p id="cambioAuditorTexto" class="hint" style="margin:0 0 12px;"></p>
+    <div id="cambioAuditorLista" class="team-list" role="radiogroup" aria-label="Auditores disponibles"></div>
+    <div id="cambioAuditorMotivoWrap" class="hidden" style="margin-top:10px;">
+        <label for="cambioAuditorMotivo">Motivo del reemplazo (opcional)</label>
+        <textarea id="cambioAuditorMotivo" rows="2" maxlength="500" style="width:100%;"></textarea>
+    </div>
+    <p id="cambioAuditorError" role="alert" style="color:#b42318;font-size:13px;margin:8px 0 0;"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button type="button" class="btn btn-secundario secondary" id="cambioAuditorCancelar">Cancelar</button>
+        <button type="button" class="btn btn-primario primary" id="cambioAuditorConfirmar" disabled>Agregar auditor</button>
+    </div>
+</dialog>
 <script>
     function showModal(message, type = 'success') {
         const overlay = document.getElementById('modalOverlay');
@@ -3348,19 +3366,23 @@
                 ...visitasDelDia(dia).map(v => D.visita(v, {
                     fecha,
                     conCorreo: true,
-                    acciones: (a) => {
-                        const terminal = ESTADOS_TERMINALES_CAL.includes(String(a.estado_programacion || "").trim().toUpperCase());
-                        return !terminal && a.id_solicitud
-                            ? `<a class="btn btn-primario btn-sm" href="/consultar-agenda-auditor?solicitud=${encodeURIComponent(a.id_solicitud)}#schedule">Ir a la programación</a>`
-                            : "";
-                    }
+                    // 20/11/2026: abre la información de la visita (empresa,
+                    // sede, dirección, fecha y hora, certificado solicitado...).
+                    acciones: (a) => a.id_programacion
+                        ? `<button type="button" class="btn btn-primario btn-sm" data-ver-visita="${esc(a.id_programacion)}">Ir a la programación</button>`
+                        : ""
                 })),
                 disponible
             ].join("");
             return {
                 html,
-                // "Ir a la programación" puede apuntar a esta misma página: se cierra el modal.
-                alAbrir: (cuerpo, cerrar) => cuerpo.querySelectorAll("a[href]").forEach(a => a.addEventListener("click", () => cerrar()))
+                alAbrir: (cuerpo, cerrar) => {
+                    cuerpo.querySelectorAll("a[href]").forEach(a => a.addEventListener("click", () => cerrar()));
+                    cuerpo.querySelectorAll("[data-ver-visita]").forEach(boton => boton.addEventListener("click", () => {
+                        cerrar();
+                        abrirDetalleAuditoria(boton.dataset.verVisita);
+                    }));
+                }
             };
         }
 
@@ -3386,6 +3408,7 @@
                         ${item("Solicitud / radicado", a.numero_radicado || a.id_solicitud)}
                         ${item("Empresa", a.empresa_nombre)}
                         ${item("NIT", a.empresa_nit)}
+                        ${item("Certificado solicitado", [a.norma_codigo, a.norma_nombre].filter(Boolean).join(" - ") + (a.norma_version ? ` (versión ${a.norma_version})` : ""), true)}
                     </div>
                 </div>
                 <div class="modal-section-group">
@@ -3393,7 +3416,7 @@
                     <div class="detail-grid">
                         ${item("Sede", a.sede_nombre || "Sin sede registrada")}
                         ${item("Ciudad / municipio", a.ciudad)}
-                        ${item("Dirección", a.direccion, true)}
+                        ${item("Dirección de la sede", a.sede_direccion || a.direccion, true)}
                         ${item("Modalidad", a.modalidad)}
                     </div>
                 </div>
@@ -3421,7 +3444,7 @@
                 <div class="modal-section-group">
                     <h4 class="modal-section-label">Acciones</h4>
                     <div class="cal-acciones-modal">
-                        <a class="btn btn-primario btn-sm" href="/consultar-agenda-auditor?solicitud=${encodeURIComponent(a.id_solicitud)}#schedule">Ir a la programación (editar o cancelar)</a>
+                        <a class="btn btn-primario btn-sm" href="/consultar-agenda-auditor?solicitud=${encodeURIComponent(a.id_solicitud)}${a.id_sede ? `&sede=${encodeURIComponent(a.id_sede)}` : ""}#schedule">Editar o cancelar en la Agenda</a>
                     </div>
                 </div>` : ""}`;
             $("programacionModalTitle").textContent = `Auditoría · ${a.numero_radicado || a.empresa_nombre || ""}`;
@@ -3786,6 +3809,7 @@
                 </div>
                 ${editando ? "" : `<div class="actions">
                     <button type="button" class="btn btn-primario primary" data-resumen-accion="editar">Editar</button>
+                    <button type="button" class="btn btn-secundario secondary" data-resumen-accion="auditor">${equipo.length ? "Reemplazar auditor" : "Agregar auditor"}</button>
                     <button type="button" class="btn btn-secundario secondary" data-resumen-accion="ver">Ver detalle</button>
                     <button type="button" class="btn btn-peligro-contorno danger" data-resumen-accion="cancelar">Cancelar visita</button>
                 </div>`}
@@ -3797,6 +3821,7 @@
             if (!boton || !programacionActual) return;
             const accion = boton.dataset.resumenAccion;
             if (accion === "editar") editarProgramacion(programacionActual.id_programacion);
+            else if (accion === "auditor") abrirCambioAuditor(programacionActual);
             else if (accion === "cancelar") cancelarProgramacion(programacionActual.id_programacion);
             else if (accion === "ver") verProgramacion(programacionActual);
         });
@@ -3975,6 +4000,8 @@
             $("scheduleAddress").value = group?.empresa_direccion || "";
             $("scheduleCity").value = group?.empresa_ciudad || "";
             await cargarSedes(group?.id_empresa, group?.id_solicitud);
+            // 20/11/2026: el Coordinador puede agregar sedes a la solicitud aprobada.
+            $("scheduleAgregarSedeWrap").classList.toggle("hidden", !(group && window.AgregarSedeSolicitud?.esCoordinador()));
             if (group) {
                 await loadScheduleList(group);
                 if (window.__avisoSedesOcupadas) {
@@ -3987,6 +4014,112 @@
                 $("scheduleList").innerHTML = '<div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>';
                 prepareNewScheduleForm(null);
             }
+        });
+
+        /* =========================================================
+           AGREGAR / REEMPLAZAR AUDITOR DE LA VISITA (20/11/2026)
+           Sin auditor: "Agregar auditor". Con auditor: "Reemplazar
+           auditor" (cambia el auditor de la solicitud en todas sus
+           visitas vigentes: un auditor por solicitud).
+        ========================================================== */
+        let cambioAuditorVisita = null;
+        function fechaLocalISO(valor) {
+            const d = new Date(String(valor || "").replace(" ", "T"));
+            if (Number.isNaN(d.getTime())) return { fecha: "", hora: "" };
+            const dos = (n) => String(n).padStart(2, "0");
+            return { fecha: `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`, hora: `${dos(d.getHours())}:${dos(d.getMinutes())}` };
+        }
+        async function abrirCambioAuditor(row) {
+            const group = currentAssignment();
+            if (!row || !group) return;
+            cambioAuditorVisita = row;
+            const equipo = row.auditores_equipo || [];
+            const reemplazar = equipo.length > 0;
+            const dialogo = $("cambioAuditorDialogo");
+            $("cambioAuditorTitulo").textContent = reemplazar ? "Reemplazar auditor" : "Agregar auditor";
+            $("cambioAuditorTexto").textContent = reemplazar
+                ? `Auditor actual: ${equipo.map(a => a.nombre).join(", ")}. El auditor que elija lo reemplaza en todas las visitas vigentes de esta solicitud (solo un auditor por solicitud).`
+                : "La visita no tiene auditor. Elija el auditor que la realizará.";
+            $("cambioAuditorMotivoWrap").classList.toggle("hidden", !reemplazar);
+            $("cambioAuditorMotivo").value = "";
+            $("cambioAuditorError").textContent = "";
+            $("cambioAuditorConfirmar").textContent = reemplazar ? "Reemplazar auditor" : "Agregar auditor";
+            $("cambioAuditorConfirmar").disabled = true;
+            const lista = $("cambioAuditorLista");
+            lista.innerHTML = '<div class="team-empty">Consultando auditores disponibles para la fecha de la visita...</div>';
+            if (!dialogo.open) dialogo.showModal();
+            const inicio = fechaLocalISO(row.fecha_inicio);
+            const fin = fechaLocalISO(row.fecha_fin);
+            const params = new URLSearchParams({ id_solicitud: String(group.id_solicitud), page: "1", page_size: "50", competencia: "si", conflicto: "no" });
+            if (row.id_sede) params.set("id_sede", String(row.id_sede));
+            if (inicio.fecha) { params.set("fecha", inicio.fecha); params.set("hora_inicio", inicio.hora); }
+            if (fin.hora) params.set("hora_fin", fin.hora);
+            try {
+                const data = await api(`/programacion/auditores-disponibles?${params.toString()}`);
+                const actuales = new Set(equipo.map(a => String(a.id_usuario)));
+                const items = (Array.isArray(data.items) ? data.items : []).filter(a => !actuales.has(String(a.id_usuario)));
+                if (!items.length) {
+                    lista.innerHTML = '<div class="team-empty">No hay otros auditores disponibles (con competencia, sin conflicto y libres) en la fecha y hora de esta visita.</div>';
+                    return;
+                }
+                lista.innerHTML = items.map(a => `<label class="team-card" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;">
+                    <input type="radio" name="cambioAuditorElegido" value="${esc(a.id_usuario)}">
+                    <span><strong>${esc(a.nombre || "Auditor")}</strong>${a.correo ? `<br><small>${esc(a.correo)}</small>` : ""}${a.ciudad ? `<br><small>${esc(a.ciudad)}</small>` : ""}</span>
+                </label>`).join("");
+            } catch (error) {
+                lista.innerHTML = "";
+                $("cambioAuditorError").textContent = error.message;
+            }
+        }
+        $("cambioAuditorLista").addEventListener("change", () => {
+            $("cambioAuditorConfirmar").disabled = !document.querySelector('input[name="cambioAuditorElegido"]:checked');
+        });
+        $("cambioAuditorCancelar").addEventListener("click", () => $("cambioAuditorDialogo").close());
+        $("cambioAuditorConfirmar").addEventListener("click", async () => {
+            const row = cambioAuditorVisita;
+            const elegido = document.querySelector('input[name="cambioAuditorElegido"]:checked');
+            if (!row || !elegido) return;
+            const reemplazar = (row.auditores_equipo || []).length > 0;
+            const boton = $("cambioAuditorConfirmar");
+            boton.disabled = true;
+            $("cambioAuditorError").textContent = "";
+            try {
+                const ruta = `/programacion/${encodeURIComponent(row.id_programacion)}/${reemplazar ? "reemplazar-auditor" : "auditores"}`;
+                const cuerpo = reemplazar
+                    ? { id_usuario: elegido.value, motivo: $("cambioAuditorMotivo").value.trim() }
+                    : { id_usuario: elegido.value };
+                const result = await api(ruta, { method: "POST", body: JSON.stringify(cuerpo) });
+                $("cambioAuditorDialogo").close();
+                await recargarTrasCambioAuditor(row);
+                showNotice("scheduleNotice", result.mensaje || "Auditor actualizado.", "ok");
+            } catch (error) {
+                $("cambioAuditorError").textContent = error.message;
+                boton.disabled = false;
+            }
+        });
+        // Recarga la lista de solicitudes (cambió su auditor) y vuelve a
+        // dejar elegida la misma solicitud y la sede de la visita.
+        async function recargarTrasCambioAuditor(row) {
+            const idSolicitud = String(row.id_solicitud || currentAssignment()?.id_solicitud || "");
+            await cargarProgramacionesAgenda();
+            await loadAssignments();
+            const indice = assignments.findIndex(g => String(g.id_solicitud) === idSolicitud);
+            if (indice < 0) return;
+            $("assignmentSelect").value = String(indice);
+            $("assignmentSelect").dispatchEvent(new Event("change"));
+        }
+
+        $("scheduleAgregarSede").addEventListener("click", () => {
+            const group = currentAssignment();
+            if (!group) return;
+            window.AgregarSedeSolicitud.abrir({
+                idSolicitud: group.id_solicitud,
+                radicado: group.numero_radicado,
+                alAgregar: async (sede) => {
+                    await cargarSedes(group.id_empresa, group.id_solicitud, true);
+                    showNotice("scheduleNotice", `Sede "${sede?.nombre_sede || ""}" agregada a la solicitud. Ya puede elegirla para programar su visita.`, "ok");
+                }
+            });
         });
 
         $("scheduleCancelEdit").addEventListener("click", () => {
@@ -4368,6 +4501,22 @@
             const select = $("assignmentSelect");
             select.value = String(indice);
             select.dispatchEvent(new Event("change", { bubbles: true }));
+            // ?sede=<id>: deja elegida la sede de esa visita (se espera a que
+            // carguen las sedes de la solicitud).
+            const idSede = new URLSearchParams(window.location.search).get("sede");
+            if (idSede) {
+                for (let intento = 0; intento < 30; intento += 1) {
+                    const opcion = $("scheduleSede")?.querySelector(`option[value="${CSS.escape(idSede)}"]`);
+                    if (opcion) {
+                        if ($("scheduleSede").value !== idSede) {
+                            $("scheduleSede").value = idSede;
+                            $("scheduleSede").dispatchEvent(new Event("change", { bubbles: true }));
+                        }
+                        break;
+                    }
+                    await new Promise(r => setTimeout(r, 100));
+                }
+            }
             setTimeout(() => {
                 irAlFormulario();
                 const fila = document.querySelector('#assignmentTabla .selector-fila.seleccionada input');

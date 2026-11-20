@@ -99,7 +99,7 @@ def _public_certificate_row(**overrides):
     [
         ("CER-001", ("V", "V", "V", "F", "F", "F", "F", "F")),
         ("CER-010", ("V", "V", "REQ", "F", "F", "F", "F", "F")),
-        ("CER-016", ("SA", "V", "F", "F", "F", "V", "F", "F")),
+        ("CER-016", ("SA", "V", "F", "F", "F", "F", "F", "F")),
         ("CER-022", ("SA", "F", "F", "F", "F", "F", "F", "F")),
     ],
 )
@@ -296,9 +296,10 @@ def test_empresa_titular_puede_descargar_pdf_firmado_no_publicado(tmp_path, monk
     assert respuesta.body == b"%PDF-1.4 firmado"
 
 
-def test_comite_puede_registrar_motivo_sin_suspender():
-    assert tiene_permiso("CER-018", "Comité")
-    assert not tiene_permiso("CER-015", "Comité")
+def test_comite_ya_no_gestiona_certificados():
+    # 20/11/2026: el Comité solo firma (líder del expediente).
+    for codigo in ("CER-011", "CER-012", "CER-015", "CER-016", "CER-017", "CER-018", "CER-019"):
+        assert not tiene_permiso(codigo, "Comité"), codigo
 
 
 def test_marcar_aprobacion_identifica_acciones_req():

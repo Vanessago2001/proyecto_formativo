@@ -20,6 +20,7 @@ from modules.agenda_auditor.agenda_schema import (
 from modules.agenda_auditor.agenda_service import AgendaAuditorService
 from modules.calificacion_visitas.evaluacion_excel import TAMANO_MAXIMO_BYTES as TAMANO_MAXIMO_EXCEL
 from modules.calificacion_visitas.finalizacion_service import FinalizacionVisitaService
+from modules.permisos_auxiliar.regla_auxiliar import es_auxiliar, exigir_permiso_auxiliar, tiene_delegado
 from modules.solicitudes.solicitud_permissions import (
     normalizar_rol,
     requiere_permiso,
@@ -41,21 +42,44 @@ def _es_administrador(usuario: dict) -> bool:
     return str(rol).strip().upper() in _ROLES_ADMIN_AGENDA
 
 
-async def _validar_administrador(usuario: dict = Depends(requiere_permiso("SOL-006"))):
-    """Reutiliza autenticación/permisos del proyecto y restringe la programación a administración."""
-    if not _es_administrador(usuario):
+def _coordinador_o_auxiliar(*codigos: str):
+    """Programación de la Agenda: el Coordinador, o el Auxiliar solo con uno
+    de `codigos` delegado por el Coordinador (20/11/2026)."""
+
+    async def verificar(usuario: dict = Depends(requiere_permiso("SOL-006"))) -> dict:
+        if _es_administrador(usuario):
+            return usuario
+        if es_auxiliar(usuario):
+            exigir_permiso_auxiliar(usuario, *codigos)  # 403 sin el permiso
+            return usuario
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo el Coordinador puede gestionar la programación de auditorías.",
         )
-    return usuario
+
+    return verificar
+
+
+# Programar visitas (AGE-021) es el permiso base de la Agenda del Coordinador.
+_validar_administrador = _coordinador_o_auxiliar("AGE-021")
+_validar_cancelar = _coordinador_o_auxiliar("AGE-024")
+_validar_reprogramar = _coordinador_o_auxiliar("AGE-022", "AGE-023")
+_validar_resolver_reprogramacion = _coordinador_o_auxiliar("AGE-023", "AGE-030")
 
 
 async def _validar_admin_o_propio_auditor(
     id_usuario: UUID,
+    request: Request,
     usuario: dict = Depends(requiere_permiso("SOL-006")),
 ):
     if _es_administrador(usuario):
+        return usuario
+    # Auxiliar con permiso delegado: solo consulta la agenda de los auditores.
+    if (
+        es_auxiliar(usuario)
+        and request.method == "GET"
+        and tiene_delegado(usuario, "AGE-003", "AGE-010", "AGE-019", "AGE-021")
+    ):
         return usuario
     id_autenticado = usuario.get("id_usuario")
     if not id_autenticado or str(id_autenticado) != str(id_usuario):
@@ -171,7 +195,10 @@ async def detalle_programacion(
     El administrador puede ver cualquier programación; el auditor solo las
     que tiene asignadas.
     """
-    if not _es_administrador(usuario):
+    puede_ver_todas = _es_administrador(usuario) or (
+        es_auxiliar(usuario) and tiene_delegado(usuario, "AGE-021", "AGE-026")
+    )
+    if not puede_ver_todas:
         id_autenticado = usuario.get("id_usuario")
         asignado = await db.execute(
             text("""
@@ -234,6 +261,28 @@ async def agregar_auditor_a_programacion(
         id_programacion,
         id_usuario_uuid,
         rol_auditor,
+    )
+
+
+@router.post("/programacion/{id_programacion}/reemplazar-auditor")
+async def reemplazar_auditor_de_programacion(
+    id_programacion: UUID,
+    data: dict,
+    usuario: dict = Depends(_validar_administrador),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cambia el auditor de la visita (y de la solicitud): un auditor por solicitud."""
+    try:
+        id_usuario_uuid = UUID(str(data.get("id_usuario") or ""))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Debe indicar un auditor valido.") from exc
+    motivo = str(data.get("motivo") or "").strip()[:500] or None
+    actor = usuario.get("id_usuario")
+    return await AgendaAuditorService(db).reemplazar_auditor_de_programacion(
+        id_programacion,
+        id_usuario_uuid,
+        id_usuario_actor=UUID(str(actor)) if actor else None,
+        motivo=motivo,
     )
 
 
@@ -611,7 +660,7 @@ async def solicitar_reprogramacion(
 async def cancelar_programacion(
     id_programacion: UUID,
     data: CancelarProgramacion,
-    usuario: dict = Depends(_validar_administrador),
+    usuario: dict = Depends(_validar_cancelar),
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).cancelar_programacion(id_programacion, data.motivo)
@@ -621,7 +670,7 @@ async def cancelar_programacion(
 async def reprogramar_programacion(
     id_programacion: UUID,
     data: ReprogramarProgramacion,
-    usuario: dict = Depends(_validar_administrador),
+    usuario: dict = Depends(_validar_reprogramar),
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).reprogramar_programacion(
@@ -648,7 +697,7 @@ def _uuid_opcional(data: dict, clave: str) -> UUID | None:
 async def editar_programacion(
     id_programacion: UUID,
     data: dict,
-    usuario: dict = Depends(_validar_administrador),
+    usuario: dict = Depends(_validar_reprogramar),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -678,7 +727,7 @@ async def editar_programacion(
 async def rechazar_reprogramacion(
     id_programacion: UUID,
     data: dict,
-    usuario: dict = Depends(_validar_administrador),
+    usuario: dict = Depends(_validar_resolver_reprogramacion),
     db: AsyncSession = Depends(get_db),
 ):
     return await AgendaAuditorService(db).rechazar_solicitud_reprogramacion(
@@ -690,7 +739,7 @@ async def rechazar_reprogramacion(
 async def resolver_reprogramacion(
     id_programacion: UUID,
     data: dict,
-    usuario: dict = Depends(_validar_administrador),
+    usuario: dict = Depends(_validar_resolver_reprogramacion),
     db: AsyncSession = Depends(get_db),
 ):
     id_usuario = data.get("id_usuario")

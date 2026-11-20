@@ -19,6 +19,9 @@ F = NivelPermiso.DENEGADO
 REQ = NivelPermiso.REQUIERE_APROBACION
 SA = NivelPermiso.SOLO_SUPERADMIN
 
+# 20/11/2026: el Comité ya no gestiona certificados (sin CER-011/012 ni
+# CER-016 a CER-019). Solo firma: el líder del expediente entra por
+# requiere_permiso_o_lider / requiere_firma_lider_o_permiso.
 # CER-008 (asociar alcance técnico) y CER-030 (registrar cambios de alcance)
 # se retiraron: el certificado ya no se liga a una línea de alcance.
 PERMISOS_M9: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
@@ -32,15 +35,15 @@ PERMISOS_M9: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
     "CER-007": ("Asociar norma ISO",                        (V, V, V, F, F, F, F, F)),
     "CER-009": ("Generar archivo PDF oficial",              (V, V, V, F, F, F, F, F)),
     "CER-010": ("Firmar digitalmente certificado",          (V, V, REQ, F, F, F, F, F)),
-    "CER-011": ("Consultar certificado expedido",           (V, V, V, V, V, V, F, V)),
-    "CER-012": ("Descargar certificado PDF",                (V, V, V, V, V, V, F, V)),
+    "CER-011": ("Consultar certificado expedido",           (V, V, V, V, V, F, F, V)),
+    "CER-012": ("Descargar certificado PDF",                (V, V, V, V, V, F, F, V)),
     "CER-013": ("Reenviar certificado por correo",          (V, V, V, V, V, F, F, F)),
     "CER-014": ("Renovar certificado por ciclo",            (V, V, REQ, F, F, F, F, F)),
     "CER-015": ("Suspender certificado",                    (V, V, REQ, F, F, F, F, F)),
-    "CER-016": ("Reactivar certificado suspendido",         (SA, V, F, F, F, V, F, F)),
-    "CER-017": ("Cancelar o retirar certificado",           (SA, V, F, F, F, V, F, F)),
-    "CER-018": ("Registrar motivo de suspensión",            (V, V, V, F, F, V, F, F)),
-    "CER-019": ("Registrar motivo de cancelación",           (V, V, REQ, F, F, V, F, F)),
+    "CER-016": ("Reactivar certificado suspendido",         (SA, V, F, F, F, F, F, F)),
+    "CER-017": ("Cancelar o retirar certificado",           (SA, V, F, F, F, F, F, F)),
+    "CER-018": ("Registrar motivo de suspensión",            (V, V, V, F, F, F, F, F)),
+    "CER-019": ("Registrar motivo de cancelación",           (V, V, REQ, F, F, F, F, F)),
     "CER-020": ("Consultar historial de estados",            (V, V, V, V, V, F, F, V)),
     "CER-021": ("Publicar en portal de consulta",            (V, V, V, F, F, F, F, F)),
     "CER-022": ("Retirar del portal público",                (SA, F, F, F, F, F, F, F)),

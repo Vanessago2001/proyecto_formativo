@@ -57,6 +57,15 @@ def _sede_de_la_visita_por_defecto(request, monkeypatch):
 
     monkeypatch.setattr(agenda_service, "exigir_sede_de_la_solicitud", _sede_valida)
 
+    # 20/11/2026: asignar auditor exige la sede principal en la solicitud.
+    # Las bases simuladas de asignación no conocen esa consulta.
+    from modules.asignacion_auditores import asignacion_service
+
+    async def _principal_valida(_db, _id_solicitud):
+        return None
+
+    monkeypatch.setattr(asignacion_service, "exigir_sede_principal_para_asignar", _principal_valida)
+
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "sede_real: usa la regla real de la sede de la visita")

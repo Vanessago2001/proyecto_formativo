@@ -1813,6 +1813,11 @@
                   <span class="info-label">Fecha solicitud</span>
                   <span id="infoFechaSolicitud" class="info-value">-</span>
                 </div>
+                <div class="info-item" style="grid-column:1/-1;">
+                  <span class="info-label">Sedes de la solicitud (la asignación va a la sede principal)</span>
+                  <span id="infoSedes" class="info-value">-</span>
+                  <button type="button" id="infoAgregarSede" class="btn btn-secundario btn-sm" style="display:none;margin-top:6px;align-self:flex-start;">Agregar sede a la solicitud</button>
+                </div>
               </div>
 
               <!-- AUDITORES ELEGIBLES -->
@@ -2160,7 +2165,8 @@
   </div>
 
   <script src="/static/solicitudes-revision.js?v=20261118flujo"></script>
-  <script src="/static/solicitudes-asignacion.js?v=20261118aux"></script>
+  <script src="/static/agregar-sede-solicitud.js?v=20261120"></script>
+  <script src="/static/solicitudes-asignacion.js?v=20261120sede"></script>
   <script src="/static/solicitudes.js?v=20261118flujo"></script>
   <script src="/static/session.js?v=20261118pub"></script>
   <script src="/static/nav.js?v=20261118sincert"></script>

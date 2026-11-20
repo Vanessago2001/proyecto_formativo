@@ -1377,6 +1377,30 @@
 
       // ---------------- arranque ----------------
       (async () => {
+        // 20/11/2026: sin empresa registrada no se puede seguir. Se oculta el
+        // menú del portal y solo se ofrece "Registrar empresa".
+        let sinEmpresa = false;
+        try {
+          sinEmpresa = !(await api("/api/empresas/mias") || []).length;
+        } catch (_) {
+          sinEmpresa = false;
+        }
+        if (sinEmpresa) {
+          document.querySelectorAll(".comite-sidebar nav .comite-nav-link").forEach((enlace) => {
+            if (enlace.getAttribute("href") !== "/empresas") enlace.hidden = true;
+          });
+          document.querySelectorAll('[id^="vista-"]').forEach((vista) => vista.classList.add("comite-view-hidden"));
+          $("#viewTitle").textContent = "Registre su empresa";
+          const contenido = document.querySelector(".comite-content");
+          const aviso = document.createElement("div");
+          aviso.innerHTML = panel('<div class="comite-empty-state"><span class="comite-empty-icon">+</span>' +
+            "<h3>Su cuenta todavía no tiene una empresa registrada</h3>" +
+            "<p>Lo primero es registrar su empresa. Después podrá agregar sedes, subir los documentos legales y crear solicitudes de certificación.</p>" +
+            '<div class="comite-decision-actions" style="justify-content:center">' +
+            '<a class="comite-button primary btn btn-primario" href="/empresas">Registrar empresa</a></div></div>');
+          contenido.appendChild(aviso);
+          return;
+        }
         try {
           estado.normas = (await api("/solicitudes/normas")) || [];
         } catch (_) {

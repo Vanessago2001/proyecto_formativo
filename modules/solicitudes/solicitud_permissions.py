@@ -195,7 +195,8 @@ PERMISOS_M5: dict[str, tuple[str, tuple[NivelPermiso, ...]]] = {
 
     # ---- BLOQUE 3: sedes de la solicitud (SOL-021 a SOL-030) ----
     #                                          SUPERADM ADM AUX EMP AUD COM APR PUB
-    "SOL-021": ("Agregar sede a la solicitud",        (V,  F,  F,  V,  F,  F,  F,  F)),
+    # 20/11/2026: el Coordinador (ADM) agrega sedes a solicitudes Aprobadas.
+    "SOL-021": ("Agregar sede a la solicitud",        (V,  V,  F,  V,  F,  F,  F,  F)),
     "SOL-022": ("Editar sede en solicitud",           (V,  F,  F,  V,  F,  F,  F,  F)),
     "SOL-023": ("Eliminar sede de la solicitud",      (V,  F,  F,  V,  F,  F,  F,  F)),
     "SOL-024": ("Registrar dirección de sede",        (V,  F,  F,  V,  F,  F,  F,  F)),
