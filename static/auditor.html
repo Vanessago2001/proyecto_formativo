@@ -564,6 +564,115 @@
             box-shadow: 0 3px 12px rgba(15, 35, 22, .035);
         }
 
+        .historial-academico-lista {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .historial-academico-card {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 158px;
+            padding: 18px;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            background: linear-gradient(145deg, #fff 0%, #f8fbf7 100%);
+            box-shadow: 0 4px 14px rgba(15, 35, 22, .06);
+            transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+        }
+
+        .historial-academico-card:hover {
+            transform: translateY(-4px);
+            border-color: #a9c59d;
+            box-shadow: 0 12px 24px rgba(37, 109, 0, .12);
+        }
+
+        .historial-academico-cabecera {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .historial-academico-categoria {
+            margin: 0;
+            color: #548342;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .08em;
+            line-height: 1.4;
+            text-transform: uppercase;
+        }
+
+        .historial-academico-estado {
+            flex: 0 0 auto;
+            padding: 4px 9px;
+            border-radius: 999px;
+            background: #e4f1dc;
+            color: #256d00;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .historial-academico-titulo {
+            margin: 13px 0 0;
+            color: #1b4b12;
+            font-size: 15px;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+
+        .historial-academico-detalle {
+            margin-top: 7px;
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        .historial-academico-archivos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 14px;
+        }
+
+        .historial-academico-archivo {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            max-width: 100%;
+            padding: 7px 10px;
+            border: 1px solid #d5e5ce;
+            border-radius: 9px;
+            background: #f2f8ef;
+            color: #256d00;
+            font-size: 11px;
+            font-weight: 700;
+            text-decoration: none;
+            overflow-wrap: anywhere;
+            transition: background .18s ease, border-color .18s ease;
+        }
+
+        .historial-academico-archivo:hover {
+            border-color: #a9c59d;
+            background: #e4f1dc;
+        }
+
+        .historial-academico-archivo:focus-visible {
+            outline: 2px solid var(--sena-green-bright);
+            outline-offset: 2px;
+        }
+
+        .historial-academico-lista .sin-registros,
+        .historial-academico-lista .loading {
+            grid-column: 1 / -1;
+        }
+
         .registro-card-title {
             font-size: 14px;
         }
@@ -812,6 +921,10 @@
             .panel-inicio-pasos {
                 grid-template-columns: 1fr;
             }
+
+            .historial-academico-lista {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
 
         @media (max-width: 720px) {
@@ -870,6 +983,11 @@
             .panel-inicio-paso {
                 padding: 12px;
             }
+
+            .historial-academico-lista {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -881,7 +999,9 @@
             .btn-edit-section,
             .btn-submit,
             .btn-mini,
-            .archivo-limpiar {
+            .archivo-limpiar,
+            .historial-academico-card,
+            .historial-academico-archivo {
                 animation: none !important;
                 transition: none !important;
             }
@@ -2939,10 +3059,10 @@
                     Consulte el consolidado de títulos académicos, competencias, cursos y certificaciones registradas.
                 </p>
                 <button type="button" class="btn btn-primario btn-save-section" onclick="cargarHistorialAcademico()">
-                    Cargar historial
+                    Actualizar
                 </button>
-                <div id="historialAcademicoLista" class="registro-lista" style="margin-top: 16px;">
-                    <div class="sin-registros">Presione "Cargar historial" para consultar.</div>
+                <div id="historialAcademicoLista" class="historial-academico-lista">
+                    <div class="sin-registros">El historial se cargará al abrir esta sección.</div>
                 </div>
             </section>
 
@@ -6947,18 +7067,35 @@
                         const fecha = item.fecha_grado || item.fecha_inicio || '';
                         const institucion = item.institucion || item.titulo_institucion || '';
                         const estado = item.estado_validacion || '';
+                        const archivos = Array.isArray(item.archivos) ? item.archivos : [];
+                        const enlacesArchivos = archivos.map(archivo => {
+                            const url = urlDeDocumento(archivo);
+                            if (!/^(https?:\/\/|\/(?!\/))/i.test(url)) return '';
+                            const nombreArchivo = String(
+                                archivo.nombre_archivo || archivo.filename || 'Ver documento'
+                            );
+                            return `
+                                <a class="historial-academico-archivo"
+                                   href="${escapeHtml(url)}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   title="Abrir ${escapeHtml(nombreArchivo)}">
+                                    ${escapeHtml(nombreArchivo)}
+                                </a>
+                            `;
+                        }).filter(Boolean).join('');
                         return `
-                            <div class="registro-card">
-                                <div class="registro-card-header">
-                                    <div>
-                                        <p class="registro-card-title">${escapeHtml(item.categoria || 'Registro')}</p>
-                                        <div class="registro-card-meta">${escapeHtml(titulo)}${fecha ? ' — ' + escapeHtml(String(fecha)) : ''}</div>
-                                        ${institucion ? `<div class="registro-card-meta">${escapeHtml(institucion)}</div>` : ''}
-                                    </div>
-                                    ${estado ? `<span class="estado-badge">${escapeHtml(estado)}</span>` : ''}
+                            <article class="historial-academico-card">
+                                <div class="historial-academico-cabecera">
+                                    <p class="historial-academico-categoria">${escapeHtml(item.categoria || 'Registro')}</p>
+                                    ${estado ? `<span class="historial-academico-estado">${escapeHtml(estado)}</span>` : ''}
                                 </div>
-                                ${item.descripcion ? `<div class="registro-card-meta">${escapeHtml(String(item.descripcion))}</div>` : ''}
-                            </div>
+                                <h4 class="historial-academico-titulo">${escapeHtml(titulo)}</h4>
+                                ${fecha ? `<div class="historial-academico-detalle">${escapeHtml(String(fecha))}</div>` : ''}
+                                ${institucion ? `<div class="historial-academico-detalle">${escapeHtml(institucion)}</div>` : ''}
+                                ${item.descripcion ? `<div class="historial-academico-detalle">${escapeHtml(String(item.descripcion))}</div>` : ''}
+                                ${enlacesArchivos ? `<div class="historial-academico-archivos">${enlacesArchivos}</div>` : ''}
+                            </article>
                         `;
                     }).join('');
                 })
@@ -7029,6 +7166,10 @@
                 }
 
                 if (tituloPagina) tituloPagina.textContent = titulos[clave] || titulos.inicioRegistro;
+
+                if (clave === 'historial-academico') {
+                    cargarHistorialAcademico();
+                }
 
                 if (menu) {
                     menu.querySelectorAll('a[data-seccion]').forEach((enlace) => {

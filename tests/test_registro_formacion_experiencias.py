@@ -208,3 +208,72 @@ def test_rutas_put_registradas():
         "/auditores/registro/{id_usuario}/experiencias-auditoria/{id_experiencia}",
     ):
         assert "put" in paths.get(path, {}), path
+
+
+@pytest.mark.asyncio
+async def test_historial_academico_incluye_varios_titulos_y_archivos_por_titulo(
+    monkeypatch,
+):
+    id_titulo_con_archivos = uuid.uuid4()
+    id_titulo_sin_archivos = uuid.uuid4()
+    titulos = [
+        {
+            "id_titulo": id_titulo_con_archivos,
+            "titulo": "Ingeniería",
+            "fecha_grado": date(2020, 1, 1),
+        },
+        {
+            "id_titulo": id_titulo_sin_archivos,
+            "titulo": "Especialización",
+            "fecha_grado": date(2022, 1, 1),
+        },
+    ]
+
+    async def listar_titulos(_self, id_usuario):
+        assert id_usuario == ID_USUARIO
+        return titulos
+
+    async def listar_competencias(_self, id_usuario):
+        assert id_usuario == ID_USUARIO
+        return [{"tipo_competencia": "Curso", "fecha_inicio": date(2023, 1, 1)}]
+
+    monkeypatch.setattr(AuditorService, "listar_titulos_academicos", listar_titulos)
+    monkeypatch.setattr(AuditorService, "listar_competencias", listar_competencias)
+
+    class SesionHistorial:
+        async def execute(self, statement, params):
+            assert "FROM documento_auditor d" in str(statement)
+            assert params == {"id_usuario": ID_USUARIO}
+            return ResultadoFalso([
+                {
+                    "id_titulo": id_titulo_con_archivos,
+                    "nombre_archivo": "diploma.pdf",
+                    "url_archivo": "/uploads/diploma.pdf",
+                    "tipo_documento": "Título académico",
+                },
+                {
+                    "id_titulo": id_titulo_con_archivos,
+                    "nombre_archivo": "acta.pdf",
+                    "url_archivo": "/uploads/acta.pdf",
+                    "tipo_documento": "Título académico",
+                },
+            ])
+
+    respuesta = await AuditorService(SesionHistorial()).consultar_historial_academico(
+        ID_USUARIO
+    )
+
+    historial_por_titulo = {
+        registro["id_titulo"]: registro
+        for registro in respuesta["registros"]
+        if registro["categoria"] == "Título académico"
+    }
+    assert len(historial_por_titulo) == 2
+    assert [archivo["nombre_archivo"] for archivo in historial_por_titulo[
+        id_titulo_con_archivos
+    ]["archivos"]] == ["diploma.pdf", "acta.pdf"]
+    assert historial_por_titulo[id_titulo_sin_archivos]["archivos"] == []
+    assert any(
+        registro["categoria"] == "Competencia / curso / certificación"
+        for registro in respuesta["registros"]
+    )

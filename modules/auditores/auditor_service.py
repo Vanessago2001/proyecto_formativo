@@ -2508,12 +2508,43 @@ class AuditorService:
         competencias = await self.listar_competencias(
             id_usuario=id_usuario
         )
+        result = await self.db.execute(
+            text("""
+                SELECT
+                    d.id_titulo,
+                    d.nombre_archivo,
+                    d.url_archivo,
+                    d.tipo_documento
+                FROM documento_auditor d
+                INNER JOIN titulo_academico t
+                    ON t.id_titulo = d.id_titulo
+                   AND t.id_usuario = d.id_usuario
+                WHERE d.id_usuario = :id_usuario
+                  AND d.id_titulo IS NOT NULL
+                ORDER BY d.fecha_subida DESC
+            """),
+            {"id_usuario": id_usuario},
+        )
+        archivos_por_titulo = {}
+        for archivo in result.mappings().all():
+            archivos_por_titulo.setdefault(
+                str(archivo["id_titulo"]),
+                [],
+            ).append({
+                "nombre_archivo": archivo["nombre_archivo"],
+                "url_archivo": archivo["url_archivo"],
+                "tipo_documento": archivo["tipo_documento"],
+            })
 
         historial = sorted(
             [
                 {
-                    "categoria": "Título académico",
                     **titulo,
+                    "categoria": "Título académico",
+                    "archivos": archivos_por_titulo.get(
+                        str(titulo["id_titulo"]),
+                        [],
+                    ),
                 }
                 for titulo in titulos
             ]
