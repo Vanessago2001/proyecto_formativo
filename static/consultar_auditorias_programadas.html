@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertiSENA | Consultar auditorías programadas</title>
     <link rel="stylesheet" href="/static/tema.css?v=20261114a">
-    <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
+    <script src="/static/filtros-ubicacion.js?v=20261124a"></script>
     <link rel="stylesheet" href="/static/styles.css?v=20261118a">
     <style>
         :root {
@@ -410,6 +410,11 @@
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 14px;
             margin-bottom: 16px;
+        }
+
+        .filtros-ubicacion-item {
+            grid-column: 1 / -1;
+            min-width: 0;
         }
 
         .filter-item {
@@ -1098,21 +1103,7 @@
                                 <option value="Híbrida">Híbrida</option>
                             </select>
                         </div>
-                        <div class="filter-item">
-                            <label for="filtroCiudad">Ciudad</label>
-                            <input id="filtroCiudad" type="search" class="form-control campo" placeholder="Ej.: Bogotá" list="filtroCiudadLista" autocomplete="off" maxlength="100">
-                            <datalist id="filtroCiudadLista"></datalist>
-                        </div>
-                        <div class="filter-item">
-                            <label for="filtroDepartamento">Departamento</label>
-                            <input id="filtroDepartamento" type="search" class="form-control campo" placeholder="Ej.: Risaralda" list="filtroDepartamentoLista" autocomplete="off" maxlength="100" title="Departamento de la sede visitada">
-                            <datalist id="filtroDepartamentoLista"></datalist>
-                        </div>
-                        <div class="filter-item">
-                            <label for="filtroPais">País</label>
-                            <input id="filtroPais" type="search" class="form-control campo" placeholder="Ej.: Colombia" list="filtroPaisLista" autocomplete="off" maxlength="100" title="País de la sede visitada">
-                            <datalist id="filtroPaisLista"></datalist>
-                        </div>
+                        <div id="filtrosUbicacionProgramadas" class="filtros-ubicacion-item"></div>
                         <div class="filter-item">
                             <label for="filtroDesde">Desde</label>
                             <input id="filtroDesde" type="date" class="form-control campo">
@@ -1546,9 +1537,7 @@
         function limpiarFiltros() {
             document.getElementById('filtroEstado').value = '';
             document.getElementById('filtroModalidad').value = '';
-            document.getElementById('filtroCiudad').value = '';
-            document.getElementById('filtroDepartamento').value = '';
-            document.getElementById('filtroPais').value = '';
+            filtrosUbicacionProgramadas.limpiar(true);
             document.getElementById('filtroDesde').value = '';
             document.getElementById('filtroHasta').value = '';
             cargarDatos();
@@ -2499,6 +2488,18 @@
             };
         }
         const autoFiltrar = debounce(cargarDatos, 300);
+        const raizFiltrosUbicacion = document.getElementById('filtrosUbicacionProgramadas');
+        raizFiltrosUbicacion.innerHTML = FiltrosUbicacion.html({
+            prefijo: 'filtro',
+            limpiar: false,
+            estado: false,
+            titulo: 'Filtrar auditorías por ubicación'
+        });
+        const filtrosUbicacionProgramadas = FiltrosUbicacion.ligar(raizFiltrosUbicacion, {
+            prefijo: 'filtro',
+            retardo: 300,
+            alCambiar: cargarDatos
+        });
 
         // ---- Filtros de ubicación (ciudad, departamento y país de la visita) ----
         let abortoDatos = null;
@@ -2506,14 +2507,9 @@
         function actualizarUbicacion(items) {
             // Las sugerencias salen de la consulta sin filtros de ubicación.
             if (!FiltrosUbicacion.hayFiltros(ubicacionActual)) {
-                const llenar = (id, valores) => {
-                    const lista = document.getElementById(id);
-                    if (lista) lista.innerHTML = FiltrosUbicacion.valoresUnicos(valores)
-                        .map(v => '<option value="' + escapeHtml(v) + '"></option>').join('');
-                };
-                llenar('filtroCiudadLista', items.map(r => [r.ciudad_servicio, r.sede_ciudad, r.empresa_ciudad]));
-                llenar('filtroDepartamentoLista', items.map(r => r.sede_departamento));
-                llenar('filtroPaisLista', items.map(r => r.sede_pais));
+                filtrosUbicacionProgramadas.sugerir('ciudad', items.map(r => [r.ciudad_servicio, r.sede_ciudad, r.empresa_ciudad]));
+                filtrosUbicacionProgramadas.sugerir('departamento', items.map(r => r.sede_departamento));
+                filtrosUbicacionProgramadas.sugerir('pais', items.map(r => r.sede_pais));
             }
             const estado = document.getElementById('ubicacionEstado');
             if (estado) {
@@ -2547,8 +2543,6 @@
             // Auto-aplicar filtros al cambiar o escribir
             document.getElementById('filtroEstado')?.addEventListener('change', autoFiltrar);
             document.getElementById('filtroModalidad')?.addEventListener('change', autoFiltrar);
-            ['filtroCiudad', 'filtroDepartamento', 'filtroPais'].forEach(id =>
-                document.getElementById(id)?.addEventListener('input', autoFiltrar));
             document.getElementById('filtroDesde')?.addEventListener('change', autoFiltrar);
             document.getElementById('filtroHasta')?.addEventListener('change', autoFiltrar);
         });

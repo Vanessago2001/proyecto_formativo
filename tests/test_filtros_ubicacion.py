@@ -8,6 +8,7 @@ sin filtros la consulta queda como antes.
 import asyncio
 import uuid
 from datetime import date
+from pathlib import Path
 
 from core.filtros_ubicacion import (
     condicion_contiene,
@@ -23,6 +24,8 @@ from modules.comite.comite_service import construir_filtro_expedientes
 from modules.empresas.empresas_service import EmpresasService
 from modules.solicitudes.solicitud_service import SolicitudService
 from tests.fake_db import ResultadoFalso
+
+RAIZ = Path(__file__).resolve().parents[1]
 
 
 class Resultado(ResultadoFalso):
@@ -133,6 +136,15 @@ def test_programaciones_admin_filtran_por_ciudad_departamento_y_pais():
     assert params == {"ciudad": "%bogota%", "departamento": "%cundinamarca%", "pais": "%colombia%"}
     assert "LEFT JOIN sede_empresa sede ON sede.id_sede = p.id_sede" in sql
     assert "sede.departamento AS sede_departamento" in sql
+
+
+def test_calendario_mensual_usa_filtros_de_ubicacion_anclados():
+    html = (RAIZ / "static" / "consultar_agenda_auditor.html").read_text(encoding="utf-8")
+    assert 'id="monthLocationFilters"' in html
+    for id_lista in ("cityFilterLista", "deptFilterLista", "countryFilterLista"):
+        assert id_lista not in html
+    assert '["ciudad", "departamento", "pais"].forEach(clave => {' in html
+    assert "filtrosUbicacionMes.sugerir(clave, [...lugaresCalendario[clave]])" in html
 
 
 def test_auditorias_del_auditor_mantienen_su_alcance_y_aceptan_departamento():

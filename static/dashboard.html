@@ -514,7 +514,7 @@
               </select>
             </div>
             <div>
-              <label for="numDoc">Numero de documento</label><input id="numDoc" required />
+              <label for="numDoc">Numero de documento</label><input id="numDoc" inputmode="numeric" required />
             </div>
             <div>
               <label for="rol">Permiso o rol</label><select id="rol" required disabled>
@@ -1130,6 +1130,17 @@
       el.textContent = text;
       el.className = "message" + (success ? " success" : "");
     }
+    function mensajeErrorApi(result, predeterminado) {
+      const detalle = result && result.detail;
+      if (typeof detalle === "string") return detalle;
+      if (Array.isArray(detalle)) {
+        const mensajes = detalle
+          .map((error) => String(error && error.msg || "").replace(/^Value error,\s*/, ""))
+          .filter(Boolean);
+        if (mensajes.length) return mensajes.join(" · ");
+      }
+      return predeterminado;
+    }
     let availableRoles = [];
     async function loadRoles() {
       const res = await fetch("/rol/", { headers: headers() });
@@ -1458,7 +1469,7 @@
         "tableMessage",
         res.ok
           ? "Cuenta actualizada."
-          : result.detail || "No fue posible actualizar la cuenta.",
+          : mensajeErrorApi(result, "No fue posible actualizar la cuenta."),
         res.ok,
       );
       if (res.ok) loadUsers();
@@ -1475,6 +1486,14 @@
           num_doc: document.getElementById("numDoc").value.trim(),
           rol: document.getElementById("rol").value,
         };
+        if (!/^[\p{L} ]+$/u.test(data.nombre) || !/\p{L}/u.test(data.nombre)) {
+          show("formMessage", "El nombre solo puede contener letras y espacios.", false);
+          return;
+        }
+        if (!/^[0-9]+$/.test(data.num_doc)) {
+          show("formMessage", "El número de documento solo puede contener números.", false);
+          return;
+        }
         const res = await fetch("/users/create-user", {
           method: "POST",
           headers: headers(),
@@ -1485,7 +1504,7 @@
           "formMessage",
           res.ok
             ? "Cuenta creada correctamente."
-            : result.detail || "No fue posible crear la cuenta.",
+            : mensajeErrorApi(result, "No fue posible crear la cuenta."),
           res.ok,
         );
         if (res.ok) {

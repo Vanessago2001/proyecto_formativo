@@ -8,12 +8,16 @@ deben llegar todas, incluida la Cancelada.
 import asyncio
 import uuid
 from datetime import date
+from pathlib import Path
+
+import pytest
 
 from modules.agenda_auditor import agenda_router
 from modules.agenda_auditor.agenda_service import AgendaAuditorService
 from tests.fake_db import ResultadoFalso
 
 ID_AUDITOR = uuid.UUID("9532b5e5-b065-44f1-aac0-996483a838bd")
+RAIZ = Path(__file__).resolve().parents[1]
 
 PROGRAMACIONES = [
     {"id_programacion": uuid.uuid4(), "id_usuario": ID_AUDITOR, "estado": "Confirmada"},
@@ -62,6 +66,18 @@ def test_filtra_por_estado_sin_distinguir_mayusculas():
 def test_estado_vacio_equivale_a_todos():
     _, filas = consultar(estado="  ")
     assert len(filas) == 2
+
+
+@pytest.mark.parametrize("pagina", [
+    "consultar_auditorias_programadas.html",
+    "consultar_auditorias_programadas_admin.html",
+])
+def test_filtros_de_ubicacion_usan_desplegables_anclados(pagina):
+    html = (RAIZ / "static" / pagina).read_text(encoding="utf-8")
+    assert 'id="filtrosUbicacionProgramadas"' in html
+    assert "<datalist" not in html.lower()
+    for campo in ("ciudad", "departamento", "pais"):
+        assert f"filtrosUbicacionProgramadas.sugerir('{campo}'" in html
 
 
 def test_el_endpoint_acepta_y_pasa_el_estado(monkeypatch):

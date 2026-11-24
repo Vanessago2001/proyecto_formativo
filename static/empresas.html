@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
-  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
+  <script src="/static/filtros-ubicacion.js?v=20261124a"></script>
   <script src="/static/sede-form.js?v=20261124a"></script>
   <script src="/static/documentos-legales.js?v=20261118a"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261118a">
@@ -848,9 +848,19 @@
       $("#formRegistrar").addEventListener("submit", async (evento) => {
         evento.preventDefault();
         try {
-          const creada = await enviar("/api/empresas/", "POST", {
+          const datos = {
             nombre: val("regNombre"), nit: val("regNit"), correo: val("regCorreo"), ciudad: val("regCiudad"), direccion: val("regDireccion")
-          });
+          };
+          if (!soloLetrasYEspacios(datos.nombre) || !/\p{L}/u.test(datos.nombre)) {
+            throw new Error("El nombre o razón social solo puede contener letras y espacios.");
+          }
+          if (!soloDigitos(datos.nit)) {
+            throw new Error("El NIT solo puede contener números.");
+          }
+          if (!soloLetrasYEspacios(datos.ciudad) || !/\p{L}/u.test(datos.ciudad)) {
+            throw new Error("La ciudad solo puede contener letras y espacios.");
+          }
+          const creada = await enviar("/api/empresas/", "POST", datos);
           evento.target.reset();
           if (esEmpresa) estado.mias = (await api("/api/empresas/mias")) || [];
           estado.actual = String(creada.id_empresa);

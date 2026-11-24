@@ -19,9 +19,46 @@ from sqlalchemy.exc import IntegrityError
 from core.database import get_db
 from core.security import get_current_user
 from main import app
+from modules.users.user_schema import AdminUserCreate
 
 ID_OBJETIVO = str(uuid.uuid4())
 ID_ACTOR = str(uuid.uuid4())
+
+
+def test_admin_user_acepta_nombre_acentuado_y_documento_numerico():
+    usuario = AdminUserCreate(
+        nombre="Ángela Pérez",
+        correo="angela@example.com",
+        contrasena="Password1!",
+        tipo_doc="CC",
+        num_doc="12345678",
+        rol=str(uuid.uuid4()),
+    )
+
+    assert usuario.nombre == "Ángela Pérez"
+    assert usuario.num_doc == "12345678"
+
+
+@pytest.mark.parametrize(
+    "campo,valor",
+    [("nombre", "Auxiliar2"), ("num_doc", "12345A")],
+)
+async def test_crear_usuario_rechaza_nombre_o_documento_invalido(campo, valor):
+    db = BaseFalsa()
+    datos = {
+        "nombre": "Auxiliar de prueba",
+        "correo": "auxiliar@example.com",
+        "contrasena": "Password1!",
+        "tipo_doc": "CC",
+        "num_doc": "12345678",
+        "rol": str(uuid.uuid4()),
+    }
+    datos[campo] = valor
+
+    respuesta = await pedir(db, "Administrador", "post", "/users/create-user", json=datos)
+
+    assert respuesta.status_code == 422
+    assert db.sentencias == []
 
 
 class Resultado:

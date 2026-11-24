@@ -85,8 +85,8 @@ def _validar_solo_letras_espacios(valor: str, campo: str) -> str:
     return valor
 
 
-def _validar_solo_digitos(valor: Optional[str], campo: str) -> Optional[str]:
-    if valor and not all("0" <= caracter <= "9" for caracter in valor):
+def _validar_solo_digitos(valor: str, campo: str) -> str:
+    if not valor or not all("0" <= caracter <= "9" for caracter in valor):
         raise ValueError(f"{campo} solo puede contener números.")
     return valor
 
@@ -101,6 +101,16 @@ class EmpresaCreate(BaseModel):
     ciudad: str = Field(..., min_length=1, max_length=30)
     direccion: str = Field(..., min_length=1, max_length=140)
     correo: EmailStr = Field(..., max_length=100)
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre_empresa(cls, valor: str) -> str:
+        return _validar_solo_letras_espacios(valor, "El nombre o razón social")
+
+    @field_validator("nit")
+    @classmethod
+    def validar_nit(cls, valor: str) -> str:
+        return _validar_solo_digitos(valor, "El NIT")
 
     @field_validator("ciudad")
     @classmethod
@@ -168,6 +178,8 @@ class ContactoCreate(BaseModel):
     @field_validator("telefono")
     @classmethod
     def validar_telefono(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None or not valor:
+            return valor
         return _validar_solo_digitos(valor, "El teléfono")
 
 
@@ -194,6 +206,8 @@ class ContactoUpdate(BaseModel):
     @field_validator("telefono")
     @classmethod
     def validar_telefono(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None or not valor:
+            return valor
         return _validar_solo_digitos(valor, "El teléfono")
 
 

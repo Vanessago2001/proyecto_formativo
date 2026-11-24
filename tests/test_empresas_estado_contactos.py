@@ -275,8 +275,29 @@ async def test_registrar_empresa_como_empresa_la_vincula_a_la_cuenta():
 
     respuesta = await pedir(
         db, "Empresa", "post", "/api/empresas/",
-        json={"nombre": "Cafe del Eje", "nit": "900123456-7", "ciudad": "Manizales", "direccion": "Calle 1", "correo": "cafe@eje.co"},
+        json={"nombre": "Cafe del Eje", "nit": "9001234567", "ciudad": "Manizales", "direccion": "Calle 1", "correo": "cafe@eje.co"},
     )
 
     assert respuesta.status_code == 201
     assert any(sql.startswith("INSERT INTO user_empresa") for sql, _ in sentencias(db))
+
+
+@pytest.mark.parametrize(
+    "campo,valor",
+    [("nombre", "Cafe del Eje 2"), ("nit", "900123ABC"), ("ciudad", "Manizales3")],
+)
+async def test_registrar_empresa_rechaza_caracteres_no_permitidos(campo, valor):
+    db = sesion(fila())
+    datos = {
+        "nombre": "Cafe del Eje",
+        "nit": "9001234567",
+        "ciudad": "Manizales",
+        "direccion": "Calle 1",
+        "correo": "cafe@example.com",
+    }
+    datos[campo] = valor
+
+    respuesta = await pedir(db, "Administrador", "post", "/api/empresas/", json=datos)
+
+    assert respuesta.status_code == 422
+    assert not sentencias(db)

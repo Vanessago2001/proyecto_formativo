@@ -73,7 +73,7 @@ async def test_crear_empresa_genera_su_uuid(sesion):
         "/api/empresas/",
         json={
             "nombre": "Cafe del Eje",
-            "nit": "900123456-7",
+            "nit": "9001234567",
             "ciudad": "Manizales",
             "direccion": "Calle 1",
             "correo": "cafe@eje.co",

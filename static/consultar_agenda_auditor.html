@@ -1455,6 +1455,7 @@
         /* Sección 4: calendario de auditorías (el calendario en sí viene de
            static/mi_disponibilidad.js; aquí solo el acomodo de la sección). */
         .cal-filtros { margin: 14px 0 16px; align-items: end; }
+        .cal-filtros-ubicacion { grid-column: span 3; min-width: 0; }
         .cal-filtro-check { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; }
         .cal-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .cal-check input { width: 16px; height: 16px; accent-color: var(--sena-green); }
@@ -1466,6 +1467,9 @@
         .cal-equipo .cell-meta { color: #475569; }
         .cal-acciones-modal { display: flex; flex-wrap: wrap; gap: 9px; }
         .modal-close:focus-visible { outline: 3px solid var(--sena-green-dark); outline-offset: 2px; }
+        @media (max-width: 900px) {
+            .cal-filtros-ubicacion { grid-column: 1 / -1; }
+        }
         @media (max-width: 640px) {
             .cal-coordinador .md-celda { min-height: 70px; padding: 3px; }
         }
@@ -1482,7 +1486,7 @@
 .modal-box.success h3 { color:#256d00; }
 </style>
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
-  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
+  <script src="/static/filtros-ubicacion.js?v=20261124a"></script>
 </head>
 
 <body>
@@ -1794,21 +1798,7 @@
                                     <option value="">Todos los auditores</option>
                                 </select>
                             </div>
-                            <div class="field">
-                                <label for="cityFilter">Ciudad / municipio</label>
-                                <input id="cityFilter" type="search" maxlength="150" placeholder="Todas las ciudades" autocomplete="off" list="cityFilterLista">
-                                <datalist id="cityFilterLista"></datalist>
-                            </div>
-                            <div class="field">
-                                <label for="deptFilter">Departamento</label>
-                                <input id="deptFilter" type="search" maxlength="100" placeholder="Todos los departamentos" autocomplete="off" list="deptFilterLista" title="Departamento de la sede visitada">
-                                <datalist id="deptFilterLista"></datalist>
-                            </div>
-                            <div class="field">
-                                <label for="countryFilter">País</label>
-                                <input id="countryFilter" type="search" maxlength="100" placeholder="Todos los países" autocomplete="off" list="countryFilterLista" title="País de la sede visitada">
-                                <datalist id="countryFilterLista"></datalist>
-                            </div>
+                            <div id="monthLocationFilters" class="cal-filtros-ubicacion"></div>
                             <div class="field">
                                 <label for="modalityFilter">Modalidad de auditoría</label>
                                 <select id="modalityFilter">
@@ -3209,15 +3199,29 @@
         const ESTADOS_TERMINALES_CAL = ["CANCELADA", "CANCELADO", "FINALIZADA", "FINALIZADO"];
         const auditoriasCalendario = new Map(); // id_programacion -> auditoría
         let calendarioMes = null;
-        let temporizadorCiudad = null;
         const lugaresCalendario = { ciudad: new Set(), departamento: new Set(), pais: new Set() };
+
+        const raizFiltrosUbicacionMes = $("monthLocationFilters");
+        raizFiltrosUbicacionMes.innerHTML = FiltrosUbicacion.html({
+            prefijo: "month",
+            campos: ["ciudad", "departamento", "pais"],
+            etiquetas: { ciudad: "Ciudad / municipio" },
+            limpiar: false,
+            estado: false,
+            titulo: "Filtrar auditorías por ubicación"
+        });
+        const filtrosUbicacionMes = FiltrosUbicacion.ligar(raizFiltrosUbicacionMes, {
+            prefijo: "month",
+            campos: ["ciudad", "departamento", "pais"],
+            retardo: 300,
+            alCambiar: () => loadMonth()
+        });
+        filtrosUbicacionMes.entradas.ciudad.maxLength = 150;
 
         function filtrosCalendario() {
             return {
                 auditor: $("monthAuditor").value,
-                ciudad: $("cityFilter").value.trim(),
-                departamento: $("deptFilter").value.trim(),
-                pais: $("countryFilter").value.trim(),
+                ...filtrosUbicacionMes.valores(),
                 modalidad: $("modalityFilter").value,
                 canceladas: $("monthCanceladas").checked
             };
@@ -3261,9 +3265,8 @@
                     if (a.sede_departamento) lugaresCalendario.departamento.add(String(a.sede_departamento).trim());
                     if (a.sede_pais) lugaresCalendario.pais.add(String(a.sede_pais).trim());
                 });
-                [["cityFilterLista", "ciudad"], ["deptFilterLista", "departamento"], ["countryFilterLista", "pais"]].forEach(([id, clave]) => {
-                    $(id).innerHTML = FiltrosUbicacion.valoresUnicos([...lugaresCalendario[clave]])
-                        .map(v => `<option value="${esc(v)}"></option>`).join("");
+                ["ciudad", "departamento", "pais"].forEach(clave => {
+                    filtrosUbicacionMes.sugerir(clave, [...lugaresCalendario[clave]]);
                 });
                 const ubicacionMes = { ciudad: f.ciudad, departamento: f.departamento, pais: f.pais };
                 showNotice("monthNotice", !total && FiltrosUbicacion.hayFiltros(ubicacionMes)
@@ -3456,10 +3459,6 @@
             if (chip) abrirDetalleAuditoria(chip.dataset.calAud, chip);
         });
         ["monthAuditor", "modalityFilter", "monthCanceladas"].forEach(id => $(id).addEventListener("change", () => loadMonth()));
-        ["cityFilter", "deptFilter", "countryFilter"].forEach(id => $(id).addEventListener("input", () => {
-            clearTimeout(temporizadorCiudad);
-            temporizadorCiudad = setTimeout(() => loadMonth(), 300);
-        }));
         // Programar: el filtro de ciudad repinta la tabla de solicitudes mientras se escribe.
         $("assignmentCiudad").addEventListener("focus", () => {
             $("assignmentCiudadLista").innerHTML = FiltrosUbicacion.valoresUnicos((assignments || []).map(g => g.empresa_ciudad))
@@ -3475,9 +3474,7 @@
         }, 300));
         $("clearMonthFilters").addEventListener("click", () => {
             $("monthAuditor").value = "";
-            $("cityFilter").value = "";
-            $("deptFilter").value = "";
-            $("countryFilter").value = "";
+            filtrosUbicacionMes.limpiar(true);
             $("modalityFilter").value = "";
             $("monthCanceladas").checked = false;
             loadMonth();

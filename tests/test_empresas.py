@@ -95,7 +95,7 @@ async def test_registrar_empresa_success(app_fixture, mock_db_session, mock_aux_
     mock_result.mappings().first.return_value = {
         "id_empresa": 2,
         "nombre": "Sena Empresa",
-        "nit": "899999000-1",
+        "nit": "8999990001",
         "ciudad": "Cali",
         "direccion": "Avenida 3",
         "correo": "sena@sena.edu.co",
@@ -108,7 +108,7 @@ async def test_registrar_empresa_success(app_fixture, mock_db_session, mock_aux_
 
     payload = {
         "nombre": "Sena Empresa",
-        "nit": "899999000-1",
+        "nit": "8999990001",
         "ciudad": "Cali",
         "direccion": "Avenida 3",
         "correo": "sena@sena.edu.co",

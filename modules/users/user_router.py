@@ -7,6 +7,7 @@ from uuid import UUID
 
 from modules.users.gestion_cuenta_service import GestionCuentaService
 from modules.users.user_schema import (
+    AdminUserCreate,
     CambioCorreoCuenta,
     RestablecerPasswordCuenta,
     UserCreate,
@@ -59,7 +60,7 @@ async def read_users(db: AsyncSession = Depends(get_db), current_user: dict = De
     return await service.get_all_users()
 
 @router.post("/create-user", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def add_user(user_in: UserCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
+async def add_user(user_in: AdminUserCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
     if not es_coordinador(current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el Coordinador puede crear cuentas.")
     service = UserService(db)

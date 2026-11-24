@@ -86,8 +86,10 @@ async def test_la_pagina_lleva_guardia_y_botones_de_etapa():
         assert f"/static/{script}" in html
     # Lo que tenían las dos pantallas sigue en la nueva.
     for id_ in ("assignmentForm", "assignmentsToggle", "assignmentsPager", "changeTableBody", "modalAdvertencia",
-                "retiroConflictoModal", "solicitudesRevisionBody", "detailPanel", "filtrosUbicacion", "decisionModal"):
+                "retiroConflictoModal", "solicitudesRevisionBody", "detailPanel", "filtrosUbicacion", "decisionModal",
+                "solicitudesUbicacionFiltros", "auditorUbicacionFiltros"):
         assert f'id="{id_}"' in html, id_
+    assert "<datalist" not in html.lower()
 
 
 def test_las_paginas_viejas_ya_no_existen():

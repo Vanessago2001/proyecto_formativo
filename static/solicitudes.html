@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
   <link rel="stylesheet" href="/static/styles.css?v=20261118a">
-  <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
+  <script src="/static/filtros-ubicacion.js?v=20261124a"></script>
   <!-- Estilos de la antigua Asignación de auditores (etapas 3 y 4). -->
   <style>
     /* =========================================================
@@ -1716,23 +1716,7 @@
                         <input id="solSector" class="form-control" aria-label="Filtrar por sector IAF" placeholder="Sector IAF" autocomplete="off">
                       </div>
                       <!-- Ubicación: ciudad de la empresa o de una sede de la solicitud; departamento y país, de sus sedes. -->
-                      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:8px;" role="group" aria-label="Filtrar por ubicación">
-                        <label for="solCiudad" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
-                          Ciudad
-                          <input id="solCiudad" type="search" class="form-control campo" list="solCiudadLista" placeholder="Ej.: Bogotá" autocomplete="off" maxlength="100">
-                        </label>
-                        <label for="solDepartamento" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
-                          Departamento
-                          <input id="solDepartamento" type="search" class="form-control campo" list="solDepartamentoLista" placeholder="Ej.: Risaralda" autocomplete="off" maxlength="100" title="Departamento de alguna sede de la solicitud">
-                        </label>
-                        <label for="solPais" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
-                          País
-                          <input id="solPais" type="search" class="form-control campo" list="solPaisLista" placeholder="Ej.: Colombia" autocomplete="off" maxlength="100" title="País de alguna sede de la solicitud">
-                        </label>
-                        <datalist id="solCiudadLista"></datalist>
-                        <datalist id="solDepartamentoLista"></datalist>
-                        <datalist id="solPaisLista"></datalist>
-                      </div>
+                      <div id="solicitudesUbicacionFiltros"></div>
                       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
                         <label for="solDesde" style="display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600;color:#475569;margin:0;">
                           Fecha inicio
@@ -1833,16 +1817,7 @@
                     <input id="auditorSearch" type="search" placeholder="Buscar por nombre o documento"
                       autocomplete="off" />
                   </div>
-                  <div class="form-group">
-                    <label for="auditorCityFilter">Ciudad de residencia</label>
-                    <input id="auditorCityFilter" type="search" placeholder="Ej. Pereira" autocomplete="off" list="auditorCityLista" maxlength="100" />
-                    <datalist id="auditorCityLista"></datalist>
-                  </div>
-                  <div class="form-group">
-                    <label for="auditorDeptFilter">Departamento de residencia</label>
-                    <input id="auditorDeptFilter" type="search" placeholder="Ej. Risaralda" autocomplete="off" list="auditorDeptLista" maxlength="100" />
-                    <datalist id="auditorDeptLista"></datalist>
-                  </div>
+                  <div id="auditorUbicacionFiltros" class="form-group full"></div>
                   <div class="form-group">
                     <label for="auditorModalityFilter">Modalidad preferida</label>
                     <select id="auditorModalityFilter">
@@ -2166,7 +2141,7 @@
 
   <script src="/static/solicitudes-revision.js?v=20261118flujo"></script>
   <script src="/static/agregar-sede-solicitud.js?v=20261120"></script>
-  <script src="/static/solicitudes-asignacion.js?v=20261120sede"></script>
+  <script src="/static/solicitudes-asignacion.js?v=20261124ubicacion"></script>
   <script src="/static/solicitudes.js?v=20261118flujo"></script>
   <script src="/static/session.js?v=20261118pub"></script>
   <script src="/static/nav.js?v=20261118sincert"></script>

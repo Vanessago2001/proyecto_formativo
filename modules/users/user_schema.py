@@ -1,6 +1,20 @@
 from typing import Literal, Optional
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, field_validator
+
+
+def _validar_nombre_solo_letras_espacios(valor: str) -> str:
+    if not any(caracter.isalpha() for caracter in valor) or not all(
+        caracter.isalpha() or caracter == " " for caracter in valor
+    ):
+        raise ValueError("El nombre solo puede contener letras y espacios.")
+    return valor
+
+
+def _validar_numero_documento(valor: str) -> str:
+    if not valor or not all("0" <= caracter <= "9" for caracter in valor):
+        raise ValueError("El número de documento solo puede contener números.")
+    return valor
 
 
 class UserBase(BaseModel):
@@ -16,6 +30,20 @@ class UserCreate(UserBase):
     # y no como str para que Pydantic valide que sea uno de verdad; por el
     # cable viaja igual, como cadena.
     rol: UUID
+
+
+class AdminUserCreate(UserCreate):
+    """Cuenta creada desde Gestionar usuarios del portal de administración."""
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre(cls, valor: str) -> str:
+        return _validar_nombre_solo_letras_espacios(valor)
+
+    @field_validator("num_doc")
+    @classmethod
+    def validar_numero_documento(cls, valor: str) -> str:
+        return _validar_numero_documento(valor)
 
 
 class UserResponse(UserBase):

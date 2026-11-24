@@ -58,13 +58,42 @@
     const message = document.getElementById("message");
     const solicitudSelect = document.getElementById("solicitud");
 
+    const solicitudesUbicacionRaiz = document.getElementById("solicitudesUbicacionFiltros");
+    solicitudesUbicacionRaiz.innerHTML = FiltrosUbicacion.html({
+      prefijo: "sol",
+      limpiar: false,
+      estado: false,
+      titulo: "Filtrar solicitudes por ubicación"
+    });
+    const filtrosSolicitudesUbicacion = FiltrosUbicacion.ligar(solicitudesUbicacionRaiz, {
+      prefijo: "sol",
+      retardo: 300,
+      alCambiar: () => cargarSolicitudes(1)
+    });
+
+    const auditorUbicacionRaiz = document.getElementById("auditorUbicacionFiltros");
+    auditorUbicacionRaiz.innerHTML = FiltrosUbicacion.html({
+      prefijo: "auditor",
+      campos: ["ciudad", "departamento"],
+      etiquetas: { ciudad: "Ciudad de residencia", departamento: "Departamento de residencia" },
+      limpiar: false,
+      estado: false,
+      titulo: "Filtrar auditores por ubicación"
+    });
+    const filtrosAuditoresUbicacion = FiltrosUbicacion.ligar(auditorUbicacionRaiz, {
+      prefijo: "auditor",
+      campos: ["ciudad", "departamento"],
+      retardo: 300,
+      alCambiar: () => loadAuditores(1)
+    });
+
     const auditorSearchInput = document.getElementById("auditorSearch");
-    const auditorCityFilter = document.getElementById("auditorCityFilter");
-    const auditorDeptFilter = document.getElementById("auditorDeptFilter");
+    const auditorCityFilter = filtrosAuditoresUbicacion.entradas.ciudad;
+    const auditorDeptFilter = filtrosAuditoresUbicacion.entradas.departamento;
     // Solo se pinta la respuesta de la última búsqueda (las anteriores se cancelan).
     let abortoSolicitudes = null;
     let abortoAuditores = null;
-    const valoresUbicacionAuditores = () => ({ ciudad: auditorCityFilter.value.trim(), departamento: auditorDeptFilter.value.trim() });
+    const valoresUbicacionAuditores = () => filtrosAuditoresUbicacion.valores();
     const auditorModalityFilter = document.getElementById("auditorModalityFilter");
     const auditorCompetenceFilter = document.getElementById("auditorCompetenceFilter");
     const auditorConflictFilter = document.getElementById("auditorConflictFilter");
@@ -759,8 +788,6 @@
 
     const buscarSolicitudesDebounced = debounce(() => cargarSolicitudes(1), 300);
     document.getElementById('solBuscar')?.addEventListener('input', buscarSolicitudesDebounced);
-    ['solCiudad', 'solDepartamento', 'solPais'].forEach((id) =>
-      document.getElementById(id)?.addEventListener('input', buscarSolicitudesDebounced));
     document.getElementById('solNorma')?.addEventListener('change', () => cargarSolicitudes(1));
     document.getElementById('solSector')?.addEventListener('change', () => cargarSolicitudes(1));
     // Fecha inicio <= Fecha fin: cada selector limita al otro.
@@ -781,16 +808,11 @@
         const res = await fetch('/asignacion-auditores/ubicaciones', { headers: headers() });
         if (!res.ok) return;
         const datos = await res.json();
-        const llenar = (id, valores) => {
-          const lista = document.getElementById(id);
-          if (lista) lista.innerHTML = FiltrosUbicacion.valoresUnicos(valores || [])
-            .map((v) => `<option value="${escapeHTML(v)}"></option>`).join('');
-        };
-        llenar('solCiudadLista', datos.solicitudes?.ciudades);
-        llenar('solDepartamentoLista', datos.solicitudes?.departamentos);
-        llenar('solPaisLista', datos.solicitudes?.paises);
-        llenar('auditorCityLista', datos.auditores?.ciudades);
-        llenar('auditorDeptLista', datos.auditores?.departamentos);
+        filtrosSolicitudesUbicacion.sugerir("ciudad", datos.solicitudes?.ciudades);
+        filtrosSolicitudesUbicacion.sugerir("departamento", datos.solicitudes?.departamentos);
+        filtrosSolicitudesUbicacion.sugerir("pais", datos.solicitudes?.paises);
+        filtrosAuditoresUbicacion.sugerir("ciudad", datos.auditores?.ciudades);
+        filtrosAuditoresUbicacion.sugerir("departamento", datos.auditores?.departamentos);
       } catch (_) { /* sin sugerencias: los filtros siguen funcionando */ }
     })();
 
@@ -804,8 +826,6 @@
 
     const buscarAuditoresDebounced = debounce(() => loadAuditores(1), 300);
     auditorSearchInput.addEventListener("input", buscarAuditoresDebounced);
-    auditorCityFilter.addEventListener("input", buscarAuditoresDebounced);
-    auditorDeptFilter.addEventListener("input", buscarAuditoresDebounced);
     auditorModalityFilter.addEventListener("change", () => loadAuditores(1));
     auditorCompetenceFilter.addEventListener("change", () => loadAuditores(1));
     auditorConflictFilter.addEventListener("change", () => loadAuditores(1));
@@ -813,8 +833,7 @@
 
     clearAuditorFilters.addEventListener("click", () => {
       auditorSearchInput.value = "";
-      auditorCityFilter.value = "";
-      auditorDeptFilter.value = "";
+      filtrosAuditoresUbicacion.limpiar(true);
       auditorModalityFilter.value = "";
       auditorCompetenceFilter.value = "";
       auditorConflictFilter.value = "";
@@ -929,8 +948,7 @@
       assignmentForm.reset();
       if (solicitudSelect) solicitudSelect.value = "";
       auditorSearchInput.value = "";
-      auditorCityFilter.value = "";
-      auditorDeptFilter.value = "";
+      filtrosAuditoresUbicacion.limpiar(true);
       auditorModalityFilter.value = "";
       auditorCompetenceFilter.value = "";
       requestInfo.classList.remove("show");
@@ -1369,7 +1387,8 @@
     }
 
     function limpiarFiltrosSolicitudes() {
-      ['solBuscar', 'solCiudad', 'solDepartamento', 'solPais', 'solNorma', 'solSector'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      ['solBuscar', 'solNorma', 'solSector'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      filtrosSolicitudesUbicacion.limpiar(true);
       ['solDesde', 'solHasta'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = ''; el.min = ''; el.max = ''; } });
       cargarSolicitudes(1);
     }
@@ -1499,7 +1518,8 @@
     }
 
     function limpiarCamposSolicitudes() {
-      ['solBuscar', 'solCiudad', 'solDepartamento', 'solPais', 'solNorma', 'solSector'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      ['solBuscar', 'solNorma', 'solSector'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      filtrosSolicitudesUbicacion.limpiar(true);
       ['solDesde', 'solHasta'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = ''; el.min = ''; el.max = ''; } });
     }
 

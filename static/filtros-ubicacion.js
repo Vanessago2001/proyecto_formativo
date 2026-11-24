@@ -109,12 +109,17 @@
     var valores = o.valores || {};
     var partes = campos.map(function (clave) {
       var id = idCampo(o.prefijo, clave);
+      var idOpciones = id + "Opciones";
+      var idBoton = id + "Toggle";
       var ayuda = ayudas[clave] ? '<small id="' + id + 'Ayuda" class="fu-ayuda">' + esc(ayudas[clave]) + "</small>" : "";
       return '<div class="fu-campo"><label for="' + id + '">' + esc(etiquetas[clave] || ETIQUETAS[clave]) + "</label>" +
-        '<input id="' + id + '" class="campo" type="search" list="' + id + 'Lista" autocomplete="off" maxlength="100"' +
+        '<div class="fu-control"><input id="' + id + '" class="campo" type="search" autocomplete="off" maxlength="100"' +
         ' placeholder="' + esc(EJEMPLOS[clave]) + '" value="' + esc(valores[clave] || "") + '"' +
-        (ayuda ? ' aria-describedby="' + id + 'Ayuda"' : "") + ' data-fu-clave="' + clave + '">' +
-        '<datalist id="' + id + 'Lista"></datalist>' + ayuda + "</div>";
+        (ayuda ? ' aria-describedby="' + id + 'Ayuda"' : "") +
+        ' aria-autocomplete="list" aria-controls="' + idOpciones + '" aria-expanded="false" data-fu-clave="' + clave + '">' +
+        '<button id="' + idBoton + '" class="fu-toggle" type="button" aria-label="Mostrar opciones de ' +
+        esc(etiquetas[clave] || ETIQUETAS[clave]) + '" aria-controls="' + idOpciones + '" aria-expanded="false"><span aria-hidden="true">▾</span></button>' +
+        '<div id="' + idOpciones + '" class="fu-opciones" role="listbox" hidden></div></div>' + ayuda + "</div>";
     });
     if (o.limpiar !== false) {
       // El espaciador ocupa el alto de una etiqueta para alinear el botón con los campos.
@@ -138,9 +143,54 @@
     var campos = o.campos || ["ciudad", "departamento", "pais"];
     var buscar = function (id) { return (base.querySelector ? base.querySelector("#" + id) : null) || document.getElementById(id); };
     var entradas = {};
+    var sugerencias = {};
     campos.forEach(function (clave) { entradas[clave] = buscar(idCampo(o.prefijo, clave)); });
     var estado = buscar(o.prefijo + "Estado");
     var botonLimpiar = o.botonLimpiar || buscar(o.prefijo + "Limpiar");
+
+    function listaDe(clave) { return buscar(idCampo(o.prefijo, clave) + "Opciones"); }
+    function botonDe(clave) { return buscar(idCampo(o.prefijo, clave) + "Toggle"); }
+
+    function cerrarLista(clave) {
+      var lista = listaDe(clave);
+      var entrada = entradas[clave];
+      var boton = botonDe(clave);
+      if (lista) lista.hidden = true;
+      if (entrada) entrada.setAttribute("aria-expanded", "false");
+      if (boton) boton.setAttribute("aria-expanded", "false");
+    }
+
+    function mostrarLista(clave, filtro) {
+      var lista = listaDe(clave);
+      var entrada = entradas[clave];
+      var boton = botonDe(clave);
+      if (!lista || !entrada) return;
+
+      var buscado = normalizar(filtro == null ? entrada.value : filtro);
+      var coincidencias = (sugerencias[clave] || []).filter(function (valor) {
+        return !buscado || normalizar(valor).indexOf(buscado) !== -1;
+      });
+      lista.textContent = "";
+      coincidencias.forEach(function (valor) {
+        var opcion = document.createElement("button");
+        opcion.type = "button";
+        opcion.className = "fu-opcion";
+        opcion.setAttribute("role", "option");
+        opcion.setAttribute("aria-selected", "false");
+        opcion.textContent = valor;
+        opcion.addEventListener("mousedown", function (evento) { evento.preventDefault(); });
+        opcion.addEventListener("click", function () {
+          entrada.value = valor;
+          cerrarLista(clave);
+          entrada.focus();
+          avisarLuego();
+        });
+        lista.appendChild(opcion);
+      });
+      lista.hidden = coincidencias.length === 0;
+      entrada.setAttribute("aria-expanded", coincidencias.length ? "true" : "false");
+      if (boton) boton.setAttribute("aria-expanded", coincidencias.length ? "true" : "false");
+    }
 
     function valores() {
       var salida = {};
@@ -153,12 +203,70 @@
     campos.forEach(function (clave) {
       var entrada = entradas[clave];
       if (!entrada) return;
-      entrada.addEventListener("input", avisarLuego);
+      var contenedor = entrada.parentElement;
+      var boton = botonDe(clave);
+      var lista = listaDe(clave);
+      entrada.addEventListener("focus", function () { mostrarLista(clave); });
+      entrada.addEventListener("input", function () {
+        mostrarLista(clave);
+        avisarLuego();
+      });
       // Enter dentro de un formulario no debe recargar la página.
       entrada.addEventListener("keydown", function (evento) {
-        if (evento.key === "Enter" && !o.permitirEnvio) { evento.preventDefault(); avisar(); }
+        if (evento.key === "ArrowDown" && lista && !lista.hidden) {
+          var primeraOpcion = lista.querySelector(".fu-opcion");
+          if (primeraOpcion) {
+            evento.preventDefault();
+            primeraOpcion.focus();
+          }
+        } else if (evento.key === "Escape") {
+          cerrarLista(clave);
+        } else if (evento.key === "Enter" && !o.permitirEnvio) {
+          evento.preventDefault();
+          avisar();
+        }
       });
+      if (boton) {
+        boton.addEventListener("mousedown", function (evento) { evento.preventDefault(); });
+        boton.addEventListener("click", function () {
+          if (lista && !lista.hidden) cerrarLista(clave);
+          else mostrarLista(clave, "");
+        });
+      }
+      if (lista) {
+        lista.addEventListener("keydown", function (evento) {
+          var opciones = Array.prototype.slice.call(lista.querySelectorAll(".fu-opcion"));
+          var indice = opciones.indexOf(document.activeElement);
+          if (evento.key === "ArrowDown" && opciones[indice + 1]) {
+            evento.preventDefault();
+            opciones[indice + 1].focus();
+          } else if (evento.key === "ArrowUp") {
+            evento.preventDefault();
+            if (opciones[indice - 1]) opciones[indice - 1].focus();
+            else entrada.focus();
+          } else if (evento.key === "Escape") {
+            evento.preventDefault();
+            cerrarLista(clave);
+            entrada.focus();
+          }
+        });
+      }
+      if (contenedor) {
+        contenedor.addEventListener("focusout", function () {
+          setTimeout(function () {
+            if (!contenedor.contains(document.activeElement)) cerrarLista(clave);
+          }, 0);
+        });
+      }
     });
+    if (base.addEventListener) {
+      base.addEventListener("click", function (evento) {
+        campos.forEach(function (clave) {
+          var contenedor = entradas[clave] && entradas[clave].parentElement;
+          if (contenedor && !contenedor.contains(evento.target)) cerrarLista(clave);
+        });
+      });
+    }
 
     function limpiar(silencioso) {
       campos.forEach(function (clave) { if (entradas[clave]) entradas[clave].value = ""; });
@@ -178,10 +286,9 @@
       limpiar: limpiar,
       entradas: entradas,
       sugerir: function (clave, lista) {
-        var entrada = entradas[clave];
-        var datalist = entrada && document.getElementById(entrada.getAttribute("list"));
-        if (!datalist) return;
-        datalist.innerHTML = valoresUnicos(lista).map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join("");
+        if (!entradas[clave]) return;
+        sugerencias[clave] = valoresUnicos(lista);
+        if (document.activeElement === entradas[clave]) mostrarLista(clave);
       },
       anunciar: function (texto) { if (estado) estado.textContent = texto || ""; }
     };
@@ -256,8 +363,16 @@
       ".fu-panel{margin:0 0 18px;padding:14px 16px 6px;border:1px solid #e4f1dc;border-radius:8px;background:#f8fafc}" +
       ".fu-panel .fu-estado{margin-bottom:6px}" +
       ".filtros-ubicacion .fu-campo{display:flex;flex-direction:column;gap:4px;min-width:0}" +
+      ".filtros-ubicacion .fu-campo:focus-within{position:relative;z-index:20}" +
       ".filtros-ubicacion .fu-campo label{font-weight:600;font-size:.85rem;line-height:1.2;margin:0}" +
-      ".filtros-ubicacion .fu-campo input{width:100%;min-width:0;box-sizing:border-box}" +
+      ".filtros-ubicacion .fu-control{position:relative;width:100%;min-width:0}" +
+      ".filtros-ubicacion .fu-campo input{width:100%;min-width:0;box-sizing:border-box;padding-right:40px}" +
+      ".fu-toggle{position:absolute;top:2px;right:2px;width:34px;height:calc(100% - 4px);padding:0;border:0;border-radius:4px;background:transparent;color:#475569;font-size:16px;cursor:pointer}" +
+      ".fu-toggle:hover,.fu-toggle:focus-visible{background:#f1f5f9;color:#256d00;outline:2px solid rgba(59,170,1,.25);outline-offset:-2px}" +
+      ".fu-opciones{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:30;max-height:240px;overflow-y:auto;padding:4px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;box-shadow:0 8px 20px rgba(15,23,42,.16)}" +
+      ".fu-opciones[hidden]{display:none}" +
+      ".fu-opcion{display:block;width:100%;padding:8px 10px;border:0;border-radius:4px;background:#fff;color:#334155;text-align:left;font:inherit;font-size:.9rem;cursor:pointer}" +
+      ".fu-opcion:hover,.fu-opcion:focus-visible{background:#f1f5f9;color:#256d00;outline:none}" +
       ".filtros-ubicacion .fu-ayuda{color:var(--gris-500,#5f6b7a);font-size:.75rem}" +
       ".filtros-ubicacion .fu-acciones{display:flex;flex-direction:column;align-items:flex-start;gap:4px}" +
       ".filtros-ubicacion .fu-espaciador{font-size:.85rem;line-height:1.2}" +
