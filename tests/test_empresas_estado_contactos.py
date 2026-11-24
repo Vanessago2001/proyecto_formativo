@@ -160,6 +160,36 @@ async def test_registrar_contacto_segun_la_hoja(rol, esperado):
     assert insertado is (esperado == 201)
 
 
+@pytest.mark.parametrize(
+    "campo,valor",
+    [
+        ("nombre", "Ana2"),
+        ("nombre", "   "),
+        ("cargo", "Jefe 2"),
+        ("cargo", "   "),
+        ("telefono", "300-555"),
+    ],
+)
+@pytest.mark.parametrize(
+    "metodo,ruta",
+    [("post", CONTACTOS), ("put", f"{CONTACTOS}/{ID_CONTACTO}")],
+)
+async def test_contacto_rechaza_caracteres_invalidos(campo, valor, metodo, ruta):
+    db = sesion(fila())
+    payload = {
+        "nombre": "Ana Ramírez",
+        "cargo": "Gerente",
+        "telefono": "3005551234",
+        "correo": "ana@cafe.co",
+    }
+    payload[campo] = valor
+
+    respuesta = await pedir(db, "Empresa", metodo, ruta, json=payload)
+
+    assert respuesta.status_code == 422
+    assert sentencias(db) == []
+
+
 @pytest.mark.parametrize("rol,esperado", [("Empresa", 200), ("Administrador", 200), ("Auxiliar", 202)])
 async def test_eliminar_contacto_segun_la_hoja(rol, esperado):
     db = sesion(fila())

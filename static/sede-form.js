@@ -86,6 +86,10 @@
     return el ? el.value.trim() : "";
   }
 
+  function soloLetrasYEspacios(valor) {
+    return /^[\p{L} ]+$/u.test(valor);
+  }
+
   // Misma lógica que guardarSede() de empresas.html.
   async function guardar(modal, opciones) {
     var sede = opciones.sede;
@@ -113,6 +117,10 @@
       estado: "Activa"
     };
     if (!cuerpo.nombre_sede || !cuerpo.direccion || !cuerpo.ciudad) throw new Error("Nombre, dirección y ciudad son obligatorios.");
+    if (!soloLetrasYEspacios(cuerpo.ciudad)) throw new Error("La ciudad solo puede contener letras y espacios.");
+    if (cuerpo.departamento && !soloLetrasYEspacios(cuerpo.departamento)) {
+      throw new Error("El departamento solo puede contener letras y espacios.");
+    }
     var aviso = "Ciudad: " + cuerpo.ciudad + "\nDepartamento: " + (cuerpo.departamento || "-") + "\nPaís: " + (cuerpo.pais || "Colombia") +
       "\n\nEstos datos no se podrán cambiar después. ¿Son correctos?";
     if (!window.confirm(aviso)) return null;

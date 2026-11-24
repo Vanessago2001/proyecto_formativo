@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tema.css?v=20261114a">
   <script src="/static/filtros-ubicacion.js?v=20261117b"></script>
-  <script src="/static/sede-form.js?v=20261118a"></script>
+  <script src="/static/sede-form.js?v=20261124a"></script>
   <script src="/static/documentos-legales.js?v=20261118a"></script>
   <link rel="stylesheet" href="/static/styles.css?v=20261118a">
 </head>
@@ -233,6 +233,8 @@
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       const fecha = (valor) => valor ? new Date(valor).toLocaleDateString("es-CO") : "-";
       const val = (id) => { const campo = document.getElementById(id); return campo ? campo.value.trim() : ""; };
+      const soloLetrasYEspacios = (valor) => /^[\p{L} ]+$/u.test(valor);
+      const soloDigitos = (valor) => /^[0-9]+$/.test(valor);
       const panel = (contenido) => '<div class="comite-panel">' + contenido + "</div>";
       const cargando = (texto) => panel('<div class="comite-loading">' + esc(texto) + "</div>");
       const fact = (etiqueta, valor) => "<div><dt>" + esc(etiqueta) + "</dt><dd>" + esc(valor) + "</dd></div>";
@@ -739,6 +741,15 @@
           telefono: val("contTelefono") || null,
           correo: val("contCorreo") || null
         };
+        if (!soloLetrasYEspacios(cuerpo.nombre)) {
+          throw new Error("El nombre solo puede contener letras y espacios.");
+        }
+        if (cuerpo.cargo && !soloLetrasYEspacios(cuerpo.cargo)) {
+          throw new Error("El cargo solo puede contener letras y espacios.");
+        }
+        if (cuerpo.telefono && !soloDigitos(cuerpo.telefono)) {
+          throw new Error("El teléfono solo puede contener números.");
+        }
         const ruta = base + "/sedes/" + estado.sedeContactos + "/contactos";
         if (estado.contactoEditado) {
           await enviar(ruta + "/" + estado.contactoEditado, "PUT", cuerpo);
@@ -759,7 +770,11 @@
           case "editar-empresa": estado.editandoEmpresa = true; return cargarDetalle();
           case "cancelar-empresa": estado.editandoEmpresa = false; return cargarDetalle();
           case "guardar-empresa":
-            await enviar(base, "PUT", { nombre: val("empNombre"), nit: val("empNit"), correo: val("empCorreo"), ciudad: val("empCiudad"), direccion: val("empDireccion") });
+            const ciudadEmpresa = val("empCiudad");
+            if (!soloLetrasYEspacios(ciudadEmpresa)) {
+              throw new Error("La ciudad solo puede contener letras y espacios.");
+            }
+            await enviar(base, "PUT", { nombre: val("empNombre"), nit: val("empNit"), correo: val("empCorreo"), ciudad: ciudadEmpresa, direccion: val("empDireccion") });
             estado.editandoEmpresa = false;
             return terminar("Datos de la empresa guardados.");
           case "suspender":

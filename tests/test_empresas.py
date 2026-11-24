@@ -131,3 +131,23 @@ async def test_registrar_empresa_success(app_fixture, mock_db_session, mock_aux_
     assert data["nombre"] == "Sena Empresa"
 
     app_fixture.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_editar_empresa_rechaza_numeros_en_ciudad(app_fixture, mock_db_session, mock_admin_user):
+    app_fixture.dependency_overrides[get_db] = lambda: mock_db_session
+    app_fixture.dependency_overrides[get_current_user] = lambda: mock_admin_user
+    payload = {
+        "nombre": "Empresa de prueba",
+        "nit": "900123456-7",
+        "ciudad": "Medellín2",
+        "direccion": "Calle 10",
+        "correo": "contacto@empresa.com",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=app_fixture), base_url="http://test") as ac:
+        response = await ac.put("/api/empresas/5", json=payload)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    mock_db_session.execute.assert_not_called()
+    app_fixture.dependency_overrides.clear()

@@ -87,3 +87,29 @@ async def test_create_sede_empresa_success(mock_db_session, mock_admin_user):
     assert response.json()["nombre_sede"] == "Sede Medellín"
 
     app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "campo, valor",
+    [("ciudad", "Medellín2"), ("departamento", "Antioquia 5")],
+)
+async def test_create_sede_rechaza_numeros_en_ciudad_y_departamento(
+    mock_db_session, mock_admin_user, campo, valor
+):
+    app.dependency_overrides[get_db] = lambda: mock_db_session
+    app.dependency_overrides[get_current_user] = lambda: mock_admin_user
+    payload = {
+        "nombre_sede": "Sede de prueba",
+        "direccion": "Calle 10",
+        "ciudad": "Medellín",
+        "departamento": "Antioquia",
+    }
+    payload[campo] = valor
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.post("/api/empresas/5/sedes", json=payload)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    mock_db_session.execute.assert_not_called()
+    app.dependency_overrides.clear()

@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -77,6 +77,20 @@ async def _solicitar_aprobacion(db, usuario: dict, codigo: str, id_empresa: str,
     )
 
 
+def _validar_solo_letras_espacios(valor: str, campo: str) -> str:
+    if not any(caracter.isalpha() for caracter in valor) or not all(
+        caracter.isalpha() or caracter == " " for caracter in valor
+    ):
+        raise ValueError(f"{campo} solo puede contener letras y espacios.")
+    return valor
+
+
+def _validar_solo_digitos(valor: Optional[str], campo: str) -> Optional[str]:
+    if valor and not all("0" <= caracter <= "9" for caracter in valor):
+        raise ValueError(f"{campo} solo puede contener números.")
+    return valor
+
+
 class EmpresaCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -87,6 +101,11 @@ class EmpresaCreate(BaseModel):
     ciudad: str = Field(..., min_length=1, max_length=30)
     direccion: str = Field(..., min_length=1, max_length=140)
     correo: EmailStr = Field(..., max_length=100)
+
+    @field_validator("ciudad")
+    @classmethod
+    def validar_ciudad(cls, valor: str) -> str:
+        return _validar_solo_letras_espacios(valor, "La ciudad")
 
 
 class EmpresaUpdate(EmpresaCreate):
@@ -107,6 +126,16 @@ class SedeCreate(BaseModel):
     es_principal: bool = False
     estado: str = "Activa"
 
+    @field_validator("ciudad", "departamento")
+    @classmethod
+    def validar_ubicacion_sede(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None:
+            return None
+        valor = valor.strip()
+        if not valor:
+            return None
+        return _validar_solo_letras_espacios(valor, "La ubicación")
+
 
 class SedeUpdate(BaseModel):
     nombre_sede: Optional[str] = None
@@ -124,12 +153,48 @@ class ContactoCreate(BaseModel):
     telefono: Optional[str] = Field(default=None, max_length=30)
     correo: Optional[EmailStr] = None
 
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre(cls, valor: str) -> str:
+        return _validar_solo_letras_espacios(valor, "El nombre")
+
+    @field_validator("cargo")
+    @classmethod
+    def validar_cargo(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None or not valor:
+            return valor
+        return _validar_solo_letras_espacios(valor, "El cargo")
+
+    @field_validator("telefono")
+    @classmethod
+    def validar_telefono(cls, valor: Optional[str]) -> Optional[str]:
+        return _validar_solo_digitos(valor, "El teléfono")
+
 
 class ContactoUpdate(BaseModel):
     nombre: Optional[str] = Field(default=None, min_length=3, max_length=150)
     cargo: Optional[str] = Field(default=None, max_length=100)
     telefono: Optional[str] = Field(default=None, max_length=30)
     correo: Optional[EmailStr] = None
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None:
+            return None
+        return _validar_solo_letras_espacios(valor, "El nombre")
+
+    @field_validator("cargo")
+    @classmethod
+    def validar_cargo(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None or not valor:
+            return valor
+        return _validar_solo_letras_espacios(valor, "El cargo")
+
+    @field_validator("telefono")
+    @classmethod
+    def validar_telefono(cls, valor: Optional[str]) -> Optional[str]:
+        return _validar_solo_digitos(valor, "El teléfono")
 
 
 class RevisionDocumento(BaseModel):
