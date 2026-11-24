@@ -1701,13 +1701,13 @@
                             </section>
                         </form>
 
-                        <h3
+                        <h3 hidden
                             style="margin:28px 0 12px;font-size:15px;color:var(--sena-green-dark);display:flex;align-items:center;gap:8px;">
                             <span
                                 style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--sena-green-bright);"></span>
                             Programaciones de la solicitud seleccionada
                         </h3>
-                        <div class="filtro-tabla" id="scheduleFilterBar">
+                        <div class="filtro-tabla" id="scheduleFilterBar" hidden>
                             <div class="filtro-campo">
                                 <label for="filtroAuditorTexto">Nombre o documento</label>
                                 <input id="filtroAuditorTexto" class="form-control" placeholder="Ej. Leonel o 123456">
@@ -1731,7 +1731,7 @@
                                 <button type="button" class="btn btn-secundario secondary" id="filtroAuditorLimpiar">Limpiar filtro</button>
                             </div>
                         </div>
-                        <div id="scheduleList" class="table-wrap">
+                        <div id="scheduleList" class="table-wrap" hidden>
                             <div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>
                         </div>
                     </div>
