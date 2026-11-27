@@ -736,10 +736,6 @@
         .resumen-sede > .hint { margin: 0 0 12px; }
         .resumen-sede .actions { margin-top: 12px; }
         .resumen-sede .resumen-secundario { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-        /* Fila de la sede seleccionada en "Programaciones de la solicitud". */
-        #scheduleList tr.fila-sede-actual td { background: #f4faf0; }
-        #scheduleList tr.fila-sede-actual td:first-child { box-shadow: inset 3px 0 0 var(--sena-green); }
-
         /* Anclas JS (ocultas, mantienen la lógica del sistema) */
         .hidden-js-anchor {
             display: none !important;
@@ -1031,6 +1027,21 @@
 
         .program-action-card {
             width: min(580px, 100%);
+        }
+
+        .schedule-confirm-card {
+            width: min(520px, 100%);
+        }
+
+        .schedule-confirm-warning {
+            margin: 0;
+            padding: 14px 16px;
+            border: 1px solid #f3d28b;
+            border-radius: 10px;
+            background: #fffbeb;
+            color: #704f0b;
+            font-size: 13px;
+            line-height: 1.55;
         }
 
         .program-action-intro {
@@ -1423,18 +1434,6 @@
             .filtro-resultados { left: 16px; right: 16px; }
         }
 
-        .filtro-tabla {
-            display: grid;
-            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
-            gap: 12px;
-            align-items: end;
-            margin: 0 0 14px;
-            padding: 14px 16px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-        }
-
         .filtro-campo {
             display: flex;
             flex-direction: column;
@@ -1446,10 +1445,6 @@
             font-size: 12.5px;
             font-weight: 700;
             color: var(--sena-green-dark);
-        }
-
-        @media (max-width: 768px) {
-            .filtro-tabla { grid-template-columns: 1fr; }
         }
 
         /* Sección 4: calendario de auditorías (el calendario en sí viene de
@@ -1701,39 +1696,6 @@
                             </section>
                         </form>
 
-                        <h3 hidden
-                            style="margin:28px 0 12px;font-size:15px;color:var(--sena-green-dark);display:flex;align-items:center;gap:8px;">
-                            <span
-                                style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--sena-green-bright);"></span>
-                            Programaciones de la solicitud seleccionada
-                        </h3>
-                        <div class="filtro-tabla" id="scheduleFilterBar" hidden>
-                            <div class="filtro-campo">
-                                <label for="filtroAuditorTexto">Nombre o documento</label>
-                                <input id="filtroAuditorTexto" class="form-control" placeholder="Ej. Leonel o 123456">
-                            </div>
-                            <div class="filtro-campo">
-                                <label for="filtroProgramacionEstado">Estado</label>
-                                <select id="filtroProgramacionEstado" class="form-control">
-                                    <option value="">Sin canceladas</option>
-                                    <option value="Cancelada">Solo canceladas</option>
-                                    <option value="Todos">Todos</option>
-                                </select>
-                            </div>
-                            <div class="filtro-campo">
-                                <label for="filtroProgramacionSede">Sede</label>
-                                <select id="filtroProgramacionSede" class="form-control">
-                                    <option value="actual">Solo la sede seleccionada</option>
-                                    <option value="todas">Todas las sedes</option>
-                                </select>
-                            </div>
-                            <div class="filtro-campo">
-                                <button type="button" class="btn btn-secundario secondary" id="filtroAuditorLimpiar">Limpiar filtro</button>
-                            </div>
-                        </div>
-                        <div id="scheduleList" class="table-wrap" hidden>
-                            <div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>
-                        </div>
                     </div>
                 </section>
 
@@ -1891,6 +1853,27 @@
         </div>
     </div>
 
+    <div id="scheduleConfirmModal" class="programacion-modal" role="dialog" aria-modal="true"
+        aria-labelledby="scheduleConfirmTitle" aria-describedby="scheduleConfirmMessage">
+        <div class="programacion-modal-card schedule-confirm-card">
+            <div class="programacion-modal-head">
+                <div>
+                    <span id="scheduleConfirmEyebrow" class="modal-eyebrow">Confirmación de cambios</span>
+                    <h3 id="scheduleConfirmTitle">¿Guardar los cambios?</h3>
+                </div>
+                <button type="button" class="modal-close" id="scheduleConfirmClose"
+                    aria-label="Cancelar y cerrar">×</button>
+            </div>
+            <div class="programacion-modal-body">
+                <p id="scheduleConfirmMessage" class="schedule-confirm-warning"></p>
+            </div>
+            <div class="programacion-modal-foot">
+                <button type="button" class="btn btn-secundario secondary" id="scheduleConfirmCancel">Cancelar</button>
+                <button type="button" class="btn btn-primario primary" id="scheduleConfirmAccept">Guardar cambios</button>
+            </div>
+        </div>
+    </div>
+
     <!-- =========================================================
          MODAL FICHA DEL AUDITOR (asignación de auditores por sede)
     ========================================================= -->
@@ -1969,8 +1952,10 @@
         let assignments = [];
         let programacionActual = null;
         let programacionEnEdicion = false;
+        let resolverConfirmacionCambios = null;
         let availabilityRows = [];
         let editingRow = null;
+        let focoAntesConfirmacionCambios = null;
 
         function showNotice(id, message, kind = "ok") {
             const node = $(id);
@@ -2173,12 +2158,11 @@
                     $("scheduleSave").disabled = true;
                 }
                 // Con las programaciones de la solicitud ya cargadas basta con
-                // mostrar la sede elegida y filtrar la tabla a esa sede.
+                // actualizar el resumen de la sede elegida.
                 if (programacionesSolicitudDe === String(grupo.id_solicitud)) {
-                    renderTablaProgramaciones(grupo);
                     sincronizarFormularioConSede(grupo);
                 } else {
-                    await loadScheduleList(grupo);
+                    await cargarProgramacionesSolicitud(grupo);
                 }
                 // Solo un auditor por solicitud: cada sede se programa con el
                 // auditor asignado; ya no se ofrecen otros auditores.
@@ -2380,15 +2364,6 @@
             return ["cancelada", "cancelado"].includes(normalizedStatus(row?.estado));
         }
 
-        // Un botón que muestra u oculta su lista dentro de la misma celda.
-        function alternarRevelado(boton, claseLista, etiquetaCerrada) {
-            const lista = boton.parentElement.querySelector("." + claseLista);
-            if (!lista) return;
-            const abierto = !lista.hidden;
-            lista.hidden = abierto;
-            boton.setAttribute("aria-expanded", String(!abierto));
-            boton.textContent = abierto ? etiquetaCerrada : "Ocultar";
-        }
         function dateTimeParts(value) {
             if (!value) return { date: "", time: "" };
             const raw = String(value).replace(" ", "T");
@@ -3003,29 +2978,6 @@
             await onAuditorChanged();
         }
 
-        // Filtro de la tabla de programaciones (nombre / documento / estado / sede).
-        // Solo vuelve a pintar la tabla: no recarga ni toca el formulario, así
-        // filtrar no saca a la persona del modo de edición.
-        ["filtroAuditorTexto", "filtroProgramacionEstado", "filtroProgramacionSede"].forEach(id => {
-            const el = $(id);
-            if (!el) return;
-            ["input", "change"].forEach(tipo => el.addEventListener(tipo, () => {
-                const group = currentAssignment();
-                if (group) renderTablaProgramaciones(group);
-            }));
-        });
-        const filtroLimpiar = $("filtroAuditorLimpiar");
-        if (filtroLimpiar) {
-            filtroLimpiar.addEventListener("click", () => {
-                $("filtroAuditorTexto").value = "";
-                if ($("filtroAuditorRol")) $("filtroAuditorRol").value = "";
-                $("filtroProgramacionEstado").value = "";
-                $("filtroProgramacionSede").value = "actual";
-                const group = currentAssignment();
-                if (group) renderTablaProgramaciones(group);
-            });
-        }
-
         async function loadAssignments() {
             try {
                 const data = await api("/solicitudes-disponibles");
@@ -3508,28 +3460,10 @@
             return calendarioMes.recargar();
         }
 
-        function normalizarTexto(valor) {
-            return String(valor || "").trim().toLowerCase()
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        }
-
-        function aplicarFiltroAuditores(rows) {
-            const texto = normalizarTexto($("filtroAuditorTexto") ? $("filtroAuditorTexto").value : "");
-            const rol = normalizarTexto($("filtroAuditorRol") ? $("filtroAuditorRol").value : "");
-            if (!texto && !rol) return rows;
-            return rows.filter(row => (row.auditores_detalle || []).some(a => {
-                if (texto && !normalizarTexto(a.nombre).includes(texto) && !normalizarTexto(a.documento).includes(texto)) return false;
-                if (rol && !normalizarTexto(a.rol).includes(rol)) return false;
-                return true;
-            }));
-        }
-
-        async function loadScheduleList(group) {
+        async function cargarProgramacionesSolicitud(group) {
             if (!group || !Array.isArray(group.auditores) || !group.auditores.length) {
-                window.__programacionesActuales = [];
                 programacionesSolicitud = [];
                 programacionesSolicitudDe = "";
-                $("scheduleList").innerHTML = '<div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>';
                 prepareNewScheduleForm(group);
                 return;
             }
@@ -3540,22 +3474,9 @@
                         const idAuditor = row.id_usuario || row.id_usuario_auditor;
                         const assignedAuditor = group.auditores.find(item => String(item.id_usuario) === String(idAuditor)) || auditor;
                         const nombreSimple = assignedAuditor.auditor_nombre || auditor.auditor_nombre || "Auditor sin nombre";
-                        const rolSimple = ROL_AUDITOR;
-                        const documentoSimple = documentLabel({
-                            auditor_tipo_doc: assignedAuditor.auditor_tipo_doc || assignedAuditor.tipo_doc,
-                            auditor_num_doc: assignedAuditor.auditor_num_doc || assignedAuditor.num_doc
-                        });
                         return {
                             ...row,
-                            __auditorNombre: auditorLabel({
-                                auditor_nombre: nombreSimple,
-                                rol_auditor: rolSimple,
-                                auditor_tipo_doc: assignedAuditor.auditor_tipo_doc,
-                                auditor_num_doc: assignedAuditor.auditor_num_doc
-                            }),
                             __auditorNombreSimple: nombreSimple,
-                            __auditorRol: rolSimple,
-                            __auditorDocumento: documentoSimple,
                             __auditorId: String(idAuditor || ""),
                             __auditorCorreo: assignedAuditor.auditor_correo || "",
                             __auditorTipoDoc: assignedAuditor.auditor_tipo_doc || "",
@@ -3579,7 +3500,7 @@
                     const key = row.id_programacion
                         ? String(row.id_programacion)
                         : [group.id_solicitud || row.id_solicitud || row.numero_radicado || "", row.fecha_inicio || "", row.fecha_fin || "", row.modalidad || "", row.ciudad_servicio || ""].join("|");
-                    if (!consolidated.has(key)) consolidated.set(key, { ...row, auditores_programados: [], auditores_detalle: [], auditores_equipo: [] });
+                    if (!consolidated.has(key)) consolidated.set(key, { ...row, auditores_programados: [], auditores_equipo: [] });
                     const item = consolidated.get(key);
                     // Auditor de la visita: el equipo que envía el servidor
                     // (row.equipo: nombre y correo de cada auditor de ESA
@@ -3604,21 +3525,16 @@
                         if (!existente) item.auditores_equipo.push(integrante);
                         else if (esAsignado) Object.assign(existente, { tipo_doc: integrante.tipo_doc, num_doc: integrante.num_doc });
                     });
-                    item.auditores_detalle = item.auditores_equipo.map(a => ({
-                        nombre: a.nombre, correo: a.correo, rol: ROL_AUDITOR,
-                        documento: [a.tipo_doc, a.num_doc].filter(Boolean).join(" ")
-                    }));
                     item.auditores_programados = item.auditores_equipo.map(etiquetaAuditorVisita);
                 });
                 programacionesSolicitud = Array.from(consolidated.values()).sort((a, b) => String(a.fecha_inicio || "").localeCompare(String(b.fecha_inicio || "")));
                 programacionesSolicitudDe = String(group.id_solicitud || "");
-                renderTablaProgramaciones(group);
                 sincronizarFormularioConSede(group);
             } catch (error) {
                 programacionesSolicitud = [];
                 programacionesSolicitudDe = "";
-                window.__programacionesActuales = [];
-                $("scheduleList").innerHTML = `<div class="empty">Error consultando las programaciones: ${esc(error.message)}</div>`;
+                showNotice("scheduleNotice", `No fue posible consultar las programaciones: ${error.message}`, "error");
+                sincronizarFormularioConSede(group);
             }
         }
 
@@ -3662,81 +3578,6 @@
         function fechaVisita(valor) {
             const fecha = new Date(String(valor || "").replace(" ", "T"));
             return Number.isNaN(fecha.getTime()) ? "—" : fecha.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-        }
-
-        function renderTablaProgramaciones(group) {
-            const rows = programacionesSolicitud;
-            if (!rows.length) {
-                window.__programacionesActuales = [];
-                $("scheduleList").innerHTML = '<div class="empty">No hay auditorías programadas para esta solicitud.</div>';
-                return;
-            }
-            const sedeSeleccionada = $("scheduleSede")?.value || "";
-            const soloSede = ($("filtroProgramacionSede")?.value || "actual") === "actual" && Boolean(sedeSeleccionada);
-            // Las canceladas solo se ven si se filtra por ese estado.
-            const estadoFiltro = ($("filtroProgramacionEstado")?.value || "").trim();
-            const porEstado = rows.filter((row) => {
-                if (estadoFiltro === "Cancelada") return esProgramacionCancelada(row);
-                if (estadoFiltro === "Todos") return true;
-                return !esProgramacionCancelada(row);
-            });
-            const visibles = porEstado.filter(row => !soloSede || String(row.id_sede || "") === sedeSeleccionada);
-            const filasFiltradas = aplicarFiltroAuditores(visibles);
-            // El detalle de "Ver" se abre por el índice de lo que se pinta.
-            window.__programacionesActuales = filasFiltradas;
-            if (!filasFiltradas.length) {
-                $("scheduleList").innerHTML = visibles.length
-                    ? '<div class="empty">No hay programaciones que coincidan con el filtro.</div>'
-                    : soloSede && porEstado.length
-                        ? '<div class="empty">La sede seleccionada no tiene programaciones con este estado. Elija "Todas las sedes" en el filtro Sede para ver las de las demás sedes.</div>'
-                        : '<div class="empty">No hay programaciones activas. Elige "Solo canceladas" en el filtro de estado para verlas.</div>';
-                return;
-            }
-            const tableRows = filasFiltradas.map((row, idx) => {
-                const terminal = isTerminalSchedule(row);
-                const id = row.id_programacion || "";
-                const lugar = lugarProgramacion(row, group);
-                const actual = sedeSeleccionada && String(row.id_sede || "") === sedeSeleccionada;
-                const enEdicion = programacionEnEdicion && programacionActual && String(programacionActual.id_programacion) === String(id);
-                return `<tr class="${actual ? "fila-sede-actual" : ""}">
-                        <td><span class="cell-strong">${esc(lugar.sede)}</span><span class="cell-line">${esc(lugar.direccion || "—")}</span><span class="cell-meta">${esc(lugar.ciudad)}</span></td>
-                        <td>${auditoresCelda(row)}</td>
-                        <td><span class="cell-line">${esc(formatDateTime(row.fecha_inicio))}</span></td>
-                        <td><span class="cell-line">${esc(formatDateTime(row.fecha_fin))}</span></td>
-                        <td><span class="cell-line">${esc(row.modalidad || "—")}</span></td>
-                        <td><span class="pill ${terminal ? "blocked" : "audit"}">${esc(row.estado || "—")}</span>${enEdicion ? '<span class="cell-meta">En edición</span>' : ""}</td>
-                        <td><span class="cell-line">${esc(row.motivo_cancelacion || row.motivo_reprogramacion || "—")}</span></td>
-                        <td class="row-actions">
-                            <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="toggle" aria-expanded="false">Ver acciones</button>
-                            <div class="acciones-lista" hidden>
-                                <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="view" data-program-index="${idx}" title="Ver detalle completo">Ver</button>
-                                <button class="btn btn-secundario btn-sm secondary" type="button" data-program-action="edit" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Editar la programación de esta sede">Editar</button>
-                                <button class="btn btn-peligro-contorno btn-sm danger" type="button" data-program-action="cancel" data-program-id="${esc(id)}" ${(!id || terminal) ? "disabled" : ""} title="Cancelar programación">Cancelar</button>
-                            </div>
-                        </td>
-                    </tr>`;
-            }).join("");
-            $("scheduleList").innerHTML = `<table><thead><tr><th>Sede y lugar</th><th>Auditor asignado</th><th>Inicio</th><th>Fin</th><th>Modalidad</th><th>Estado</th><th>Observación</th><th>Acciones</th></tr></thead><tbody>${tableRows}</tbody></table>`;
-
-            $("scheduleList").querySelectorAll('[data-program-action="view"]').forEach(button => {
-                button.addEventListener("click", () => verProgramacion(Number(button.dataset.programIndex)));
-            });
-            $("scheduleList").querySelectorAll('[data-program-action="edit"]').forEach(button => {
-                button.addEventListener("click", () => editarProgramacion(button.dataset.programId));
-            });
-            $("scheduleList").querySelectorAll('[data-program-action="cancel"]').forEach(button => {
-                button.addEventListener("click", () => cancelarProgramacion(button.dataset.programId));
-            });
-            $("scheduleList").querySelectorAll('[data-program-action="toggle"]').forEach(button => {
-                button.addEventListener("click", () => alternarRevelado(button, "acciones-lista", "Ver acciones"));
-            });
-        }
-
-        // Nombre (y correo, como línea secundaria) del auditor de la visita.
-        function auditoresCelda(row) {
-            const equipo = row.auditores_equipo || [];
-            if (!equipo.length) return '<span class="cell-meta">Sin auditor registrado</span>';
-            return equipo.map(a => `<span class="cell-line">${esc(a.nombre || "Auditor sin nombre")}</span>${a.correo ? `<span class="cell-meta">${esc(a.correo)}</span>` : ""}`).join("");
         }
 
         // Deja el formulario según la sede elegida: resumen de su visita
@@ -3849,7 +3690,6 @@
                 aplicarDatosSedeSeleccionada(currentAssignment());
             }
             applyExistingSchedule(row, true);
-            renderTablaProgramaciones(currentAssignment());
         }
 
 
@@ -3900,9 +3740,34 @@
             if (destino && document.contains(destino)) {
                 try { destino.focus({ preventScroll: true }); } catch (_) { }
             } else {
-                $("scheduleList").setAttribute("tabindex", "-1");
-                $("scheduleList").focus({ preventScroll: true });
+                $("scheduleResumen").setAttribute("tabindex", "-1");
+                $("scheduleResumen").focus({ preventScroll: true });
             }
+        }
+
+        function confirmarAccionEdicion({ eyebrow, titulo, mensaje, textoAceptar }) {
+            return new Promise(resolve => {
+                resolverConfirmacionCambios = resolve;
+                focoAntesConfirmacionCambios = document.activeElement;
+                $("scheduleConfirmEyebrow").textContent = eyebrow;
+                $("scheduleConfirmTitle").textContent = titulo;
+                $("scheduleConfirmMessage").textContent = mensaje;
+                $("scheduleConfirmAccept").textContent = textoAceptar;
+                $("scheduleConfirmModal").classList.add("show");
+                $("scheduleConfirmAccept").focus();
+            });
+        }
+
+        function cerrarConfirmacionCambios(confirmado) {
+            const modal = $("scheduleConfirmModal");
+            if (!modal.classList.contains("show")) return;
+            modal.classList.remove("show");
+            const resolver = resolverConfirmacionCambios;
+            resolverConfirmacionCambios = null;
+            const destino = confirmado ? $("scheduleSave") : focoAntesConfirmacionCambios;
+            focoAntesConfirmacionCambios = null;
+            if (resolver) resolver(confirmado);
+            if (destino && document.contains(destino)) destino.focus();
         }
 
         async function confirmarAccionProgramacion() {
@@ -3941,7 +3806,7 @@
                 await cargarProgramacionesAgenda();
                 if (group) {
                     await cargarSedes(group.id_empresa, group.id_solicitud, true);
-                    await loadScheduleList(group);
+                    await cargarProgramacionesSolicitud(group);
                 }
                 accionProgramacionEnviando = false;
                 cerrarModalAccionProgramacion();
@@ -4000,15 +3865,13 @@
             // 20/11/2026: el Coordinador puede agregar sedes a la solicitud aprobada.
             $("scheduleAgregarSedeWrap").classList.toggle("hidden", !(group && window.AgregarSedeSolicitud?.esCoordinador()));
             if (group) {
-                await loadScheduleList(group);
+                await cargarProgramacionesSolicitud(group);
                 if (window.__avisoSedesOcupadas) {
                     showNotice("scheduleNotice", window.__avisoSedesOcupadas, "info");
                 }
             } else {
-                window.__programacionesActuales = [];
                 programacionesSolicitud = [];
                 programacionesSolicitudDe = "";
-                $("scheduleList").innerHTML = '<div class="empty">Selecciona una solicitud para consultar sus programaciones.</div>';
                 prepareNewScheduleForm(null);
             }
         });
@@ -4119,11 +3982,16 @@
             });
         });
 
-        $("scheduleCancelEdit").addEventListener("click", () => {
+        $("scheduleCancelEdit").addEventListener("click", async () => {
             if (!programacionActual || !programacionEnEdicion) return;
-            if (!confirm("¿Desea descartar los cambios sin guardar y volver a mostrar la programación actual?")) return;
+            const confirmado = await confirmarAccionEdicion({
+                eyebrow: "Descartar cambios",
+                titulo: "¿Salir de edición?",
+                mensaje: "Si sales ahora, se descartarán los cambios que no hayas guardado. ¿Deseas salir de la edición?",
+                textoAceptar: "Descartar cambios y salir"
+            });
+            if (!confirmado) return;
             applyExistingSchedule(programacionActual, false);
-            renderTablaProgramaciones(currentAssignment());
             try { $("scheduleResumen").scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) { }
         });
 
@@ -4341,10 +4209,17 @@
                 const available = await checkCurrentScheduleAvailability({ silencioso: true });
                 if (!available) return;
             }
-            const confirmMessage = editing
-                ? `Advertencia: va a modificar la visita de ${lugarProgramacion(programacionActual, group).sede}. ¿Desea guardar los cambios?`
-                : `Advertencia: va a registrar la programación de ${nombreSedeSeleccionada()} con el auditor ${equipo[0].nombre}. ¿Desea continuar?`;
-            if (!confirm(confirmMessage)) return;
+            if (editing) {
+                if (!await confirmarAccionEdicion({
+                    eyebrow: "Confirmación de cambios",
+                    titulo: "¿Guardar los cambios?",
+                    mensaje: `Vas a modificar la visita de ${lugarProgramacion(programacionActual, group).sede}. ¿Deseas guardar los cambios realizados?`,
+                    textoAceptar: "Guardar cambios"
+                })) return;
+            } else {
+                const confirmMessage = `Advertencia: va a registrar la programación de ${nombreSedeSeleccionada()} con el auditor ${equipo[0].nombre}. ¿Desea continuar?`;
+                if (!confirm(confirmMessage)) return;
+            }
 
             const fechaInicio = `${$("scheduleDate").value}T${$("scheduleStart").value}:00`;
             const fechaFin = `${$("scheduleDate").value}T${$("scheduleEnd").value}:00`;
@@ -4386,8 +4261,8 @@
                 // cargarSedes conserva la sede elegida: el resumen vuelve a
                 // mostrar la misma sede con los datos guardados.
                 await cargarSedes(group.id_empresa, group.id_solicitud, true);
-                await loadScheduleList(group);
-                // loadScheduleList deja el formulario en modo lectura: el
+                await cargarProgramacionesSolicitud(group);
+                // cargarProgramacionesSolicitud deja el formulario en modo lectura: el
                 // resultado se anuncia después, junto al botón.
                 avisoJuntoAccion("scheduleActionNotice", mensajeOk, "ok");
             } catch (error) {
@@ -4422,7 +4297,7 @@
         $("refreshAll").addEventListener("click", async () => {
             await Promise.all([onAuditorChanged(), loadAssignments()]);
             const group = currentAssignment();
-            if (group) await loadScheduleList(group);
+            if (group) await cargarProgramacionesSolicitud(group);
         });
 
         function mostrarSeccionAgenda(clave) {
@@ -4527,11 +4402,8 @@
         /* =========================================================
            MODAL DE DETALLE DE PROGRAMACIÓN (nuevo, no altera la lógica existente)
         ========================================================= */
-        function verProgramacion(index) {
-            // Recibe el índice de la fila pintada o la programación misma (resumen de la sede).
-            const row = (index && typeof index === 'object') ? index : (window.__programacionesActuales || [])[index];
+        function verProgramacion(row) {
             if (!row) return;
-
             const group = currentAssignment();
 
             const solicitud = row.numero_radicado || row.id_solicitud || group?.numero_radicado || '—';
@@ -4646,6 +4518,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById('programacionModal');
             const actionModal = document.getElementById('programActionModal');
+            const confirmModal = document.getElementById('scheduleConfirmModal');
             if (modal) {
                 modal.addEventListener('click', (e) => {
                     if (e.target.id === 'programacionModal') cerrarProgramacionModal();
@@ -4656,11 +4529,21 @@
                     if (e.target.id === 'programActionModal') cerrarModalAccionProgramacion();
                 });
             }
+            $("scheduleConfirmAccept").addEventListener("click", () => cerrarConfirmacionCambios(true));
+            $("scheduleConfirmCancel").addEventListener("click", () => cerrarConfirmacionCambios(false));
+            $("scheduleConfirmClose").addEventListener("click", () => cerrarConfirmacionCambios(false));
+            if (confirmModal) {
+                confirmModal.addEventListener("click", (e) => {
+                    if (e.target.id === "scheduleConfirmModal") cerrarConfirmacionCambios(false);
+                });
+            }
             document.addEventListener('keydown', (e) => {
-                const modalAbierto = actionModal?.classList.contains('show') ? actionModal
+                const modalAbierto = confirmModal?.classList.contains('show') ? confirmModal
+                    : actionModal?.classList.contains('show') ? actionModal
                     : modal?.classList.contains('show') ? modal : null;
                 if (e.key === 'Escape' && modalAbierto) {
-                    if (modalAbierto === actionModal) cerrarModalAccionProgramacion();
+                    if (modalAbierto === confirmModal) cerrarConfirmacionCambios(false);
+                    else if (modalAbierto === actionModal) cerrarModalAccionProgramacion();
                     else cerrarProgramacionModal();
                     return;
                 }

@@ -626,6 +626,7 @@
           // La pantalla cambia de vista con la dirección (#listado o
           // #reprogramaciones). "Programaciones futuras" se quitó: repetía
           // la consulta general.
+          { texto: "Programar una auditoría", href: "/consultar-agenda-auditor#schedule", proxy: '.agenda-menu a[data-seccion="schedule"]', permisos: ["AGE-021"] },
           { texto: "Consultar auditorías programadas", href: "/consultar-auditorias-programadas-admin#listado", permisos: ["AGE-026", "AGE-041"] },
           { texto: "Solicitudes de reprogramación", href: "/consultar-auditorias-programadas-admin#reprogramaciones", permisos: ["AGE-023", "AGE-030"] }
         ]
@@ -633,7 +634,6 @@
       {
         grupo: "Consultar agenda de auditor",
         opciones: [
-          ["schedule", "Programar una auditoría", ["AGE-021"]],
           // "Solicitudes con auditores asignados" se quitó: solo informaba y
           // eso ya está en Asignación de auditores (con "Programar visita").
           ["weekly", "Disponibilidad semanal", ["AGE-003", "AGE-010"]],
