@@ -956,7 +956,7 @@
       document.getElementById('motivo').value = data.motivo || '';
       document.getElementById('razonesRechazo').value = data.razones_rechazo || 'La solicitud fue rechazada y aún no se registró una explicación detallada en la evaluación inicial.';
       document.getElementById('comentariosComite').value = data.observaciones || '';
-      document.getElementById('metricSolicitud').textContent = data.id_solicitud || '--';
+      document.getElementById('metricSolicitud').textContent = data.numero_radicado || '--';
       document.getElementById('metricRadicado').textContent = data.radicado || '--';
       document.getElementById('metricFecha').textContent = formatDate(data.fecha || data.fecha_decision);
       state.estado = data.estado || null;
@@ -1108,7 +1108,7 @@
           state.currentSolicitudId = idSolicitud;
           document.getElementById('motivo').value = '';
           document.getElementById('razonesRechazo').value = razones || 'El Comité no dejó un motivo escrito al rechazar la solicitud.';
-          document.getElementById('metricSolicitud').textContent = idSolicitud;
+          document.getElementById('metricSolicitud').textContent = contexto.numero_radicado || '--';
           document.getElementById('metricRadicado').textContent = '--';
           document.getElementById('metricFecha').textContent = '--';
           state.estado = null;

@@ -16,6 +16,7 @@ consulta y guarda lo que se ejecutó, sin necesidad de base de datos.
 """
 
 import uuid
+from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
@@ -67,9 +68,15 @@ class BaseFalsa:
             return Resultado(todas=[{"id_empresa": str(ID_EMPRESA)}])
         if "nextval" in sql:
             return Resultado(escalar=7)
+        if sql.startswith("SELECT id, id_solicitud"):
+            return Resultado(primera={
+                "id": ID_APELACION, "id_solicitud": ID_SOLICITUD,
+                "numero_radicado": "SOL-2026-0002", "estado": "ENVIADA",
+            })
         if "FROM solicitud" in sql:
             return Resultado(primera={
                 "id_solicitud": ID_SOLICITUD, "id_empresa": ID_EMPRESA,
+                "numero_radicado": "SOL-2026-0002",
                 "estado": self.estado_solicitud, "deleted_at": None, "observaciones": None,
             })
         if sql.startswith("SELECT id FROM apelacion"):
@@ -78,10 +85,6 @@ class BaseFalsa:
             if self.error_insert is not None:
                 raise self.error_insert
             return Resultado(primera={"id": ID_APELACION, "radicado": "APE-2026-000007", "estado": "ENVIADA"})
-        if sql.startswith("SELECT id, id_solicitud"):
-            return Resultado(primera={
-                "id": ID_APELACION, "id_solicitud": ID_SOLICITUD, "estado": "ENVIADA",
-            })
         if sql.startswith("INSERT INTO evidencia_apelacion"):
             return Resultado(primera={"id_evidencia": uuid.uuid4(), "id_usuario": ID_USUARIO})
         return Resultado()
@@ -120,11 +123,43 @@ async def test_la_apelacion_se_crea_generando_su_id():
     """`apelacion.id` no tiene valor por defecto en la base."""
     db = BaseFalsa()
 
-    await ApelacionesService(db).create_apelacion({"id_solicitud": str(ID_SOLICITUD), "motivo": "motivo"}, USUARIO)
+    result = await ApelacionesService(db).create_apelacion(
+        {"id_solicitud": str(ID_SOLICITUD), "motivo": "motivo"}, USUARIO
+    )
 
     sql = db.sql_de("INSERT INTO apelacion")
     assert "gen_random_uuid()" in sql
     assert sql.index("INSERT INTO apelacion ( id,") > -1
+    assert result["numero_radicado"] == "SOL-2026-0002"
+
+
+async def test_detalle_de_apelacion_incluye_radicado_de_solicitud_original():
+    class BaseDetalle:
+        sql = ""
+
+        async def execute(self, sentencia, parametros=None):
+            self.sql = " ".join(str(sentencia).split())
+            return Resultado(primera={
+                "id": ID_APELACION,
+                "id_solicitud": ID_SOLICITUD,
+                "numero_radicado": "SOL-2026-0002",
+            })
+
+    db = BaseDetalle()
+    result = await ApelacionesService(db).get_apelacion_by_id(ID_APELACION)
+
+    assert result["numero_radicado"] == "SOL-2026-0002"
+    assert "AS numero_radicado" in db.sql
+    assert "apelacion.id_solicitud" in db.sql
+
+
+def test_tarjeta_de_solicitud_muestra_el_radicado_y_no_el_uuid():
+    raiz = Path(__file__).resolve().parents[1]
+    html = (raiz / "static" / "apelacion.html").read_text(encoding="utf-8")
+
+    assert "data.numero_radicado || '--'" in html
+    assert "contexto.numero_radicado || '--'" in html
+    assert "metricSolicitud').textContent = data.id_solicitud" not in html
 
 
 async def test_solo_se_apela_una_solicitud_rechazada():

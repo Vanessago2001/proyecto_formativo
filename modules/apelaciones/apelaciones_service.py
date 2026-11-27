@@ -359,7 +359,7 @@ class ApelacionesService:
             raise
         await self.db.commit()
         row = result.mappings().first()
-        return dict(row) if row else None
+        return {**dict(row), "numero_radicado": solicitud.get("numero_radicado")} if row else None
 
     async def add_evidence(
         self,
@@ -475,7 +475,7 @@ class ApelacionesService:
         result = await self.db.execute(query, payload)
         await self.db.commit()
         row = result.mappings().first()
-        return dict(row) if row else None
+        return {**dict(row), "numero_radicado": existing.get("numero_radicado")} if row else None
 
     async def get_all_apelaciones(self, usuario: dict) -> list[dict]:
         from modules.solicitudes.solicitud_permissions import normalizar_rol, ROL_EMP
@@ -562,6 +562,8 @@ class ApelacionesService:
     async def get_apelacion_by_id(self, id_apelacion: UUID, usuario: dict | None = None) -> dict:
         query = text("""
             SELECT id, id_solicitud,
+                   (SELECT s.numero_radicado FROM solicitud s
+                    WHERE s.id_solicitud = apelacion.id_solicitud) AS numero_radicado,
                    id_empresa, id_auditor_evaluador, estado, radicado, fecha,
                    motivo, razones_rechazo, fallo, observaciones, fecha_decision
             FROM apelacion
