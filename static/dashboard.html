@@ -140,6 +140,33 @@
       font-size: 13px;
     }
 
+    .notification-surface { margin-top: 20px; }
+    .notification-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+    }
+    .notification-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 88px;
+      padding: 14px 16px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      color: #1f2937;
+      text-decoration: none;
+    }
+    .notification-card:hover,
+    .notification-card:focus-visible {
+      border-color: #3baa01;
+      background: #f1f8ed;
+    }
+    .notification-card span { color: #475569; font-size: 13px; }
+    .notification-card b { color: #256d00; font-size: 25px; }
+    #notificationStatus { min-height: 20px; margin: -8px 0 12px; color: #64748b; font-size: 13px; }
+
     .account-form {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -488,6 +515,11 @@
             <b id="auxUsers">-</b><span>Auxiliares e instructores</span>
           </div>
         </section>
+        <section class="surface notification-surface" id="pendingNotifications" aria-labelledby="notificationTitle">
+          <h3 id="notificationTitle">Pendientes por atender</h3>
+          <p id="notificationStatus" role="status" aria-live="polite">Cargando pendientes...</p>
+          <div class="notification-grid" id="notificationCards"></div>
+        </section>
         <section class="surface" id="usuarios">
           <h3>Crear cuenta auxiliar</h3>
           <p class="message" id="formMessage"></p>
@@ -754,6 +786,7 @@
       const usuarios = vista === "usuarios";
       const mostrar = (el, si) => { if (el) el.style.display = si ? "" : "none"; };
       mostrar(document.getElementById("vistaResumen"), !usuarios);
+      mostrar(document.getElementById("pendingNotifications"), !usuarios);
       mostrar(document.getElementById("usuarios"), usuarios);
       mostrar(document.querySelector("#adminView .users-section"), usuarios);
       document.querySelectorAll("#vistasDashboard button[data-view]").forEach((boton) => {
@@ -784,6 +817,60 @@
         "Content-Type": "application/json",
         Authorization: "Bearer " + token,
       };
+    }
+    async function obtenerJson(url, mensajeError) {
+      const response = await fetch(url, { headers: headers(), cache: "no-store" });
+      if (!response.ok) throw new Error(mensajeError);
+      return response.json();
+    }
+    async function loadPendingNotifications() {
+      const status = document.getElementById("notificationStatus");
+      const cards = document.getElementById("notificationCards");
+      const results = await Promise.allSettled([
+        obtenerJson("/asignacion-auditores/conteo-etapas", "No se pudieron consultar las etapas de solicitudes."),
+        obtenerJson("/asignacion-auditores/solicitudes-cambio?estado=Pendiente", "No se pudieron consultar los cambios de auditor."),
+        obtenerJson("/agenda-auditor/reprogramaciones/pendientes/conteo", "No se pudieron consultar las reprogramaciones."),
+      ]);
+      const esConteoValido = (valor) =>
+        (typeof valor === "number" || (typeof valor === "string" && valor.trim() !== ""))
+        && Number.isFinite(Number(valor));
+      const etapas = results[0].status === "fulfilled" ? results[0].value : null;
+      const etapasValidas = etapas && ["radicadas", "revision", "por_asignar"].every(
+        (campo) => esConteoValido(etapas[campo]),
+      );
+      const cambiosAuditor = results[1].status === "fulfilled" && Array.isArray(results[1].value)
+        ? results[1].value.length
+        : null;
+      const reprogramaciones = results[2].status === "fulfilled"
+        ? results[2].value.total
+        : null;
+      const reprogramacionesValidas = esConteoValido(reprogramaciones);
+      const items = [
+        { label: "Nuevas solicitudes", detail: "Radicadas y pendientes de revisión", count: etapasValidas ? etapas.radicadas : null, href: "/solicitudes#radicadas" },
+        { label: "Solicitudes en revisión", detail: "Casos que requieren seguimiento", count: etapasValidas ? etapas.revision : null, href: "/solicitudes#revision" },
+        { label: "Solicitudes por asignar", detail: "Pendientes de asignar auditor", count: etapasValidas ? etapas.por_asignar : null, href: "/solicitudes#por-asignar" },
+        { label: "Cambios de auditor", detail: "Solicitudes pendientes de decisión", count: cambiosAuditor, href: "/solicitudes#con-auditores" },
+        { label: "Reprogramaciones", detail: "Cambios de programación por resolver", count: reprogramacionesValidas ? reprogramaciones : null, href: "/consultar-auditorias-programadas-admin#reprogramaciones" },
+      ];
+      cards.replaceChildren();
+      items.forEach((item) => {
+        const link = document.createElement("a");
+        link.className = "notification-card";
+        link.href = item.href;
+        const text = document.createElement("span");
+        text.textContent = item.label + " — " + item.detail;
+        const count = document.createElement("b");
+        const disponible = esConteoValido(item.count);
+        count.textContent = disponible ? String(item.count) : "—";
+        link.setAttribute("aria-label", item.label + ": " + count.textContent + ". " + item.detail);
+        link.append(text, count);
+        cards.appendChild(link);
+      });
+      const hasError = results.some((result) => result.status === "rejected")
+        || !etapasValidas || cambiosAuditor === null || !reprogramacionesValidas;
+      status.textContent = hasError
+        ? "Algunos pendientes no pudieron cargarse. Los conteos no disponibles aparecen como —."
+        : "Conteos actualizados.";
     }
     <!-- nuevo Sneider -->
 
@@ -1521,6 +1608,7 @@
       loadRoles()
         .then(loadUsers)
         .catch((e) => show("tableMessage", e.message, false));
+    if (isAdmin) loadPendingNotifications();
 
 
 

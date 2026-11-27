@@ -180,6 +180,14 @@ async def listar_todas_programaciones(
     )}
 
 
+@router.get("/reprogramaciones/pendientes/conteo")
+async def contar_reprogramaciones_pendientes(
+    usuario: dict = Depends(_validar_administrador),
+    db: AsyncSession = Depends(get_db),
+):
+    return {"total": await AgendaAuditorService(db).contar_reprogramaciones_pendientes()}
+
+
 @router.get(
     "/programacion/{id_programacion}/detalle",
     summary="Detalle completo de una programación",

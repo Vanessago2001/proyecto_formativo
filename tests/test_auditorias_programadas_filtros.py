@@ -102,3 +102,54 @@ def test_el_endpoint_acepta_y_pasa_el_estado(monkeypatch):
     )
     assert respuesta == {"auditorias": []}
     assert recibido["estado"] == "Cancelada"
+
+
+def test_conteo_reprogramaciones_usa_programaciones_unicas_y_pendientes():
+    class ResultadoConteo:
+        def scalar_one(self):
+            return 3
+
+    class SesionConteo:
+        sql = ""
+
+        async def execute(self, statement):
+            self.sql = " ".join(str(statement).split())
+            return ResultadoConteo()
+
+    sesion = SesionConteo()
+    total = asyncio.run(AgendaAuditorService(sesion).contar_reprogramaciones_pendientes())
+
+    assert total == 3
+    assert "COUNT(DISTINCT id_programacion)" in sesion.sql
+    assert "estado_solicitud_reprogramacion" in sesion.sql
+    assert "= 'PENDIENTE'" in sesion.sql
+
+
+def test_endpoint_conteo_reprogramaciones_pendientes(monkeypatch):
+    async def falso(self):
+        return 4
+
+    monkeypatch.setattr(AgendaAuditorService, "contar_reprogramaciones_pendientes", falso)
+    respuesta = asyncio.run(
+        agenda_router.contar_reprogramaciones_pendientes(
+            usuario={"role_name": "Coordinador"},
+            db=None,
+        )
+    )
+
+    assert respuesta == {"total": 4}
+
+
+def test_resumen_administrativo_incluye_pendientes_con_enlaces_directos():
+    html = (RAIZ / "static" / "dashboard.html").read_text(encoding="utf-8")
+
+    assert 'id="notificationCards"' in html
+    assert 'id="notificationStatus"' in html
+    for href in (
+        "/solicitudes#radicadas",
+        "/solicitudes#revision",
+        "/solicitudes#por-asignar",
+        "/solicitudes#con-auditores",
+        "/consultar-auditorias-programadas-admin#reprogramaciones",
+    ):
+        assert href in html

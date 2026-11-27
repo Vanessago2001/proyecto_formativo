@@ -643,6 +643,16 @@ class AgendaAuditorService(AuditorService):
         )
         return [dict(row) for row in result.mappings().all()]
 
+    async def contar_reprogramaciones_pendientes(self) -> int:
+        result = await self.db.execute(
+            text("""
+                SELECT COUNT(DISTINCT id_programacion)
+                FROM programacion_visita
+                WHERE UPPER(TRIM(COALESCE(estado_solicitud_reprogramacion, ''))) = 'PENDIENTE'
+            """)
+        )
+        return int(result.scalar_one() or 0)
+
     async def consultar_detalle_programacion(self, id_programacion: UUID) -> dict:
         """Detalle completo de una programación: solicitud, empresa, sede y auditores."""
         result = await self.db.execute(
