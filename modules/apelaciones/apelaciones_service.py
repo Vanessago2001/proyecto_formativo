@@ -229,7 +229,7 @@ class ApelacionesService:
 
     async def comite_elegible(self, id_apelacion: UUID) -> list[dict]:
         """
-        Miembros del Comité que el Administrador puede asignar a la apelación.
+        Auditores aprobados y miembros ya asignados a la apelación.
 
         Marca a quienes ya evaluaron la solicitud original (no pueden revisar
         su propia decisión) y a quienes ya están asignados a la apelación.
@@ -245,22 +245,41 @@ class ApelacionesService:
         evaluadores = await self.miembros_que_evaluaron(id_solicitud)
         asignados = {str(m["id_usuario"]) for m in await self.miembros_del_comite(id_apelacion)}
 
-        # Se listan los del Comité y también los Auditores: un auditor puede
-        # ser designado para resolver una apelación, y al asignarlo el sistema
-        # le pasa el rol (ver `assign_committee`).
+        # Los auditores nuevos deben tener postulación aprobada. Los miembros
+        # ya asignados también se conservan aunque su rol haya cambiado a Comité.
         resultado = await self.db.execute(
             text("""
                 SELECT u.id_usuario, u.nombre, u.correo, r.nombre AS rol
                 FROM usuario u
                 JOIN rol r ON r.id_rol = u.rol_id
                 WHERE u.estado = 'Activo'
-                  AND (LOWER(r.nombre) LIKE 'comit%' OR LOWER(r.nombre) LIKE 'auditor%')
+                  AND (
+                      EXISTS (
+                          SELECT 1
+                          FROM apelacion_comite ac
+                          WHERE ac.id_apelacion = :id_apelacion
+                            AND ac.id_usuario = u.id_usuario
+                      )
+                      OR (
+                          LOWER(r.nombre) LIKE 'auditor%'
+                          AND u.estado_auditor = 'Activo'
+                          AND EXISTS (
+                              SELECT 1
+                              FROM postulacion_auditor pa
+                              WHERE pa.id_usuario = u.id_usuario
+                                AND LOWER(pa.estado) IN ('aprobado', 'aprobada')
+                          )
+                      )
+                  )
                 ORDER BY r.nombre, u.nombre;
-            """)
+            """),
+            {"id_apelacion": str(id_apelacion)},
         )
         miembros = []
         for fila in resultado.mappings().all():
             identificador = str(fila["id_usuario"])
+            if identificador in evaluadores:
+                continue
             es_comite = (fila["rol"] or "").lower().startswith("comit")
             miembros.append({
                 "id_usuario": identificador,
@@ -606,6 +625,33 @@ class ApelacionesService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No existe el usuario " + ", ".join(desconocidos),
+            )
+
+        auditores_no_aprobados = await self.db.execute(
+            text("""
+                SELECT u.id_usuario
+                FROM usuario u
+                JOIN rol r ON r.id_rol = u.rol_id
+                WHERE u.id_usuario::TEXT = ANY(:miembros)
+                  AND LOWER(r.nombre) LIKE 'auditor%'
+                  AND (
+                    COALESCE(u.estado, '') <> 'Activo'
+                    OR COALESCE(u.estado_auditor, '') <> 'Activo'
+                    OR NOT EXISTS (
+                        SELECT 1
+                        FROM postulacion_auditor pa
+                        WHERE pa.id_usuario = u.id_usuario
+                          AND LOWER(pa.estado) IN ('aprobado', 'aprobada')
+                    )
+                  );
+            """),
+            {"miembros": [str(m) for m in miembros_comite]},
+        )
+        no_aprobados = [str(fila["id_usuario"]) for fila in auditores_no_aprobados.mappings().all()]
+        if no_aprobados:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Solo se pueden asignar auditores activos con postulación aprobada.",
             )
 
         # La apelación la revisa un comité distinto al que evaluó la solicitud.

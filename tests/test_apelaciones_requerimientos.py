@@ -8,8 +8,8 @@ Cubre los cuatro cambios pedidos sobre el módulo:
   2. Las acciones dependen del estado (lo comprueba la pantalla; aquí se
      comprueba que el servicio tampoco deje pasar lo que no toca).
   3. Se adjuntan varios documentos de una vez y la carga suma, no reemplaza.
-  4. Al asignar el comité se admite a los auditores, y al asignarlos se les
-     pasa el rol a Comité.
+  4. Al asignar el comité se admiten auditores aprobados y se les pasa el rol
+     a Comité.
 """
 
 import io
@@ -65,7 +65,8 @@ class BaseFalsa:
     """Doble que responde por el texto de cada consulta."""
 
     def __init__(self, estado="EN_REVISION", elegibles=None, requerimientos=None,
-                 pendientes=1, rol_comite=ID_ROL_COMITE, sin_comite=None):
+                 pendientes=1, rol_comite=ID_ROL_COMITE, sin_comite=None,
+                 auditores_no_aprobados=None):
         self.estado = estado
         self.elegibles = elegibles if elegibles is not None else [
             {"id_usuario": ID_MIEMBRO, "nombre": "Ana", "correo": "ana@sena.edu.co", "rol": "Comité"},
@@ -78,6 +79,7 @@ class BaseFalsa:
         self.sin_comite = sin_comite if sin_comite is not None else [
             {"id_usuario": ID_AUDITOR, "nombre": "Beto", "rol": "Auditor"}
         ]
+        self.auditores_no_aprobados = auditores_no_aprobados or []
         self.sentencias: list[tuple[str, dict]] = []
 
     async def execute(self, sentencia, parametros=None):
@@ -108,6 +110,8 @@ class BaseFalsa:
             return Resultado(todas=[(str(ID_EVALUADOR),)])
         if sql.startswith("SELECT ac.id_usuario"):
             return Resultado(todas=[])
+        if sql.startswith("SELECT u.id_usuario FROM usuario u JOIN rol r"):
+            return Resultado(todas=[{"id_usuario": usuario} for usuario in self.auditores_no_aprobados])
         if sql.startswith("SELECT u.id_usuario, u.nombre, u.correo, r.nombre AS rol"):
             return Resultado(todas=self.elegibles)
         if sql.startswith("SELECT u.id_usuario, COALESCE(u.nombre, u.correo) AS nombre, r.nombre AS rol"):
@@ -289,7 +293,7 @@ async def test_no_se_admite_un_envio_sin_archivos():
 # 4. ELEGIBLES Y CAMBIO DE ROL
 # ============================================================
 
-async def test_los_elegibles_incluyen_a_los_auditores():
+async def test_los_elegibles_incluyen_auditores_aprobados_y_comite_ya_asignado():
     db = BaseFalsa()
 
     elegibles = await ApelacionesService(db).comite_elegible(ID_APELACION)
@@ -298,6 +302,14 @@ async def test_los_elegibles_incluyen_a_los_auditores():
     assert roles == {"Ana": "Comité", "Beto": "Auditor"}
     consulta = db.sql_de("SELECT u.id_usuario, u.nombre, u.correo, r.nombre AS rol")
     assert "auditor%" in consulta
+    assert "u.estado_auditor = 'Activo'" in consulta
+    assert "FROM postulacion_auditor pa" in consulta
+    assert "LOWER(pa.estado) IN ('aprobado', 'aprobada')" in consulta
+    assert "FROM apelacion_comite ac" in consulta
+    assert "ac.id_apelacion = :id_apelacion" in consulta
+    assert db.parametros_de("SELECT u.id_usuario, u.nombre, u.correo, r.nombre AS rol") == {
+        "id_apelacion": str(ID_APELACION)
+    }
 
 
 async def test_se_avisa_a_quien_hay_que_cambiarle_el_rol():
@@ -308,6 +320,17 @@ async def test_se_avisa_a_quien_hay_que_cambiarle_el_rol():
     por_nombre = {e["nombre"]: e for e in elegibles}
     assert por_nombre["Beto"]["necesita_cambio_de_rol"] is True
     assert por_nombre["Ana"]["necesita_cambio_de_rol"] is False
+
+
+async def test_los_evaluadores_originales_no_aparecen_entre_los_elegibles():
+    db = BaseFalsa(elegibles=[
+        {"id_usuario": ID_EVALUADOR, "nombre": "Leonel", "correo": "leonel@sena.edu.co", "rol": "Auditor"},
+        {"id_usuario": ID_AUDITOR, "nombre": "Beto", "correo": "beto@sena.edu.co", "rol": "Auditor"},
+    ])
+
+    elegibles = await ApelacionesService(db).comite_elegible(ID_APELACION)
+
+    assert [miembro["nombre"] for miembro in elegibles] == ["Beto"]
 
 
 async def test_asignar_a_un_auditor_le_pasa_el_rol_a_comite():
@@ -323,6 +346,17 @@ async def test_asignar_a_un_auditor_le_pasa_el_rol_a_comite():
     }]
     parametros = db.parametros_de("UPDATE usuario SET rol_id")
     assert parametros["id_rol"] == ID_ROL_COMITE
+
+
+async def test_no_se_puede_asignar_un_auditor_sin_postulacion_aprobada():
+    db = BaseFalsa(auditores_no_aprobados=[ID_AUDITOR])
+
+    with pytest.raises(HTTPException) as error:
+        await ApelacionesService(db).assign_committee(ID_APELACION, [ID_AUDITOR])
+
+    assert error.value.status_code == 400
+    assert not db.hubo("UPDATE usuario SET rol_id")
+    assert not db.hubo("INSERT INTO apelacion_comite")
 
 
 async def test_a_quien_ya_es_del_comite_no_se_le_toca_el_rol():

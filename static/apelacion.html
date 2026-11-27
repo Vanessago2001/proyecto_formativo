@@ -505,6 +505,16 @@
       padding: 16px 18px;
     }
 
+    .expediente-bloque.comite-asignado {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .expediente-bloque.comite-asignado .acciones-comite {
+      margin-top: auto;
+      padding-top: 12px;
+    }
+
     .dato-lista {
       display: grid;
       grid-template-columns: auto 1fr;
@@ -567,6 +577,205 @@
       font-weight: 700;
     }
 
+    .modal-comite {
+      width: min(940px, calc(100vw - 32px));
+      max-width: none;
+      max-height: min(90vh, 860px);
+      padding: 0;
+      border: 1px solid var(--gris-200);
+      border-radius: 16px;
+      color: var(--gris-900);
+      box-shadow: 0 24px 70px rgba(15, 23, 42, .28);
+      overflow: hidden;
+    }
+
+    .modal-comite[open] {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-comite::backdrop {
+      background: rgba(15, 23, 42, .55);
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-comite-header,
+    .modal-comite-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 18px 22px;
+      background: #f8fafc;
+    }
+
+    .modal-comite-header {
+      border-bottom: 1px solid var(--gris-200);
+    }
+
+    .modal-comite-header h2 {
+      margin: 0;
+      color: var(--verde-800);
+      font-size: 20px;
+    }
+
+    .modal-comite-header p {
+      margin: 4px 0 0;
+      color: var(--gris-500);
+      font-size: 13px;
+    }
+
+    .modal-comite-body {
+      min-height: 0;
+      padding: 18px 22px;
+      overflow-y: auto;
+    }
+
+    .modal-comite-footer {
+      justify-content: flex-end;
+      border-top: 1px solid var(--gris-200);
+    }
+
+    .comite-busqueda {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .comite-busqueda label {
+      color: var(--verde-800);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .comite-busqueda input {
+      width: 100%;
+      min-height: 42px;
+      padding: 9px 12px;
+      border: 1px solid #94a3b8;
+      border-radius: 8px;
+      font: inherit;
+    }
+
+    .auditores-elegibles-lista {
+      display: grid;
+      gap: 10px;
+    }
+
+    .auditor-elegible {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--gris-200);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .auditor-elegible.restringido {
+      background: #fffbeb;
+      border-color: #f3d28b;
+    }
+
+    .auditor-elegible input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--verde-600);
+    }
+
+    .auditor-elegible-info {
+      min-width: 0;
+    }
+
+    .auditor-elegible-info strong {
+      display: block;
+      margin-bottom: 3px;
+      overflow-wrap: anywhere;
+    }
+
+    .auditor-elegible-info small {
+      color: var(--gris-500);
+      overflow-wrap: anywhere;
+    }
+
+    .auditor-elegible-estados {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .auditor-elegible-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .auditor-elegible-badge.restriccion {
+      background: var(--amarillo-100);
+      color: var(--amarillo-700);
+    }
+
+    .auditor-elegible-badge.asignado {
+      background: var(--azul-100);
+      color: var(--azul-700);
+    }
+
+    .comite-paginacion {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .comite-paginacion span {
+      color: var(--gris-700);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .competencia-lista {
+      display: grid;
+      gap: 12px;
+    }
+
+    .competencia-card {
+      padding: 14px 16px;
+      border: 1px solid var(--gris-200);
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+
+    .competencia-card h3 {
+      margin: 0 0 10px;
+      color: var(--verde-800);
+      font-size: 15px;
+    }
+
+    .competencia-card dl {
+      display: grid;
+      grid-template-columns: minmax(110px, .7fr) minmax(0, 1.3fr);
+      gap: 7px 12px;
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .competencia-card dt {
+      color: var(--gris-500);
+      font-weight: 700;
+    }
+
+    .competencia-card dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
     .empty-state {
       padding: 16px;
       border: 1px dashed #cbd5e1;
@@ -587,6 +796,20 @@
 
     @media (max-width: 600px) {
       .metrics { grid-template-columns: 1fr; }
+      .modal-comite {
+        width: calc(100vw - 16px);
+        max-height: 94vh;
+        border-radius: 12px;
+      }
+      .modal-comite-header,
+      .modal-comite-body,
+      .modal-comite-footer { padding: 14px; }
+      .auditor-elegible { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+      .auditor-elegible > button { grid-column: 2; justify-self: start; }
+      .comite-paginacion { gap: 8px; }
+      .comite-paginacion .btn { padding-inline: 9px; }
+      .competencia-card dl { grid-template-columns: 1fr; gap: 3px; }
+      .competencia-card dd { margin-bottom: 7px; }
     }
   </style>
 </head>
@@ -652,7 +875,6 @@
           <button class="vista-link" type="button" data-vista="apelacion">Mi apelación</button>
           <button class="vista-link" type="button" data-vista="requerimientos">Requerimientos</button>
           <button class="vista-link" type="button" data-vista="decision">Decisión del comité</button>
-          <button class="vista-link" type="button" data-vista="asignar">Asignar comité</button>
         </nav>
         <p class="hint" id="vistaAyuda" hidden>Seleccione una apelación de la bandeja.</p>
         <!-- =============== BANDEJA =============== -->
@@ -689,9 +911,12 @@
               <dl id="expedienteSolicitud" class="dato-lista"></dl>
             </article>
 
-            <article class="expediente-bloque">
+            <article class="expediente-bloque comite-asignado">
               <h3 class="side-title">Comité asignado a la apelación</h3>
               <div id="expedienteComite" class="support-list"></div>
+              <div class="acciones-comite">
+                <button class="btn btn-primario primary" id="btnAbrirAsignarComite" type="button" style="display:none;">Asignar comité</button>
+              </div>
             </article>
           </div>
 
@@ -821,23 +1046,6 @@
           </article>
         </section>
 
-        <!-- =============== ASIGNAR COMITÉ (administración) =============== -->
-        <section class="panel" data-vista-panel="asignar" hidden>
-          <div class="section-header">
-            <h2>Asignar el comité de la apelación</h2>
-            <button class="btn btn-secundario secondary" id="btnActualizarElegibles" type="button">Actualizar</button>
-          </div>
-          <p class="hint">
-            Debe ser un comité distinto al que evaluó la solicitud original: quienes
-            ya la evaluaron aparecen marcados y no se pueden seleccionar. Si elige a
-            un auditor, el sistema le pasa el rol a Comité al asignarlo.
-          </p>
-          <div id="listaElegibles" class="support-list"></div>
-          <div class="actions">
-            <button class="btn btn-primario primary" id="btnAsignarComite" type="button">Asignar comité</button>
-          </div>
-        </section>
-
         <!-- Se usan poco: se guardan plegados para no robar espacio. -->
         <details class="panel plegable" id="panelBusqueda" style="margin-top: 18px;">
           <summary>Buscar otra solicitud y ver el flujo</summary>
@@ -859,6 +1067,45 @@
             <button class="btn btn-primario primary" id="btnBuscar" type="button">Buscar</button>
           </div>
         </details>
+
+        <dialog id="modalAsignarComite" class="modal-comite" aria-labelledby="modalAsignarComiteTitulo">
+          <div class="modal-comite-header">
+            <div>
+              <h2 id="modalAsignarComiteTitulo">Asignar comité de la apelación</h2>
+              <p>Seleccione auditores con postulación aprobada. Los miembros ya asignados se conservan; quienes evaluaron la solicitud original no se pueden asignar.</p>
+            </div>
+            <button class="btn btn-secundario secondary" id="btnCerrarAsignarComite" type="button" aria-label="Cerrar modal">Cerrar</button>
+          </div>
+          <div class="modal-comite-body">
+            <div class="comite-busqueda">
+              <label for="buscarAuditorComite">Buscar por nombre o correo</label>
+              <input id="buscarAuditorComite" type="search" autocomplete="off" placeholder="Escriba un nombre o correo electrónico">
+            </div>
+            <div id="listaElegibles" class="auditores-elegibles-lista" aria-live="polite"></div>
+            <div class="comite-paginacion" aria-label="Paginación de auditores">
+              <button class="btn btn-secundario secondary" id="paginaComiteAnterior" type="button">Anterior</button>
+              <span id="estadoPaginacionComite" aria-live="polite">Página 0 de 0</span>
+              <button class="btn btn-secundario secondary" id="paginaComiteSiguiente" type="button">Siguiente</button>
+            </div>
+          </div>
+          <div class="modal-comite-footer">
+            <button class="btn btn-secundario secondary" id="btnCancelarAsignacion" type="button">Cancelar</button>
+            <button class="btn btn-primario primary" id="btnAsignarComite" type="button" disabled>Asignar comité</button>
+          </div>
+        </dialog>
+
+        <dialog id="modalCompetenciasAuditor" class="modal-comite" aria-labelledby="modalCompetenciasTitulo">
+          <div class="modal-comite-header">
+            <div>
+              <h2 id="modalCompetenciasTitulo">Competencias del auditor</h2>
+              <p id="modalCompetenciasAuditorNombre"></p>
+            </div>
+            <button class="btn btn-secundario secondary" id="btnCerrarCompetencias" type="button">Volver</button>
+          </div>
+          <div class="modal-comite-body">
+            <div id="listaCompetenciasAuditor" class="competencia-lista" aria-live="polite"></div>
+          </div>
+        </dialog>
       </main>
     </div>
   </div>
@@ -874,6 +1121,12 @@
       apelable: false,        // la solicitud está rechazada y se puede apelar
       comiteAsignado: 0,      // miembros del comité asignados
       archivos: [],           // documentos elegidos y todavía sin enviar
+      comiteElegible: [],
+      comiteSeleccionados: new Set(),
+      busquedaComite: '',
+      paginaComite: 1,
+      competenciasPorAuditor: new Map(),
+      asignandoComite: false,
     };
 
     function parseUserRole() {
@@ -1308,41 +1561,186 @@
         state.comiteAsignado = (expediente.comite_asignado || []).length;
         pintarComiteAsignado(expediente.comite_asignado);
         pintarEvidenciasDelExpediente(expediente.evidencias);
+        actualizarDisponibilidad();
       } catch (error) {
         limpiarExpediente(error.message);
       }
-      if (esAdministracion()) await cargarComiteElegible(id);
+    }
+
+    const MIEMBROS_POR_PAGINA = 5;
+
+    function normalizarBusquedaComite(valor) {
+      return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
+    }
+
+    function miembrosComiteFiltrados() {
+      const busqueda = normalizarBusquedaComite(state.busquedaComite);
+      return state.comiteElegible.filter((item) => {
+        const nombre = normalizarBusquedaComite(item.nombre);
+        const correo = normalizarBusquedaComite(item.correo);
+        return !busqueda || nombre.includes(busqueda) || correo.includes(busqueda);
+      });
+    }
+
+    function actualizarPaginacionComite(cantidad, paginas) {
+      const pagina = cantidad ? state.paginaComite : 0;
+      document.getElementById('estadoPaginacionComite').textContent =
+        `Página ${pagina} de ${paginas} · ${cantidad} miembros`;
+      document.getElementById('paginaComiteAnterior').disabled = !cantidad || state.paginaComite <= 1;
+      document.getElementById('paginaComiteSiguiente').disabled = !cantidad || state.paginaComite >= paginas;
+    }
+
+    function actualizarBotonAsignarComite() {
+      const boton = document.getElementById('btnAsignarComite');
+      boton.disabled = state.asignandoComite || !state.currentAppealId || state.comiteSeleccionados.size === 0;
+    }
+
+    function pintarComiteElegible() {
+      const contenedor = document.getElementById('listaElegibles');
+      const miembros = miembrosComiteFiltrados();
+      const paginas = Math.ceil(miembros.length / MIEMBROS_POR_PAGINA);
+      state.paginaComite = paginas ? Math.min(state.paginaComite, paginas) : 1;
+      actualizarPaginacionComite(miembros.length, paginas);
+
+      if (!miembros.length) {
+        contenedor.innerHTML = `<div class="empty-state">${
+          state.comiteElegible.length
+            ? 'No se encontraron auditores que coincidan con la búsqueda.'
+            : 'No hay miembros elegibles para asignar el comité.'
+        }</div>`;
+        actualizarBotonAsignarComite();
+        return;
+      }
+
+      const inicio = (state.paginaComite - 1) * MIEMBROS_POR_PAGINA;
+      contenedor.innerHTML = miembros.slice(inicio, inicio + MIEMBROS_POR_PAGINA).map((item) => {
+        const id = String(item.id_usuario);
+        const nombre = item.nombre || 'Sin nombre';
+        const yaEvaluo = Boolean(item.ya_evaluo);
+        const asignado = Boolean(item.asignado);
+        const seleccionado = !yaEvaluo && state.comiteSeleccionados.has(id);
+        const estados = [
+          yaEvaluo
+            ? '<span class="auditor-elegible-badge restriccion">Evaluó la solicitud original · No seleccionable</span>'
+            : `<span class="auditor-elegible-badge">${item.necesita_cambio_de_rol ? 'Auditor aprobado' : 'Miembro activo del Comité'}</span>`,
+          asignado ? '<span class="auditor-elegible-badge asignado">Ya asignado</span>' : '',
+          item.necesita_cambio_de_rol && !yaEvaluo
+            ? '<span class="auditor-elegible-badge">Su rol cambiará a Comité</span>'
+            : '',
+        ].filter(Boolean).join('');
+        return `
+          <article class="auditor-elegible${yaEvaluo ? ' restringido' : ''}">
+            <input type="checkbox" data-comite-id="${escapeHtml(id)}"
+                   aria-label="Seleccionar a ${escapeHtml(nombre)}"
+                   ${seleccionado ? 'checked' : ''} ${yaEvaluo ? 'disabled' : ''}>
+            <div class="auditor-elegible-info">
+              <strong>${escapeHtml(nombre)}</strong>
+              <small>${escapeHtml(item.correo || '')}</small>
+              <div class="auditor-elegible-estados">${estados}</div>
+            </div>
+            <button class="btn btn-secundario btn-sm secondary" type="button"
+                    data-ver-competencias="${escapeHtml(id)}">Ver competencias</button>
+          </article>
+        `;
+      }).join('');
+      actualizarBotonAsignarComite();
     }
 
     async function cargarComiteElegible(id) {
       const contenedor = document.getElementById('listaElegibles');
+      contenedor.innerHTML = '<div class="empty-state">Cargando miembros elegibles...</div>';
+      state.comiteElegible = [];
+      state.comiteSeleccionados = new Set();
+      actualizarPaginacionComite(0, 0);
+      actualizarBotonAsignarComite();
       if (!id) {
         contenedor.innerHTML = '<div class="empty-state">Abra una apelación de la bandeja para asignarle comité.</div>';
         return;
       }
-      contenedor.innerHTML = '<div class="empty-state">Cargando miembros del Comité...</div>';
       try {
         const miembros = await api(`/api/apelaciones/${id}/comite-elegible`);
-        if (!Array.isArray(miembros) || miembros.length === 0) {
-          contenedor.innerHTML = '<div class="empty-state">No hay miembros del Comité activos.</div>';
-          return;
-        }
-        contenedor.innerHTML = miembros.map((item) => `
-          <div class="support-item${item.ya_evaluo ? ' miembro-vetado' : ''}">
-            <label class="miembro-fila">
-              <input type="checkbox" value="${escapeHtml(item.id_usuario)}"
-                     ${item.ya_evaluo ? 'disabled' : ''} ${item.asignado ? 'checked' : ''} />
-              <span>
-                <strong>${escapeHtml(item.nombre || 'Sin nombre')}</strong>
-                <small>${escapeHtml(item.correo || '')}</small>
-                ${item.ya_evaluo ? '<span class="marca-vetado">Evaluó la solicitud original</span>' : ''}
-                ${item.asignado ? '<span class="marca-asignado">Ya asignado</span>' : ''}
-              </span>
-            </label>
-          </div>
-        `).join('');
+        if (!Array.isArray(miembros)) throw new Error('No se pudo cargar la lista de miembros elegibles.');
+        state.comiteElegible = miembros;
+        state.comiteSeleccionados = new Set(
+          miembros
+            .filter((item) => item.asignado && !item.ya_evaluo)
+            .map((item) => String(item.id_usuario))
+        );
+        state.paginaComite = 1;
+        pintarComiteElegible();
       } catch (error) {
-        contenedor.innerHTML = '<div class="empty-state">' + escapeHtml(error.message) + '</div>';
+        contenedor.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        actualizarPaginacionComite(0, 0);
+        actualizarBotonAsignarComite();
+      }
+    }
+
+    async function abrirModalAsignarComite() {
+      if (!state.currentAppealId) {
+        setAlert('Abra una apelación de la bandeja antes de asignar el comité.', 'error');
+        return;
+      }
+      state.busquedaComite = '';
+      state.paginaComite = 1;
+      document.getElementById('buscarAuditorComite').value = '';
+      document.getElementById('modalAsignarComite').showModal();
+      await cargarComiteElegible(state.currentAppealId);
+    }
+
+    function pintarCompetenciasAuditor(competencias) {
+      const contenedor = document.getElementById('listaCompetenciasAuditor');
+      if (!competencias.length) {
+        contenedor.innerHTML = '<div class="empty-state">Este auditor no tiene competencias registradas.</div>';
+        return;
+      }
+      const campo = (etiqueta, valor) => valor === null || valor === undefined || valor === ''
+        ? ''
+        : `<dt>${escapeHtml(etiqueta)}</dt><dd>${escapeHtml(valor)}</dd>`;
+      contenedor.innerHTML = competencias.map((item) => {
+        const norma = [item.norma_nombre, item.norma_codigo, item.norma_version].filter(Boolean).join(' · ') || item.id_norma;
+        const campos = [
+          campo('Tipo', item.tipo_competencia),
+          campo('Norma', norma),
+          campo('Sector IAF', item.codigo_sector_iaf),
+          campo('Institución', item.titulo_institucion),
+          campo('Descripción', item.descripcion),
+          campo('Vigencia', item.es_vigente == null ? null : item.es_vigente ? 'Vigente' : 'No vigente'),
+          campo('Validación', item.estado_validacion),
+          campo('Válida desde', item.fecha_inicio ? formatDate(String(item.fecha_inicio)) : null),
+          campo('Válida hasta', item.fecha_fin ? formatDate(String(item.fecha_fin)) : null),
+          campo('Observación', item.observacion_validacion),
+        ].join('');
+        return `
+          <article class="competencia-card">
+            <h3>${escapeHtml(item.tipo_competencia || 'Competencia registrada')}</h3>
+            <dl>${campos}</dl>
+          </article>
+        `;
+      }).join('');
+    }
+
+    async function verCompetenciasAuditor(idUsuario) {
+      const auditor = state.comiteElegible.find((item) => String(item.id_usuario) === String(idUsuario));
+      if (!auditor) return;
+      const dialogo = document.getElementById('modalCompetenciasAuditor');
+      const contenedor = document.getElementById('listaCompetenciasAuditor');
+      document.getElementById('modalCompetenciasTitulo').textContent = 'Competencias del auditor';
+      document.getElementById('modalCompetenciasAuditorNombre').textContent = auditor.nombre || 'Sin nombre';
+      contenedor.innerHTML = '<div class="empty-state">Cargando competencias registradas...</div>';
+      dialogo.showModal();
+      try {
+        let competencias = state.competenciasPorAuditor.get(String(idUsuario));
+        if (!competencias) {
+          const respuesta = await api(`/competencias-auditor/usuario/${encodeURIComponent(idUsuario)}`);
+          if (!Array.isArray(respuesta?.competencias)) {
+            throw new Error('No se pudo cargar la información de competencias de este auditor.');
+          }
+          competencias = respuesta.competencias;
+          state.competenciasPorAuditor.set(String(idUsuario), competencias);
+        }
+        pintarCompetenciasAuditor(competencias);
+      } catch (error) {
+        contenedor.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
       }
     }
 
@@ -1351,29 +1749,48 @@
         setAlert('Abra una apelación de la bandeja antes de asignar el comité.', 'error');
         return;
       }
-      const seleccionados = Array.from(
-        document.querySelectorAll('#listaElegibles input[type="checkbox"]:checked')
-      ).map((casilla) => casilla.value);
-
+      const seleccionados = Array.from(state.comiteSeleccionados);
       if (seleccionados.length === 0) {
         setAlert('Seleccione al menos un miembro para el comité de la apelación.', 'error');
         return;
       }
+      if (state.comiteElegible.some((item) => item.ya_evaluo && state.comiteSeleccionados.has(String(item.id_usuario)))) {
+        setAlert('No se puede asignar a quien evaluó la solicitud original.', 'error');
+        return;
+      }
 
       const boton = document.getElementById('btnAsignarComite');
-      boton.disabled = true;
+      const cerrar = document.getElementById('btnCerrarAsignarComite');
+      const cancelar = document.getElementById('btnCancelarAsignacion');
+      state.asignandoComite = true;
+      boton.textContent = 'Asignando...';
+      cerrar.disabled = true;
+      cancelar.disabled = true;
+      actualizarBotonAsignarComite();
       try {
-        await api(`/api/apelaciones/${state.currentAppealId}/asignar-comite`, {
+        const respuesta = await api(`/api/apelaciones/${state.currentAppealId}/asignar-comite`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ miembros_comite: seleccionados }),
         });
-        setAlert('Comité de la apelación asignado.', 'success');
-        await cargarExpediente(state.currentAppealId);
+        if (!respuesta) throw new Error('No se recibió confirmación de la asignación del comité.');
+        const seleccionadosSet = new Set(seleccionados);
+        const miembrosAsignados = state.comiteElegible
+          .filter((item) => seleccionadosSet.has(String(item.id_usuario)))
+          .map((item) => ({ nombre: item.nombre, correo: item.correo }));
+        state.comiteAsignado = miembrosAsignados.length;
+        pintarComiteAsignado(miembrosAsignados);
+        actualizarDisponibilidad();
+        document.getElementById('modalAsignarComite').close();
+        setAlert('Comité de la apelación asignado correctamente.', 'success');
       } catch (error) {
         setAlert(error.message, 'error');
       } finally {
-        boton.disabled = false;
+        state.asignandoComite = false;
+        boton.textContent = 'Asignar comité';
+        cerrar.disabled = false;
+        cancelar.disabled = false;
+        actualizarBotonAsignarComite();
       }
     }
 
@@ -1392,15 +1809,10 @@
 
     // Lo que se ve dentro de la revisión de una apelación, según el rol.
     function seccionesDeRevision() {
-      const secciones = ['expediente'];
-      if (esAdministracion()) secciones.push('asignar');
-      secciones.push('requerimientos');
+      const secciones = ['expediente', 'requerimientos'];
       if (esComite()) secciones.push('decision');
       return secciones;
     }
-
-    // Vistas del comité y la administración que necesitan una apelación abierta.
-    const VISTAS_CON_APELACION = ['expediente', 'requerimientos', 'decision', 'asignar'];
 
     function vistasPermitidas() {
       if (esAdministracion()) {
@@ -1420,7 +1832,6 @@
       apelacion: ['Mi apelación', 'Presente su apelación y adjunte los documentos que le pidan.'],
       requerimientos: ['Requerimientos de información', 'Lo que el Comité ha pedido en esta apelación y si ya fue atendido.'],
       decision: ['Decisión del comité', 'Solicite más información o registre la decisión final sobre la apelación.'],
-      asignar: ['Asignar el comité de la apelación', 'Elija un comité distinto al que evaluó la solicitud original.'],
     };
 
     function mostrarVista(nombre) {
@@ -1450,7 +1861,6 @@
 
       if (panelesVisibles.includes('requerimientos')) cargarRequerimientos();
       if (panelesVisibles.includes('expediente')) cargarExpediente(state.currentAppealId);
-      if (panelesVisibles.includes('asignar')) cargarComiteElegible(state.currentAppealId);
       actualizarDisponibilidad();
     }
 
@@ -1503,6 +1913,8 @@
         enlace.hidden = !permitidas.includes(vista) || (vista === 'expediente');
       });
       const abierta = hayApelacion && estaAbierta();
+      mostrar('btnAbrirAsignarComite', esAdministracion());
+      habilitar('btnAbrirAsignarComite', hayApelacion);
 
       // --- Empresa ---
       // Enviar solo cuando hay una solicitud rechazada y aún no hay apelación.
@@ -1534,9 +1946,7 @@
         else aviso.textContent = '';
       }
 
-      // --- Administración ---
-      const seleccionados = document.querySelectorAll('#listaElegibles input:checked').length;
-      habilitar('btnAsignarComite', hayApelacion && seleccionados > 0);
+      actualizarBotonAsignarComite();
 
       const estadoDecision = document.getElementById('estadoDecision');
       if (estadoDecision) estadoDecision.textContent = state.estado || 'Sin apelación';
@@ -1838,10 +2248,57 @@
       evento.target.value = '';          // permite volver a elegir el mismo archivo
     });
     document.getElementById('documentosRequeridos').addEventListener('input', actualizarDisponibilidad);
-    document.getElementById('listaElegibles').addEventListener('change', actualizarDisponibilidad);
+    document.getElementById('btnAbrirAsignarComite').addEventListener('click', abrirModalAsignarComite);
+    document.getElementById('btnCerrarAsignarComite').addEventListener('click', () => {
+      document.getElementById('modalAsignarComite').close();
+    });
+    document.getElementById('btnCancelarAsignacion').addEventListener('click', () => {
+      document.getElementById('modalAsignarComite').close();
+    });
+    document.getElementById('modalAsignarComite').addEventListener('cancel', (evento) => {
+      if (state.asignandoComite) evento.preventDefault();
+    });
+    document.getElementById('modalAsignarComite').addEventListener('close', () => {
+      state.comiteElegible = [];
+      state.comiteSeleccionados = new Set();
+      state.busquedaComite = '';
+      state.paginaComite = 1;
+      document.getElementById('buscarAuditorComite').value = '';
+      actualizarBotonAsignarComite();
+    });
+    document.getElementById('buscarAuditorComite').addEventListener('input', (evento) => {
+      state.busquedaComite = evento.target.value;
+      state.paginaComite = 1;
+      pintarComiteElegible();
+    });
+    document.getElementById('paginaComiteAnterior').addEventListener('click', () => {
+      if (state.paginaComite > 1) {
+        state.paginaComite -= 1;
+        pintarComiteElegible();
+      }
+    });
+    document.getElementById('paginaComiteSiguiente').addEventListener('click', () => {
+      const resultados = miembrosComiteFiltrados();
+      if (state.paginaComite < Math.ceil(resultados.length / MIEMBROS_POR_PAGINA)) {
+        state.paginaComite += 1;
+        pintarComiteElegible();
+      }
+    });
+    document.getElementById('listaElegibles').addEventListener('change', (evento) => {
+      const casilla = evento.target.closest('input[type="checkbox"][data-comite-id]');
+      if (!casilla || casilla.disabled) return;
+      if (casilla.checked) state.comiteSeleccionados.add(casilla.dataset.comiteId);
+      else state.comiteSeleccionados.delete(casilla.dataset.comiteId);
+      actualizarBotonAsignarComite();
+    });
+    document.getElementById('listaElegibles').addEventListener('click', (evento) => {
+      const boton = evento.target.closest('[data-ver-competencias]');
+      if (boton) verCompetenciasAuditor(boton.dataset.verCompetencias);
+    });
     document.getElementById('btnAsignarComite').addEventListener('click', asignarComite);
-    document.getElementById('btnActualizarElegibles')
-      .addEventListener('click', () => cargarComiteElegible(state.currentAppealId));
+    document.getElementById('btnCerrarCompetencias').addEventListener('click', () => {
+      document.getElementById('modalCompetenciasAuditor').close();
+    });
     document.getElementById('logoutLink').addEventListener('click', (evento) => {
       evento.preventDefault();
       localStorage.removeItem('access_token');
@@ -1871,7 +2328,6 @@
     configurarAccionesPorRol();
     cargarBandejaComite();
     cargarExpediente(null);
-    if (esAdministracion()) cargarComiteElegible(null);
     renderStatus('Sin apelación');
     document.getElementById('metricSolicitud').textContent = '--';
     document.getElementById('metricRadicado').textContent = '--';
