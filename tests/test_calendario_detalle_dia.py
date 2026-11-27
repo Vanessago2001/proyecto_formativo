@@ -109,3 +109,13 @@ def test_disponibilidad_semanal_esta_en_su_ventana_y_no_en_el_perfil():
     componente = (RAIZ / "static" / "mi_disponibilidad.js").read_text(encoding="utf-8")
     for fragmento in ('aria-modal", "true"', "showModal()", 'e.key !== "Tab"', "data-md-dia", "Ver detalle del "):
         assert fragmento in componente
+
+
+def test_agenda_coordinador_muestra_disponibilidad_semanal_en_calendario():
+    pagina = (RAIZ / "static" / "consultar_agenda_auditor.html").read_text(encoding="utf-8")
+    assert ".weekly-calendar {" in pagina
+    assert 'role="group" aria-label="Horario semanal del auditor"' in pagina
+    assert "renderWeeklyAvailability(filas)" in pagina
+    for dia in ("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"):
+        assert dia in pagina
+    assert "Fechas puntuales y otros registros" in pagina

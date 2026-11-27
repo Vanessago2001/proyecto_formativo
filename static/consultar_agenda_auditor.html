@@ -364,6 +364,89 @@
             color: var(--sena-green-dark);
         }
 
+        .weekly-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .weekly-day {
+            min-width: 0;
+            min-height: 116px;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .weekly-day.today {
+            border-color: var(--sena-green-bright, #39a900);
+            box-shadow: inset 0 0 0 1px var(--sena-green-bright, #39a900);
+        }
+
+        .weekly-day-title {
+            margin: 0 0 8px;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .weekly-day-slots {
+            display: grid;
+            gap: 6px;
+        }
+
+        .weekly-slot {
+            padding: 6px 7px;
+            border-radius: 6px;
+            background: #dcfce7;
+            color: #14532d;
+            font-size: 12px;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+
+        .weekly-slot.blocked {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .weekly-slot-time {
+            display: block;
+            font-weight: 700;
+        }
+
+        .weekly-slot-meta {
+            display: block;
+            margin-top: 2px;
+            color: inherit;
+            font-size: 11px;
+        }
+
+        .weekly-calendar-special {
+            grid-column: 1 / -1;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .weekly-calendar-special h4 {
+            margin: 0 0 8px;
+            color: #475569;
+            font-size: 13px;
+        }
+
+        @media (max-width: 900px) {
+            .weekly-calendar { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 620px) {
+            .weekly-calendar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .weekly-day { min-height: 96px; }
+        }
+
         /* Aviso junto al botón que lo produjo (no arriba de la página). */
         .notice.junto-accion {
             margin: 12px 0 0;
@@ -3111,18 +3194,7 @@
                 const filas = (disp.value.disponibilidad || []).slice().sort((a, b) =>
                     (Number(a.dia_semana) || 99) - (Number(b.dia_semana) || 99) ||
                     String(a.fecha_inicio || "").localeCompare(String(b.fecha_inicio || "")));
-                tabla.innerHTML = filas.length
-                    ? `<table><thead><tr><th>Tipo</th><th>Día</th><th>Horario</th><th>Vigencia</th><th>Motivo</th></tr></thead><tbody>${filas.map((row) => {
-                        const bloqueo = availabilityTypeName(row) === "No disponible";
-                        return `<tr>
-                            <td><span class="pill ${bloqueo ? "blocked" : ""}">${esc(row.tipo_registro || availabilityTypeName(row))}</span></td>
-                            <td>${esc(bloqueo ? "Fecha completa" : (row.dia_semana !== null && row.dia_semana !== undefined ? dayLabel(row.dia_semana) : "Todos los días"))}</td>
-                            <td>${esc(asTimeInput(row.hora_inicio) || "Todo el día")}${row.hora_fin ? " – " + esc(asTimeInput(row.hora_fin)) : ""}</td>
-                            <td>${esc(asDateInput(row.fecha_inicio) || "—")} → ${esc(asDateInput(row.fecha_fin) || "sin fecha final")}</td>
-                            <td>${esc(row.motivo || "—")}</td>
-                        </tr>`;
-                    }).join("")}</tbody></table>`
-                    : '<div class="empty">El auditor no ha declarado disponibilidad vigente. Para programar se considera disponible salvo en sus fechas bloqueadas o cuando ya tiene otra visita.</div>';
+                tabla.innerHTML = renderWeeklyAvailability(filas);
             } else {
                 tabla.innerHTML = `<div class="empty">No se pudo consultar la disponibilidad: ${esc(disp.reason?.message || "")}</div>`;
             }
@@ -3142,6 +3214,68 @@
                 ocupado.innerHTML = `<div class="empty">No se pudieron consultar las auditorías: ${esc(aud.reason?.message || "")}</div>`;
             }
         }
+
+        function renderWeeklyAvailability(rows) {
+            if (!rows.length) {
+                return '<div class="empty">El auditor no ha declarado disponibilidad vigente. Para programar se considera disponible salvo en sus fechas bloqueadas o cuando ya tiene otra visita.</div>';
+            }
+
+            const dias = [
+                ["lunes", "Lunes"], ["martes", "Martes"], ["miercoles", "Miércoles"],
+                ["jueves", "Jueves"], ["viernes", "Viernes"], ["sabado", "Sábado"],
+                ["domingo", "Domingo"]
+            ];
+            const porDia = new Map(dias.map(([clave]) => [clave, []]));
+            const puntuales = [];
+            rows.forEach((row) => {
+                const dia = row.dia_semana === null || row.dia_semana === undefined || row.dia_semana === ""
+                    ? ""
+                    : canonicalDay(row.dia_semana);
+                if (porDia.has(dia)) porDia.get(dia).push(row);
+                else puntuales.push(row);
+            });
+
+            const hoy = (new Date().getDay() + 6) % 7;
+            const contenidoDias = dias.map(([clave, nombre], indice) => {
+                const registros = porDia.get(clave);
+                const horarios = registros.length ? registros.map((row) => {
+                    const bloqueo = availabilityTypeName(row) === "No disponible";
+                    const hora = `${asTimeInput(row.hora_inicio) || "Todo el día"}${row.hora_fin ? " – " + asTimeInput(row.hora_fin) : ""}`;
+                    const vigencia = row.fecha_inicio
+                        ? `${asDateInput(row.fecha_inicio)} → ${asDateInput(row.fecha_fin) || "sin fecha final"}`
+                        : "";
+                    const meta = [row.tipo_registro || availabilityTypeName(row), vigencia, row.motivo]
+                        .filter(Boolean).map(esc).join(" · ");
+                    return `<div class="weekly-slot${bloqueo ? " blocked" : ""}">
+                        <span class="weekly-slot-time">${esc(hora)}</span>
+                        ${meta ? `<span class="weekly-slot-meta">${meta}</span>` : ""}
+                    </div>`;
+                }).join("") : '<span class="weekly-slot-meta">Sin horario declarado</span>';
+                return `<section class="weekly-day${indice === hoy ? " today" : ""}" aria-label="${nombre}">
+                    <h4 class="weekly-day-title">${nombre}</h4>
+                    <div class="weekly-day-slots">${horarios}</div>
+                </section>`;
+            }).join("");
+
+            const contenidoPuntuales = puntuales.length ? `
+                <section class="weekly-calendar-special" aria-label="Fechas puntuales y otros registros">
+                    <h4>Fechas puntuales y otros registros</h4>
+                    <div class="weekly-day-slots">${puntuales.map((row) => {
+                        const bloqueo = availabilityTypeName(row) === "No disponible";
+                        const rango = `${asDateInput(row.fecha_inicio) || "—"} → ${asDateInput(row.fecha_fin) || "sin fecha final"}`;
+                        const hora = `${asTimeInput(row.hora_inicio) || "Todo el día"}${row.hora_fin ? " – " + asTimeInput(row.hora_fin) : ""}`;
+                        const meta = [row.tipo_registro || availabilityTypeName(row), row.motivo]
+                            .filter(Boolean).map(esc).join(" · ");
+                        return `<div class="weekly-slot${bloqueo ? " blocked" : ""}">
+                            <span class="weekly-slot-time">${esc(rango)} · ${esc(hora)}</span>
+                            ${meta ? `<span class="weekly-slot-meta">${meta}</span>` : ""}
+                        </div>`;
+                    }).join("")}</div>
+                </section>` : "";
+
+            return `<div class="weekly-calendar" role="group" aria-label="Horario semanal del auditor">${contenidoDias}${contenidoPuntuales}</div>`;
+        }
+
         /* ==========================================================
            SECCIÓN 3: CALENDARIO DE AUDITORÍAS (Coordinador)
            El calendario (mes/semana, anterior/hoy/siguiente, "+N más")
